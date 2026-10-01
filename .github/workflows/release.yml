@@ -62,7 +62,7 @@ jobs:
           test -n "$KEYSTORE_BASE64" || { echo "::error::KEYSTORE_BASE64 secret is missing"; exit 1; }
           echo "$KEYSTORE_BASE64" | base64 -d > android/unibot-release.keystore
           cat > android/keystore.properties <<EOF
-          storeFile=../../unibot-release.keystore
+          storeFile=../../../unibot-release.keystore
           storePassword=$KEYSTORE_PASSWORD
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
