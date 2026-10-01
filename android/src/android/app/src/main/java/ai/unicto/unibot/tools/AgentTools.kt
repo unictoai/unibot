@@ -27,6 +27,11 @@ object AgentTools {
         // attempt those calls. Mirrors the iOS gate at
         // AIChatViewModel.makeAgentTools(memoryEnabled:).
         memoryEnabled: Boolean = true,
+        // [unibot-delegate] Multi-agent: expose the `delegate` tool so the
+        // main agent can spawn specialist worker sub-agents. Workers get the
+        // same list with delegate (and memory_write) removed — no nested
+        // delegation, no worker writes to long-term memory.
+        includeDelegate: Boolean = true,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -39,6 +44,9 @@ object AgentTools {
         if (memoryEnabled) {
             add(memoryWriteDefinition())
             add(memoryGetDefinition())
+        }
+        if (includeDelegate) {
+            DelegateTool.definition()?.let { add(it) }
         }
     }
 

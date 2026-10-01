@@ -54,6 +54,7 @@ import ai.unicto.unibot.sandbox.ExecutionCoordinator
 import ai.unicto.unibot.terminal.MinisOpenUrlBroker
 import ai.unicto.unibot.terminal.MinisUrlMarker
 import ai.unicto.unibot.tools.AgentTools
+import ai.unicto.unibot.tools.DelegateTool
 import ai.unicto.unibot.tools.FileEditTool
 import ai.unicto.unibot.tools.FileReadTool
 import ai.unicto.unibot.tools.FileWriteTool
@@ -76,6 +77,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -1151,6 +1153,14 @@ class ChatViewModel(
     private var streamJob: Job? = null
     private var currentProvider: LLMProvider? = null
     private var currentModel: LLMModel? = null
+
+    /**
+     * [unibot-delegate] Multi-agent recursion guard. > 0 while a `delegate`
+     * worker sub-agent loop is running inside [executeTool]; the worker's
+     * tool set excludes `delegate`, and the branch below rejects it anyway,
+     * so workers can never spawn their own workers.
+     */
+    private var delegateDepth = 0
 
     /**
      * Does the CURRENTLY RESOLVED main model natively consume image pixels?
@@ -9593,7 +9603,147 @@ class ChatViewModel(
             "browser_use" -> executeBrowserUseTool(argsJson)
             "memory_write" -> executeMemoryWriteTool(argsJson)
             "memory_get" -> executeMemoryGetTool(argsJson)
+            DelegateTool.NAME -> executeDelegateTool(argsJson, toolId, toolBlocks, assistantId, currentText)
             else -> ToolExecutionResult("Unknown tool: $name", false)
+        }
+    }
+
+    /**
+     * [unibot-delegate] Multi-agent worker sub-agent loop.
+     *
+     * Spawns a specialist worker for one self-contained task. The worker runs
+     * the same model/provider as the current session, with the restricted
+     * tool set from [AgentTools.makeAgentTools] (no `delegate`, no
+     * `memory_write`). Each worker tool call goes through [executeTool], so
+     * approval cards, permission gates and the "never type secrets" rule
+     * apply to the worker exactly as they do to the main agent — delegation
+     * grants no extra privilege, only a fresh context window.
+     *
+     * The worker's tool calls render as normal tool pills in the chat (same
+     * [toolBlocks]), so the user can watch what the worker is doing.
+     */
+    private suspend fun executeDelegateTool(
+        argsJson: String,
+        toolId: String,
+        toolBlocks: MutableList<AssistantBlock>,
+        assistantId: String,
+        currentText: String,
+    ): ToolExecutionResult {
+        val args = try { JSONObject(argsJson) } catch (_: Exception) { JSONObject() }
+        val toolTitle = args.optString("tool_title", "Delegate task").ifBlank { "Delegate task" }
+        val task = args.optString("task", "").trim()
+        if (task.isEmpty()) {
+            return ToolExecutionResult("delegate: 'task' is required.", false, toolTitle = toolTitle)
+        }
+        if (delegateDepth > 0) {
+            return ToolExecutionResult(
+                "delegate: workers cannot spawn their own workers — do the work yourself.",
+                false,
+                toolTitle = toolTitle,
+            )
+        }
+        val provider = currentProvider
+        val model = currentModel
+        if (provider == null || model == null) {
+            return ToolExecutionResult("delegate: no active model session.", false, toolTitle = toolTitle)
+        }
+        val maxTurns = args.optInt("max_turns", DelegateTool.DEFAULT_MAX_TURNS)
+            .coerceIn(1, DelegateTool.HARD_MAX_TURNS)
+        val background = args.optString("context", "").trim()
+
+        val workerTools = AgentTools.makeAgentTools(
+            supportsImageInput = currentModelHasNativeVision,
+            visionGroupConfigured = ai.unicto.unibot.tools.VisionGroupResolver.isConfigured(
+                providerRepository, context,
+            ),
+            memoryEnabled = false, // worker must not write long-term memory
+            includeDelegate = false, // no nested delegation
+        )
+        val workerMessages = mutableListOf(
+            LLMMessage(
+                LLMMessage.Role.USER,
+                buildString {
+                    append("Task: ").append(task)
+                    if (background.isNotEmpty()) append("\n\nBackground:\n").append(background)
+                },
+            ),
+        )
+
+        delegateDepth++
+        try {
+            var finalText = ""
+            var turnsUsed = 0
+            while (turnsUsed < maxTurns) {
+                turnsUsed++
+                val text = StringBuilder()
+                val calls = mutableListOf<LLMStreamChunk.ToolCallComplete>()
+                try {
+                    provider.streamMessage(
+                        messages = workerMessages,
+                        systemPrompt = DelegateTool.workerSystemPrompt(toolTitle),
+                        maxTokens = provider.effectiveMaxOutputTokens(model),
+                        tools = workerTools,
+                        thinkingLevel = ThinkingLevel.OFF,
+                    ).collect { chunk ->
+                        when (chunk) {
+                            is LLMStreamChunk.Text -> text.append(chunk.text)
+                            is LLMStreamChunk.ToolCallComplete -> calls.add(chunk)
+                            else -> Unit
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    // User hit Stop (or the turn was cancelled): don't
+                    // convert cancellation into a worker failure — propagate.
+                    throw e
+                } catch (e: Exception) {
+                    return ToolExecutionResult(
+                        "Worker '$toolTitle' failed on turn $turnsUsed: ${e.message}",
+                        false,
+                        toolTitle = toolTitle,
+                    )
+                }
+                finalText = text.toString()
+                val parts = mutableListOf<AgentContentPart>(
+                    AgentContentPart.Text(finalText),
+                )
+                calls.forEach { tc ->
+                    parts.add(AgentContentPart.ToolUse(tc.id, tc.name, tc.args, tc.thoughtSignature))
+                }
+                workerMessages.add(LLMMessage(LLMMessage.Role.ASSISTANT, finalText, contentParts = parts))
+                if (calls.isEmpty()) break
+                val resultParts = mutableListOf<AgentContentPart>()
+                for (tc in calls) {
+                    val result = executeTool(tc.name, tc.args.toString(), tc.id, toolBlocks, assistantId, currentText)
+                    val out = if (result.output.length > 8000) {
+                        result.output.take(8000) + "\n…[truncated to 8000 chars]"
+                    } else {
+                        result.output
+                    }
+                    resultParts.add(
+                        AgentContentPart.ToolResult(
+                            tc.id,
+                            tc.name,
+                            out,
+                            isError = !result.success,
+                            // Pass images (e.g. read_image) through so a
+                            // vision-capable worker model can actually see
+                            // them; providers budget/elide per request.
+                            imageData = result.imageData,
+                            imageMimeType = result.imageMimeType,
+                            imageLinuxPath = result.imageLinuxPath,
+                        ),
+                    )
+                }
+                workerMessages.add(LLMMessage(LLMMessage.Role.USER, "", contentParts = resultParts))
+            }
+            val summary = buildString {
+                append("Worker '").append(toolTitle).append("' finished after ")
+                    .append(turnsUsed).append(" turn(s).\n\n")
+                append(finalText.ifBlank { "(the worker produced no summary text)" })
+            }
+            return ToolExecutionResult(summary, true, toolTitle = toolTitle)
+        } finally {
+            delegateDepth--
         }
     }
 
@@ -12812,6 +12962,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         "memory_write" -> "Write Memory"
         "memory_get" -> "Read Memory"
         "web_search" -> "Search Web"
+        "delegate" -> "Delegate to Worker"
         else -> toolName
             .split('_')
             .filter { it.isNotEmpty() }
