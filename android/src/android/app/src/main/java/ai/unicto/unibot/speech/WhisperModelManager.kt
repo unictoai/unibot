@@ -132,7 +132,8 @@ object WhisperModelManager {
             }
             conn.inputStream.use { input ->
                 // Append only when resuming (206); otherwise start fresh.
-                tmp.outputStream(resumeFrom > 0 && code == HttpURLConnection.HTTP_PARTIAL).use { out ->
+                val append = resumeFrom > 0 && code == HttpURLConnection.HTTP_PARTIAL
+                java.io.FileOutputStream(tmp, append).use { out ->
                     val buf = ByteArray(256 * 1024)
                     var written = resumeFrom
                     while (true) {
