@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- unibot: ties UnibotVoiceInteractionService to its session. Declaring the
+     VoiceInteractionService is what puts unibot in
+     Settings → Apps → Default apps → Digital assistant app. -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="ai.unicto.unibot.assist.UnibotVoiceInteractionSessionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true" />

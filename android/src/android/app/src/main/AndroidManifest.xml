@@ -506,6 +506,23 @@
             android:name="ai.unicto.unibot.guard.RiskApprovalReceiver"
             android:exported="false" />
 
+        <!-- unibot: default digital assistant support. Declaring a
+             VoiceInteractionService is what makes unibot appear in
+             Settings → Apps → Default apps → Digital assistant app.
+             Invoking it opens a new chat with voice input auto-started. -->
+        <service
+            android:name=".assist.UnibotVoiceInteractionService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+        </service>
+
         <!-- Notification listener — lets android-notification read active notifications.
              User must enable this manually in Settings → Notifications → Device &
              app notifications → Notification access. -->
