@@ -1,0 +1,68 @@
+# local configuration & secrets
+config/config.toml
+config/*.local.toml
+.env
+.env.*
+!.env.example
+
+# runtime data
+workspace/
+*.db
+*.enc
+*.key
+audit.jsonl
+sessions/
+logs/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# web app sources (the production build in unibot/server/static IS committed)
+web/node_modules/
+web/dist/
+web/.vite/
+npm-debug.log*
+
+# website: generated from web/ and docs/ by `npm run site:mascot` (see site/README.md)
+site/assets/
+
+# android app (the signing key lives outside the repo; see docs/android.md)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore.properties
+android/.kotlin/
+# built, not committed: the root file system (scripts/rootfs/build.sh) and PRoot (android/native/build-proot.sh)
+android/app/src/local/assets/rootfs.tar.xz
+android/app/src/local/assets/rootfs.json
+android/app/src/local/jniLibs/
+android/native/build/
+*.jks
+*.keystore
+*.apk
+*.aab
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# uv lockfile: the project installs with `uv pip install -e .`, not `uv sync`
+uv.lock
+
+# unibot Cloud relay runtime data
+cloud/data/

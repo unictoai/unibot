@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "unibot"
+version = "0.1.0"
+description = "An open-source personal AI agent inspired by Meta's Muse: it does the work, a Sentinel decides what may run, and it reaches services through APIs, MCP servers, CLIs or the phone's screen. Phone today, web and desktop next. Bring your own model."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.11"
+authors = [{ name = "unibot Contributors" }]
+keywords = ["agent", "ai", "llm", "personal-assistant", "personal-agent", "muse", "meta-muse", "gui-agent", "mcp", "deepseek", "feishu", "amap"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "openai>=1.60",
+  "pydantic>=2.7",
+  "httpx>=0.27",
+  "typer>=0.12",
+  "rich>=13.7",
+  "loguru>=0.7",
+  "cryptography>=42",
+  "tenacity>=8.3",
+  "ddgs>=9.0",
+  "beautifulsoup4>=4.12",
+  "html2text>=2024.2.26",
+  "mcp>=1.2",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "qrcode>=7.4",
+  "pywebpush>=2.0",
+  "python-dateutil>=2.9",
+  "pillow>=10",
+  "pypdf>=4",
+  # Windows has no system time-zone database; zoneinfo (the calendar, quiet hours) needs this one
+  "tzdata>=2024.1; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.45"]
+# this computer's screen and hands (docs/every-device.md); xdotool works without them on X11
+hands = ["mss>=9", "Pillow>=10", "pyautogui>=0.9.54", "pyperclip>=1.8"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5", "mypy>=1.10", "httpx>=0.27", "types-python-dateutil"]
+all = ["unibot[browser,hands,dev]"]
+
+[project.scripts]
+unibot = "unibot.cli:app"
+# the CLI bridge: for commands the agent runs (docs/local-runtime.md)
+unibot-device = "unibot.bridge.cli:device_main"
+unibot-browser = "unibot.bridge.cli:browser_main"
+unibot-open = "unibot.bridge.cli:open_main"
+
+[project.urls]
+Homepage = "https://github.com/unictoai/unibot"
+Repository = "https://github.com/unictoai/unibot"
+Issues = "https://github.com/unictoai/unibot/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["unibot"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"config/config.example.toml" = "unibot/config.example.toml"
+
+[tool.hatch.build.targets.sdist]
+include = ["unibot", "config/config.example.toml", "README.md", "README_*.md", "LICENSE"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "B008", "UP042"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["unibot"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unreachable = true
+# the mcp 1.x/2.x import fallback needs an ignore on whichever branch is not installed
+warn_unused_ignores = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["live: tests that call a real LLM endpoint (set UNIBOT_LIVE=1)"]

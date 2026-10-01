@@ -1,0 +1,81 @@
+# The public unibot showcase: a phone in the browser (MobileGym with the unibot app) and a
+# private, short-lived unibot per visitor. See README.md for the whole picture and the
+# deployment steps.
+#
+#   cp .env.example .env && $EDITOR .env
+#   docker pull ghcr.io/unictoai/unibot:latest        # what the visitors' sessions run
+#   docker compose pull && docker compose up -d          # published images (see showcase.yml)
+#   docker compose up -d --build                         # or build both images here
+#
+# Sessions are started by the gateway on the `unibot-sessions` network, which has no way out:
+# the only thing a visitor's Muse can talk to is the gateway (and through it, the model).
+# With WEB_ENABLED=1 the gateway also runs unibot Web — a kept Muse per Cloud account, on
+# the `unibot-web` network next to the relay (gateway/showcase_gateway/accounts.py).
+
+services:
+  caddy:
+    build:
+      context: ../..
+      dockerfile: demo/showcase/caddy/Dockerfile
+      args:
+        MOBILEGYM_REF: ${MOBILEGYM_REF:-main}
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+    image: ghcr.io/unictoai/showcase-caddy:${SHOWCASE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_HOST: ${SITE_HOST}
+      SESSION_DOMAIN: ${SESSION_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/mobilegym-data:/srv/cdn:ro
+      # other sites on this Caddy: their site blocks, and the files they serve (README, "Other sites")
+      - ./sites.d:/etc/caddy/sites.d:ro
+      - ${WWW_ROOT:-./www}:/srv/www:ro
+      # access logs of the sites that keep one (mirror/unibot.cn.caddy), read by mirror/traffic.py
+      - ./logs/caddy:/var/log/caddy
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+    depends_on:
+      - gateway
+
+  gateway:
+    build: ./gateway
+    image: ghcr.io/unictoai/showcase-gateway:${SHOWCASE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      INTERNAL_URL: http://gateway:8000
+      SESSIONS_NETWORK: unibot-sessions
+      TRUST_PROXY: "1"
+      LISTEN_PORT: "8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gateway-data:/data # trial credentials (SQLite), when TRIAL_ENABLED
+    networks:
+      - edge
+      - sessions
+      - web
+
+networks:
+  edge: {}
+  sessions:
+    name: unibot-sessions
+    internal: true
+  # unibot Web (gateway/accounts.py): the kept, per-account containers live here, together
+  # with the Cloud relay they sign in to (cloud/deploy/unibot-hk joins it too). Not internal:
+  # an account's Muse may fetch pages and talk to the model like one on a phone would.
+  web:
+    name: unibot-web
+
+volumes:
+  caddy-data: {}
+  caddy-config: {}
+  gateway-data: {}

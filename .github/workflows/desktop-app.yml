@@ -1,0 +1,153 @@
+# unibot for the desktop — the window (desktop/app, Electron) with the runtime bundled:
+#
+#   Windows  unibot-Desktop-<v>-win-x64.exe        (NSIS installer)
+#   macOS    unibot-Desktop-<v>-mac-arm64.dmg / -x64.dmg  (+ .zip)
+#   Linux    unibot-Desktop-<v>-linux-x64.AppImage / .deb
+#
+# Each platform first builds the runtime (scripts/desktop-app/build-runtime.py: PyInstaller,
+# one folder, started once from an unrelated directory to check /api/health), then
+# electron-builder wraps it with the app. On macOS electron-builder only lays out the .app;
+# scripts/desktop-app/package-mac.sh ad-hoc signs it and writes the zip and an APFS dmg.
+# A push that touches desktop/app builds Linux only; "Run workflow" and the release tags `v*`
+# build all four, and a tag uploads the installers to the release of the same name — the one
+# scripts/release-apk.sh creates with the APK — retrying until it exists. "Run workflow" with a
+# release tag does the same for a release that already exists (a platform fixed afterwards).
+# No developer certificate: Windows asks for "Run anyway", macOS for Open Anyway in System
+# Settings → Privacy & Security (docs/desktop.md).
+name: desktop app
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["desktop/app/**", "scripts/desktop-app/**", ".github/workflows/desktop-app.yml"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Attach the installers to this existing release (v0.1.19, say); empty builds only"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: which platforms
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        env:
+          FULL: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          LINUX='{"os":"ubuntu-22.04","label":"linux-x64"}'
+          ALL="[{\"os\":\"windows-latest\",\"label\":\"windows-x64\"},{\"os\":\"macos-latest\",\"label\":\"macos-arm64\"},{\"os\":\"macos-15-intel\",\"label\":\"macos-x64\"},$LINUX]"
+          if [ "$FULL" = "true" ]; then echo "matrix=$ALL" >> "$GITHUB_OUTPUT"; else echo "matrix=[$LINUX]" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    name: ${{ matrix.label }}
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/app/package-lock.json
+      - name: Linux packages the runtime and the installers need
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xdotool libfuse2 rpm
+      - name: The runtime
+        if: runner.os != 'Linux'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          # cryptography 49 stopped shipping Intel Mac wheels; the source build links Homebrew's
+          # OpenSSL, which PyInstaller then mixes up with Python's own. The last universal2
+          # wheel carries its OpenSSL inside.
+          if [ "${{ matrix.label }}" = "macos-x64" ]; then python -m pip install "cryptography<49"; fi
+          python -m pip install -e ".[hands]" pyinstaller
+          python scripts/desktop-app/build-runtime.py --check
+      - name: The runtime (Linux — inside Debian 11, so it runs on glibc 2.31 and newer)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # A PyInstaller bundle links the glibc of the machine that built it. Built on the
+          # runner (Ubuntu 22.04, glibc 2.35) it refused to start on Ubuntu 20.04 and Debian 11:
+          # "version `GLIBC_2.35' not found". Debian 11's glibc 2.31 is the oldest in support.
+          docker run --rm -v "$PWD:/src" -w /src -e HOME=/tmp/home python:3.12-bullseye bash -euo pipefail -c '
+            python -m pip install --upgrade pip
+            python -m pip install -e ".[hands]" pyinstaller
+            python scripts/desktop-app/build-runtime.py --check
+            chown -R '"$(id -u):$(id -g)"' desktop/app/runtime build *.egg-info 2>/dev/null || true
+          '
+          ls desktop/app/runtime | head
+      - name: The app
+        if: runner.os != 'macOS'
+        working-directory: desktop/app
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: "true"
+        run: |
+          npm ci
+          npm run typecheck
+          npm run dist
+      - name: The app (macOS — ad-hoc signed, zip and APFS dmg by hand)
+        if: runner.os == 'macOS'
+        working-directory: desktop/app
+        run: |
+          npm ci
+          npm run typecheck
+          npm run dist:dir
+          ../../scripts/desktop-app/package-mac.sh "${{ matrix.label == 'macos-arm64' && 'arm64' || 'x64' }}"
+      - name: What was built
+        shell: bash
+        working-directory: desktop/app
+        run: ls -la dist | grep -Ev "^total|builder-|\.blockmap|\.yml$" || true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: unibot-desktop-app-${{ matrix.label }}
+          path: |
+            desktop/app/dist/*.AppImage
+            desktop/app/dist/*.deb
+            desktop/app/dist/*.exe
+            desktop/app/dist/*.dmg
+            desktop/app/dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # the release is created by scripts/release-apk.sh right after it pushes the tag;
+          # give it up to fifteen minutes
+          for i in $(seq 1 90); do
+            if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then break; fi
+            sleep 10
+          done
+          gh release view "$TAG" -R "$REPO" >/dev/null
+          (cd packages && sha256sum * > SHA256SUMS-desktop-app.txt && cat SHA256SUMS-desktop-app.txt)
+          gh release upload "$TAG" packages/* -R "$REPO" --clobber

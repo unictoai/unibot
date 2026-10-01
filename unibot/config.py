@@ -1,0 +1,816 @@
+"""Configuration loading.
+
+Search order for the TOML config file:
+
+1. explicit path (``--config`` / :func:`load_settings(path)`)
+2. ``$UNIBOT_CONFIG``
+3. ``./config/config.toml``
+4. ``~/.unibot/config.toml``
+
+String values may reference environment variables with ``${VAR}`` or
+``${VAR:-default}`` so that secrets never have to live in the file itself.
+A handful of ``UNIBOT_*`` environment variables override the most common
+settings (see :func:`_apply_env_overrides`). Whatever was changed from the app
+(``<data_dir>/app-settings.json``: model, connectors, MCP servers) is layered on
+top; secrets it refers to live in the vault as ``{{vault:NAME}}``.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import tomllib
+from pathlib import Path
+from typing import Any, Literal
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from unibot.schema import RiskLevel
+
+DEFAULT_DATA_DIR = Path.home() / ".unibot"
+_ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
+
+
+# ----------------------------------------------------------------------------- models
+class LLMSettings(BaseModel):
+    provider: Literal["openai", "openai_responses"] = "openai"
+    model: str = "deepseek-flash"
+    base_url: str | None = "https://api.deepseek.com"
+    api_key: str = ""
+    max_tokens: int = 4096
+    temperature: float = 0.3
+    timeout: float = 180.0
+    max_retries: int = 5
+    stream: bool = True
+    # "auto":   the provider's function-calling API; if the endpoint rejects the `tools`
+    #           field (Ollama for a model without a tool template, vLLM without a tool
+    #           parser) switch to prompt mode for the rest of the run.
+    # "native": always the function-calling API.
+    # "prompt": describe tools in the prompt and parse <tool_call> blocks — works with
+    #           any chat model, including endpoints that silently ignore `tools`.
+    tool_mode: Literal["auto", "native", "prompt"] = "auto"
+    # Pictures the user attaches in chat go to the model as images.
+    # "auto": send them; if the endpoint rejects image content (DeepSeek, most text-only
+    #         models) send the text only from then on and tell the user once.
+    # "on":   always send them (the call fails when the model cannot take images).
+    # "off":  never — the model gets the file names and can read text files with `files`.
+    vision: Literal["auto", "on", "off"] = "auto"
+    # Send `reasoning_content` back with assistant messages (DeepSeek thinking-mode
+    # tool calling wants this on some endpoints).
+    pass_reasoning: bool = False
+    # The models that draw and animate the agent's face (the avatar studio), on the same
+    # host and key as the chat model. Empty: the relay's image model when the account is the
+    # provider, qwen-image-3.0 on Alibaba Cloud Model Studio, none elsewhere.
+    image_model: str = ""
+    video_model: str = ""
+    extra_headers: dict[str, str] = Field(default_factory=dict)
+    extra_body: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("base_url")
+    @classmethod
+    def _strip_slash(cls, v: str | None) -> str | None:
+        return v.rstrip("/") if v else v
+
+
+class AgentSettings(BaseModel):
+    name: str = "unibot"
+    max_steps: int = 30
+    # Where the agent's files live. A relative path is relative to the current directory, which is
+    # what a terminal user expects. When nothing is configured, Settings resolves it: a `workspace/`
+    # in the current directory when there is one, otherwise `<data_dir>/workspace` — so a runtime
+    # started from a read-only place (the desktop shell from /Applications or Program Files, whose
+    # working directory may even be /) never tries to create a folder where it cannot.
+    workspace: Path = Path("./workspace")
+    # Directories outside the workspace the files tool may read and write (e.g. "~/Documents").
+    extra_roots: list[Path] = Field(default_factory=list)
+    # "auto" → answer in the user's language; or force e.g. "zh" / "en".
+    language: str = "auto"
+    max_context_messages: int = 80
+    show_thinking: bool = False
+    # Optional free-text profile injected into the system prompt.
+    user_profile: str = ""
+    # Extra instructions appended to the system prompt.
+    instructions: str = ""
+
+
+class SentinelRule(BaseModel):
+    tool: str = "*"
+    # argument name -> glob pattern matched against str(value)
+    match: dict[str, str] = Field(default_factory=dict)
+    action: Literal["allow", "ask", "deny"] = "ask"
+    reason: str = ""
+
+
+class SentinelSettings(BaseModel):
+    # ask    : safe/moderate run freely, sensitive actions need approval (default)
+    # strict : moderate *and* sensitive actions need approval
+    # auto   : approve everything except explicit deny rules (unattended runs / CI)
+    mode: Literal["ask", "strict", "auto"] = "ask"
+    always_ask_tools: list[str] = Field(default_factory=lambda: ["send_email", "shell"])
+    always_allow_tools: list[str] = Field(default_factory=list)
+    deny_tools: list[str] = Field(default_factory=list)
+    # Domains the agent may reach *without* approval even after it has read private
+    # data (mirrors Muse's "short list of pre-approved destinations").
+    egress_allowlist: list[str] = Field(
+        default_factory=lambda: [
+            "duckduckgo.com",
+            "*.duckduckgo.com",
+            "wikipedia.org",
+            "*.wikipedia.org",
+            "github.com",
+            "*.github.com",
+            "*.githubusercontent.com",
+            "pypi.org",
+            "*.pypi.org",
+        ]
+    )
+    rules: list[SentinelRule] = Field(default_factory=list)
+    audit_file: Path | None = None
+    # Enable taint tracking: once the agent has read private data, network egress to
+    # non-allowlisted destinations requires approval.
+    taint_tracking: bool = True
+
+
+class MemorySettings(BaseModel):
+    enabled: bool = True
+    max_inject: int = 20
+    # Recall by meaning. Memories are embedded once and a message finds the ones that mean
+    # the same thing, in any language ("写邮件给房东" finds "the landlord is Bob Li"); the
+    # keyword recall stays and the two rankings are fused.
+    #   auto: use the endpoint's /embeddings when it has one (OpenAI, Ollama, most gateways;
+    #         DeepSeek has none) and fall back to keyword recall when it does not
+    #   on:   insist — recall stays by keyword when the call fails, and `doctor` says so
+    #   off:  keyword recall only
+    embeddings: Literal["auto", "on", "off"] = "auto"
+    # Empty → a default for the endpoint: text-embedding-3-small on OpenAI and most
+    # gateways, qwen3-embedding:0.6b on Ollama.
+    embedding_model: str = ""
+    # Empty → the model's endpoint and key (llm.base_url / llm.api_key). Set these to use a
+    # different service for embeddings than for chat — Ollama next to DeepSeek, say.
+    embedding_base_url: str = ""
+    embedding_api_key: str = ""
+
+    @field_validator("embedding_base_url")
+    @classmethod
+    def _strip_slash(cls, v: str) -> str:
+        return v.rstrip("/")
+
+
+class EmailSettings(BaseModel):
+    enabled: bool = False
+    imap_host: str = ""
+    imap_port: int = 993
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_starttls: bool = True
+    # Values may be vault placeholders such as "{{vault:EMAIL_PASSWORD}}" — the model
+    # never sees them; the Sentinel resolves them right before the connector runs.
+    address: str = "{{vault:EMAIL_ADDRESS}}"
+    password: str = "{{vault:EMAIL_PASSWORD}}"
+    # Strip one-time passcodes / password-reset links before the model reads a mail.
+    scrub_secrets: bool = True
+
+
+class CalendarFeedSettings(BaseModel):
+    name: str
+    # A private .ics link (Google, Outlook, iCloud, Fastmail, Nextcloud all have one) or a
+    # local file. The link is usually the secret, so "{{vault:CALENDAR_WORK}}" works here.
+    url: str
+
+
+class CalendarSettings(BaseModel):
+    enabled: bool = False
+    feeds: list[CalendarFeedSettings] = Field(default_factory=list)
+    refresh_minutes: int = 30
+    # Working hours, for "when am I free" — local time.
+    day_start: str = "09:00"
+    day_end: str = "18:00"
+
+
+class ContactSourceSettings(BaseModel):
+    """A ``.vcf`` export or link: Google Contacts, iCloud, Outlook, Nextcloud … all export one."""
+
+    name: str
+    # a path, or a URL — a "{{vault:NAME}}" placeholder when the link is a secret
+    url: str
+
+
+class ContactsSettings(BaseModel):
+    # On by default: even without a source the agent keeps its own book of the people
+    # you tell it about ("Alice's address is …"), in <data_dir>/contacts.vcf.
+    enabled: bool = True
+    sources: list[ContactSourceSettings] = Field(default_factory=list)
+
+
+class SearchSettings(BaseModel):
+    """Who answers ``web_search``. DuckDuckGo needs nothing and is the default; Brave and
+    Tavily want a key, SearXNG wants the URL of an instance. A failed search falls back
+    to DuckDuckGo once, with a note, so a lapsed key does not stop a task."""
+
+    provider: Literal["duckduckgo", "brave", "tavily", "searxng"] = "duckduckgo"
+    # Brave / Tavily. May be a vault placeholder — the app stores it as {{vault:SEARCH_API_KEY}}.
+    api_key: str = ""
+    # SearXNG: your instance, e.g. "http://127.0.0.1:8080".
+    base_url: str = ""
+
+
+class ConnectorSettings(BaseModel):
+    email: EmailSettings = Field(default_factory=EmailSettings)
+    calendar: CalendarSettings = Field(default_factory=CalendarSettings)
+    contacts: ContactsSettings = Field(default_factory=ContactsSettings)
+    search: SearchSettings = Field(default_factory=SearchSettings)
+
+
+class SkillsSettings(BaseModel):
+    """Skills: recipes for jobs, as ``SKILL.md`` folders (the Agent Skills format)."""
+
+    enabled: bool = True
+    # Where your own skills live; one folder per skill with a SKILL.md inside. Empty →
+    # <data_dir>/skills. A skill here with the same name as a built-in one replaces it.
+    dir: Path | None = None
+    # Built-in skills to leave out (by name).
+    disabled: list[str] = Field(default_factory=list)
+
+    @field_validator("dir", mode="before")
+    @classmethod
+    def _empty_is_unset(cls, v: Any) -> Any:
+        return None if isinstance(v, str) and not v.strip() else v
+
+
+class SandboxSettings(BaseModel):
+    """Each ``shell`` / ``python_execute`` call in its own bubblewrap namespace (Linux)."""
+
+    # "auto": bubblewrap when it is installed and works here; "bwrap": insist (a startup
+    # error otherwise); "off": commands run unboxed, with the scrubbed environment only.
+    mode: str = "auto"
+    # Directories from outside the box that commands may use — the home directory as a
+    # whole stays out. `share_read_only` for the programs (a CLI under ~/.nvm), `share`
+    # for state a tool must also write (its login, a token it refreshes). Both are bound
+    # where they are and, when under the home directory, at the same place under the
+    # box's own home, so a tool that looks in $HOME finds them.
+    share: list[Path] = Field(default_factory=list)
+    share_read_only: list[Path] = Field(default_factory=list)
+
+
+class TriggerSettings(BaseModel):
+    """Triggers start work from the world: new mail, an event about to start, a webhook."""
+
+    # How often the inbox is looked at while a mail trigger is active.
+    mail_poll_minutes: int = 5
+    # Deliveries to one webhook closer together than this are refused (HTTP 429).
+    hook_min_seconds: int = 10
+
+
+class BrowserSettings(BaseModel):
+    """The browser tool. On the phone (the app's local runtime) it is on by default and uses
+    the app's own WebView; elsewhere it needs Playwright and is off until turned on."""
+
+    enabled: bool = False
+    headless: bool = True
+    timeout_ms: int = 30_000
+    # "auto": Playwright when installed, else the phone's WebView; or "playwright" / "device"
+    backend: str = "auto"
+    # the starting user agent + viewport: "desktop", "mobile", or "" for the backend's own
+    profile: str = ""
+
+
+class GUISettings(BaseModel):
+    """Operating the apps on the user's phone through their screens (the GUI agent).
+
+    Off by default. When on, and a phone (the Android app with its accessibility service,
+    or the MobileGym module) is connected, the agent gets the ``phone_screen``,
+    ``phone_act`` and ``phone_task`` tools. ``phone_task`` runs a step loop with its own
+    model — a smaller, faster one that takes images is the usual choice (``model``); when
+    left empty the main model does it. ``base_url`` / ``api_key`` default to the main
+    model's, so one provider (e.g. 阿里云百炼) can serve both.
+    """
+
+    enabled: bool = False
+    provider: Literal["openai", "openai_responses"] = "openai"
+    model: str = ""
+    base_url: str | None = None
+    api_key: str = ""
+    # Steps one ``phone_task`` may take on the screen before it has to report back;
+    # 0 (the default) is no cap — the task ends when it is done, asks, or is stopped.
+    max_steps: int = 0
+    # How long to wait for the phone to answer one request (screen or action).
+    device_timeout_s: float = 20.0
+    # Words on a screen (or a target element) that make an action *sensitive*: paying,
+    # transferring money, sending, deleting, placing an order. Approval is asked every
+    # time; no standing grant covers them. Kept specific on purpose — "支付" alone would
+    # match the app name 支付宝 — and an element that is an app's name never counts.
+    sensitive_words: list[str] = Field(
+        default_factory=lambda: [
+            "确认支付",
+            "立即支付",
+            "确认付款",
+            "立即付款",
+            "付款",
+            "转账",
+            "确认订单",
+            "提交订单",
+            "立即购买",
+            "确认下单",
+            "发送",
+            "删除",
+            "注销",
+            "解绑",
+            "pay now",
+            "confirm payment",
+            "purchase",
+            "transfer",
+            "send",
+            "delete",
+            "confirm order",
+            "place order",
+        ]
+    )
+
+
+class MCPToolPolicy(BaseModel):
+    """What the Sentinel assumes about one tool of an MCP server, when the server's own
+    defaults are too coarse::
+
+        [mcp.servers.tools.delete_file]
+        risk = "sensitive"
+
+    A field left out keeps the server's value.
+    """
+
+    risk: RiskLevel | None = None
+    egress: bool | None = None
+    reads_private_data: bool | None = None
+
+
+class MCPServerSettings(BaseModel):
+    name: str
+    command: str | None = None
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+    url: str | None = None  # Streamable-HTTP / SSE endpoint
+    risk: RiskLevel = RiskLevel.MODERATE
+    egress: bool = False
+    reads_private_data: bool = False
+    # per-tool overrides, by the tool's own name on the server
+    tools: dict[str, MCPToolPolicy] = Field(default_factory=dict)
+
+
+class MCPSettings(BaseModel):
+    servers: list[MCPServerSettings] = Field(default_factory=list)
+
+
+class HandsSettings(BaseModel):
+    """Hands on *this* computer's screen — the GUI operator with the machine it runs on
+    under it (``computer_screen``, ``computer_act``, ``computer_task``). Off by default;
+    the switch is Settings → Hands in the app. The model, the step cap and the sensitive
+    words are shared with ``[gui]`` — one vision model serves the phone and the computer.
+    """
+
+    enabled: bool = False
+    # "auto": pyautogui when installed, else xdotool on X11; or "pyautogui" / "xdotool"
+    backend: str = "auto"
+    # Widest picture handed to the model (the screen itself is operated at full size).
+    max_image_width: int = 1600
+    # A pause after each action before the next screenshot, so the screen has settled.
+    settle_s: float = 0.6
+
+
+class CloudSettings(BaseModel):
+    """unibot Cloud: an optional self-hosted relay the agent signs in to with a
+    phone-number or e-mail code. unibot operates no relay: ``base_url`` is empty
+    unless you run your own (see docs/cloud.md). The account key lives in the
+    vault (``UNIBOT_CLOUD_KEY``). Signed in, the relay can be the model provider
+    and the hub is reachable."""
+
+    base_url: str = ""
+    # Set to true only when this deployment must be signed in to function
+    # (e.g. a shared box whose only model access is the relay).
+    required: bool = False
+
+
+class HubSettings(BaseModel):
+    """The hub: this computer as one of the account's devices (see docs/hub.md).
+
+    ``enabled`` joins the hub whenever the Cloud account is signed in. ``remote_control``
+    off answers other devices with ``info`` and nothing else. ``name`` is what the other
+    devices call this one (empty: the host name). ``device_id`` is per installation and
+    normally left to the app.
+    """
+
+    enabled: bool = True
+    remote_control: bool = True
+    name: str = ""
+    device_id: str = ""
+
+
+class ServerSettings(BaseModel):
+    """``unibot serve`` — the always-on agent behind the mobile-first web app."""
+
+    host: str = "127.0.0.1"  # use 0.0.0.0 to reach it from your phone on the same network
+    port: int = 8787
+    # Require an access token (printed with a QR code on start). Never disable on a shared network.
+    auth: bool = True
+    token: str = ""  # empty → generated once and stored in <data_dir>/server_token
+    # How long an approval card / question may wait for you before it is treated as "deny".
+    approval_timeout: float = 3600.0
+    # Extra origins allowed to call the API (only needed for the Vite dev server).
+    cors_origins: list[str] = Field(default_factory=list)
+    # Largest file the app may attach to a message (photos from a phone run 3–12 MB).
+    max_upload_mb: int = 25
+    # Ask GitHub Releases (at most every six hours) whether a newer unibot is out, and say so
+    # under Settings → About. Nothing is downloaded or reported. UNIBOT_NO_UPDATE_CHECK=1 also turns it off.
+    update_check: bool = True
+    # How long the services (tools, MCP servers, the cloud account) may take before the
+    # socket opens anyway; past it the app answers and /api/health names the step still running.
+    start_grace: float = 4.0
+
+
+class Settings(BaseModel):
+    data_dir: Path = DEFAULT_DATA_DIR
+    log_level: str = "INFO"
+    llm: LLMSettings = Field(default_factory=LLMSettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
+    sentinel: SentinelSettings = Field(default_factory=SentinelSettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
+    connectors: ConnectorSettings = Field(default_factory=ConnectorSettings)
+    triggers: TriggerSettings = Field(default_factory=TriggerSettings)
+    skills: SkillsSettings = Field(default_factory=SkillsSettings)
+    sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
+    browser: BrowserSettings = Field(default_factory=BrowserSettings)
+    gui: GUISettings = Field(default_factory=GUISettings)
+    hands: HandsSettings = Field(default_factory=HandsSettings)
+    cloud: CloudSettings = Field(default_factory=CloudSettings)
+    hub: HubSettings = Field(default_factory=HubSettings)
+    mcp: MCPSettings = Field(default_factory=MCPSettings)
+    server: ServerSettings = Field(default_factory=ServerSettings)
+    # Where the settings came from (informational).
+    source: str | None = None
+
+    @model_validator(mode="after")
+    def _default_workspace(self) -> Settings:
+        """No ``agent.workspace`` configured: ``./workspace`` when the current directory has one
+        (the terminal user's convention), otherwise ``<data_dir>/workspace``."""
+        if "workspace" not in self.agent.model_fields_set and not Path("./workspace").is_dir():
+            self.agent.workspace = self.data_dir.expanduser() / "workspace"
+        return self
+
+    @property
+    def audit_file(self) -> Path:
+        return self.sentinel.audit_file or (self.data_dir / "audit.jsonl")
+
+    @property
+    def memory_db(self) -> Path:
+        return self.data_dir / "memory.db"
+
+    @property
+    def goals_db(self) -> Path:
+        return self.data_dir / "goals.db"
+
+    @property
+    def reminders_db(self) -> Path:
+        return self.data_dir / "reminders.db"
+
+    @property
+    def triggers_db(self) -> Path:
+        return self.data_dir / "triggers.db"
+
+    @property
+    def calendar_cache(self) -> Path:
+        return self.data_dir / "calendar-cache.json"
+
+    @property
+    def contacts_file(self) -> Path:
+        """The agent's own address book (the only contacts source it writes to)."""
+        return self.data_dir / "contacts.vcf"
+
+    @property
+    def contacts_cache(self) -> Path:
+        return self.data_dir / "contacts-cache.json"
+
+    @property
+    def contacts_dir(self) -> Path:
+        """Where ``.vcf`` files uploaded in the app are kept."""
+        return self.data_dir / "contacts"
+
+    @property
+    def skills_dir(self) -> Path:
+        """Your own skills, one folder each."""
+        return (self.skills.dir or (self.data_dir / "skills")).expanduser()
+
+    @property
+    def vault_file(self) -> Path:
+        return self.data_dir / "vault.enc"
+
+    @property
+    def vault_key_file(self) -> Path:
+        return self.data_dir / "vault.key"
+
+    def ensure_dirs(self) -> None:
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.agent.workspace.mkdir(parents=True, exist_ok=True)
+
+
+# ----------------------------------------------------------------------------- loading
+def _expand_env(value: Any) -> Any:
+    if isinstance(value, str):
+
+        def repl(m: re.Match[str]) -> str:
+            var, default = m.group(1), m.group(2)
+            return os.environ.get(var, default if default is not None else "")
+
+        return _ENV_PATTERN.sub(repl, value)
+    if isinstance(value, dict):
+        return {k: _expand_env(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(v) for v in value]
+    return value
+
+
+def find_config_file(explicit: str | Path | None = None) -> Path | None:
+    candidates: list[Path] = []
+    if explicit:
+        path = Path(explicit).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError(f"config file not found: {explicit}")
+        return path
+    if env_path := os.environ.get("UNIBOT_CONFIG"):
+        candidates.append(Path(env_path).expanduser())
+    candidates.append(Path("config/config.toml"))
+    candidates.append(DEFAULT_DATA_DIR / "config.toml")
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
+def _provider_key_vars(base_url: str) -> tuple[str, ...]:
+    """The environment variables that may stand in for a missing ``llm.api_key``.
+
+    A key belongs to one provider: DeepSeek's key is only tried for ``api.deepseek.com``
+    and OpenAI's only for ``api.openai.com``, so a config pointed at one provider never
+    sends the other's key. Any other OpenAI-compatible host (a gateway, vLLM, OpenRouter)
+    gets ``OPENAI_API_KEY`` alone — the convention such endpoints share.
+    """
+    host = (urlparse(base_url).hostname or "").lower()
+    if host == "deepseek.com" or host.endswith(".deepseek.com"):
+        return ("DEEPSEEK_API_KEY",)
+    return ("OPENAI_API_KEY",)
+
+
+def _apply_env_overrides(raw: dict[str, Any]) -> None:
+    llm = raw.setdefault("llm", {})
+    mapping = {
+        "UNIBOT_LLM_PROVIDER": "provider",
+        "UNIBOT_LLM_MODEL": "model",
+        "UNIBOT_LLM_BASE_URL": "base_url",
+        "UNIBOT_LLM_API_KEY": "api_key",
+        "UNIBOT_LLM_TOOL_MODE": "tool_mode",
+        "UNIBOT_LLM_VISION": "vision",
+    }
+    for env, key in mapping.items():
+        if (val := os.environ.get(env)) not in (None, ""):
+            llm[key] = val
+    if not llm.get("api_key"):
+        base_url = llm.get("base_url") or LLMSettings.model_fields["base_url"].default or ""
+        for env in _provider_key_vars(str(base_url)):
+            if val := os.environ.get(env):
+                llm["api_key"] = val
+                break
+    if val := os.environ.get("UNIBOT_DATA_DIR"):
+        raw["data_dir"] = val
+    if val := os.environ.get("UNIBOT_WORKSPACE"):
+        raw.setdefault("agent", {})["workspace"] = val
+    if val := os.environ.get("UNIBOT_SENTINEL_MODE"):
+        raw.setdefault("sentinel", {})["mode"] = val
+    if val := os.environ.get("UNIBOT_LOG_LEVEL"):
+        raw["log_level"] = val
+    for env, key in (
+        ("UNIBOT_SEARCH_PROVIDER", "provider"),
+        ("UNIBOT_SEARCH_API_KEY", "api_key"),
+        ("UNIBOT_SEARCH_BASE_URL", "base_url"),
+    ):
+        if val := os.environ.get(env):
+            raw.setdefault("connectors", {}).setdefault("search", {})[key] = val
+    server = raw.setdefault("server", {})
+    if val := os.environ.get("UNIBOT_SERVER_HOST"):
+        server["host"] = val
+    if val := os.environ.get("UNIBOT_SERVER_PORT"):
+        server["port"] = int(val)
+    if val := os.environ.get("UNIBOT_SERVER_TOKEN"):
+        server["token"] = val
+    # turns the browser tool on (the browser Docker image sets it); it never turns it off, so a
+    # mounted config.toml keeps the last word otherwise
+    if os.environ.get("UNIBOT_BROWSER_ENABLED", "").strip().lower() in ("1", "true", "yes", "on"):
+        raw.setdefault("browser", {})["enabled"] = True
+    # on the phone the app's WebView is always there: the browser is on unless turned off
+    if os.environ.get("UNIBOT_DEVICE", "").strip().lower() == "android":
+        raw.setdefault("browser", {}).setdefault("enabled", True)
+    if val := os.environ.get("UNIBOT_BROWSER_BACKEND"):
+        raw.setdefault("browser", {})["backend"] = val
+    # a hosted runtime (unibot Web) is told where its relay is and what to call itself
+    if val := os.environ.get("UNIBOT_CLOUD_BASE_URL"):
+        raw.setdefault("cloud", {})["base_url"] = val.rstrip("/")
+    if val := os.environ.get("UNIBOT_CLOUD_REQUIRED"):
+        raw.setdefault("cloud", {})["required"] = val.strip().lower() in ("1", "true", "yes", "on")
+    if val := os.environ.get("UNIBOT_HUB_NAME"):
+        raw.setdefault("hub", {})["name"] = val[:60]
+    gui = raw.setdefault("gui", {})
+    if os.environ.get("UNIBOT_GUI_ENABLED", "").strip().lower() in ("1", "true", "yes", "on"):
+        gui["enabled"] = True
+    for env, key in (
+        ("UNIBOT_GUI_PROVIDER", "provider"),
+        ("UNIBOT_GUI_MODEL", "model"),
+        ("UNIBOT_GUI_BASE_URL", "base_url"),
+        ("UNIBOT_GUI_API_KEY", "api_key"),
+    ):
+        if (val := os.environ.get(env)) not in (None, ""):
+            gui[key] = val
+
+
+APP_SETTINGS_FILE = "app-settings.json"
+
+
+def load_app_settings(data_dir: Path) -> dict[str, Any]:
+    """Settings changed from the app (model, connectors, MCP servers, onboarding state).
+
+    They live in ``<data_dir>/app-settings.json`` and are layered over ``config.toml`` so a
+    phone-only setup works without ever editing a file. Secrets are not in here: the app
+    stores them in the vault and this file only holds ``{{vault:NAME}}`` references.
+    """
+    path = data_dir / APP_SETTINGS_FILE
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text("utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_app_settings(data_dir: Path, data: dict[str, Any]) -> None:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    path = data_dir / APP_SETTINGS_FILE
+    path.write_text(json.dumps({"version": 1, **data}, ensure_ascii=False, indent=1), "utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:  # pragma: no cover
+        pass
+
+
+def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
+    """Layer app-managed settings over ``settings`` in place."""
+    if llm := data.get("llm"):
+        for key in ("provider", "model", "base_url", "api_key", "tool_mode", "vision"):
+            if key in llm and llm[key] not in (None, ""):
+                setattr(settings.llm, key, llm[key])
+        for key in ("image_model", "video_model"):
+            # "" is meaningful here: back to the automatic choice
+            if key in llm and llm[key] is not None:
+                setattr(settings.llm, key, str(llm[key]).strip())
+        if settings.llm.base_url:
+            settings.llm.base_url = settings.llm.base_url.rstrip("/")
+    if emb := data.get("embeddings"):
+        m = settings.memory
+        if emb.get("mode") in ("auto", "on", "off"):
+            m.embeddings = emb["mode"]
+        for key in ("model", "base_url", "api_key"):
+            # "" is meaningful here: back to the default (the model's endpoint and key)
+            if key in emb and emb[key] is not None:
+                setattr(m, f"embedding_{key}", str(emb[key]).strip().rstrip("/"))
+    if search := data.get("search"):
+        web = settings.connectors.search
+        if search.get("provider") in ("duckduckgo", "brave", "tavily", "searxng"):
+            web.provider = search["provider"]
+        for key in ("api_key", "base_url"):
+            if key in search and search[key] is not None:
+                setattr(web, key, str(search[key]).strip().rstrip("/"))
+    if email := data.get("email"):
+        for key in ("enabled", "imap_host", "imap_port", "smtp_host", "smtp_port", "smtp_starttls"):
+            if key in email and email[key] is not None:
+                setattr(settings.connectors.email, key, email[key])
+    if calendar := data.get("calendar"):
+        cal = settings.connectors.calendar
+        if "enabled" in calendar and calendar["enabled"] is not None:
+            cal.enabled = bool(calendar["enabled"])
+        for key in ("refresh_minutes", "day_start", "day_end"):
+            if calendar.get(key) not in (None, ""):
+                setattr(cal, key, calendar[key])
+        if isinstance(calendar.get("feeds"), list):
+            feeds = []
+            for raw_feed in calendar["feeds"]:
+                try:
+                    feeds.append(CalendarFeedSettings.model_validate(raw_feed))
+                except ValueError:
+                    continue
+            # feeds added in the app come after the ones in config.toml; same name → app wins
+            names = {f.name for f in feeds}
+            cal.feeds = [f for f in cal.feeds if f.name not in names] + feeds
+    if contacts := data.get("contacts"):
+        book = settings.connectors.contacts
+        if "enabled" in contacts and contacts["enabled"] is not None:
+            book.enabled = bool(contacts["enabled"])
+        if isinstance(contacts.get("sources"), list):
+            sources = []
+            for raw_source in contacts["sources"]:
+                try:
+                    sources.append(ContactSourceSettings.model_validate(raw_source))
+                except ValueError:
+                    continue
+            names = {c.name for c in sources}
+            book.sources = [c for c in book.sources if c.name not in names] + sources
+    if skills := data.get("skills"):
+        if isinstance(skills.get("disabled"), list):
+            off = {str(n) for n in skills["disabled"]}
+            settings.skills.disabled = sorted(set(settings.skills.disabled) | off)
+    if browser := data.get("browser"):
+        if "enabled" in browser:
+            settings.browser.enabled = bool(browser["enabled"])
+    if gui := data.get("gui"):
+        if "enabled" in gui:
+            settings.gui.enabled = bool(gui["enabled"])
+        if gui.get("provider") in ("openai", "openai_responses"):
+            settings.gui.provider = gui["provider"]
+        for key in ("model", "base_url", "api_key"):
+            # "" is meaningful: back to the main model's endpoint and key
+            if key in gui and gui[key] is not None:
+                value = str(gui[key]).strip().rstrip("/")
+                setattr(settings.gui, key, value if value or key != "base_url" else None)
+    if hands := data.get("hands"):
+        if "enabled" in hands:
+            settings.hands.enabled = bool(hands["enabled"])
+        if hands.get("backend") in ("auto", "pyautogui", "xdotool"):
+            settings.hands.backend = hands["backend"]
+    if cloud := data.get("cloud"):
+        if cloud.get("base_url"):
+            settings.cloud.base_url = str(cloud["base_url"]).strip().rstrip("/")
+        if "required" in cloud and cloud["required"] is not None:
+            settings.cloud.required = bool(cloud["required"])
+    if hub := data.get("hub"):
+        for key in ("enabled", "remote_control"):
+            if key in hub and hub[key] is not None:
+                setattr(settings.hub, key, bool(hub[key]))
+        for key in ("name", "device_id"):
+            if hub.get(key):
+                setattr(settings.hub, key, str(hub[key]).strip()[:60])
+    for raw_server in (data.get("mcp") or {}).get("servers") or []:
+        try:
+            server = MCPServerSettings.model_validate(raw_server)
+        except ValueError:
+            continue
+        settings.mcp.servers = [s for s in settings.mcp.servers if s.name != server.name]
+        settings.mcp.servers.append(server)
+
+
+def load_settings(path: str | Path | None = None) -> Settings:
+    """Load settings from TOML (if found) + environment + what was changed in the app."""
+    config_file = find_config_file(path)
+    raw: dict[str, Any] = {}
+    if config_file is not None:
+        with config_file.open("rb") as fh:
+            raw = tomllib.load(fh)
+    raw = _expand_env(raw)
+    _apply_env_overrides(raw)
+    settings = Settings.model_validate(raw)
+    settings.source = str(config_file) if config_file else "defaults+env"
+    settings.data_dir = settings.data_dir.expanduser()
+    settings.agent.workspace = settings.agent.workspace.expanduser()
+    settings.agent.extra_roots = [p.expanduser() for p in settings.agent.extra_roots]
+    settings.sandbox.share = [p.expanduser() for p in settings.sandbox.share]
+    settings.sandbox.share_read_only = [p.expanduser() for p in settings.sandbox.share_read_only]
+    apply_app_settings(settings, load_app_settings(settings.data_dir))
+    return settings
+
+
+__all__ = [
+    "APP_SETTINGS_FILE",
+    "AgentSettings",
+    "BrowserSettings",
+    "CalendarFeedSettings",
+    "CalendarSettings",
+    "CloudSettings",
+    "ContactSourceSettings",
+    "ContactsSettings",
+    "ConnectorSettings",
+    "DEFAULT_DATA_DIR",
+    "EmailSettings",
+    "HandsSettings",
+    "HubSettings",
+    "LLMSettings",
+    "MCPServerSettings",
+    "MCPSettings",
+    "MemorySettings",
+    "SandboxSettings",
+    "SentinelRule",
+    "SentinelSettings",
+    "ServerSettings",
+    "Settings",
+    "SkillsSettings",
+    "TriggerSettings",
+    "apply_app_settings",
+    "find_config_file",
+    "load_app_settings",
+    "load_settings",
+    "save_app_settings",
+]

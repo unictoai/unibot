@@ -1,0 +1,47 @@
+# Dependency updates, batched so they do not flood the PR list: one PR per ecosystem, once a
+# month, merged when the checks are green (CONTRIBUTING.md, "Commits and pull requests").
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      python:
+        patterns: ["*"]
+    labels: ["dependencies"]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+    groups:
+      web:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # React, TypeScript, Vite and the icon set change their APIs on majors; those are
+      # upgrades someone does by hand, with the app in front of them
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels: ["dependencies"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: ["dependencies"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    labels: ["dependencies"]
+    ignore:
+      # the base image follows the Python line we test against; bumping the interpreter is a
+      # deliberate change, not a dependency update
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

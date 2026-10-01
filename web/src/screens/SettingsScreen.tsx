@@ -1,0 +1,634 @@
+import { Box, Check, ChevronRight, LogOut, Moon, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
+import { api, setToken } from "../api";
+import { DRAGON } from "../avatars";
+import { isDesktopApp } from "../desktop";
+import { openOwnKeySetup } from "../components/AllowanceWays";
+import { AVATAR_COLORS } from "../components/AvatarPicker";
+import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
+import { BackBar } from "../components/BackBar";
+import { CommunityNotice } from "../components/CommunityNotice";
+import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
+import { setThemeSetting, useThemeSetting } from "../theme";
+import { disablePush, enablePush, pushState, type PushState } from "../push";
+import { useStore } from "../store";
+import type { Proactivity, PushInfo, UpdateView } from "../types";
+import { cx } from "../util";
+import { Toggle } from "../components/Form";
+
+const settingsInput = "w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-accent/40";
+
+const MODES: Array<{ id: "ask" | "strict" | "auto"; title: string; text: string; icon: ReactNode }> = [
+  {
+    id: "ask",
+    title: "Balanced",
+    text: "Browse, read and write files freely; stop for anything hard to undo — email, purchases, shell commands.",
+    icon: <ShieldCheck size={18} />,
+  },
+  {
+    id: "strict",
+    title: "Cautious",
+    text: "Also ask before moderate actions like fetching web pages or writing files.",
+    icon: <Shield size={18} />,
+  },
+  {
+    id: "auto",
+    title: "Hands-off",
+    text: "Approve everything automatically except explicit deny rules. For trusted, unattended runs only.",
+    icon: <ShieldAlert size={18} />,
+  },
+];
+
+export function SettingsScreen() {
+  const { state, refreshSettings, setTab, toast } = useStore();
+  const s = state.settings;
+  const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
+  const [saving, setSaving] = useState(false);
+  const t = useT();
+  const localeSetting = useLocaleSetting();
+  const themeSetting = useThemeSetting();
+  const [release, setRelease] = useState<UpdateView | null>(null);
+
+  useEffect(() => {
+    if (!s) void refreshSettings();
+  }, [s, refreshSettings]);
+
+  useEffect(() => {
+    // the runtime asks GitHub Releases at most every six hours; a phone shell has its own check
+    if (androidApp()) return;
+    api.update().then(setRelease, () => setRelease(null));
+  }, []);
+
+  useEffect(() => {
+    if (state.profile) setIdentity(identityOf(state.profile, "", AVATAR_COLORS[0]));
+  }, [state.profile]);
+
+  const update = async (body: Record<string, unknown>, msg?: string) => {
+    setSaving(true);
+    try {
+      await api.updateSettings(body);
+      await refreshSettings();
+      if (msg) toast(msg);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saved = identityOf(state.profile, "", AVATAR_COLORS[0]);
+  const dirty = !!state.profile && (Object.keys(identity) as (keyof Identity)[]).some((k) => identity[k] !== saved[k]);
+  const name = state.profile?.name ?? "unibot";
+
+  return (
+    <div className="flex h-full flex-col">
+      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
+        <BackBar />
+        <h1 className="text-[24px] font-bold tracking-tight">{t("You & {name}", { name: state.profile?.name ?? "unibot" })}</h1>
+        <p className="text-[13px] text-muted">{t("Its name and look, how careful it is, how often it speaks up.")}</p>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
+        {/* who it is */}
+        <Section title={name}>
+          <IdentityForm
+            value={identity}
+            onChange={setIdentity}
+            suggestions={false}
+            inputCls={settingsInput}
+            onStudio={() => setTab("avatar")}
+          />
+          <button
+            type="button"
+            disabled={!dirty || saving}
+            onClick={() => void update({ profile: identityBody(identity) }, t("Saved"))}
+            className="w-full rounded-2xl bg-accent text-accent-fg py-2.5 font-medium disabled:opacity-40"
+          >
+            {t("Save")}
+          </button>
+        </Section>
+
+        {/* Sentinel */}
+        <Section title={t("Safety · Sentinel")}>
+          <p className="text-[13px] text-muted -mt-1">
+            {t("A separate gatekeeper reviews every action. Pick how often it should check in with you.")}
+          </p>
+          <div className="space-y-2">
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => void update({ sentinel_mode: m.id })}
+                className={cx(
+                  "w-full text-left rounded-2xl border px-3.5 py-3 flex items-start gap-3 transition",
+                  s?.sentinel.mode === m.id ? "border-accent bg-accent/8" : "border-border",
+                )}
+              >
+                <div className={cx("mt-0.5", m.id === "auto" ? "text-rose-500" : "text-accent")}>{m.icon}</div>
+                <div className="flex-1">
+                  <div className="font-medium text-[14.5px]">{t(m.title)}</div>
+                  <div className="text-[12.5px] text-muted leading-snug mt-0.5">{t(m.text)}</div>
+                </div>
+                {s?.sentinel.mode === m.id && <Check size={18} className="text-accent mt-0.5" />}
+              </button>
+            ))}
+          </div>
+          {s && (
+            <div className="text-[12.5px] text-muted leading-relaxed">
+              {t("Always asks before: {tools}.", { tools: s.sentinel.always_ask_tools.map((tool) => t(tool)).join(", ") || "—" })}{" "}
+              {s.sentinel.taint_tracking && t("After reading private data, new network destinations need approval.")}
+            </div>
+          )}
+          {s?.sandbox && (
+            <div className="flex items-start gap-2.5 rounded-2xl bg-surface-2/60 px-3.5 py-2.5 text-[12.5px] leading-snug">
+              <Box size={15} className={cx("shrink-0 mt-[2px]", s.sandbox.active ? "text-emerald-500" : "text-muted")} />
+              <div>
+                <div className="font-medium text-fg">
+                  {s.sandbox.active ? t("Commands run in a sandbox") : t("Commands run without a sandbox")}
+                  <span className="text-muted font-normal"> · {s.sandbox.status}</span>
+                </div>
+                <div className="text-muted mt-0.5">
+                  {s.sandbox.active
+                    ? t("Each shell or Python call gets its own namespace: only the workspace is writable, your home directory is not there, and there is no network unless the command needs it.")
+                    : s.sandbox.status.includes("container")
+                      ? t("Each shell or Python call runs in the workspace with a scrubbed environment; the container is the boundary.")
+                      : t("Each shell or Python call runs in the workspace with a scrubbed environment. On Linux, installing bubblewrap gives each one its own namespace.")}
+                </div>
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* Proactivity */}
+        <Section title={t("Proactivity")}>
+          <ProactivityDial value={state.profile?.proactivity ?? "default"} onChange={(v) => void update({ profile: { proactivity: v } })} />
+          <div className="flex items-center gap-3">
+            <label className="text-[13.5px] flex-1">
+              {t("Check-in interval")}
+              {state.profile && state.profile.proactivity !== "default" && state.profile.proactivity !== "off" && (
+                <span className="block text-[12px] text-muted">
+                  {state.profile.proactivity === "low" ? t("Doubled at this level") : t("Halved at this level")}
+                </span>
+              )}
+            </label>
+            <select
+              value={state.profile?.goal_interval_minutes ?? 60}
+              onChange={(e) => void update({ profile: { goal_interval_minutes: Number(e.target.value) } })}
+              className="rounded-2xl bg-surface-2 px-3 py-2 text-[13.5px] outline-none"
+            >
+              {[...new Set([15, 30, 60, 120, 240, 480, 1440, state.profile?.goal_interval_minutes ?? 60])]
+                .sort((a, b) => a - b)
+                .map((m) => (
+                  <option key={m} value={m}>
+                    {m < 60 ? t("{n} min", { n: m }) : m % 60 ? `${t("{n} h", { n: Math.floor(m / 60) })} ${t("{n} min", { n: m % 60 })}` : t("{n} h", { n: m / 60 })}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <QuietHours value={state.profile?.quiet_hours ?? ""} onChange={(v) => void update({ profile: { quiet_hours: v } })} />
+        </Section>
+
+        {/* Notifications */}
+        <Section title={t("Notifications")}>
+          {androidApp() ? <PhoneAppSettings name={state.profile?.name ?? "unibot"} /> : <PushSettings name={state.profile?.name ?? "unibot"} />}
+        </Section>
+
+        {/* Keep it running: only the Android app has anything to say here */}
+        {keepRunningStatus() && (
+          <Section title={t("Keep it running")}>
+            <KeepRunningSettings name={state.profile?.name ?? "unibot"} />
+          </Section>
+        )}
+
+        {/* Model */}
+        <Section title={t("Model")}>
+          {s && (
+            <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
+              <span className="text-muted">{t("Provider / model")}</span>
+              <span className="font-mono text-[12.5px] flex items-center gap-1">
+                {s.llm.model} <ChevronRight size={14} className="text-muted" />
+              </span>
+            </button>
+          )}
+          {s?.llm.cloud && (
+            <button type="button" onClick={() => openOwnKeySetup(setTab)} className="w-full text-[13.5px] flex items-center justify-between">
+              <span className="text-muted">{t("Use my own API key")}</span>
+              <span className="text-[12.5px] text-muted flex items-center gap-1">
+                {t("OpenAI, Bailian, DeepSeek…")} <ChevronRight size={14} />
+              </span>
+            </button>
+          )}
+          <Toggle
+            label={t("Show thinking")}
+            hint={t("Reveal the model's reasoning under each reply when the provider exposes it.")}
+            checked={!!s?.agent.show_thinking}
+            onChange={(v) => void update({ show_thinking: v })}
+          />
+          <div className="flex items-center gap-3">
+            <label className="text-[13.5px] flex-1">
+              {t("Appearance")}
+              <span className="block text-[12px] text-muted">{t("This device only")}</span>
+            </label>
+            <select
+              value={themeSetting}
+              onChange={(e) => setThemeSetting(e.target.value as typeof themeSetting)}
+              className="rounded-2xl bg-surface-2 px-3 py-2 text-[13.5px] outline-none"
+            >
+              <option value="light">{t("Light")}</option>
+              <option value="dark">{t("Dark")}</option>
+              <option value="system">{t("Follow the system")}</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-[13.5px] flex-1">
+              {t("App language")}
+              <span className="block text-[12px] text-muted">{t("This device only")}</span>
+            </label>
+            <select
+              value={localeSetting}
+              onChange={(e) => setLocaleSetting(e.target.value as typeof localeSetting)}
+              className="rounded-2xl bg-surface-2 px-3 py-2 text-[13.5px] outline-none"
+            >
+              {LOCALES.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.value === "auto" ? t("Auto") : l.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-[13.5px] flex-1">
+              {t("Reply language")}
+              <span className="block text-[12px] text-muted">{t("What {name} writes in", { name: state.profile?.name ?? "unibot" })}</span>
+            </label>
+            <select
+              value={s?.agent.language ?? "auto"}
+              onChange={(e) => void update({ language: e.target.value })}
+              className="rounded-2xl bg-surface-2 px-3 py-2 text-[13.5px] outline-none"
+            >
+              <option value="auto">{t("Match mine")}</option>
+              <option value="English">English</option>
+              <option value="中文">中文</option>
+              <option value="日本語">日本語</option>
+              <option value="Español">Español</option>
+              <option value="Deutsch">Deutsch</option>
+              <option value="Français">Français</option>
+            </select>
+          </div>
+          <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
+            <span className="text-muted">{t("Connections")}</span>
+            <span className="text-[12.5px] text-muted flex items-center gap-1">
+              {t("E-mail, calendar, browser, MCP servers")} <ChevronRight size={14} />
+            </span>
+          </button>
+        </Section>
+
+        {/* About */}
+        <Section title={t("About")}>
+          <CommunityNotice />
+          <div className="text-[13px] text-muted space-y-1">
+            <div>
+              unibot {state.version}
+              {release?.newer && release.latest && (
+                <>
+                  {" · "}
+                  <a href={release.url} target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
+                    {t("{version} is out", { version: release.latest })}
+                  </a>
+                </>
+              )}
+            </div>
+            {s && <div className="break-all">{t("Data:")} {s.data_dir}</div>}
+            {s && <div className="break-all">{t("Workspace:")} {s.agent.workspace}</div>}
+            <div>{state.connected ? t("Connected") : t("Reconnecting…")}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const phone = androidApp();
+              if (phone) {
+                phone.disconnect();
+                return;
+              }
+              setToken("");
+              window.location.reload();
+            }}
+            className="w-full rounded-2xl border border-border py-2.5 text-[14px] font-medium flex items-center justify-center gap-2 text-muted"
+          >
+            <LogOut size={16} /> {androidApp() ? t("Disconnect from this server") : t("Forget this device's access token")}
+          </button>
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+/** Inside the Android app: the app's own background connection stands in for Web Push. */
+function PhoneAppSettings({ name }: { name: string }) {
+  const t = useT();
+  const phone = androidApp();
+  const [on, setOn] = useState(() => phone?.notificationsEnabled() ?? false);
+  if (!phone) return null;
+  return (
+    <>
+      <Toggle
+        label={t("Let {name} notify this phone", { name })}
+        hint={t("The app stays connected to your server in the background. Approvals, questions and finished background work arrive as notifications and open the right chat.")}
+        checked={on}
+        onChange={(v) => {
+          phone.setNotificationsEnabled(v);
+          setOn(v);
+        }}
+      />
+      <div className="text-[12.5px] text-muted">{t("unibot for Android {version}", { version: phone.version() })}</div>
+    </>
+  );
+}
+
+/**
+ * The Android switches that decide whether the agent keeps running with the screen off —
+ * battery, overlay, exact alarms, start on boot — plus the vendor's own, and the log export.
+ */
+function KeepRunningSettings({ name }: { name: string }) {
+  const t = useT();
+  const app = androidApp();
+  const [st, setSt] = useState<KeepRunningStatus | null>(keepRunningStatus);
+  useEffect(() => {
+    // the user comes back from a settings page: read again
+    const again = () => setSt(keepRunningStatus());
+    document.addEventListener("visibilitychange", again);
+    window.addEventListener("focus", again);
+    return () => {
+      document.removeEventListener("visibilitychange", again);
+      window.removeEventListener("focus", again);
+    };
+  }, []);
+  if (!app || !st) return null;
+  const open = (what: string) => app.openKeepRunning?.(what);
+  const vendorTips: Record<string, string> = {
+    xiaomi: t("Xiaomi / Redmi / POCO: Settings → Apps → Manage apps → {name} → Autostart on; Battery saver → No restrictions; Other permissions → Display pop-up windows while running in the background on."),
+    huawei: t("Huawei: Settings → Battery → App launch → {name} → Manage manually, all three on (auto-launch, secondary launch, run in background); Settings → Apps → {name} → Battery → Launch: manage manually."),
+    honor: t("Honor: Settings → Battery → App launch → {name} → Manage manually, all three on; Battery → More battery settings → Stay connected while asleep on."),
+    oppo: t("OPPO / realme / OnePlus: Settings → Battery → More settings → Optimise battery use → {name} → Don't optimise; Settings → Apps → {name} → Battery usage → Allow background activity, Allow auto launch."),
+    vivo: t("vivo / iQOO: i Manager → App manager → Autostart → {name} on; Settings → Battery → Background power consumption management → {name} → Allow high background power consumption."),
+    samsung: t("Samsung: Settings → Battery → Background usage limits → {name} not in Sleeping or Deep sleeping apps (add it to Never sleeping apps); turn off Adaptive battery if it keeps stopping."),
+    meizu: t("Meizu: Settings → Apps → {name} → Background management → Keep running in the background; Battery → App power management → Allow."),
+  };
+  const tip = vendorTips[st.vendor];
+  return (
+    <>
+      <p className="text-[12.5px] text-muted leading-snug">
+        {t("Android stops apps that seem idle. {name} runs as a foreground service and holds the phone awake only while a task runs; these switches let it keep that promise on this phone.", { name })}
+      </p>
+      <Row
+        label={t("Battery")}
+        value={st.battery_unrestricted ? t("Unrestricted") : t("Optimised")}
+        ok={st.battery_unrestricted}
+        hint={t("Optimised means Android may freeze the agent after a while with the screen off; routines and check-ins then wait until the phone wakes.")}
+        action={st.battery_unrestricted ? undefined : { label: t("Allow"), onClick: () => open("battery") }}
+      />
+      <Row
+        label={t("Display over other apps")}
+        value={st.overlay ? t("Allowed") : t("Not allowed")}
+        ok={st.overlay}
+        hint={t("Lets the agent bring an app to the front from the background and show its status capsule while it works in other apps.")}
+        action={st.overlay ? undefined : { label: t("Allow"), onClick: () => open("overlay") }}
+      />
+      {st.exact_alarms !== "n/a" && st.local && (
+        <Row
+          label={t("Alarms & reminders")}
+          value={st.exact_alarms === "granted" ? t("Exact") : t("Approximate")}
+          ok={st.exact_alarms === "granted"}
+          hint={t("With exact alarms a reminder fires at the minute you named even when the phone is asleep; without them Android may deliver it up to a quarter of an hour late.")}
+          action={st.exact_alarms === "granted" ? undefined : { label: t("Allow"), onClick: () => open("alarms") }}
+        />
+      )}
+      <Toggle
+        label={t("Start after a reboot")}
+        hint={st.local ? t("Bring the runtime back when the phone restarts, so routines and check-ins do not stop.") : t("Reconnect to your computer when the phone restarts, so approvals keep arriving.")}
+        checked={st.boot_start}
+        onChange={(v) => {
+          app.setStartOnBoot?.(v);
+          setSt({ ...st, boot_start: v });
+        }}
+      />
+      {tip && (
+        <div className="rounded-2xl bg-surface-2 px-3 py-2.5 text-[12.5px] leading-snug space-y-2">
+          <div className="font-medium">{t("On this phone's Android")}</div>
+          <div className="text-muted">{tip}</div>
+          {st.autostart_settings && (
+            <button type="button" onClick={() => open("autostart")} className="rounded-full border border-border px-3 py-1.5 text-[12.5px]">
+              {t("Open the auto-start settings")}
+            </button>
+          )}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <div className="text-[12.5px] text-muted leading-snug">{t("Crashes are written to a file on this phone and nowhere else. Export bundles them with the runtime's log for someone you choose.")}</div>
+        <button type="button" onClick={() => app.exportLogs?.()} className="shrink-0 rounded-full border border-border px-3 py-1.5 text-[12.5px]">
+          {t("Export logs")}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function Row({
+  label,
+  value,
+  ok,
+  hint,
+  action,
+}: {
+  label: string;
+  value: string;
+  ok: boolean;
+  hint?: string;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 text-[14px]">
+          <span>{label}</span>
+          <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", ok ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300")}>{value}</span>
+        </div>
+        {hint && <div className="text-[12.5px] text-muted leading-snug">{hint}</div>}
+      </div>
+      {action && (
+        <button type="button" onClick={action.onClick} className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white">
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Web Push: on / off, what stands in the way, and a test button. */
+function PushSettings({ name }: { name: string }) {
+  const { toast } = useStore();
+  const [info, setInfo] = useState<PushInfo | null>(null);
+  const [status, setStatus] = useState<PushState>("off");
+  const [busy, setBusy] = useState(false);
+  const t = useT();
+
+  const refresh = async () => {
+    setStatus(await pushState());
+    try {
+      setInfo(await api.push());
+    } catch {
+      /* older server */
+    }
+  };
+  useEffect(() => {
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggle = async () => {
+    if (!info) return;
+    setBusy(true);
+    try {
+      const next = status === "on" ? await disablePush() : await enablePush(info.public_key);
+      setStatus(next);
+      if (next === "denied") toast(t("Notifications are blocked for this site in the browser settings"));
+      await refresh();
+    } catch (e) {
+      const err = e as Error;
+      toast(
+        err.name === "AbortError"
+          ? t("This browser has no push service (embedded browsers often don't). Use Chrome, Edge, Firefox or Safari 16.4+ on the phone.")
+          : err.message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const test = async () => {
+    try {
+      const r = await api.pushTest();
+      toast(r.ok ? t("Sent — it should arrive in a moment") : r.error ?? t("Could not send"));
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+
+  const blocked =
+    status === "unsupported"
+      ? t("This browser cannot receive push notifications.")
+      : status === "insecure"
+        ? t("Notifications need https:// (or localhost). Over plain http on your LAN the app works, this part stays off — see docs/deployment.md.")
+        : status === "denied"
+          ? t("Blocked for this site. Allow notifications in the browser's site settings, then try again.")
+          : info && !info.available
+            ? t("The server was installed without pywebpush.")
+            : "";
+
+  return (
+    <>
+      <Toggle
+        label={t("Let {name} notify this device", { name })}
+        hint={t("Approvals, questions, finished background work and check-ins; nothing while the app is on screen.")}
+        checked={status === "on"}
+        onChange={() => void toggle()}
+        disabled={busy || !!blocked}
+      />
+      {blocked && <div className="text-[12.5px] text-muted">{blocked}</div>}
+      {info && info.subscriptions > 0 && (
+        <div className="flex items-center justify-between text-[12.5px] text-muted">
+          <span>
+            {info.subscriptions === 1 ? t("1 device subscribed") : t("{n} devices subscribed", { n: info.subscriptions })}
+          </span>
+          <button type="button" onClick={() => void test()} className="text-accent font-medium">
+            {t("Send a test")}
+          </button>
+        </div>
+      )}
+      {!isDesktopApp() && (
+        <div className="text-[12.5px] text-muted">{t("On a phone, add the app to the home screen first; the icon then shows a badge and notifications open the right chat.")}</div>
+      )}
+    </>
+  );
+}
+
+const LEVELS: Array<{ id: Proactivity; title: string; text: string }> = [
+  { id: "off", title: "Off", text: "Only works when you ask." },
+  { id: "low", title: "Low", text: "Checks in half as often; speaks up only when a step is done or it needs you." },
+  { id: "default", title: "Default", text: "Works on goals on schedule; reports real progress, stays quiet otherwise." },
+  { id: "high", title: "High", text: "Checks in twice as often and always reports, even 'still on track'." },
+];
+
+export function ProactivityDial({ value, onChange }: { value: Proactivity; onChange: (v: Proactivity) => void }) {
+  const t = useT();
+  const current = LEVELS.find((l) => l.id === value) ?? LEVELS[2];
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <div className="flex-1 text-[13px] text-muted leading-snug">{t(current.text)}</div>
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
+        {LEVELS.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            onClick={() => onChange(l.id)}
+            className={cx(
+              "rounded-xl py-1.5 text-[13px] font-medium transition",
+              value === l.id ? "bg-surface shadow-sm text-accent" : "text-muted",
+            )}
+          >
+            {t(l.title)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function QuietHours({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [start, end] = value ? value.split("-") : ["", ""];
+  const on = !!value;
+  const t = useT();
+  const set = (s: string, e: string) => onChange(s && e ? `${s}-${e}` : "");
+  return (
+    <div>
+      <label className="flex items-start gap-3 cursor-pointer">
+        <div className="flex-1">
+          <div className="text-[14px] flex items-center gap-1.5">
+            <Moon size={15} className="text-muted" /> {t("Quiet hours")}
+          </div>
+          <div className="text-[12.5px] text-muted leading-snug">{t("No background work in this window; anything due waits until it ends.")}</div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          onClick={() => set(on ? "" : "22:00", on ? "" : "08:00")}
+          className={cx("relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition", on ? "bg-accent" : "bg-surface-2 border border-border")}
+        >
+          <span className={cx("absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition", on ? "left-[22px]" : "left-0.5")} />
+        </button>
+      </label>
+      {on && (
+        <div className="mt-2 flex items-center gap-2 text-[13.5px]">
+          <span className="text-muted">{t("From")}</span>
+          <input type="time" value={start} onChange={(e) => set(e.target.value, end)} className="rounded-xl bg-surface-2 px-2.5 py-1.5 outline-none" />
+          <span className="text-muted">{t("to")}</span>
+          <input type="time" value={end} onChange={(e) => set(start, e.target.value)} className="rounded-xl bg-surface-2 px-2.5 py-1.5 outline-none" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-3xl bg-surface border border-border/70 shadow-sm p-4 space-y-3">
+      <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{title}</h2>
+      {children}
+    </section>
+  );
+}
+

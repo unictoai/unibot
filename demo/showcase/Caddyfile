@@ -1,0 +1,78 @@
+# The showcase's front door. Two names:
+#
+#   SITE_HOST         the phone in the browser (MobileGym + the unibot app), plus /api/demo/*
+#   *.SESSION_DOMAIN  one hostname per visitor session, everything relayed to the gateway
+#
+# Certificates come from Let's Encrypt through Cloudflare's DNS API for both names: the wildcard
+# cannot be had any other way, and the site may sit behind Cloudflare's proxy, where HTTP-01
+# is not dependable. Behind the proxy the visitor's address arrives in X-Forwarded-For; Caddy
+# believes it only from Cloudflare's own ranges (fetched by the cloudflare-ip module), so the
+# gateway's per-visitor limits see visitors, not Cloudflare.
+
+{
+	email {$ACME_EMAIL}
+	servers {
+		trusted_proxies cloudflare {
+			interval 12h
+			timeout 15s
+		}
+	}
+}
+
+(cloudflare_dns) {
+	tls {
+		dns cloudflare {$CLOUDFLARE_API_TOKEN}
+		resolvers 1.1.1.1 1.0.0.1
+	}
+}
+
+{$SITE_HOST} {
+	import cloudflare_dns
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# the showcase API, trial credentials for the phone app, and the model proxy the trials use
+	handle /api/demo/* {
+		reverse_proxy gateway:8000
+	}
+	handle /api/trial* {
+		reverse_proxy gateway:8000
+	}
+	handle /llm/trial/* {
+		reverse_proxy gateway:8000 {
+			flush_interval -1
+		}
+	}
+
+	# MobileGym's companion dataset (app media, theme widgets). Optional; see README.
+	handle_path /cdn/* {
+		root * /srv/cdn
+		header Cache-Control "public, max-age=2592000, immutable"
+		file_server
+	}
+
+	handle {
+		root * /srv/site
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+*.{$SESSION_DOMAIN} {
+	import cloudflare_dns
+	header -Server
+	reverse_proxy gateway:8000
+}
+
+# Other sites on the same box — the project site's mirror at unibot.cn, for one (see mirror/).
+# One file per site in sites.d/, which git ignores; what they serve lives under /srv/www
+# (WWW_ROOT in docker-compose.yml). An empty sites.d/ is fine: a glob that matches nothing is
+# a warning, not an error.
+import /etc/caddy/sites.d/*.caddy

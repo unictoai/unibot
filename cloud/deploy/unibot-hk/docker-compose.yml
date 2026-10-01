@@ -1,0 +1,44 @@
+# unibot Cloud on unibot-hk — the relay only. TLS and the public ports
+# belong to the showcase's Caddy on the same box (demo/showcase); this
+# container joins its `showcase_edge` network and is reached there as
+# `unibot-relay:8787` by sites.d/cloud.unibot.cn.caddy. Nothing is
+# published on the host.
+#
+# Layout on the server (deploy.sh keeps it so):
+#   /opt/unibot/relay/docker-compose.yml   this file
+#   /opt/unibot/relay/.env                 secrets (600, never leaves the box)
+#   /opt/unibot/relay/src/                 the cloud/ directory of the repository
+#   /opt/unibot/relay/data/cloud.db        SQLite (backed up by backup.timer)
+services:
+  relay:
+    build: ./src
+    image: unibot-relay:local
+    container_name: unibot-relay
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # the operator's page, beyond the relay's own tables: the site's daily counts
+      # (demo/showcase/mirror/traffic.py, /var/lib/unibot-traffic on the host) and
+      # unibot Web's numbers from the showcase gateway on the edge network
+      TRAFFIC_DB: /srv/unibot-cloud/traffic/traffic.db
+      WEB_INFO_URL: http://gateway:8000/api/web/info
+    volumes:
+      - ./data:/srv/unibot-cloud/data
+      - /var/lib/unibot-traffic:/srv/unibot-cloud/traffic:ro
+    networks:
+      - edge
+      - web
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  edge:
+    external: true
+    name: showcase_edge
+  # unibot Web's kept containers (demo/showcase) reach the relay here as unibot-relay:8787
+  web:
+    external: true
+    name: unibot-web

@@ -1,0 +1,12 @@
+{$CLOUD_DOMAIN} {
+	encode zstd gzip
+	# Streams must not be buffered; Caddy flushes SSE by default, this just
+	# makes the intent explicit and lifts the body limit for image edits.
+	request_body {
+		max_size 8MB
+	}
+	reverse_proxy relay:8787 {
+		flush_interval -1
+		header_up X-Forwarded-For {remote_host}
+	}
+}

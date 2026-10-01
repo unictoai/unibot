@@ -1,0 +1,120 @@
+# unibot Desktop: one binary per platform, wrapped the way each platform installs things.
+#
+#   Windows  unibot-desktop-terminal-<v>-windows-x64-setup.exe (Inno Setup) + .zip
+#   macOS    unibot-desktop-terminal-<v>-macos-arm64.pkg / -macos-x64.pkg + .tar.gz
+#   Linux    unibot-desktop-terminal-<v>-linux-x64.deb + .tar.gz
+#
+# A push that touches desktop/ builds Linux only (cheap, catches most mistakes). "Run workflow"
+# and tags `desktop-v*` build all four; the tag also publishes a GitHub release with every
+# package attached ("Run workflow" with a release tag attaches to that release instead).
+# Nothing is code-signed. (macOS minutes cost ten times Linux ones on a
+# private repository, which is why the full matrix is not run on every push.)
+name: desktop
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["desktop/**", "scripts/build-desktop.py", "assets/brand/**", ".github/workflows/desktop.yml"]
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Attach the packages to this existing release (v0.1.19, say); empty builds only"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: which platforms
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        env:
+          FULL: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/desktop-v') }}
+        run: |
+          # Linux is built inside Debian 11 (glibc 2.31) so the binary runs on Ubuntu 20.04+ and
+          # Debian 11+, not only on distributions as new as the runner.
+          LINUX_ENTRY='{"os":"ubuntu-latest","label":"linux-x64","container":"python:3.12-bullseye"}'
+          ALL="[{\"os\":\"windows-latest\",\"label\":\"windows-x64\"},{\"os\":\"macos-latest\",\"label\":\"macos-arm64\"},{\"os\":\"macos-15-intel\",\"label\":\"macos-x64\"},$LINUX_ENTRY]"
+          LINUX="[$LINUX_ENTRY]"
+          if [ "$FULL" = "true" ]; then echo "matrix=$ALL" >> "$GITHUB_OUTPUT"; else echo "matrix=$LINUX" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    name: ${{ matrix.label }}
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        if: ${{ !matrix.container }}
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: python -m pip install --upgrade pip pyinstaller pillow mss
+      - name: Tests
+        run: |
+          python -m pip install pytest ./cloud
+          cd desktop && python -m pytest -q tests
+      - name: Build
+        run: python scripts/build-desktop.py
+      - name: Smoke test
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then ./desktop/dist/unibot-desktop.exe --help; else ./desktop/dist/unibot-desktop --help; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: unibot-desktop-${{ matrix.label }}
+          path: |
+            desktop/dist/*-setup.exe
+            desktop/dist/*.zip
+            desktop/dist/*.pkg
+            desktop/dist/*.tar.gz
+            desktop/dist/*.deb
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v') || inputs.release_tag != ''
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Attach to the version's release, when there is one
+        id: attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          # desktop-v0.1.19 belongs to release v0.1.19 (the APK, the desktop app); the terminal
+          # binary's packages go there when it exists, into a release of their own otherwise.
+          # "Run workflow" with a release tag attaches to that release (a build fixed afterwards).
+          VERSION_TAG="${RELEASE_TAG:-v${TAG#desktop-v}}"
+          if gh release view "$VERSION_TAG" -R "$REPO" >/dev/null 2>&1; then
+            (cd packages && sha256sum * > SHA256SUMS-desktop-terminal.txt)
+            gh release upload "$VERSION_TAG" packages/* -R "$REPO" --clobber
+            echo "attached=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "attached=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish a release of its own
+        if: steps.attach.outputs.attached == 'false'
+        uses: softprops/action-gh-release@v3
+        with:
+          name: unibot Desktop ${{ github.ref_name }}
+          files: packages/*
+          generate_release_notes: true

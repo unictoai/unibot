@@ -1,0 +1,62 @@
+# electron-builder: the installers. `npm run dist` here after scripts/desktop-app/build-runtime.py
+# has put the bundled runtime at runtime/ (the CI workflow .github/workflows/desktop-app.yml does
+# both, per platform). Nothing is signed by a developer certificate: Windows asks for "Run anyway",
+# and on macOS the workflow runs `electron-builder --dir` and scripts/desktop-app/package-mac.sh,
+# which ad-hoc signs the bundle and writes the zip and an APFS dmg itself (electron-builder's HFS+
+# image failed to copy with Finder error -36 on some Macs). See docs/desktop.md.
+appId: ai.unicto.unibot.desktop
+productName: unibot
+copyright: GPL-3.0-only · the unibot community
+artifactName: unibot-Desktop-${version}-${os}-${arch}.${ext}
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - resources/**
+  - package.json
+  - "!**/*.map"
+extraResources:
+  - from: runtime
+    to: runtime
+    filter: ["**/*"]
+asar: true
+compression: normal
+publish: null
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  # electron-builder would write x86_64 / amd64 here; one name for the site's links
+  artifactName: unibot-Desktop-${version}-linux-x64.${ext}
+  category: Utility
+  icon: resources/app-icon.png
+  synopsis: an open-source personal agent for every device you own
+  desktop:
+    entry:
+      StartupWMClass: unibot
+deb:
+  depends: ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1", "libsecret-1-0", "xdotool"]
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/app-icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: unibot
+mac:
+  # the zip and dmg come from scripts/desktop-app/package-mac.sh; `npm run dist` alone leaves
+  # the unpacked .app (the workflow passes --dir)
+  target:
+    - target: dir
+      arch: [arm64, x64]
+  icon: resources/app-icon.png
+  category: public.app-category.productivity
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  identity: null

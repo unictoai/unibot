@@ -1,0 +1,354 @@
+# Configuration
+
+unibot reads one TOML file. `unibot config init` writes a commented copy of [`config/config.example.toml`](../config/config.example.toml) to `config/config.toml`; `unibot config show` prints the effective settings with secrets masked.
+
+Search order:
+
+1. `--config PATH` / `UNIBOT_CONFIG`
+2. `./config/config.toml`
+3. `~/.unibot/config.toml`
+
+Any string value may contain `${VAR}` or `${VAR:-default}`; it is replaced with the environment variable when the file is loaded, so API keys never need to be written down. `api_key`, `address` and `password` may also be `{{vault:NAME}}`: the value is read from the encrypted vault when the client is built, never shown to the model.
+
+Three layers, later ones win: the file, then environment overrides, then whatever was changed in the app's *Connections* screen (`<data_dir>/app-settings.json`: model, email servers, browser switch, MCP servers added from the phone). That last file only ever refers to secrets as `{{vault:NAME}}`.
+
+## Environment overrides
+
+These win over the file. They cover the settings people change most often and what Docker needs.
+
+| Variable | Setting |
+|---|---|
+| `UNIBOT_LLM_PROVIDER`, `UNIBOT_LLM_MODEL`, `UNIBOT_LLM_BASE_URL`, `UNIBOT_LLM_API_KEY`, `UNIBOT_LLM_TOOL_MODE` | `[llm]` |
+| `DEEPSEEK_API_KEY`, `OPENAI_API_KEY` | used as `llm.api_key` when it is empty — DeepSeek's for a `*.deepseek.com` `base_url`, OpenAI's for every other host (OpenAI itself, OpenRouter, a gateway, vLLM) |
+| `UNIBOT_DATA_DIR` | `data_dir` (default `~/.unibot`) |
+| `UNIBOT_WORKSPACE` | `agent.workspace` (default: `./workspace` when the current directory has one, else `<data_dir>/workspace`) |
+| `UNIBOT_SENTINEL_MODE` | `sentinel.mode` |
+| `UNIBOT_SEARCH_PROVIDER`, `UNIBOT_SEARCH_API_KEY`, `UNIBOT_SEARCH_BASE_URL` | `[connectors.search]` |
+| `UNIBOT_SERVER_HOST`, `UNIBOT_SERVER_PORT`, `UNIBOT_SERVER_TOKEN` | `[server]` |
+| `UNIBOT_BROWSER_ENABLED=1` | `browser.enabled = true` (only ever turns it on; the browser Docker image sets it; the phone sets it through `UNIBOT_DEVICE`) |
+| `UNIBOT_BROWSER_BACKEND` | `browser.backend`: `auto`, `playwright` or `device` |
+| `UNIBOT_GUI_ENABLED=1`, `UNIBOT_GUI_PROVIDER`, `UNIBOT_GUI_MODEL`, `UNIBOT_GUI_BASE_URL`, `UNIBOT_GUI_API_KEY` | `[gui]` — operating the phone, and the model that does it |
+| `UNIBOT_VAULT_KEY` | Fernet key for the vault (default: `<data_dir>/vault.key`) |
+| `UNIBOT_LOG_LEVEL` | `log_level` |
+
+## `[llm]`
+
+```toml
+[llm]
+provider      = "openai"           # "openai" = Chat Completions, "openai_responses" = Responses API
+model         = "deepseek-flash"
+base_url      = "https://api.deepseek.com"
+api_key       = "${DEEPSEEK_API_KEY}"
+max_tokens    = 4096
+temperature   = 0.3
+timeout       = 180                # seconds per request
+max_retries   = 5                  # exponential back-off on 429 / 5xx / timeouts
+stream        = true
+tool_mode     = "auto"             # "auto" | "native" | "prompt" — see below
+vision        = "auto"             # pictures attached in chat go to the model: "auto" | "on" | "off"
+pass_reasoning = false             # send reasoning_content back with assistant turns (some DeepSeek endpoints)
+extra_headers = {}                 # e.g. { "X-End-User-Id" = "unibot" }
+extra_body    = {}                 # e.g. { "thinking" = { "type" = "enabled" } }
+```
+
+Provider recipes:
+
+| Provider | `model` | `base_url` | Notes |
+|---|---|---|---|
+| DeepSeek | `deepseek-flash` | `https://api.deepseek.com` | default |
+| Kimi (Moonshot) | `kimi-k2.6` | `https://api.moonshot.cn/v1` | |
+| Qwen (阿里云百炼) | `qwen3.7-plus` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | |
+| GLM (智谱) | `glm-5.2` | `https://open.bigmodel.cn/api/paas/v4` | |
+| 豆包 (火山方舟) | your endpoint id | `https://ark.cn-beijing.volces.com/api/v3` | models are versioned deployments; the app lists yours |
+| MiniMax | `MiniMax-M3` | `https://api.minimaxi.com/v1` | |
+| OpenAI | `gpt-5.6-sol` | `https://api.openai.com/v1` | `provider = "openai_responses"` also works |
+| OpenRouter | `deepseek/deepseek-flash` | `https://openrouter.ai/api/v1` | |
+| Ollama | `qwen3:8b` | `http://localhost:11434/v1` | `api_key = "ollama"`; see [Local models](#local-models) |
+| vLLM / LM Studio | your served name | `http://localhost:8000/v1` | set `tool_mode = "prompt"` if the server ignores `tools` |
+| Company gateway | as required | as required | use `extra_headers` / `extra_body`; pick the provider by the API shape the gateway speaks |
+
+The same presets are offered in the app (*Connections → Model*, and on first run), each with a link to where its key comes from; the exact hostnames live in `PROVIDERS` in `unibot/server/connections.py`. A `base_url` saved from the app that has no path gains `/v1` (`http://host:8000` → `http://host:8000/v1`); the presets' own hosts are kept as they are. Ollama and custom endpoints may have no key.
+
+### Tool calling modes
+
+| `tool_mode` | What happens |
+|---|---|
+| `auto` (default) | The API's function calling. If the endpoint *rejects* the `tools` field — Ollama for a model without a tool template ("does not support tools"), vLLM started without a tool parser — unibot logs one warning and describes the tools in the prompt for the rest of the run. |
+| `native` | Always the function-calling API; a rejection is an error. |
+| `prompt` | Tools are described in the system prompt and calls are parsed from `<tool_call>` blocks. The only mode that works with endpoints that silently *ignore* `tools` (no error, the model just never calls anything) — some "agent app" gateways do this. |
+
+### Pictures
+
+Pictures the user attaches in chat are sent to the model as image content (Chat Completions `image_url` parts, Responses `input_image`), scaled to 1568 px on the long side first. `vision = "auto"` (the default) sends them and, when the endpoint refuses a request with images — DeepSeek, Ollama for a model without vision ("model does not support multimodal requests") — sends the same request with the text only, drops pictures for the rest of the run, and the app tells the user once; the message the model gets then says which pictures it cannot see, so it does not describe what it never saw. `on` sends them always and a refusal is an error. `off` never sends them — the model gets the file names, and text files, PDFs and spreadsheets it reads with `files` either way. Vision models that work here: GPT-4o and later, Claude through an OpenAI-compatible gateway, Gemini, Qwen-VL, `gemma3` and `llava` on Ollama.
+
+### Local models
+
+Ollama serves an OpenAI-compatible API at `http://localhost:11434/v1`; models with a tool template (Qwen 3, Llama 3.1+, Mistral, DeepSeek-R1 distills) call tools natively, the rest work through `auto`'s prompt fallback. [`scripts/provider_check.py`](../scripts/provider_check.py) runs five everyday tasks (chat, a calculation through `python_execute`, writing a file, remembering a preference, a multi-step job) against any model; results on an RTX 4070 (12 GB), Ollama 0.34:
+
+| Model | Tool calling | provider_check | Notes |
+|---|---|---|---|
+| `qwen3:8b` | native (also 5/5 with `tool_mode = "prompt"`) | 5/5 | the default preset; 7–20 s per task |
+| `llama3.2:3b` | native | 5/5 | often writes the call as a bare JSON object in the text and double-escapes newlines in file content; both are repaired (see below) |
+| `gemma3:4b` | prompt, via the `auto` fallback | 5/5 | Ollama rejects `tools` for it; emits ```` ```tool_call ```` fences, which the prompt parser accepts |
+| DeepSeek V4.1 Flash (hosted) | native | 5/5 | 1–4 s per task |
+
+Small models bend the protocol in predictable ways, and unibot meets them halfway rather than failing the task: a reply that is a bare or fenced JSON object naming one of the tools (with an arguments object) counts as a tool call in every mode; JSON strings may contain real newlines; `files.write` turns a one-line text with two or more spelled-out `\n` into lines (code, which has real newlines, is never touched). A quoted JSON object with other keys stays text.
+
+Set `max_tokens` to what the model can produce in one turn (4096 is fine for these) and keep `agent.max_context_messages` modest — a local 8B model with an 8k context window fills up fast once tool results start coming back.
+
+Models that emit `<think>…</think>` inside the content are handled: the reasoning is separated and shown only with `agent.show_thinking = true`.
+
+## `[agent]`
+
+```toml
+[agent]
+name                 = "unibot"      # what the agent calls itself (the app's profile overrides this)
+max_steps            = 30              # tool calls per turn before it must wrap up
+# workspace          = "./workspace"   # the only directory the files tool can touch; default ./workspace if present here, else <data_dir>/workspace
+language             = "auto"          # or a fixed language: "English", "中文", ...
+max_context_messages = 80
+show_thinking        = false
+user_profile         = ""              # free text injected into the system prompt
+instructions         = ""              # extra rules appended to the system prompt
+```
+
+With `language = "auto"` the system prompt names the language of the latest user message (detected by script) and tells the model to answer in it. A generic "reply in the user's language" instruction turned out to be unreliable with some models; naming it works.
+
+## `[sentinel]`
+
+```toml
+[sentinel]
+mode               = "ask"           # ask | strict | auto
+always_ask_tools   = ["send_email", "shell"]
+always_allow_tools = []
+deny_tools         = []
+taint_tracking     = true
+egress_allowlist   = ["duckduckgo.com", "*.duckduckgo.com", "wikipedia.org", "*.wikipedia.org",
+                      "github.com", "*.github.com", "*.githubusercontent.com", "pypi.org", "*.pypi.org"]
+audit_file         = ""              # default <data_dir>/audit.jsonl
+
+[[sentinel.rules]]                   # first match wins; values are glob patterns matched against str(arg)
+tool   = "shell"
+match  = { command = "*rm -rf*" }
+action = "deny"                      # allow | ask | deny
+reason = "recursive deletes are not allowed"
+```
+
+How the pieces combine is described in [sentinel.md](sentinel.md).
+
+## `[sandbox]`
+
+```toml
+[sandbox]
+mode = "auto"                        # auto | bwrap | off
+```
+
+On Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed (`apt install bubblewrap`, `dnf install bubblewrap`), every `shell` and `python_execute` call runs in its own namespace: the workspace and `agent.extra_roots` are the only writable places, your home directory is not there, `/tmp` is private, and there is no network unless the call was assessed as needing it. `auto` uses it when it works here and says so in the log when it does not; `bwrap` insists (`unibot doctor` fails otherwise); `off` runs commands unboxed, with the scrubbed environment only. `share_read_only` lists directories the box may read (a CLI you want the agent to use: `["~/.nvm"]` for node and lark-cli), `share` those a tool must also write (its login: `["~/.lark-cli", "~/.local/share/lark-cli"]`); a shared directory under your home is visible at the same place under the box's home too, so a tool that looks in `$HOME` finds it. Details and what changes for the Sentinel in [sentinel.md → The sandbox](sentinel.md#the-sandbox).
+
+## `[memory]`
+
+```toml
+[memory]
+enabled            = true
+max_inject         = 20        # memories injected into the system prompt per turn
+embeddings         = "auto"    # recall by meaning: auto | on | off
+embedding_model    = ""        # empty → the endpoint's default (see below)
+embedding_base_url = ""        # empty → the model's endpoint and key (llm.base_url / llm.api_key)
+embedding_api_key  = ""        # a key of its own, "{{vault:EMBEDDINGS_API_KEY}}" from the app
+```
+
+Recall is by keyword — rare words weigh more, Chinese is matched by character pairs — and, with an embedding endpoint, by meaning too: every memory is embedded once (the vector is kept in `memory.db` next to a hash of the text, so a changed line is embedded again and a switch back to a model is free), the message is embedded per turn, and the memories closest in meaning are fused with the keyword ranking, so "写邮件给房东" recalls "the landlord is Bob Li" though they share no word. Any OpenAI-compatible `/embeddings` works: OpenAI (`text-embedding-3-small` is the default there and on most gateways), [Ollama](https://ollama.com) with an embedding model pulled (`ollama pull qwen3-embedding:0.6b` — the default on `:11434`, small, reads Chinese and English), OpenRouter (`openai/text-embedding-3-small`). DeepSeek has none, so with it point `embedding_base_url` somewhere that has — Ollama next to DeepSeek is the usual pairing — or leave recall by keyword.
+
+`auto` tries the endpoint once per start and falls back to keyword recall when the call fails, saying why in the log — one failed call, not one per turn; an endpoint that was unreachable is tried again after five minutes. `on` insists: recall still falls back, but the failure is a warning and `unibot doctor` fails on it. `off` never embeds. `embedding_api_key` empty means the model's own key on its own endpoint; set from the app it is a `{{vault:EMBEDDINGS_API_KEY}}` reference. The gateway headers in `llm.extra_headers` go to the model's endpoint only, not to another one named here. *Connections → Recall by meaning* in the app sets all of this and tests it; `unibot memory recall "…"` shows what would be recalled, with each memory's closeness.
+
+## `[skills]`
+
+```toml
+[skills]
+enabled  = true
+dir      = ""                        # your skills; empty → <data_dir>/skills
+disabled = ["inbox-triage"]          # built-in ones to leave out of the model's list
+```
+
+A skill is a folder with a `SKILL.md` — YAML front matter with `name` and `description`, then the steps in Markdown — in the [Agent Skills](https://agentskills.io) format, so skills written for other agents work here. unibot reads one more key, `channel`: which rung of the [ladder](gui.md#the-ladder) the skill works on — `api` (an MCP server or connector), `cli`, `web` (a fetch), `browser`, `gui` (the phone's screen; `app-only` is accepted) or `mixed`. A `gui` skill is marked *on the phone's screen* in the agent's index, so it knows the job needs the phone before it starts; `metadata.channel` works too for skills that must stay strictly in the shared format. Eleven are built in (`weekly-review`, `trip-plan`, `inbox-triage`, `compare-options`, `meeting-prep`; `phone-messages` for the phone's screen; five for Chinese services that need no screen: `feishu` through lark-cli, `tencent-meeting` through tmeet, `amap` through the 高德 MCP server, `kuaidi100` through the 快递100 server, and `train-tickets`, which searches through the 12306 server and books on the phone only when told to — [services.md](services.md) says which have been run where); a folder in `dir` with the same name as a built-in replaces it. The model gets the index (name and description of every enabled skill) in its system prompt and reads a skill's steps with the `skills` tool when a request fits; `/name` at the start of a chat message runs one directly. Saving or removing a skill from chat is a sensitive call — it asks first, whatever the Sentinel mode. Skills switched off in the app are remembered in `app-settings.json`; the list here and that one are merged. Inside the [sandbox](sentinel.md#the-sandbox) a skill's folder (its scripts and reference files) is visible read-only. See [the app → Skills](app.md#skills) and `unibot skills` in the [CLI](cli.md#skills).
+
+## Connectors
+
+### Email
+
+```toml
+[connectors.email]
+enabled       = true
+imap_host     = "imap.gmail.com"
+imap_port     = 993
+smtp_host     = "smtp.gmail.com"
+smtp_port     = 587
+smtp_starttls = true
+address       = "{{vault:EMAIL_ADDRESS}}"
+password      = "{{vault:EMAIL_PASSWORD}}"
+scrub_secrets = true   # remove one-time codes and reset links before the model reads a mail
+```
+
+Store the values with `unibot vault set EMAIL_ADDRESS` and `unibot vault set EMAIL_PASSWORD`. `read_emails` marks the session as tainted; `send_email` is in `always_ask_tools` by default.
+
+### Calendar
+
+Any calendar that offers a private iCalendar link — Google (*Settings → Integrate calendar → Secret address in iCal format*), Outlook (*Shared calendars → Publish*), iCloud (*Share Calendar → Public Calendar*), Fastmail, Nextcloud — or an `.ics` file on disk. `webcal://` links are fetched over HTTPS. The feed text is cached in `<data_dir>/calendar-cache.json` (mode 0600) so the agenda is there at startup and between refreshes.
+
+```toml
+[connectors.calendar]
+enabled         = true
+refresh_minutes = 30          # how often feeds are re-read in the background
+day_start       = "09:00"     # working hours, for "when am I free"
+day_end         = "18:00"
+
+[[connectors.calendar.feeds]]
+name = "Work"
+url  = "{{vault:CALENDAR_WORK}}"   # the link is the secret: unibot vault set CALENDAR_WORK
+
+[[connectors.calendar.feeds]]
+name = "Family"
+url  = "~/family.ics"
+```
+
+The `calendar` tool reads (agenda, search, free time) and *drafts*: an event it proposes is written as `calendar/<date>-<title>.ics` in the workspace, and the app shows it as a card with an *Add to calendar* button. It never writes to your calendar itself. Today's and tomorrow's events are in the system prompt; the Feed shows them under *Today*. `unibot calendar add NAME URL` does the same as the Connections screen.
+
+### Contacts
+
+Who is who. The agent looks people up before writing to them and never guesses an address; the approval card for an email names the recipient from the address book and warns when it does not know them. Sources are `.vcf` files — Google Contacts (*Export → vCard*), iCloud, Outlook (*People → Manage → Export*), Nextcloud, an iPhone (*Contacts → select all → Share*) and Android all export one — as a path, an upload from the phone (kept under `<data_dir>/contacts/`), or a link (kept in the vault). vCard 2.1, 3.0 and 4.0 are read, including Apple's `item1.` label groups and quoted-printable names from old phones. Link text is cached in `<data_dir>/contacts-cache.json` (mode 0600).
+
+```toml
+[connectors.contacts]
+enabled = true                    # on by default: the agent's own book needs no source
+
+[[connectors.contacts.sources]]
+name = "Google"
+url  = "~/Downloads/contacts.vcf"
+
+[[connectors.contacts.sources]]
+name = "Nextcloud"
+url  = "{{vault:CONTACTS_NEXTCLOUD}}"   # a link, kept in the vault: unibot vault set CONTACTS_NEXTCLOUD
+```
+
+Besides the sources there is always *My contacts*, `<data_dir>/contacts.vcf`: the people the agent was told about in chat ("the landlord is Bob Li, bob@example.com") through `contacts` action=add — the only book it writes to, and the only one it can remove people from. The `contacts` tool searches by name, nickname, company, email or phone (every word must match, prefixes count, a character inside a Chinese name counts); a look-up is private data and taints the session. `unibot contacts search | list | add | sources | add-source | remove-source` from the CLI.
+
+### Web search
+
+Who answers `web_search`. DuckDuckGo needs nothing and is the default, but it is scraped rather than served: it rate-limits and breaks now and then. For searches that always work, name a provider with an API — [Brave Search](https://brave.com/search/api/) or [Tavily](https://app.tavily.com/) with a key, or a [SearXNG](https://docs.searxng.org/) instance you run yourself (with `json` among its `search.formats`). The same choice is on the phone under *Connections → Web search*, where the key goes to the vault as `SEARCH_API_KEY` and *Test* runs one search.
+
+```toml
+[connectors.search]
+provider = "duckduckgo"          # duckduckgo | brave | tavily | searxng
+api_key  = "{{vault:SEARCH_API_KEY}}"   # brave / tavily: unibot vault set SEARCH_API_KEY
+base_url = ""                    # searxng: your instance, e.g. "http://127.0.0.1:8080"
+```
+
+Whichever is picked, a search that fails — a lapsed key, a rate limit, an instance that is down — is answered by DuckDuckGo instead, once, with a note on top of the results saying so, so the task goes on; `unibot doctor` reports a provider that is missing what it needs. The `region` argument of the tool (`cn-zh`, `us-en`) is passed to every provider in its own terms. The provider's host is a destination you chose, so a search after private data was read does not need approval the way an unknown host would (see [taint tracking](sentinel.md#taint-tracking)); `web_fetch` of a result still does.
+
+## `[triggers]`
+
+Triggers are standing instructions that start work when something happens — a mail arrives, a calendar event is about to start, a program calls a webhook (see [the app](app.md#triggers)). They are set in chat or under *Upcoming*, not in the config file; this section only tunes how they are watched.
+
+```toml
+[triggers]
+mail_poll_minutes = 5    # how often the inbox is looked at while a mail trigger is active
+hook_min_seconds  = 10   # deliveries to one webhook closer together than this get HTTP 429
+```
+
+Mail triggers need the [email connector](#email); event triggers need a [calendar](#calendar). Triggers live in `<data_dir>/triggers.db`.
+
+### Browser
+
+```toml
+[browser]
+enabled    = true      # pip install "unibot[browser]" && playwright install chromium
+backend    = "auto"    # auto | playwright | device — the phone's own WebView when a unibot app is connected, Chromium otherwise
+profile    = ""        # mobile | desktop | "" (mobile on the phone, desktop on a computer)
+headless   = true      # Playwright only
+timeout_ms = 30000
+```
+
+Logins made in Chromium live in `<workspace>/browser-profile/` and survive a restart; on the phone they live in the app's WebView. The two backends, the take-over, the logged-in `fetch` and what cannot log in inside a WebView: [browser.md](browser.md).
+
+### The phone (`[gui]`)
+
+With this on, the agent can look at a connected phone's screen and tap, type and swipe in its apps — the way to reach 12306, 微信 or 支付宝, which have no API. Off by default; the *Phone* card on the Connections screen is the same switch. How it works and what Sentinel does with it: [gui.md](gui.md).
+
+```toml
+[gui]
+enabled          = false
+provider         = "openai"          # the operator's own model; openai | openai_responses
+model            = ""                # empty: the main [llm] model does it — it must take images, the screen is a picture
+base_url         = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+api_key          = "{{vault:GUI_API_KEY}}"
+max_steps        = 30                # the most one phone_task may take
+device_timeout_s = 20.0              # how long to wait for the phone to answer
+sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
+```
+
+`model`, `base_url` and `api_key` fall back to `[llm]` when empty; a key is only needed when the operator's `base_url` is a different service. Traces of every phone task go to `<data_dir>/phone-traces/` (the last 200 are kept; `unibot phone traces`).
+
+### MCP servers
+
+Anything that speaks the [Model Context Protocol](https://modelcontextprotocol.io) becomes a set of tools named `<server>__<tool>`, each passing through Sentinel with the risk level you assign.
+
+```toml
+[[mcp.servers]]
+name    = "filesystem"
+command = "npx"
+args    = ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]
+risk    = "moderate"             # safe | moderate | sensitive
+
+[[mcp.servers]]
+name               = "calendar"
+url                = "http://localhost:8000/mcp"   # streamable HTTP; falls back to SSE
+risk               = "sensitive"
+egress             = true         # counts as network egress for taint tracking
+reads_private_data = true         # taints the session when called
+
+# one tool of a server may differ from the server's defaults
+[mcp.servers.tools.list_events]
+risk               = "moderate"
+[mcp.servers.tools.delete_event]
+risk               = "sensitive"
+reads_private_data = false
+```
+
+`tools` is optional and per tool name (without the `<server>__` prefix); anything not set falls back to the server's values. It is how the phone's own tools get their defaults: on a phone the app's capabilities appear as the server `device` without any configuration ([device.md](device.md)), with the per-tool table from `unibot/runtime.py`.
+
+Three Chinese services the built-in skills know come as MCP servers, and `config/config.example.toml` has the block for each — 高德地图 (hosted, `AMAP_KEY` in the vault), 12306 (`npx -y 12306-mcp`, no key; trains, query only) and 快递100 (hosted, `KUAIDI100_KEY`; parcels, paid per tracking number). Which of them have actually been run inside the phone's root file system, and what else is out there: [services.md](services.md).
+
+## `[server]`
+
+```toml
+[server]
+host             = "127.0.0.1"   # 0.0.0.0 to reach it from your phone on the same network
+port             = 8787
+auth             = true          # access token required (in the QR code / link)
+token            = ""            # empty → generated once, stored in <data_dir>/server_token
+approval_timeout = 3600          # seconds an approval card waits before counting as "deny"
+cors_origins     = []            # only for the Vite dev server, e.g. ["http://localhost:5173"]
+max_upload_mb    = 25            # largest file the app may attach to a message
+update_check     = true          # Settings → About says when a newer release is out (GitHub Releases, every 6 h)
+start_grace      = 4             # seconds the services may take before the app answers anyway
+```
+
+`update_check` asks `api.github.com` for the latest release at most every six hours and shows
+the version under *Settings → About* with a link to the release page; nothing is downloaded and
+nothing about the install is sent. `UNIBOT_NO_UPDATE_CHECK=1` turns it off too, and a hosted
+web session (a runtime started with `UNIBOT_CLOUD_KEY`) never checks — its operator updates it.
+
+## Where things live
+
+| Path | Contents |
+|---|---|
+| `~/.unibot/` (`data_dir`) | everything below |
+| `memory.db`, `goals.db` | SQLite |
+| `vault.enc`, `vault.key` | encrypted secrets and the key (or `UNIBOT_VAULT_KEY`) |
+| `audit.jsonl` | append-only audit log |
+| `approvals.json` | permissions you granted for 24 hours or always (tool + target, scope, expiry) |
+| `app-settings.json` | what was changed in the app's Connections screen, layered over `config.toml` (no secrets, only `{{vault:NAME}}` references) |
+| `sessions/` | CLI conversation history |
+| `skills/<name>/SKILL.md` | your skills (the Agent Skills format); a name that matches a built-in replaces it |
+| `threads/`, `profile.json`, `ideas.json`, `server_token`, `logs/` | app state |
+| `./workspace` (`agent.workspace`) | files the agent reads and writes; `screenshots/` holds the last 400 screens a phone sent (the phone traces point at them) |

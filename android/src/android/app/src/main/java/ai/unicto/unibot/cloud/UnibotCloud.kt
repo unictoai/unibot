@@ -1,0 +1,803 @@
+package ai.unicto.unibot.cloud
+
+import android.content.Context
+import android.os.Build
+import ai.unicto.unibot.BuildConfig
+import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.R
+import ai.unicto.unibot.data.model.LLMModel
+import ai.unicto.unibot.data.model.ModelGroup
+import ai.unicto.unibot.data.model.ProviderCredential
+import ai.unicto.unibot.data.model.ProviderInstance
+import ai.unicto.unibot.data.model.ProviderType
+import ai.unicto.unibot.data.repository.ProviderRepository
+import ai.unicto.unibot.avatar.ImageGen
+import java.io.IOException
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+
+/**
+ * unibot Cloud: the "start now" path. An e-mail address, a code, and the
+ * app has a provider with a starter allowance — no key of one's own needed. The server is the
+ * relay in `cloud/` of the repository; anyone can run one, and a debug build can be pointed at
+ * a different one.
+ *
+ * To the rest of the app the relay is an ordinary OpenAI-compatible provider: an API-key
+ * [ProviderInstance] on the relay's base URL, whose key is the `ub_…` token the relay issued.
+ * Chat, model listing, and the avatar's pictures all go through the paths that already exist
+ * for any custom base URL. What this object adds is the sign-in itself, the provisioning of
+ * that instance (models fetched, a default group, the image model), and the account meta the
+ * settings page shows (how much is left).
+ *
+ * What the relay keeps about a person is the hashed identifier and token counts; message
+ * content is forwarded to the model, not stored. See `docs/cloud.md`.
+ */
+object UnibotCloud {
+    const val DEFAULT_BASE = ""
+    const val LABEL = "unibot Cloud"
+
+    private const val PREFS = "unibot"
+    private const val KEY_BASE = "cloud.base"
+    private const val KEY_INSTANCE = "cloud.instance_id"
+    private const val KEY_CHANNEL = "cloud.channel"
+    private const val KEY_HINT = "cloud.hint"
+    private const val KEY_GRANTED = "cloud.granted"
+    private const val KEY_USED = "cloud.used"
+    private const val KEY_USED_TODAY = "cloud.used_today"
+    private const val KEY_DAILY_CAP = "cloud.daily_cap"
+    private const val KEY_UNLIMITED = "cloud.unlimited"
+    private const val KEY_CHECKED_AT = "cloud.checked_at"
+    private const val KEY_MEMBER = "cloud.member"
+    private const val KEY_SPENT_TODAY = "cloud.spent_today_cny"
+    private const val KEY_SPENT_TOTAL = "cloud.spent_total_cny"
+    private const val KEY_USD_CNY = "cloud.usd_cny"
+    // 0.1.23: the one pool (relay 0.5)
+    private const val KEY_GRANT = "cloud.grant_cny"
+    private const val KEY_LEFT = "cloud.left_cny"
+    private const val KEY_WARN = "cloud.warn"
+    private const val KEY_ALLOWANCE = "cloud.allowance_cny"
+    private const val KEY_CONTRIBUTE_BONUS = "cloud.contribute_bonus_cny"
+    private const val KEY_CONTRIBUTE_BONUS_AVAILABLE = "cloud.contribute_bonus_available"
+    private const val KEY_OWN_KEY_DOCS = "cloud.own_key_docs"
+    private const val KEY_ACCOUNT_ID = "cloud.account_id"
+    private const val KEY_CREATED_AT = "cloud.created_at"
+    private const val KEY_HAS_PASSWORD = "cloud.has_password"
+    private const val KEY_SESSIONS = "cloud.sessions"
+    private const val KEY_VIA = "cloud.via"
+    private const val KEY_USAGE = "cloud.usage_json"
+    // 0.1.22: invitations (relay 0.4); 0.5 counts no clips and keeps no separate credit
+    private const val KEY_INVITE_CODE = "cloud.invite_code"
+    private const val KEY_INVITE_URL = "cloud.invite_url"
+    private const val KEY_INVITES = "cloud.invites"
+    private const val KEY_INVITE_BONUS = "cloud.invite_bonus_cny"
+    private const val KEY_INVITE_EARNED = "cloud.invite_earned_cny"
+    private const val KEY_CONTRIBUTE = "cloud.contribute"
+    /** The code sign-in created the account: the first-run setup owes the password and co-creation steps. */
+    private const val KEY_FRESH = "cloud.fresh_account"
+    private const val KEY_WARNED_GRANT = "cloud.warned_grant"
+    private const val KEY_SAMPLES = "cloud.samples"
+
+    class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
+
+    /** One line of the usage breakdown: a kind (chat, image, video, realtime) or a model. */
+    data class UsageRow(
+        val kind: String,
+        val model: String,
+        val requests: Int,
+        val promptTokens: Long,
+        val completionTokens: Long,
+        val charged: Long,
+        val costCny: Double,
+    ) {
+        val tokens: Long get() = promptTokens + completionTokens
+    }
+
+    /** What the relay says was used, by category today and overall, and by model overall. */
+    data class Usage(
+        val todayByKind: List<UsageRow>,
+        val totalByKind: List<UsageRow>,
+        val byModel: List<UsageRow>,
+        val kinds: List<String>,
+    )
+
+    /** A live sign-in of the account: one per device holding a key. */
+    data class Session(
+        val prefix: String,
+        val device: String,
+        val via: String,
+        val createdAt: Long,
+        val lastUsedAt: Long,
+        val current: Boolean,
+    )
+
+    /** One line of the account's own history (sign-ins, password changes, refusals). */
+    data class Event(val ts: Long, val kind: String, val detail: String)
+
+    /** What the settings page shows. Cached from the last `/v1/me` (or the sign-in itself). */
+    data class Account(
+        val channel: String,
+        val hint: String,
+        val granted: Long,
+        val used: Long,
+        val usedToday: Long,
+        val dailyCap: Long,
+        val checkedAt: Long,
+        /** The relay runs without a ceiling: usage is shown, nothing is refused for lack of tokens. */
+        val unlimited: Boolean = false,
+        /** A member of the relay (the operator's list): no daily spend cap. */
+        val member: Boolean = false,
+        /** Money, as the relay's operator is billed for this account, in yuan. */
+        val spentTodayCny: Double = 0.0,
+        val spentTotalCny: Double = 0.0,
+        /**
+         * The pool for the account's lifetime (relay 0.5): the allowance plus what invites, the
+         * co-creation bonus and the operator added; 0 = no limit (a member, or an open relay).
+         */
+        val grantCny: Double = 0.0,
+        /** What is left of the pool; negative when there is no limit. */
+        val leftCny: Double = -1.0,
+        /** The relay's 80 % heads-up. */
+        val warn: Boolean = false,
+        /** How the pool grows, for the account page: the starting allowance and the bonuses. */
+        val allowanceCny: Double = 0.0,
+        val contributeBonusCny: Double = 0.0,
+        val contributeBonusAvailable: Boolean = false,
+        /** The guide for bringing one's own key; empty on an older relay. */
+        val ownKeyDocs: String = "",
+        /** Yuan per dollar, for showing both; 0 when the relay did not say. */
+        val usdCny: Double = 0.0,
+        /** The relay's opaque id for the account (not the number or address). */
+        val accountId: String = "",
+        /** When the account was created (UNIX seconds); 0 when unknown. */
+        val createdAt: Long = 0,
+        /** A password is set, so signing in elsewhere needs no code. */
+        val hasPassword: Boolean = false,
+        /** Devices currently signed in, this one included. */
+        val sessions: Int = 0,
+        /** How this phone signed in: "code" or "password". */
+        val via: String = "",
+        /** The breakdown by kind and by model, when the relay reports one. */
+        val usage: Usage? = null,
+        /** This account's invite code and the link to share; empty on a relay from before 0.4. */
+        val inviteCode: String = "",
+        val inviteUrl: String = "",
+        /** Friends who signed up with the code, what each adds, and what they added in all. */
+        val invites: Int = 0,
+        val inviteBonusCny: Double = 0.0,
+        val inviteEarnedCny: Double = 0.0,
+        /** The person chose to contribute their chat turns to the community's model; how many so far. */
+        val contribute: Boolean = false,
+        val samples: Int = 0,
+    ) {
+        val remaining: Long get() = (granted - used).coerceAtLeast(0)
+        /** 0..1 of the grant still unspent. */
+        val fraction: Float get() = if (granted <= 0) 0f else (remaining.toFloat() / granted.toFloat()).coerceIn(0f, 1f)
+        /** The relay prices requests in money (a relay from before this shows tokens only). */
+        val pricesInMoney: Boolean get() = usdCny > 0
+        /** The account has a pool to run out of (not a member, not an open relay). */
+        val limited: Boolean get() = grantCny > 0 && leftCny >= 0
+        /** 0..1 of the pool spent; 0 when there is no limit. */
+        val spendFraction: Float get() = if (!limited) 0f else (spentTotalCny / grantCny).toFloat().coerceIn(0f, 1f)
+        /** The pool is spent: the relay refuses model calls until it grows or the person brings a key. */
+        val exhausted: Boolean get() = limited && leftCny <= 0.0
+        fun toUsd(cny: Double): Double = if (usdCny > 0) cny / usdCny else 0.0
+    }
+
+    private val http: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+    private val json = "application/json; charset=utf-8".toMediaType()
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /** The relay this build talks to: none by default — the user enters their own relay's URL. */
+    fun baseUrl(context: Context): String =
+        prefs(context).getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.trimEnd('/')
+            ?: DEFAULT_BASE
+
+    fun setBaseUrl(context: Context, url: String?) {
+        prefs(context).edit().apply {
+            if (url.isNullOrBlank()) remove(KEY_BASE) else putString(KEY_BASE, url.trim().trimEnd('/'))
+        }.apply()
+    }
+
+    fun canOverrideBase(): Boolean = true
+
+    /** The provider instance the relay is signed in as, if it still exists. */
+    fun instance(context: Context): ProviderInstance? {
+        val id = prefs(context).getString(KEY_INSTANCE, null) ?: return null
+        return repo(context)?.instance(id)
+    }
+
+    fun isSignedIn(context: Context): Boolean {
+        val inst = instance(context) ?: return false
+        return !repo(context)?.loadApiKey(inst.id).isNullOrBlank()
+    }
+
+    private val _signedIn = MutableStateFlow<Boolean?>(null)
+
+    /** Whether this phone is signed in, as a flow the home screen can follow (the account is required). */
+    fun signedIn(context: Context): StateFlow<Boolean?> {
+        if (_signedIn.value == null) _signedIn.value = isSignedIn(context)
+        return _signedIn
+    }
+
+    /** The account key this phone signed in with — the hub authenticates with it too. */
+    fun apiKey(context: Context): String? {
+        val inst = instance(context) ?: return null
+        return repo(context)?.loadApiKey(inst.id)?.takeIf { it.isNotBlank() }
+    }
+
+    fun account(context: Context): Account? {
+        val p = prefs(context)
+        val hint = p.getString(KEY_HINT, null) ?: return null
+        return Account(
+            channel = p.getString(KEY_CHANNEL, "") ?: "",
+            hint = hint,
+            granted = p.getLong(KEY_GRANTED, 0),
+            used = p.getLong(KEY_USED, 0),
+            usedToday = p.getLong(KEY_USED_TODAY, 0),
+            dailyCap = p.getLong(KEY_DAILY_CAP, 0),
+            checkedAt = p.getLong(KEY_CHECKED_AT, 0),
+            unlimited = p.getBoolean(KEY_UNLIMITED, false),
+            member = p.getBoolean(KEY_MEMBER, false),
+            spentTodayCny = p.getFloat(KEY_SPENT_TODAY, 0f).toDouble(),
+            spentTotalCny = p.getFloat(KEY_SPENT_TOTAL, 0f).toDouble(),
+            grantCny = p.getFloat(KEY_GRANT, 0f).toDouble(),
+            leftCny = p.getFloat(KEY_LEFT, -1f).toDouble(),
+            warn = p.getBoolean(KEY_WARN, false),
+            allowanceCny = p.getFloat(KEY_ALLOWANCE, 0f).toDouble(),
+            contributeBonusCny = p.getFloat(KEY_CONTRIBUTE_BONUS, 0f).toDouble(),
+            contributeBonusAvailable = p.getBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, false),
+            ownKeyDocs = p.getString(KEY_OWN_KEY_DOCS, "") ?: "",
+            usdCny = p.getFloat(KEY_USD_CNY, 0f).toDouble(),
+            accountId = p.getString(KEY_ACCOUNT_ID, "") ?: "",
+            createdAt = p.getLong(KEY_CREATED_AT, 0),
+            hasPassword = p.getBoolean(KEY_HAS_PASSWORD, false),
+            sessions = p.getInt(KEY_SESSIONS, 0),
+            via = p.getString(KEY_VIA, "") ?: "",
+            usage = p.getString(KEY_USAGE, null)?.let { parseUsage(runCatching { JSONObject(it) }.getOrNull()) },
+            inviteCode = p.getString(KEY_INVITE_CODE, "") ?: "",
+            inviteUrl = p.getString(KEY_INVITE_URL, "") ?: "",
+            invites = p.getInt(KEY_INVITES, 0),
+            inviteBonusCny = p.getFloat(KEY_INVITE_BONUS, 0f).toDouble(),
+            inviteEarnedCny = p.getFloat(KEY_INVITE_EARNED, 0f).toDouble(),
+            contribute = p.getBoolean(KEY_CONTRIBUTE, false),
+            samples = p.getInt(KEY_SAMPLES, 0),
+        )
+    }
+
+    /** Whether the last sign-in created the account (until [clearFreshAccount]). */
+    fun freshAccount(context: Context): Boolean = prefs(context).getBoolean(KEY_FRESH, false)
+    fun clearFreshAccount(context: Context) { prefs(context).edit().remove(KEY_FRESH).apply() }
+
+    /**
+     * The 80 % heads-up is said once per pool size: true the first time it is asked for a
+     * pool of [grantCny] (and records it), false afterwards — until the pool grows.
+     */
+    fun markWarned(context: Context, grantCny: Double): Boolean {
+        val p = prefs(context)
+        val key = String.format(java.util.Locale.US, "%.2f", grantCny)
+        if (p.getString(KEY_WARNED_GRANT, null) == key) return false
+        p.edit().putString(KEY_WARNED_GRANT, key).apply()
+        return true
+    }
+
+    /** The relay's answer to joining or leaving the co-creation programme. */
+    data class Contribution(val account: Account, val bonusGranted: Boolean, val bonusCny: Double)
+
+    /**
+     * Join (or leave) the co-creation programme: keep this account's chat turns for the
+     * community's own model. Joining adds the relay's bonus to the pool the first time.
+     */
+    suspend fun setContribute(context: Context, on: Boolean): Contribution = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val r = call(context, "POST", "/v1/me/contribute", JSONObject().put("on", on), token = key)
+        prefs(context).edit()
+            .putBoolean(KEY_CONTRIBUTE, r.optBoolean("on", on))
+            .putInt(KEY_SAMPLES, r.optInt("samples", 0))
+            .putBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, r.optBoolean("bonus_available", false))
+            .apply()
+        // the pool changed: read it back so the page shows the new numbers
+        val granted = r.optBoolean("bonus_granted", false)
+        if (granted) runCatching { refresh(context) }
+        Contribution(account(context)!!, granted, r.optDouble("bonus_cny", 0.0))
+    }
+
+    /**
+     * The agent's name and look as the account's devices share it (`rev` 0 = none yet); without
+     * the face's pictures when [withFace] is false. Blocking — [ProfileSync] calls it off the
+     * main thread.
+     */
+    fun profile(context: Context, withFace: Boolean): JSONObject {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        return call(context, "GET", if (withFace) "/v1/me/profile" else "/v1/me/profile?face=false", null, token = key)
+    }
+
+    /** This phone's name and look for the account (last writer wins); the new `rev`. Blocking. */
+    fun putProfile(context: Context, body: JSONObject): JSONObject {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        return call(context, "PUT", "/v1/me/profile", body, token = key)
+    }
+
+    /** Delete everything this account contributed; returns how many turns went. */
+    suspend fun deleteSamples(context: Context): Int = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val n = call(context, "DELETE", "/v1/me/samples", null, token = key).optInt("deleted", 0)
+        prefs(context).edit().putInt(KEY_SAMPLES, 0).apply()
+        n
+    }
+
+    /**
+     * What a job would cost before it is started — the avatar studio asks before a new face
+     * (the candidates, the poses and, with video on, the clips). Nothing is charged.
+     */
+    data class Estimate(
+        val cny: Double,
+        /** What is left of the pool; null when there is no limit. */
+        val leftCny: Double?,
+        val affordable: Boolean,
+        val images: Int,
+        val clips: Int,
+    )
+
+    suspend fun estimate(context: Context, images: Int, clips: Int): Estimate = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val r = call(context, "GET", "/v1/estimate?images=$images&clips=$clips", null, token = key)
+        // 0.5 says `left_cny`; a 0.4 relay said `left_today_cny`
+        val leftKey = if (r.has("left_cny")) "left_cny" else "left_today_cny"
+        Estimate(
+            cny = r.optDouble("cny", 0.0),
+            leftCny = if (r.isNull(leftKey)) null else r.optDouble(leftKey, 0.0),
+            affordable = r.optBoolean("affordable", true),
+            images = images,
+            clips = clips,
+        )
+    }
+
+    /** Ask the relay to send a code. Throws [CloudException] with the relay's `code`. */
+    suspend fun requestCode(context: Context, identifier: String) = withContext(Dispatchers.IO) {
+        call(context, "POST", "/v1/auth/code", JSONObject().put("identifier", identifier.trim()), token = null)
+        Unit
+    }
+
+    /**
+     * Exchange the code for a key and make the relay a usable provider: instance, key, models,
+     * a default group with the recommended chat model (only if the user has none yet), and the
+     * image model for the avatar (only if none is set). Returns the account as the relay sees it.
+     */
+    suspend fun verify(context: Context, identifier: String, code: String, invite: String = ""): Account = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("identifier", identifier.trim())
+            .put("code", code.trim())
+            .put("device", deviceName())
+        // a friend's code counts for a new account only; the relay ignores it otherwise
+        if (invite.isNotBlank()) body.put("invite", invite.trim())
+        adopt(context, call(context, "POST", "/v1/auth/verify", body, token = null))
+    }
+
+    /** The password way in — for people who set one under Account; no code to wait for. */
+    suspend fun login(context: Context, identifier: String, password: String): Account = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("identifier", identifier.trim())
+            .put("password", password)
+            .put("device", deviceName())
+        adopt(context, call(context, "POST", "/v1/auth/login", body, token = null))
+    }
+
+    /**
+     * Set or change the password. [current] is needed when one is set already — except right
+     * after a code sign-in, which is the "forgot it" path. An empty [password] with [current]
+     * removes it.
+     */
+    suspend fun setPassword(context: Context, password: String, current: String?) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val body = JSONObject().put("password", password)
+        if (current != null) body.put("current", current) else body.put("current", JSONObject.NULL)
+        call(context, "POST", "/v1/auth/password", body, token = key)
+        prefs(context).edit().putBoolean(KEY_HAS_PASSWORD, password.isNotEmpty()).apply()
+        Unit
+    }
+
+    /** The devices signed in to this account, the current one first. */
+    suspend fun sessions(context: Context): List<Session> = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: return@withContext emptyList()
+        val arr = call(context, "GET", "/v1/me/sessions", null, token = key).optJSONArray("sessions") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map {
+            Session(
+                prefix = it.optString("prefix"),
+                device = it.optString("device"),
+                via = it.optString("via", "code"),
+                createdAt = it.optLong("created_at"),
+                lastUsedAt = it.optLong("last_used_at", 0),
+                current = it.optBoolean("current"),
+            )
+        }
+    }
+
+    /** Sign one other device out. */
+    suspend fun revokeSession(context: Context, prefix: String) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        call(context, "DELETE", "/v1/me/sessions/$prefix", null, token = key)
+        Unit
+    }
+
+    /** The account's own history, newest first. */
+    suspend fun events(context: Context, limit: Int = 40): List<Event> = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: return@withContext emptyList()
+        val arr = call(context, "GET", "/v1/me/events?limit=$limit", null, token = key).optJSONArray("events") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map {
+            Event(ts = it.optLong("ts"), kind = it.optString("kind"), detail = it.optString("detail"))
+        }
+    }
+
+    /** Every other device loses its key; with [includingThis] this phone signs out too. */
+    suspend fun signOutEverywhere(context: Context, includingThis: Boolean) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        call(context, "POST", "/v1/auth/sign-out-all", JSONObject().put("all", includingThis), token = key)
+        if (includingThis) forgetLocally(context)
+        Unit
+    }
+
+    /** The person's own request: the account and everything about it goes at the relay. */
+    suspend fun deleteAccount(context: Context) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        call(context, "POST", "/v1/auth/delete", null, token = key)
+        forgetLocally(context)
+    }
+
+    private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim().take(80)
+
+    private fun forgetLocally(context: Context) {
+        ai.unicto.unibot.hub.Hub.stop(context)
+        instance(context)?.let { repo(context)?.removeInstance(it.id) }
+        clear(context)
+    }
+
+    /**
+     * A key from the relay (a code or a password sign-in) becomes a usable provider: instance,
+     * key, models, a default group with the recommended chat model (only if the user has none
+     * yet), and the image model for the avatar (only if none is set).
+     */
+    private suspend fun adopt(context: Context, reply: JSONObject): Account {
+        val repo = repo(context) ?: throw CloudException("no_repository", "Provider storage is not ready")
+        val apiKey = reply.optString("api_key").takeIf { it.isNotBlank() }
+            ?: throw CloudException("bad_reply", "The relay sent no key")
+        // The host the code was sent to is the host the key is for; the relay's own idea of
+        // its public address (`base_url`) is informational.
+        val base = baseUrl(context)
+
+        // One instance per relay: signing in again on the same phone refreshes the key and
+        // keeps the entries, groups and the image model that already point at it.
+        val existing = instance(context)
+        val inst = existing?.let {
+            if (it.customBaseURL == base) it else it.copy(customBaseURL = base).also(repo::updateInstance)
+        } ?: ProviderInstance(
+            id = UUID.randomUUID().toString(),
+            label = LABEL,
+            providerType = ProviderType.openAI,
+            credentialType = ProviderCredential.apiKey,
+            customBaseURL = base,
+            appendV1Suffix = true,
+        ).also { repo.addInstance(it) }
+        repo.saveApiKey(inst.id, apiKey)
+        prefs(context).edit().putString(KEY_INSTANCE, inst.id).apply()
+
+        // The models the relay serves — same `/v1/models` call every provider gets; the relay
+        // includes modalities so the picture model is recognised as one.
+        runCatching { repo.refreshModels(inst) }
+        provisionDefaults(context, repo, inst, reply.optJSONArray("models"))
+
+        saveAccount(context, reply)
+        if (reply.optBoolean("created", false)) prefs(context).edit().putBoolean(KEY_FRESH, true).apply()
+        _signedIn.value = true
+        ai.unicto.unibot.hub.Hub.restart(context) // the new key joins the hub
+        ProfileSync.pullSoon(context) // the name and look the account's other devices wear
+        return account(context)!!
+    }
+
+    /** Re-read the balance. Returns null (and forgets the account) when the key is gone. */
+    suspend fun refresh(context: Context): Account? = withContext(Dispatchers.IO) {
+        val inst = instance(context) ?: return@withContext null
+        val key = repo(context)?.loadApiKey(inst.id) ?: return@withContext null
+        try {
+            val me = call(context, "GET", "/v1/me", null, token = key)
+            saveAccount(context, me)
+            account(context)
+        } catch (e: CloudException) {
+            if (e.status == 401) {
+                // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.
+                ai.unicto.unibot.hub.Hub.stop(context)
+                repo(context)?.removeInstance(inst.id)
+                clear(context)
+                null
+            } else {
+                account(context)
+            }
+        }
+    }
+
+    /** Revoke this phone's key at the relay and take the provider out of the app. */
+    suspend fun signOut(context: Context) = withContext(Dispatchers.IO) {
+        val repo = repo(context)
+        val inst = instance(context)
+        val key = inst?.let { repo?.loadApiKey(it.id) }
+        if (inst != null && key != null) {
+            runCatching { call(context, "POST", "/v1/auth/sign-out", null, token = key) }
+        }
+        ai.unicto.unibot.hub.Hub.stop(context)
+        if (inst != null) repo?.removeInstance(inst.id)
+        clear(context)
+    }
+
+    /** A sentence for the person, from the relay's stable error codes. */
+    fun describe(context: Context, e: Throwable): String = when (e) {
+        is CloudException -> when (e.code) {
+            "bad_identifier" -> context.getString(R.string.ub_cloud_err_bad_identifier)
+            "code_wrong" -> context.getString(R.string.ub_cloud_err_code_wrong)
+            "code_expired" -> context.getString(R.string.ub_cloud_err_code_expired)
+            "code_too_often" -> context.getString(R.string.ub_cloud_err_code_too_often)
+            "not_invited" -> context.getString(R.string.ub_cloud_err_not_invited)
+            "send_failed" -> context.getString(R.string.ub_cloud_err_send_failed)
+            "phone_region" -> context.getString(R.string.ub_cloud_err_phone_region)
+            "account_disabled" -> context.getString(R.string.ub_cloud_err_disabled)
+            "bad_key" -> context.getString(R.string.ub_cloud_err_bad_key)
+            "out_of_tokens" -> context.getString(R.string.ub_cloud_err_out_of_tokens)
+            "daily_cap" -> context.getString(R.string.ub_cloud_err_daily_cap)
+            "allowance_exhausted" -> context.getString(R.string.ub_cloud_err_allowance)
+            "rate_limited" -> context.getString(R.string.ub_cloud_err_rate_limited)
+            "unreachable" -> context.getString(R.string.ub_cloud_err_unreachable)
+            "bad_credentials" -> context.getString(R.string.ub_cloud_err_bad_credentials)
+            "no_password" -> context.getString(R.string.ub_cloud_err_no_password)
+            "locked" -> context.getString(R.string.ub_cloud_err_locked)
+            "password_wrong" -> context.getString(R.string.ub_cloud_err_password_wrong)
+            "password_required" -> context.getString(R.string.ub_cloud_err_password_required)
+            "password_short" -> context.getString(R.string.ub_cloud_err_password_short)
+            "password_weak", "password_long" -> context.getString(R.string.ub_cloud_err_password_weak)
+            else -> e.message ?: context.getString(R.string.ub_cloud_err_generic)
+        }
+        is IOException -> context.getString(R.string.ub_cloud_err_unreachable)
+        else -> e.message ?: context.getString(R.string.ub_cloud_err_generic)
+    }
+
+    // -- internals -------------------------------------------------------------------------------
+
+    private fun repo(context: Context): ProviderRepository? =
+        (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
+
+    /**
+     * After the key: a default group if the user has none, and the image model for the avatar
+     * if none is set. Nothing of the user's own is replaced — someone who already has a key
+     * and a group keeps them and gets the relay as one more provider.
+     */
+    private fun provisionDefaults(context: Context, repo: ProviderRepository, inst: ProviderInstance, models: JSONArray?) {
+        val offered = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
+        val recommendedChat = offered.firstOrNull {
+            it.optJSONObject("unibot")?.optBoolean("recommended") == true && !drawsOnly(it)
+        }?.optString("id") ?: offered.firstOrNull { !drawsOnly(it) }?.optString("id")
+        val imageModel = offered.firstOrNull { drawsOnly(it) }?.optString("id")
+
+        var config = repo.config.value
+        var entries = config.modelEntries.filter { it.providerInstanceId == inst.id && !it.isHidden }
+        if (entries.isEmpty() && offered.isNotEmpty()) {
+            // The /models call failed or has not landed yet: build the entries
+            // from the list the relay sent with the key, so the person is never
+            // left with a provider that has no models and a group with no members.
+            repo.replaceEntries(inst.id, offered.mapNotNull { modelFromRelay(it) })
+            config = repo.config.value
+            entries = config.modelEntries.filter { it.providerInstanceId == inst.id && !it.isHidden }
+        }
+        val chatEntry = entries.firstOrNull { it.model.id == recommendedChat }
+            ?: entries.firstOrNull { !ImageGen.looksLikeImageModel(it.model.id) && !drawsOrFilms(it.model) }
+        if (chatEntry != null) {
+            val already = config.modelGroups.any { chatEntry.id in it.memberEntryIds }
+            if (!already) {
+                // A group of ours left empty by an earlier sign-out is reused rather
+                // than doubled; otherwise a new one.
+                val empty = config.modelGroups.firstOrNull { it.name == LABEL && it.memberEntryIds.isEmpty() }
+                if (empty != null) {
+                    repo.updateGroup(empty.copy(memberEntryIds = (empty.memberEntryIds + chatEntry.id).toMutableList()))
+                    if (repo.defaultPrimaryGroupId == null) repo.defaultPrimaryGroupId = empty.id
+                } else {
+                    val group = ModelGroup(name = LABEL)
+                    group.memberEntryIds.add(chatEntry.id)
+                    repo.addGroup(group)
+                    if (repo.defaultPrimaryGroupId == null) repo.defaultPrimaryGroupId = group.id
+                }
+            }
+            // The default group must be one that can answer.
+            val default = repo.config.value.modelGroups.firstOrNull { it.id == repo.defaultPrimaryGroupId }
+            if (default == null || default.memberEntryIds.isEmpty()) {
+                repo.defaultPrimaryGroupId = repo.config.value.modelGroups.firstOrNull { chatEntry.id in it.memberEntryIds }?.id
+            }
+        }
+        if (imageModel != null) {
+            val current = ImageGen.endpoint(context)
+            if (current == null || current.instanceId == inst.id) ImageGen.save(context, inst.id, imageModel)
+        }
+    }
+
+    private fun drawsOnly(model: JSONObject): Boolean {
+        val out = model.optJSONObject("architecture")?.optJSONArray("output_modalities")
+        val mods = (0 until (out?.length() ?: 0)).map { out!!.optString(it) }
+        return "image" in mods && "text" !in mods
+    }
+
+    /** A picture or video model is no chat model, whatever its name says. */
+    private fun drawsOrFilms(model: LLMModel): Boolean {
+        val out = model.outputModalities?.map { it.lowercase() } ?: return false
+        return "text" !in out && ("image" in out || "video" in out)
+    }
+
+    /** One entry of the relay's `/v1/models` list (also sent with the key) as the app's model. */
+    private fun modelFromRelay(item: JSONObject): LLMModel? {
+        val id = item.optString("id").takeIf { it.isNotBlank() } ?: return null
+        val arch = item.optJSONObject("architecture")
+        fun mods(key: String): List<String>? {
+            val arr = arch?.optJSONArray(key) ?: return null
+            return (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+        }
+        return LLMModel(
+            id = id,
+            displayName = item.optString("name").ifBlank { id },
+            provider = LABEL,
+            inputModalities = mods("input_modalities"),
+            outputModalities = mods("output_modalities"),
+        )
+    }
+
+    private fun saveAccount(context: Context, reply: JSONObject) {
+        val account = reply.optJSONObject("account") ?: JSONObject()
+        val tokens = reply.optJSONObject("tokens") ?: JSONObject()
+        val spend = reply.optJSONObject("spend") ?: JSONObject()
+        prefs(context).edit()
+            .putString(KEY_CHANNEL, account.optString("channel"))
+            .putString(KEY_HINT, account.optString("hint"))
+            .putLong(KEY_GRANTED, tokens.optLong("granted"))
+            .putLong(KEY_USED, tokens.optLong("used"))
+            .putLong(KEY_USED_TODAY, tokens.optLong("used_today"))
+            .putLong(KEY_DAILY_CAP, tokens.optLong("daily_cap"))
+            .putBoolean(KEY_UNLIMITED, tokens.optBoolean("unlimited", false))
+            .putBoolean(KEY_MEMBER, account.optBoolean("member", false))
+            .putFloat(KEY_SPENT_TODAY, spend.optDouble("today", 0.0).toFloat())
+            .putFloat(KEY_SPENT_TOTAL, spend.optDouble("total", 0.0).toFloat())
+            // relay 0.5: the pool and what is left; a 0.4 relay sent the day's cap under `daily_cap`
+            .putFloat(KEY_GRANT, spend.optDouble("grant", spend.optDouble("daily_cap", 0.0)).toFloat())
+            .putFloat(
+                KEY_LEFT,
+                when {
+                    spend.optBoolean("unlimited", false) -> -1f
+                    spend.has("left") && !spend.isNull("left") -> spend.optDouble("left", -1.0).toFloat()
+                    spend.has("left_today") && !spend.isNull("left_today") -> spend.optDouble("left_today", -1.0).toFloat()
+                    else -> -1f
+                },
+            )
+            .putBoolean(KEY_WARN, spend.optBoolean("warn", false))
+            .putFloat(KEY_ALLOWANCE, spend.optDouble("allowance_cny", 0.0).toFloat())
+            .putFloat(KEY_CONTRIBUTE_BONUS, spend.optDouble("contribute_bonus_cny", 0.0).toFloat())
+            .putBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, spend.optBoolean("contribute_bonus_available", false))
+            .putString(KEY_OWN_KEY_DOCS, spend.optString("own_key_docs", ""))
+            .putFloat(KEY_USD_CNY, spend.optDouble("usd_cny", 0.0).toFloat())
+            .putString(KEY_ACCOUNT_ID, account.optString("id"))
+            .putLong(KEY_CREATED_AT, account.optLong("created_at", 0))
+            .putBoolean(KEY_HAS_PASSWORD, account.optBoolean("has_password", false))
+            .putInt(KEY_SESSIONS, account.optInt("sessions", 0))
+            .putString(KEY_VIA, account.optString("signed_in_via"))
+            .putString(KEY_USAGE, reply.optJSONObject("usage")?.toString())
+            .putString(KEY_INVITE_CODE, reply.optJSONObject("invite")?.optString("code").orEmpty())
+            .putString(KEY_INVITE_URL, reply.optJSONObject("invite")?.optString("url").orEmpty())
+            .putInt(KEY_INVITES, reply.optJSONObject("invite")?.optInt("invites") ?: 0)
+            .putFloat(KEY_INVITE_BONUS, (reply.optJSONObject("invite")?.optDouble("bonus_cny", 0.0) ?: 0.0).toFloat())
+            .putFloat(KEY_INVITE_EARNED, (reply.optJSONObject("invite")?.optDouble("earned_cny", 0.0) ?: 0.0).toFloat())
+            .putBoolean(KEY_CONTRIBUTE, reply.optJSONObject("contribute")?.optBoolean("on", false) ?: false)
+            .putInt(KEY_SAMPLES, reply.optJSONObject("contribute")?.optInt("samples", 0) ?: 0)
+            .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
+            .apply()
+        migrateMediaModels(context, reply.optJSONArray("models"))
+    }
+
+    /**
+     * The relay's menu changes between versions (0.4 draws with qwen-image-3.0 and animates with
+     * wan2.2-i2v-flash instead of the Pro tier and MiniMax-H3). A phone that still points its
+     * image or video model at a name the relay no longer offers is moved to what it offers now;
+     * a user's own providers are never touched.
+     */
+    private fun migrateMediaModels(context: Context, models: JSONArray?) {
+        val inst = instance(context) ?: return
+        val offered = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
+        if (offered.isEmpty()) return
+        val ids = offered.map { it.optString("id") }.toSet()
+        val image = ImageGen.endpoint(context)
+        if (image != null && image.instanceId == inst.id && image.model !in ids) {
+            offered.firstOrNull { drawsOnly(it) }?.optString("id")?.let { ImageGen.save(context, inst.id, it) }
+        }
+        val video = ai.unicto.unibot.media.MediaModels.videoEndpoint(context)
+        if (video != null && video.instanceId == inst.id && video.model !in ids) {
+            val offeredVideo = offered.filter { films(it) }
+            val pick = offeredVideo.firstOrNull { it.optJSONObject("unibot")?.optBoolean("recommended") == true } ?: offeredVideo.firstOrNull()
+            pick?.optString("id")?.let { ai.unicto.unibot.media.MediaModels.saveVideo(context, inst.id, it) }
+        }
+    }
+
+    private fun films(model: JSONObject): Boolean {
+        val out = model.optJSONObject("architecture")?.optJSONArray("output_modalities")
+        return (0 until (out?.length() ?: 0)).any { out!!.optString(it) == "video" }
+    }
+
+    private fun parseUsage(usage: JSONObject?): Usage? {
+        usage ?: return null
+        fun rows(arr: JSONArray?): List<UsageRow> = (0 until (arr?.length() ?: 0)).mapNotNull { arr?.optJSONObject(it) }.map {
+            UsageRow(
+                kind = it.optString("kind"),
+                model = it.optString("model"),
+                requests = it.optInt("requests"),
+                promptTokens = it.optLong("prompt_tokens"),
+                completionTokens = it.optLong("completion_tokens"),
+                charged = it.optLong("charged"),
+                costCny = it.optDouble("cost_cny", 0.0),
+            )
+        }
+        val kinds = usage.optJSONArray("kinds")
+        return Usage(
+            todayByKind = rows(usage.optJSONObject("today")?.optJSONArray("by_kind")),
+            totalByKind = rows(usage.optJSONObject("total")?.optJSONArray("by_kind")),
+            byModel = rows(usage.optJSONObject("total")?.optJSONArray("by_model")),
+            kinds = (0 until (kinds?.length() ?: 0)).map { kinds!!.optString(it) },
+        )
+    }
+
+    private fun clear(context: Context) {
+        _signedIn.value = false
+        prefs(context).edit()
+            .remove(KEY_INSTANCE).remove(KEY_CHANNEL).remove(KEY_HINT)
+            .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
+            .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_USD_CNY)
+            .remove(KEY_GRANT).remove(KEY_LEFT).remove(KEY_WARN).remove(KEY_ALLOWANCE).remove(KEY_CONTRIBUTE_BONUS)
+            .remove(KEY_CONTRIBUTE_BONUS_AVAILABLE).remove(KEY_OWN_KEY_DOCS)
+            .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
+            .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
+            .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
+            .apply()
+        ProfileSync.forget(context)
+    }
+
+    private fun call(context: Context, method: String, path: String, body: JSONObject?, token: String?): JSONObject {
+        val builder = Request.Builder().url(baseUrl(context) + path)
+        if (token != null) builder.header("Authorization", "Bearer $token")
+        builder.header("User-Agent", "unibot-Android/${BuildConfig.VERSION_NAME}")
+        when (method) {
+            "GET" -> builder.get()
+            else -> builder.method(method, (body?.toString() ?: "{}").toRequestBody(json))
+        }
+        val response = try {
+            http.newCall(builder.build()).execute()
+        } catch (e: IOException) {
+            throw CloudException("unreachable", e.message ?: "unreachable")
+        }
+        response.use { r ->
+            val text = r.body?.string().orEmpty()
+            if (r.isSuccessful) {
+                return if (text.isBlank()) JSONObject() else runCatching { JSONObject(text) }.getOrElse { JSONObject() }
+            }
+            val err = runCatching { JSONObject(text).optJSONObject("error") }.getOrNull()
+            throw CloudException(
+                code = err?.optString("code")?.takeIf { it.isNotBlank() } ?: "http_${r.code}",
+                message = err?.optString("message")?.takeIf { it.isNotBlank() } ?: "HTTP ${r.code}",
+                status = r.code,
+            )
+        }
+    }
+}

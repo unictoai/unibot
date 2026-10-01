@@ -1,0 +1,194 @@
+"""Model Context Protocol client: expose tools of MCP servers as unibot tools.
+
+Configure in ``config.toml``::
+
+    [[mcp.servers]]
+    name = "filesystem"
+    command = "npx"
+    args = ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]
+    risk = "moderate"          # safe | moderate | sensitive (default moderate)
+
+    [[mcp.servers]]
+    name = "remote"
+    url = "http://localhost:8000/mcp"   # streamable HTTP (or SSE)
+    [mcp.servers.tools.delete_file]     # one tool stricter than its server
+    risk = "sensitive"
+
+Compatible with mcp 1.x and 2.x.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from collections.abc import Callable
+from contextlib import AsyncExitStack
+from typing import Any
+
+from unibot.config import MCPServerSettings
+from unibot.logger import logger
+from unibot.schema import ToolResult
+from unibot.tools.base import BaseTool, CallAssessment
+
+_NAME_RE = re.compile(r"[^a-zA-Z0-9_-]")
+
+
+def _attr(obj: Any, *names: str, default: Any = None) -> Any:
+    """Read the first present attribute – mcp 2.x uses snake_case, 1.x camelCase."""
+    for name in names:
+        value = getattr(obj, name, None)
+        if value is not None:
+            return value
+    return default
+
+
+def _safe_name(server: str, tool: str) -> str:
+    name = _NAME_RE.sub("_", f"{server}__{tool}")
+    return name[:64]
+
+
+class MCPTool(BaseTool):
+    session: Any
+    server: str
+    original_name: str
+
+    def assess(self, args: dict[str, Any]) -> CallAssessment:
+        base = super().assess(args)
+        base.summary = (
+            f"mcp:{self.server}.{self.original_name}({json.dumps(args, ensure_ascii=False)[:150]})"
+        )
+        return base
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        # Always send an object, even an empty one: servers built on zod (12306-mcp's
+        # `get-current-date`, for one) reject a call with no `arguments` at all.
+        result = await self.session.call_tool(self.original_name, dict(kwargs))
+        parts: list[str] = []
+        for item in getattr(result, "content", None) or []:
+            itype = getattr(item, "type", "")
+            if itype == "text":
+                parts.append(getattr(item, "text", ""))
+            elif itype == "image":
+                parts.append(f"[image {_attr(item, 'mime_type', 'mimeType', default='')}]")
+            elif itype == "resource":
+                res = getattr(item, "resource", None)
+                parts.append(getattr(res, "text", None) or f"[resource {getattr(res, 'uri', '')}]")
+            else:
+                parts.append(str(item))
+        structured = _attr(result, "structured_content", "structuredContent")
+        if structured and not parts:
+            parts.append(json.dumps(structured, ensure_ascii=False, indent=2, default=str))
+        text = "\n".join(p for p in parts if p) or "(no output)"
+        if _attr(result, "is_error", "isError", default=False):
+            return ToolResult.fail(text)
+        return ToolResult(output=text)
+
+
+class MCPManager:
+    """Connects to configured MCP servers and keeps the sessions alive.
+
+    ``resolve`` fills ``{{vault:NAME}}`` placeholders in a server's ``url``, ``args`` and
+    ``env`` right before connecting, so a key (``?key={{vault:AMAP_KEY}}``) can stay in
+    the vault instead of the config file.
+    """
+
+    def __init__(
+        self, servers: list[MCPServerSettings], resolve: Callable[[Any], Any] | None = None
+    ):
+        self.servers = servers
+        self._resolve = resolve
+        self._stack = AsyncExitStack()
+        self.tools: list[MCPTool] = []
+
+    def _resolved(self, cfg: MCPServerSettings) -> MCPServerSettings:
+        if self._resolve is None:
+            return cfg
+        return cfg.model_copy(
+            update={
+                "url": self._resolve(cfg.url) if cfg.url else cfg.url,
+                "args": [str(a) for a in self._resolve(list(cfg.args))],
+                "env": {k: str(v) for k, v in self._resolve(dict(cfg.env)).items()},
+            }
+        )
+
+    async def connect(self) -> list[MCPTool]:
+        from mcp import ClientSession
+
+        for cfg in self.servers:
+            try:
+                read, write = await self._open_transport(self._resolved(cfg))
+                session = await self._stack.enter_async_context(ClientSession(read, write))
+                await session.initialize()
+                listed = await session.list_tools()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("MCP server '{}' unavailable: {}", cfg.name, exc)
+                continue
+            for t in listed.tools:
+                schema = _attr(t, "input_schema", "inputSchema") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                policy = cfg.tools.get(t.name)
+                tool = MCPTool(
+                    name=_safe_name(cfg.name, t.name),
+                    description=(t.description or f"{t.name} (from MCP server {cfg.name})")[:1000],
+                    parameters=schema,
+                    risk=policy.risk if policy and policy.risk is not None else cfg.risk,
+                    egress=policy.egress if policy and policy.egress is not None else cfg.egress,
+                    reads_private_data=(
+                        policy.reads_private_data
+                        if policy and policy.reads_private_data is not None
+                        else cfg.reads_private_data
+                    ),
+                    session=session,
+                    server=cfg.name,
+                    original_name=t.name,
+                )
+                self.tools.append(tool)
+            logger.info("MCP server '{}' connected with {} tools", cfg.name, len(listed.tools))
+        return self.tools
+
+    async def _open_transport(self, cfg: MCPServerSettings) -> tuple[Any, Any]:
+        if cfg.url:
+            try:  # mcp >= 2
+                from mcp.client.streamable_http import streamable_http_client as http_client
+            except ImportError:  # mcp 1.x
+                from mcp.client.streamable_http import (  # type: ignore[attr-defined,no-redef]
+                    streamablehttp_client as http_client,
+                )
+            try:
+                streams = await self._stack.enter_async_context(http_client(cfg.url))
+            except Exception as exc:  # noqa: BLE001
+                # an older server speaks SSE only; but a wrong URL or a refused key looks the
+                # same from here, so the first answer is kept in the log
+                logger.warning(
+                    "MCP '{}': streamable HTTP failed ({}: {}); trying SSE",
+                    cfg.name,
+                    type(exc).__name__,
+                    exc,
+                )
+                from mcp.client.sse import sse_client
+
+                streams = await self._stack.enter_async_context(sse_client(cfg.url))
+            return streams[0], streams[1]
+        if not cfg.command:
+            raise ValueError(f"MCP server '{cfg.name}' needs either `command` or `url`")
+        import os
+
+        from mcp import StdioServerParameters
+        from mcp.client.stdio import stdio_client
+
+        params = StdioServerParameters(
+            command=cfg.command, args=cfg.args, env={**os.environ, **cfg.env} if cfg.env else None
+        )
+        streams = await self._stack.enter_async_context(stdio_client(params))
+        return streams[0], streams[1]
+
+    async def close(self) -> None:
+        try:
+            await self._stack.aclose()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("MCP shutdown: {}", exc)
+
+
+__all__ = ["MCPManager", "MCPTool"]

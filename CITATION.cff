@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use unibot in your work, please cite it as below."
+title: "unibot: an open-source personal agent for every device you own"
+type: software
+authors:
+  - name: "unibot Contributors"
+repository-code: "https://github.com/unictoai/unibot"
+url: "https://github.com/unictoai/unibot"
+license: GPL-3.0-or-later
+version: 0.1.0
+keywords:
+  - personal agent
+  - AI assistant
+  - on-device
+  - Android
+  - GUI agent
+  - cross-device
+  - approvals
+  - tool use

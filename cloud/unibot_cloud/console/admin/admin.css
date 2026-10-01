@@ -1,0 +1,93 @@
+/* The operator's page, in the phone's design language. Builds on ../app.css. */
+.admin { min-height: 100%; padding: 22px clamp(14px, 3vw, 40px) 56px; max-width: 1240px; margin: 0 auto; }
+.admin .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.admin .bar img { width: 32px; height: 32px; }
+.admin .bar h1 { font-size: 20px; margin: 0; flex: 1; letter-spacing: -0.02em; }
+.admin .bar h1 small { font-weight: 400; color: var(--ink-3); font-size: 13px; margin-left: 8px; }
+.admin .bar .seg { margin-right: 4px; }
+.admin .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.admin .grid > .span { grid-column: 1 / -1; }
+.admin .kpis { margin-bottom: 14px; }
+.admin .kpi .v small { font-size: 13px; color: var(--ink-2); font-weight: 500; margin-left: 4px; }
+.admin .panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.admin .panel h2 { font-size: 13px; margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--hairline); color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 8px; letter-spacing: 0.02em; }
+.admin .panel h2 .sp { flex: 1; }
+.admin .panel h2 .btn.sm { padding: 5px 10px; font-size: 12px; }
+.admin table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.admin th, .admin td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.admin th { font-weight: 500; color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.admin tbody tr { cursor: pointer; }
+.admin tbody tr:hover td { background: var(--fill); }
+.admin tr:last-child td { border-bottom: 0; }
+.admin td.num, .admin th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.admin td .sub { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.admin .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.admin .who .disc { width: 32px; height: 32px; font-size: 13px; }
+.admin .who .n { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin .who .n.dim { color: var(--ink-3); font-weight: 400; }
+.admin .who .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.admin .dev { display: flex; flex-wrap: wrap; gap: 3px 8px; font-size: 12px; color: var(--ink-2); }
+.admin .dev .dot { width: 7px; height: 7px; margin-right: 4px; vertical-align: middle; }
+.admin .kv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; padding: 12px 16px; font-size: 13px; }
+.admin .kv b { font-weight: 500; color: var(--ink-3); }
+.admin .kv code { word-break: break-all; }
+.admin .feed .list { max-height: 560px; overflow: auto; }
+.admin .feed .row { min-height: 44px; padding: 8px 16px; }
+.admin .feed .row .t { font-size: 14px; }
+.admin .feed .row .tile { width: 30px; height: 30px; border-radius: 9px; }
+.admin .feed .row .tile svg { width: 16px; height: 16px; }
+.admin .foot { font-size: 12px; color: var(--ink-3); line-height: 1.6; margin: 18px 4px 0; }
+.admin .signin .card { text-align: center; }
+.admin .kinds { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px 12px; }
+.admin .filter { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--hairline); }
+.admin .filter button { border: 0; background: var(--fill); border-radius: 999px; padding: 4px 11px; font-size: 12px; color: var(--ink-2); }
+.admin .filter button.on { background: var(--action); color: #fff; }
+.admin .search { display: flex; align-items: center; gap: 8px; }
+.admin .search input { border: 0; background: var(--fill); border-radius: 10px; padding: 6px 10px; font-size: 13px; width: 200px; outline: none; }
+.admin .search input:focus { box-shadow: 0 0 0 2px rgba(10, 102, 228, 0.25); }
+/* trends and the site: a total and a bar a day per metric, ranked lists */
+.admin .sparks { padding: 8px 16px 6px; }
+.admin .spark { display: grid; grid-template-columns: minmax(110px, 160px) 56px 1fr; align-items: center; gap: 12px; padding: 5px 0; font-size: 13px; }
+.admin .spark .k { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin .spark b { font-variant-numeric: tabular-nums; text-align: right; }
+.admin .bars-mini { display: flex; align-items: flex-end; gap: 2px; height: 24px; }
+.admin .bars-mini i { flex: 1; min-width: 2px; border-radius: 2px; background: var(--action); opacity: 0.85; }
+.admin .bars-mini i.ok { background: var(--ok); } .admin .bars-mini i.cyan { background: var(--action-2); } .admin .bars-mini i.violet { background: var(--violet); } .admin .bars-mini i.warn { background: var(--warn); }
+.admin .bars-mini i.z { background: var(--hairline); opacity: 1; }
+.admin .bars-mini i:hover { opacity: 1; }
+.admin .kpis.in-panel { padding: 12px 16px 4px; margin: 0; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.admin .kpi.flat { box-shadow: none; background: var(--fill); border-radius: 14px; padding: 10px 12px 9px; }
+.admin .kpi.flat .v { font-size: 20px; }
+.admin .cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 18px; padding: 6px 16px 8px; }
+.admin .cols3 h3 { font-size: 12px; color: var(--ink-3); font-weight: 600; margin: 8px 0 4px; letter-spacing: 0.02em; }
+.admin .ranks { display: flex; flex-direction: column; gap: 4px; }
+.admin .rank { display: grid; grid-template-columns: minmax(0, 1fr) 72px 44px; align-items: center; gap: 8px; font-size: 12.5px; }
+.admin .rank .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.admin .rank i { display: block; height: 6px; border-radius: 3px; background: var(--action); opacity: 0.55; justify-self: start; }
+.admin .rank b { font-variant-numeric: tabular-nums; text-align: right; font-weight: 500; white-space: nowrap; }
+.admin .panel h2 .fine { font-weight: 400; }
+@media (max-width: 900px) { .admin .cols3 { grid-template-columns: 1fr; } }
+/* the drawer: one account */
+.drawer-scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.32); z-index: 30; animation: fade 0.18s ease both; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100%); background: var(--canvas); overflow: auto; padding: 16px 18px 40px; animation: slide 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes slide { from { transform: translateX(28px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.drawer .head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.drawer .head h2 { margin: 0; font-size: 20px; letter-spacing: -0.02em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drawer .card + .card, .drawer .card + .label { margin-top: 12px; }
+.drawer .identity { padding: 16px; }
+.drawer .identity .disc { width: 52px; height: 52px; font-size: 20px; }
+.drawer .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--hairline); }
+.drawer .stats div { padding: 12px 14px; border-right: 1px solid var(--hairline); }
+.drawer .stats div:last-child { border-right: 0; }
+.drawer .stats .k { font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+.drawer .stats .v { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.drawer .acts { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--hairline); }
+.drawer .acts .btn { width: auto; padding: 8px 13px; border-radius: 10px; font-size: 13px; }
+.drawer .ledger td { padding: 8px 14px; font-size: 12.5px; white-space: nowrap; }
+.drawer .ledger tbody tr { cursor: default; }
+.drawer .ledger tbody tr:hover td { background: transparent; }
+.drawer .bars { height: 90px; }
+@media (max-width: 900px) {
+  .admin .grid { grid-template-columns: 1fr; }
+  .admin th.hide-sm, .admin td.hide-sm { display: none; }
+}

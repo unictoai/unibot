@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src ws://127.0.0.1:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+    <title>unibot stage</title>
+    <style>
+      @property --a {
+        syntax: "<angle>";
+        initial-value: 0deg;
+        inherits: false;
+      }
+      :root {
+        --accent: #0a66e4;
+        --violet: #7c5cff;
+        --cyan: #06b6d4;
+        --ink: rgba(17, 18, 24, 0.82);
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        pointer-events: none;
+        user-select: none;
+        font-family:
+          -apple-system, "PingFang SC", "Noto Sans CJK SC", "Segoe UI", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      canvas {
+        position: fixed;
+        left: 0;
+        top: 0;
+      }
+
+      /* ---------------------------------------------------------------- edge glow
+         Cheap on purpose: the stage often runs on a 4K display without a GPU (remote
+         desktops), so nothing full-screen animates. The rim is four thin strips; one light
+         runs along them clockwise — top, right, bottom, left — a bright head with a long
+         tail (a running light, as on a marquee), each strip lit for a quarter of the lap.
+         The comet is three hues — blue into violet into cyan, a whitish head — the same
+         three the Android stage runs; amber while the hands wait for the user.
+         The haze is rasterised once and only its opacity changes. */
+      #frame {
+        position: fixed;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 480ms ease;
+        --lap: 8s;
+        --c1: var(--accent);
+        --c2: var(--violet);
+        --c3: var(--cyan);
+        --dim: rgba(10, 102, 228, 0.2);
+        --head: #eef7ff;
+        --haze: rgba(124, 92, 255, 0.28);
+      }
+      #frame.wait {
+        --c1: #d97706;
+        --c2: #f59e0b;
+        --c3: #fbbf24;
+        --dim: rgba(245, 158, 11, 0.22);
+        --head: #fff6dc;
+        --haze: rgba(245, 158, 11, 0.26);
+      }
+      #frame.on {
+        opacity: 1;
+      }
+      #frame .e,
+      #frame .g {
+        position: absolute;
+        background-repeat: no-repeat;
+        animation: var(--lap) linear infinite;
+      }
+      #frame .e {
+        background-color: var(--dim);
+      }
+      #frame .e.t,
+      #frame .e.b {
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-size: 200% 100%;
+      }
+      #frame .e.l,
+      #frame .e.r {
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background-size: 100% 200%;
+      }
+      /* the head's glow: a wider, fainter strip under the rim that runs with it */
+      #frame .g.t,
+      #frame .g.b {
+        left: 0;
+        right: 0;
+        height: 26px;
+        background-size: 200% 100%;
+      }
+      #frame .g.l,
+      #frame .g.r {
+        top: 0;
+        bottom: 0;
+        width: 26px;
+        background-size: 100% 200%;
+      }
+      #frame .g.t {
+        top: 0;
+        background-image: linear-gradient(90deg, transparent 0%, transparent 62%, var(--haze) 100%);
+        animation-name: run-x;
+      }
+      #frame .g.r {
+        right: 0;
+        background-image: linear-gradient(180deg, transparent 0%, transparent 62%, var(--haze) 100%);
+        animation-name: run-y;
+        animation-delay: calc(var(--lap) * -0.75);
+      }
+      #frame .g.b {
+        bottom: 0;
+        background-image: linear-gradient(270deg, transparent 0%, transparent 62%, var(--haze) 100%);
+        animation-name: run-x-back;
+        animation-delay: calc(var(--lap) * -0.5);
+      }
+      #frame .g.l {
+        left: 0;
+        background-image: linear-gradient(0deg, transparent 0%, transparent 62%, var(--haze) 100%);
+        animation-name: run-y-back;
+        animation-delay: calc(var(--lap) * -0.25);
+      }
+      /* the comet: the image is twice the strip; its head sits at the leading end and the tail
+         fades over the trailing 55 %. Sliding it two strip-lengths over half a lap carries the
+         head across in the first quarter — when the next strip takes over — and the tail out
+         in the second, so the light bends round the corner; parked at the end, the strip shows
+         only the image's dim part, and for the rest of the lap it is just the dim rim. */
+      #frame .e.t {
+        top: 0;
+        background-image: linear-gradient(90deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
+        animation-name: run-x;
+      }
+      #frame .e.r {
+        right: 0;
+        background-image: linear-gradient(180deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
+        animation-name: run-y;
+        animation-delay: calc(var(--lap) * -0.75);
+      }
+      #frame .e.b {
+        bottom: 0;
+        background-image: linear-gradient(270deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
+        animation-name: run-x-back;
+        animation-delay: calc(var(--lap) * -0.5);
+      }
+      #frame .e.l {
+        left: 0;
+        background-image: linear-gradient(0deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
+        animation-name: run-y-back;
+        animation-delay: calc(var(--lap) * -0.25);
+      }
+      @keyframes run-x {
+        0% { background-position-x: 200%; }
+        50% { background-position-x: 0%; }
+        100% { background-position-x: 0%; }
+      }
+      @keyframes run-y {
+        0% { background-position-y: 200%; }
+        50% { background-position-y: 0%; }
+        100% { background-position-y: 0%; }
+      }
+      @keyframes run-x-back {
+        0% { background-position-x: -100%; }
+        50% { background-position-x: 100%; }
+        100% { background-position-x: 100%; }
+      }
+      @keyframes run-y-back {
+        0% { background-position-y: -100%; }
+        50% { background-position-y: 100%; }
+        100% { background-position-y: 100%; }
+      }
+      /* the inner glow: four gradient strips (no blur to rasterise), a brighter set on top
+         that only fades in for the moment of a screenshot */
+      #frame .h {
+        position: absolute;
+        --g: rgba(10, 102, 228, 0.15);
+      }
+      #frame.wait .h {
+        --g: rgba(245, 158, 11, 0.14);
+      }
+      #frame .h.t {
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 110px;
+        background: linear-gradient(180deg, var(--g), transparent);
+      }
+      #frame .h.b {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 110px;
+        background: linear-gradient(0deg, var(--g), transparent);
+      }
+      #frame .h.l {
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 110px;
+        background: linear-gradient(90deg, var(--g), transparent);
+      }
+      #frame .h.r {
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 110px;
+        background: linear-gradient(270deg, var(--g), transparent);
+      }
+      #frame .look-set {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 160ms ease;
+      }
+      #frame .look-set .h {
+        --g: rgba(6, 182, 212, 0.3);
+      }
+      #frame.look .look-set {
+        opacity: 1;
+      }
+      #scan {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: -6px;
+        height: 3px;
+        opacity: 0;
+        background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.9), rgba(10, 102, 228, 0.9), transparent);
+        box-shadow: 0 0 18px rgba(6, 182, 212, 0.6);
+      }
+      #scan.go {
+        animation: sweep 620ms cubic-bezier(0.4, 0, 0.2, 1) 1;
+      }
+      @keyframes turn {
+        to {
+          --a: 360deg;
+        }
+      }
+      @keyframes sweep {
+        0% {
+          opacity: 0;
+          transform: translateY(0);
+        }
+        10% {
+          opacity: 1;
+        }
+        90% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(100vh);
+        }
+      }
+
+      /* -------------------------------------------------------------------- pill */
+      #pill {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-28px) scale(0.96);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 16px 9px 10px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: #fff;
+        font-size: 13.5px;
+        line-height: 1.2;
+        letter-spacing: 0.01em;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.08) inset,
+          0 12px 40px rgba(0, 0, 0, 0.32),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
+        opacity: 0;
+        transition:
+          opacity 260ms ease,
+          transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          background-color 400ms ease;
+        max-width: min(72vw, 760px);
+        white-space: nowrap;
+      }
+      #pill.on {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+      }
+      #pill.done {
+        background: rgba(6, 95, 70, 0.9);
+      }
+      #pill.stopped {
+        background: rgba(127, 29, 29, 0.9);
+      }
+      #pill .avatar {
+        position: relative;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #f1efeb center/cover;
+        flex: none;
+      }
+      #pill .avatar::after {
+        content: "";
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 1.5px solid transparent;
+        background: conic-gradient(from var(--a), var(--accent), var(--violet), var(--cyan), var(--accent)) border-box;
+        -webkit-mask:
+          linear-gradient(#000 0 0) padding-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: turn 2.4s linear infinite;
+      }
+      #pill.done .avatar::after,
+      #pill.stopped .avatar::after {
+        animation: none;
+        background: rgba(255, 255, 255, 0.35);
+      }
+      #pill .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 2.5px;
+        height: 14px;
+        flex: none;
+      }
+      #pill .bars i {
+        display: block;
+        width: 3px;
+        border-radius: 2px;
+        background: linear-gradient(180deg, var(--cyan), var(--accent));
+        animation: bar 1s ease-in-out infinite;
+        height: 40%;
+      }
+      #pill .bars i:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      #pill .bars i:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+      #pill .bars i:nth-child(4) {
+        animation-delay: 0.45s;
+      }
+      #pill.done .bars,
+      #pill.stopped .bars {
+        display: none;
+      }
+      #pill .mark {
+        display: none;
+        width: 16px;
+        height: 16px;
+        flex: none;
+      }
+      #pill.done .mark,
+      #pill.stopped .mark {
+        display: block;
+      }
+      #pill .what {
+        font-weight: 600;
+      }
+      #pill .step {
+        color: rgba(255, 255, 255, 0.8);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      #pill .step.swap {
+        animation: swap 260ms ease;
+      }
+      #pill .hint {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+        padding-left: 10px;
+        border-left: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      #pill .hint kbd {
+        font: inherit;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      /* the one thing on the stage that takes a click */
+      #pill .stop {
+        appearance: none;
+        border: 0;
+        margin-left: 4px;
+        padding: 6px 13px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 160ms ease;
+      }
+      #pill .stop:hover {
+        background: rgba(255, 90, 80, 0.9);
+      }
+      #pill.done .stop,
+      #pill.stopped .stop {
+        display: none;
+      }
+      @keyframes bar {
+        0%,
+        100% {
+          height: 35%;
+        }
+        50% {
+          height: 100%;
+        }
+      }
+      @keyframes swap {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* ---------------------------------------------------------- keys and typing */
+      #keys {
+        position: fixed;
+        top: 74px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        opacity: 0;
+        transition:
+          opacity 200ms ease,
+          transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      #keys.on {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      #keys kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 30px;
+        height: 30px;
+        padding: 0 9px;
+        border-radius: 8px;
+        background: linear-gradient(180deg, #ffffff, #e6e7ee);
+        color: #1c1c1e;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        font:
+          600 13px -apple-system,
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+        box-shadow:
+          0 2px 0 #9ea2b3,
+          0 6px 16px rgba(0, 0, 0, 0.28);
+        animation: press 360ms ease;
+      }
+      #keys .plus {
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 700;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      }
+      #keys .typing {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: #fff;
+        font-size: 12.5px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      }
+      #keys .typing .caret {
+        width: 2px;
+        height: 14px;
+        background: var(--cyan);
+        animation: blink 0.9s steps(2) infinite;
+      }
+      @keyframes press {
+        0% {
+          transform: translateY(-4px);
+          box-shadow:
+            0 6px 0 #b9bcc8,
+            0 10px 20px rgba(0, 0, 0, 0.25);
+        }
+        60% {
+          transform: translateY(1px);
+          box-shadow:
+            0 1px 0 #b9bcc8,
+            0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        100% {
+          transform: none;
+        }
+      }
+      @keyframes blink {
+        to {
+          visibility: hidden;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frame">
+      <i class="h t"></i><i class="h b"></i><i class="h l"></i><i class="h r"></i>
+      <div class="look-set"><i class="h t"></i><i class="h b"></i><i class="h l"></i><i class="h r"></i></div>
+      <i class="g t"></i><i class="g b"></i><i class="g l"></i><i class="g r"></i>
+      <i class="e t"></i><i class="e b"></i><i class="e l"></i><i class="e r"></i>
+    </div>
+    <div id="scan"></div>
+    <canvas id="stage"></canvas>
+    <div id="pill">
+      <span class="avatar"></span>
+      <span class="bars"><i></i><i></i><i></i><i></i></span>
+      <svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path id="markpath" d="M3 8.5l3 3 7-7" /></svg>
+      <span class="what" id="what"></span>
+      <span class="step" id="step"></span>
+      <button type="button" class="stop" id="stop"></button>
+      <span class="hint" id="hint"></span>
+    </div>
+    <div id="keys"></div>
+    <script type="module" src="./stage.ts"></script>
+  </body>
+</html>

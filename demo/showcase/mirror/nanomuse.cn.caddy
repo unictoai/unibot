@@ -1,0 +1,61 @@
+# unibot.cn — the project site, mirrored from github.com/nano-muse/nano-muse.github.io by
+# sync.sh (every minute, from the systemd timer). Certificates come the ordinary way, HTTP-01:
+# both names point straight at this box, nothing in front. Installed into sites.d/ by install.sh.
+
+www.unibot.cn {
+	redir https://unibot.cn{uri} permanent
+}
+
+unibot.cn {
+	root * /srv/www/unibot.cn
+	encode zstd gzip
+
+	# the access log, for the daily counts traffic.py keeps (visits, downloads, referrers): JSON
+	# lines, rolled at 20 MB, kept a week and no longer. docker-compose.yml mounts logs/caddy here.
+	# Rolled files stay uncompressed so traffic.py can finish reading one by its inode.
+	log {
+		output file /var/log/caddy/unibot.cn.log {
+			roll_size 20MiB
+			roll_keep 20
+			roll_keep_for 168h
+			roll_uncompressed
+		}
+		format json
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# the checkout's dotfiles never reach the export, but the door stays shut anyway
+	@hidden path /.*
+	respond @hidden 404
+
+	# unibot Web: sign in here, then the browser goes to <slug>.s.unibot.dev (the gateway's
+	# session domain; unibot.cn has no wildcard record). The gateway is the showcase's, on
+	# the edge network of this Caddy — see demo/showcase/README.md, "unibot Web".
+	@web path /web /web/* /api/web/*
+	handle @web {
+		reverse_proxy gateway:8000
+	}
+
+	# the release mirror (release-sync.py): the newest releases' packages, for a download that
+	# does not have to reach GitHub. Whole files as they are — no compression to get in the way
+	# of a resumed download — with a listing, since the names carry the version.
+	handle_path /dl/* {
+		root * /srv/www/dl
+		@dot path /.*
+		respond @dot 404
+		header Cache-Control "public, max-age=3600"
+		file_server browse
+	}
+
+	# pages: ten minutes, like GitHub Pages; assets are replaced in place across versions, so a day
+	header Cache-Control "public, max-age=600"
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=86400"
+
+	file_server
+}

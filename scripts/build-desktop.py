@@ -1,0 +1,410 @@
+#!/usr/bin/env python3
+"""Build unibot Desktop for the platform this runs on and wrap it the way that platform installs
+things.
+
+    python3 scripts/build-desktop.py            # binary + installer(s) into desktop/dist/
+    python3 scripts/build-desktop.py --no-installer
+
+Produces, next to the plain binary (named apart from the desktop app's installers,
+unibot-Desktop-<ver>-…, which share the release page — GitHub compares asset names without
+regard to case):
+
+    Windows  unibot-desktop-terminal-<ver>-windows-<arch>-setup.exe   (Inno Setup, when `iscc` exists)
+             unibot-desktop-terminal-<ver>-windows-<arch>.zip         (binary + install.cmd)
+    macOS    unibot-desktop-terminal-<ver>-macos-<arch>.pkg           (installs the CLI and an app that opens it)
+             unibot-desktop-terminal-<ver>-macos-<arch>.tar.gz
+    Linux    unibot-desktop-terminal-<ver>-linux-<arch>.deb           (when `dpkg-deb` exists)
+             unibot-desktop-terminal-<ver>-linux-<arch>.tar.gz        (binary + install.sh)
+
+Needs Python 3.11+, PyInstaller and Pillow (`pip install pyinstaller pillow mss`). Nothing is
+signed: the trial builds are for the account holder's own machines.
+"""
+
+from __future__ import annotations
+
+import argparse
+import io
+import os
+import platform
+import plistlib
+import shutil
+import subprocess
+import sys
+import tarfile
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+DESKTOP = ROOT / "desktop"
+DIST = DESKTOP / "dist"
+BUILD = DESKTOP / "build"
+SOURCE_ICON = ROOT / "assets" / "brand" / "unibot-icon-source-1024.png"
+NAME = "unibot-desktop"
+PACKAGE = "unibot-desktop-terminal"  # the file names on the release page
+DISPLAY = "unibot Desktop"
+BUNDLE_ID = "io.github.unibot.desktop"
+
+
+def version() -> str:
+    ns: dict = {}
+    exec((DESKTOP / "unibot_desktop" / "__init__.py").read_text(), ns)
+    return ns["__version__"]
+
+
+def arch() -> str:
+    m = platform.machine().lower()
+    return {"amd64": "x64", "x86_64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(m, m)
+
+
+def run(*cmd: str, cwd: Path | None = None) -> None:
+    print("+", " ".join(cmd), flush=True)
+    subprocess.run(cmd, cwd=str(cwd or DESKTOP), check=True)
+
+
+# ── icons ──────────────────────────────────────────────────────────────────
+
+
+def make_icons() -> None:
+    BUILD.mkdir(parents=True, exist_ok=True)
+    try:
+        from PIL import Image
+    except ImportError:
+        print("Pillow missing; building without icons")
+        return
+    if not SOURCE_ICON.exists():
+        print(f"{SOURCE_ICON} missing; building without icons")
+        return
+    src = Image.open(SOURCE_ICON).convert("RGBA")
+    if sys.platform == "win32":
+        src.save(
+            BUILD / "icon.ico",
+            sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+        )
+    elif sys.platform == "darwin":
+        iconset = BUILD / "icon.iconset"
+        iconset.mkdir(exist_ok=True)
+        for size in (16, 32, 128, 256, 512):
+            src.resize((size, size), Image.LANCZOS).save(iconset / f"icon_{size}x{size}.png")
+            src.resize((size * 2, size * 2), Image.LANCZOS).save(
+                iconset / f"icon_{size}x{size}@2x.png"
+            )
+        try:
+            run("iconutil", "-c", "icns", str(iconset), "-o", str(BUILD / "icon.icns"))
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            print(f"iconutil failed ({e}); building without an .icns")
+    else:
+        for size in (48, 128, 256, 512):
+            src.resize((size, size), Image.LANCZOS).save(BUILD / f"icon-{size}.png")
+
+
+# ── the binary ─────────────────────────────────────────────────────────────
+
+
+def build_binary() -> Path:
+    run(
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--noconfirm",
+        "--clean",
+        "--distpath",
+        str(DIST),
+        "--workpath",
+        str(BUILD / "pyi"),
+        "unibot_desktop.spec",
+    )
+    exe = DIST / (NAME + (".exe" if sys.platform == "win32" else ""))
+    if not exe.exists():
+        raise SystemExit(f"PyInstaller produced nothing at {exe}")
+    print(f"binary: {exe} ({exe.stat().st_size // 1024} KB)")
+    return exe
+
+
+# ── Windows ────────────────────────────────────────────────────────────────
+
+INSTALL_CMD = r"""@echo off
+setlocal
+set "DEST=%LOCALAPPDATA%\Programs\unibot Desktop"
+if not exist "%DEST%" mkdir "%DEST%"
+copy /Y "%~dp0unibot-desktop.exe" "%DEST%\unibot-desktop.exe" >nul
+echo %PATH% | find /I "%DEST%" >nul || (
+  for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v Path 2^>nul') do set "USERPATH=%%b"
+  if defined USERPATH (setx Path "%USERPATH%;%DEST%" >nul) else (setx Path "%DEST%" >nul)
+)
+echo.
+echo unibot Desktop is installed in "%DEST%".
+echo Open a new terminal and run:  unibot-desktop
+echo.
+pause
+"""
+
+ISS = r"""; Inno Setup script, generated by scripts/build-desktop.py
+[Setup]
+AppId={{9B1D7E7C-6C0B-4F1E-9D4C-unibotDesktop}}
+AppName=unibot Desktop
+AppVersion=%(version)s
+AppPublisher=unibot
+AppPublisherURL=https://github.com/unictoai/unibot
+DefaultDirName={localappdata}\Programs\unibot Desktop
+DefaultGroupName=unibot
+DisableProgramGroupPage=yes
+PrivilegesRequired=lowest
+OutputDir=%(dist)s
+OutputBaseFilename=%(base)s-setup
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+ChangesEnvironment=yes
+%(icon)s
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+#if FileExists(AddBackslash(CompilerPath) + "Languages\ChineseSimplified.isl")
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+#elif FileExists(AddBackslash(CompilerPath) + "Languages\Unofficial\ChineseSimplified.isl")
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\Unofficial\ChineseSimplified.isl"
+#endif
+
+[Files]
+Source: "%(exe)s"; DestDir: "{app}"; Flags: ignoreversion
+
+[Icons]
+Name: "{group}\unibot Desktop"; Filename: "{app}\unibot-desktop.exe"; Parameters: "run --open"; WorkingDir: "{app}"
+Name: "{group}\unibot Desktop (serve in background)"; Filename: "{app}\unibot-desktop.exe"; Parameters: "serve"; WorkingDir: "{app}"
+Name: "{autodesktop}\unibot Desktop"; Filename: "{app}\unibot-desktop.exe"; Parameters: "run --open"; Tasks: desktopicon
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+
+[Registry]
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Check: NeedsAddPath('{app}')
+
+[Run]
+Filename: "{app}\unibot-desktop.exe"; Parameters: "run --open"; Description: "Start unibot Desktop now"; Flags: postinstall nowait skipifsilent
+
+[Code]
+function NeedsAddPath(Param: string): boolean;
+var
+  OrigPath: string;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+  Result := Pos(';' + Uppercase(Param) + ';', ';' + Uppercase(OrigPath) + ';') = 0;
+end;
+"""
+
+
+def package_windows(exe: Path, ver: str, installer: bool) -> None:
+    base = f"{PACKAGE}-{ver}-windows-{arch()}"
+    with zipfile.ZipFile(DIST / f"{base}.zip", "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(exe, exe.name)
+        z.writestr("install.cmd", INSTALL_CMD)
+        z.writestr(
+            "README.txt",
+            "Run install.cmd, or just run unibot-desktop.exe from any folder.\r\nunibot-desktop run --open  opens the web console too.\r\n",
+        )
+    print("zip:", DIST / f"{base}.zip")
+    if not installer:
+        return
+    iscc = (
+        shutil.which("iscc")
+        or shutil.which("ISCC")
+        or r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+    )
+    if not Path(iscc).exists() and not shutil.which(iscc):
+        print("Inno Setup (iscc) not found; no setup.exe")
+        return
+    icon = BUILD / "icon.ico"
+    iss = BUILD / "unibot-desktop.iss"
+    iss.write_text(
+        ISS
+        % {
+            "version": ver,
+            "dist": str(DIST),
+            "base": base,
+            "exe": str(exe),
+            "icon": f"SetupIconFile={icon}" if icon.exists() else "",
+        },
+        encoding="utf-8",
+    )
+    run(iscc, str(iss))
+    print("setup:", DIST / f"{base}-setup.exe")
+
+
+# ── macOS ──────────────────────────────────────────────────────────────────
+
+LAUNCH_COMMAND = """#!/bin/bash
+# Opened by "unibot Desktop.app": a terminal with the Muse in it, and the web console.
+clear
+/usr/local/bin/unibot-desktop run --open
+"""
+
+APP_MAIN = """#!/bin/bash
+# The app is a door to the terminal: unibot Desktop talks and works there.
+DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
+open -a Terminal "$DIR/launch.command"
+"""
+
+
+def make_app(stage: Path) -> Path:
+    app = stage / "Applications" / f"{DISPLAY}.app"
+    (app / "Contents" / "MacOS").mkdir(parents=True)
+    (app / "Contents" / "Resources").mkdir(parents=True)
+    main = app / "Contents" / "MacOS" / DISPLAY
+    main.write_text(APP_MAIN)
+    main.chmod(0o755)
+    launch = app / "Contents" / "Resources" / "launch.command"
+    launch.write_text(LAUNCH_COMMAND)
+    launch.chmod(0o755)
+    info = {
+        "CFBundleName": DISPLAY,
+        "CFBundleDisplayName": DISPLAY,
+        "CFBundleIdentifier": BUNDLE_ID,
+        "CFBundleVersion": version(),
+        "CFBundleShortVersionString": version(),
+        "CFBundleExecutable": DISPLAY,
+        "CFBundlePackageType": "APPL",
+        "LSMinimumSystemVersion": "12.0",
+        "NSHighResolutionCapable": True,
+    }
+    icns = BUILD / "icon.icns"
+    if icns.exists():
+        shutil.copy(icns, app / "Contents" / "Resources" / "icon.icns")
+        info["CFBundleIconFile"] = "icon"
+    with open(app / "Contents" / "Info.plist", "wb") as f:
+        plistlib.dump(info, f)
+    return app
+
+
+def package_macos(exe: Path, ver: str, installer: bool) -> None:
+    base = f"{PACKAGE}-{ver}-macos-{arch()}"
+    with tarfile.open(DIST / f"{base}.tar.gz", "w:gz") as t:
+        t.add(exe, exe.name)
+    print("tar:", DIST / f"{base}.tar.gz")
+    if not installer or not shutil.which("pkgbuild"):
+        return
+    stage = BUILD / "pkgroot"
+    shutil.rmtree(stage, ignore_errors=True)
+    (stage / "usr" / "local" / "bin").mkdir(parents=True)
+    shutil.copy(exe, stage / "usr" / "local" / "bin" / NAME)
+    (stage / "usr" / "local" / "bin" / NAME).chmod(0o755)
+    make_app(stage)
+    scripts = BUILD / "pkgscripts"
+    shutil.rmtree(scripts, ignore_errors=True)
+    scripts.mkdir()
+    post = scripts / "postinstall"
+    post.write_text(
+        f"#!/bin/bash\nxattr -dr com.apple.quarantine '/Applications/{DISPLAY}.app' 2>/dev/null || true\nexit 0\n"
+    )
+    post.chmod(0o755)
+    run(
+        "pkgbuild",
+        "--root",
+        str(stage),
+        "--identifier",
+        BUNDLE_ID,
+        "--version",
+        ver,
+        "--install-location",
+        "/",
+        "--scripts",
+        str(scripts),
+        str(DIST / f"{base}.pkg"),
+    )
+    print("pkg:", DIST / f"{base}.pkg")
+
+
+# ── Linux ──────────────────────────────────────────────────────────────────
+
+INSTALL_SH = """#!/bin/sh
+# Installs unibot Desktop for this user: ~/.local/bin/unibot-desktop
+set -e
+DEST="${HOME}/.local/bin"
+mkdir -p "$DEST"
+cp "$(dirname "$0")/unibot-desktop" "$DEST/unibot-desktop"
+chmod +x "$DEST/unibot-desktop"
+case ":$PATH:" in *":$DEST:"*) ;; *) echo "Add $DEST to your PATH (e.g. in ~/.profile): export PATH=\\"$DEST:\\$PATH\\"";; esac
+echo "Installed. Run: unibot-desktop"
+"""
+
+DESKTOP_ENTRY = """[Desktop Entry]
+Type=Application
+Name=unibot Desktop
+Comment=Your computer's Muse; hands on this machine and on your other devices
+Exec=unibot-desktop run --open
+Icon=unibot-desktop
+Terminal=true
+Categories=Utility;
+"""
+
+
+def package_linux(exe: Path, ver: str, installer: bool) -> None:
+    base = f"{PACKAGE}-{ver}-linux-{arch()}"
+    with tarfile.open(DIST / f"{base}.tar.gz", "w:gz") as t:
+        t.add(exe, exe.name)
+        info = tarfile.TarInfo("install.sh")
+        data = INSTALL_SH.encode()
+        info.size = len(data)
+        info.mode = 0o755
+        t.addfile(info, io.BytesIO(data))
+    print("tar:", DIST / f"{base}.tar.gz")
+    if not installer or not shutil.which("dpkg-deb"):
+        return
+    stage = BUILD / "debroot"
+    shutil.rmtree(stage, ignore_errors=True)
+    (stage / "DEBIAN").mkdir(parents=True)
+    (stage / "usr" / "bin").mkdir(parents=True)
+    (stage / "usr" / "share" / "applications").mkdir(parents=True)
+    shutil.copy(exe, stage / "usr" / "bin" / NAME)
+    (stage / "usr" / "bin" / NAME).chmod(0o755)
+    (stage / "usr" / "share" / "applications" / f"{NAME}.desktop").write_text(DESKTOP_ENTRY)
+    for size in (48, 128, 256, 512):
+        icon = BUILD / f"icon-{size}.png"
+        if icon.exists():
+            d = stage / "usr" / "share" / "icons" / "hicolor" / f"{size}x{size}" / "apps"
+            d.mkdir(parents=True)
+            shutil.copy(icon, d / f"{NAME}.png")
+    deb_arch = {"x64": "amd64", "arm64": "arm64"}.get(arch(), arch())
+    (stage / "DEBIAN" / "control").write_text(
+        f"Package: {NAME}\nVersion: {ver}\nSection: utils\nPriority: optional\nArchitecture: {deb_arch}\nMaintainer: unibot <https://github.com/unictoai/unibot>\n"
+        f"Homepage: https://github.com/unictoai/unibot\nDescription: unibot Desktop\n Your computer's Muse: hands on this machine and, through the hub, on every other device of the account.\n"
+    )
+    for p in stage.rglob("*"):
+        if p.is_dir():
+            p.chmod(0o755)
+    run("dpkg-deb", "--build", "--root-owner-group", str(stage), str(DIST / f"{base}.deb"))
+    print("deb:", DIST / f"{base}.deb")
+
+
+# ── main ───────────────────────────────────────────────────────────────────
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--no-installer", action="store_true", help="only the binary and the archive")
+    args = ap.parse_args()
+    ver = version()
+    DIST.mkdir(parents=True, exist_ok=True)
+    make_icons()
+    exe = build_binary()
+    if sys.platform == "win32":
+        package_windows(exe, ver, not args.no_installer)
+    elif sys.platform == "darwin":
+        package_macos(exe, ver, not args.no_installer)
+    else:
+        package_linux(exe, ver, not args.no_installer)
+    print("\ndist/:")
+    for p in sorted(DIST.iterdir()):
+        if p.is_file():
+            print(f"  {p.name}  {p.stat().st_size / 1024 / 1024:.1f} MB")
+    return 0
+
+
+if __name__ == "__main__":
+    os.chdir(DESKTOP)
+    sys.exit(main())

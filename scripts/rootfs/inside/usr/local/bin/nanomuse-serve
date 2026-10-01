@@ -1,0 +1,30 @@
+#!/bin/sh
+# What the Android app runs inside the root file system: the server, on the loopback, on
+# the port the app chose. The app sets the rest through the environment (docs/local-runtime.md):
+#   UNIBOT_SERVER_TOKEN  the access token (shared with the WebView)
+#   UNIBOT_DEVICE=android, UNIBOT_DEVICE_MODEL, UNIBOT_DEVICE_SDK
+#   UNIBOT_HOST_URL / UNIBOT_HOST_TOKEN   the app's own capabilities (an MCP server)
+#   TZ, LANG, http_proxy / https_proxy         from the phone's settings
+set -e
+export HOME="${HOME:-/root}"
+export PATH="/opt/unibot/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export LANG="${LANG:-C.UTF-8}" TERM="${TERM:-xterm-256color}" TMPDIR="${TMPDIR:-/tmp}"
+export UNIBOT_DATA_DIR="${UNIBOT_DATA_DIR:-$HOME/.unibot}"
+export UNIBOT_WORKSPACE="${UNIBOT_WORKSPACE:-$HOME/workspace}"
+# "open this in your browser", from any program, lands in the app's browser view
+export BROWSER="${BROWSER:-unibot-open}"
+# npm's global installs (lark-cli, tmeet …) go under the home, which survives an upgrade
+export NPM_CONFIG_PREFIX="${NPM_CONFIG_PREFIX:-$HOME/.npm-global}"
+export NPM_CONFIG_GLOBALCONFIG=/etc/npmrc   # where unibot-mirror writes the registry
+export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
+export PYTHONDONTWRITEBYTECODE=1
+mkdir -p "$UNIBOT_DATA_DIR" "$UNIBOT_WORKSPACE" "$NPM_CONFIG_PREFIX/bin"
+# package mirrors: chosen once from the phone's region (UNIBOT_REGION, e.g. CN), kept after
+if [ ! -f /etc/unibot-mirror ]; then
+  case "${UNIBOT_REGION:-}" in
+    CN|cn) unibot-mirror cn ;;
+    *) unibot-mirror default ;;
+  esac
+fi
+port="${UNIBOT_SERVER_PORT:-8787}"
+exec unibot serve --host 127.0.0.1 --port "$port" --no-qr "$@"
