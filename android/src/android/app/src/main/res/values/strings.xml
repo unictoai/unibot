@@ -1622,9 +1622,12 @@
     <!-- [T-android-voice-panel] Inline voice input panel (mirrors iOS InlineVoiceInputView) -->
     <string name="voice_panel_collapse">Collapse voice panel</string>
     <string name="voice_panel_no_engine_title">No speech recognition available</string>
-    <string name="voice_panel_no_engine_body">Voice input needs a recognition engine. Enable your device\'s speech service, or configure a transcription provider in unibot.</string>
+    <string name="voice_panel_no_engine_body">Voice input needs a recognition engine. Enable your device\'s speech service, configure a transcription provider in unibot — or download the free offline voice model below and keep everything on your phone.</string>
     <string name="voice_panel_no_engine_open_system">Device settings</string>
     <string name="voice_panel_no_engine_open_providers">unibot providers</string>
+    <string name="voice_panel_no_engine_download_offline">Download offline voice (%1$s)</string>
+    <string name="voice_panel_no_engine_downloading">Downloading… %1$d%%</string>
+    <string name="voice_panel_no_engine_download_failed">Download failed — tap to retry</string>
     <string name="voice_panel_expand">Expand voice panel</string>
     <string name="voice_panel_language">Recognition language</string>
     <string name="voice_panel_tap_to_speak">Tap to speak</string>

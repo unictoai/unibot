@@ -173,6 +173,9 @@ object SpeechRecognitionManager {
         engines.clear()
         engines.add(SystemSpeechRecognitionEngine(appContext))
         engines.add(ProviderSpeechRecognitionEngine(appContext))
+        // On-device whisper.cpp engine — available once the user downloads
+        // the optional voice model (never bundled in the APK).
+        engines.add(WhisperCppSpeechRecognitionEngine(appContext))
 
         _selectedEngineId.value = prefs.getString(KEY_ENGINE_ID, null) ?: pickDefaultEngineId()
         prefs.getString(KEY_LOCALE, null)?.let { tag ->

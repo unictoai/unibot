@@ -1282,6 +1282,52 @@ private fun VoiceEngineUnavailableNotice(
                 }
             }
         }
+
+        // Optional on-device voice: the model (~31 MB) is downloaded from the
+        // voice-model-v1 GitHub release only when the user taps here — it is
+        // never bundled in the APK.
+        Spacer(modifier = Modifier.height(8.dp))
+        OfflineVoiceDownloadButton(modifier = Modifier.align(Alignment.CenterHorizontally))
+    }
+}
+
+/**
+ * Opt-in download for the offline whisper.cpp voice model. Shows idle /
+ * progress / failed states; on success it selects the offline engine and the
+ * notice above disappears because an engine is now available.
+ */
+@Composable
+private fun OfflineVoiceDownloadButton(modifier: Modifier = Modifier) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val downloadState by ai.unicto.unibot.speech.WhisperModelManager.downloadState
+        .collectAsState()
+
+    if (downloadState is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Done) {
+        LaunchedEffect(Unit) {
+            ai.unicto.unibot.speech.SpeechRecognitionManager.selectEngine("whisper-offline")
+            ai.unicto.unibot.speech.SpeechRecognitionManager.refreshAvailability()
+        }
+        return
+    }
+
+    val (label, enabled) = when (val s = downloadState) {
+        is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Downloading ->
+            stringResource(
+                R.string.voice_panel_no_engine_downloading,
+                (s.fraction * 100).toInt(),
+            ) to false
+        is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Failed ->
+            stringResource(R.string.voice_panel_no_engine_download_failed) to true
+        else ->
+            stringResource(
+                R.string.voice_panel_no_engine_download_offline,
+                ai.unicto.unibot.speech.WhisperModelManager.MODEL_SIZE_LABEL,
+            ) to true
+    }
+    Box(modifier = modifier) {
+        NoticeActionButton(label) {
+            if (enabled) ai.unicto.unibot.speech.WhisperModelManager.download(ctx)
+        }
     }
 }
 
