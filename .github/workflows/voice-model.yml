@@ -1,0 +1,55 @@
+name: Voice model
+
+# One-time (and on-demand) publisher for unibot's offline speech-to-text
+# model. The app never bundles the model in the APK — the user taps
+# "Download offline voice" in the app and it fetches the file from the
+# voice-model-v1 GitHub release below.
+#
+# Runs when this file is pushed (so the first push publishes the model)
+# and on manual dispatch for re-publishing.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/voice-model.yml"]
+
+permissions:
+  contents: write
+
+env:
+  MODEL_FILE: ggml-tiny.en-q5_1.bin
+  MODEL_URL: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin
+  # whisper.cpp tiny.en quantized — ~30.7 MB. Official upstream binary.
+  MODEL_MIN_BYTES: "29000000"
+
+jobs:
+  publish:
+    name: publish voice model
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download model from upstream
+        run: |
+          set -euo pipefail
+          curl -sSL --retry 3 -o "$MODEL_FILE" "$MODEL_URL"
+          bytes=$(stat -c%s "$MODEL_FILE")
+          echo "downloaded $bytes bytes"
+          if [ "$bytes" -lt "$MODEL_MIN_BYTES" ]; then
+            echo "model file too small ($bytes bytes) — refusing to publish" >&2
+            exit 1
+          fi
+
+      - name: Publish to voice-model-v1 release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view voice-model-v1 >/dev/null 2>&1 || \
+            gh release create voice-model-v1 \
+              --title "Offline voice model v1" \
+              --notes "whisper.cpp tiny.en q5_1 (~31 MB) for unibot's on-device speech-to-text. Downloaded in-app only when the user chooses it — never bundled in the APK."
+          gh release upload voice-model-v1 "$MODEL_FILE" --clobber
+          echo "published:"
+          gh release view voice-model-v1 --json assets -q '.assets[].name'
