@@ -69,10 +69,23 @@ jobs:
           echo "keystore written"
 
       - name: assembleRelease
+        id: assemble
         working-directory: android/src/android
         run: |
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
-          ./gradlew :app:assembleRelease --console=plain --no-daemon
+          set -o pipefail
+          ./gradlew :app:assembleRelease --console=plain --no-daemon 2>&1 | tee "$RUNNER_TEMP/assemble.log"
+
+      - name: Report assembleRelease failure
+        if: failure() && steps.assemble.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # CI job logs are not readable without auth; publish the failure tail
+          # as an issue so it can be diagnosed.
+          { echo 'assembleRelease failed. Tail of the Gradle log:'; echo '```'; tail -c 30000 "$RUNNER_TEMP/assemble.log"; echo '```'; } > /tmp/assemble-tail.txt || true
+          gh issue create --title "Release ${{ github.ref_name }}: assembleRelease failed" \
+            --body-file /tmp/assemble-tail.txt || true
 
       - name: Badging
         run: |
