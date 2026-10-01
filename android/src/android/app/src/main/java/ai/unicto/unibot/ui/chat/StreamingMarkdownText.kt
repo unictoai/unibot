@@ -55,6 +55,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +89,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
@@ -602,8 +609,40 @@ private fun StreamingMarkdownTextBody(
                     RenderBlock(block)
                 }
             }
+            // Pulsing violet caret while the model is still generating — the
+            // "alive" signal once text has started arriving. (The TypingIndicator
+            // covers the no-content-yet phase.)
+            if (isStreaming) {
+                StreamingCaret()
+            }
         }
     }
+}
+
+/**
+ * Small pulsing caret at the end of a live stream, in brand violet.
+ * Muse-style "still generating" signal; disappears when the stream ends.
+ */
+@Composable
+private fun StreamingCaret() {
+    val violet = Color(0xFF6D28D9)
+    val infiniteTransition = rememberInfiniteTransition(label = "stream_caret")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "caret_alpha",
+    )
+    Box(
+        modifier = Modifier
+            .padding(top = 4.dp)
+            .size(width = 9.dp, height = 18.dp)
+            .graphicsLayer { this.alpha = alpha }
+            .background(violet, RoundedCornerShape(4.dp)),
+    )
 }
 
 /**

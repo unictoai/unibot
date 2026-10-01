@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.chat
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -11,9 +12,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,9 +30,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -151,11 +157,12 @@ internal fun CompactProgressIndicator(
     }
 }
 
-// ─── Typing Indicator (three dots pulsing) ────────────────────────────────────
-
+// ─── Typing Indicator (brand-violet fluid "thinking" animation) ───────────────
+// Muse-grade polish: the label gets a slow violet shimmer sweep, the dots
+// pulse with staggered scale+alpha (smooth FastOutSlowIn, not a hard bounce),
+// and the whole row fades in so it materializes instead of popping.
 @Composable
 internal fun TypingIndicator() {
-    val infiniteTransition = rememberInfiniteTransition(label = "typing")
     // Live Soul name → "<custom name> is thinking…" when the user renamed
     // the assistant in Soul settings. SoulStore.cachedMetadata is a StateFlow
     // that's updated on save (SoulSettingsScreen) and at app start
@@ -163,34 +170,72 @@ internal fun TypingIndicator() {
     // recompose the indicator immediately when it changes.
     val soulMeta by ai.unicto.unibot.agent.SoulStore.cachedMetadata.collectAsState()
     val soulName = soulMeta.name.trim().ifEmpty { "unibot" }
+    val violet = ChatColors.thinking
+
+    // Fade-in entrance.
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val enterAlpha by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(350, easing = FastOutSlowInEasing),
+        label = "typing_enter",
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "typing")
+    // Shimmer sweep across the label, left → right, looping.
+    val sweep by infiniteTransition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "typing_sweep",
+    )
 
     Row(
-        modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier
+            .padding(top = 2.dp, bottom = 8.dp)
+            .graphicsLayer { alpha = enterAlpha },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = stringResource(R.string.chat_typing_indicator, soulName),
             fontSize = 15.sp,
-            color = ChatColors.tertiaryText,
+            style = TextStyle(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        violet.copy(alpha = 0.45f),
+                        violet,
+                        violet.copy(alpha = 0.45f),
+                    ),
+                    start = Offset(sweep * 600f - 300f, 0f),
+                    end = Offset(sweep * 600f + 300f, 0f),
+                ),
+            ),
         )
-        // Animated bouncing dots
-        val dots = listOf(".", ".", ".")
-        dots.forEachIndexed { index, dot ->
-            val offsetY by infiniteTransition.animateFloat(
+        Spacer(Modifier.width(8.dp))
+        repeat(3) { index ->
+            val pulse by infiniteTransition.animateFloat(
                 initialValue = 0f,
-                targetValue = -6f,
+                targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(400, delayMillis = index * 150, easing = LinearEasing),
+                    animation = tween(900, delayMillis = index * 200, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse,
                 ),
-                label = "dot_bounce_$index",
+                label = "typing_dot_$index",
             )
-            Text(
-                text = dot,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = ChatColors.tertiaryText,
-                modifier = Modifier.graphicsLayer { translationY = offsetY },
+            Box(
+                modifier = Modifier
+                    .padding(end = 5.dp)
+                    .size(7.dp)
+                    .graphicsLayer {
+                        val s = 0.65f + 0.35f * pulse
+                        scaleX = s
+                        scaleY = s
+                        alpha = 0.35f + 0.65f * pulse
+                    }
+                    .background(violet, CircleShape),
             )
         }
     }
