@@ -480,6 +480,19 @@ private data class ScrollFollowKey(
     val blockSig: Long,
 )
 
+// unibot: tool blocks that belong to the CURRENT turn — assistant messages
+// after the last user message. The floating tool status bar is driven by
+// this, so a finished task's "13/13" pill clears as soon as the user starts
+// a new turn instead of sitting pinned at the bottom forever. (The detail
+// bottom sheet keeps using the full-history list so older in-list pills
+// still open.)
+private fun currentTurnToolBlocks(merged: List<ChatMessage>): List<AssistantBlock> {
+    val lastUserIdx = merged.indexOfLast { it.role == "user" }
+    return merged.mapIndexedNotNull { i, m ->
+        if (m.role == "assistant" && i > lastUserIdx) m.toolBlocks else null
+    }.flatten().filter { it.toolStatus != null && it.kind != "thinking" && it.kind != "info" }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.FlowPreview::class)
 @Composable
 fun ChatScreen(
@@ -3267,7 +3280,7 @@ fun ChatScreen(
                 // last messages above the floating tool status bar.
                 //
                 // Asymmetry between the bar's render condition and its
-                // bottomReserve gate: [lastToolBlocks] (drives whether to
+                // bottomReserve gate: [latestTurnToolBlocks] (drives whether to
                 // mount FloatingToolStatusBar) merges `messages` with the
                 // streaming-side-channel `streamingById`, so during a live
                 // turn the in-flight tool's toolStatus shows up there →
@@ -3282,18 +3295,16 @@ fun ChatScreen(
                 //
                 // Fix: also subscribe to streamingById so the predicate
                 // matches the bar's actual mount condition. The bar's
-                // mount uses `lastToolBlocks.isNotEmpty()` over the merged
+                // mount uses `latestTurnToolBlocks.isNotEmpty()` over the merged
                 // view; we mirror that semantically by checking the same
                 // filter on both sources.
                 val streamingById by viewModel.streamingById.collectAsState()
                 val hasFloatingTools = remember(messages, streamingById) {
                     val merged = if (streamingById.isEmpty()) messages
                                  else mergeStreamingOverlay(messages, streamingById)
-                    merged.any { msg ->
-                        msg.role == "assistant" && msg.toolBlocks.any { tb ->
-                            tb.toolStatus != null && tb.kind != "thinking" && tb.kind != "info"
-                        }
-                    }
+                    // unibot: mirror the bar's mount condition — current turn's
+                    // tools only, so the reserve collapses when the bar clears.
+                    currentTurnToolBlocks(merged).isNotEmpty()
                 }
                 val visualOverlayHeight = 65.dp  // thumbnailHeight in FloatingToolStatusBar
                 // Halve the breathing room above the input bar in both
@@ -4489,19 +4500,22 @@ fun ChatScreen(
                 // never opens (and its sentinel LaunchedEffect immediately
                 // closes the detail state because the id "doesn't exist").
                 var lastToolBlocks by remember { mutableStateOf<List<AssistantBlock>>(emptyList()) }
+                // unibot: floating-bar visibility follows the current turn only.
+                var latestTurnToolBlocks by remember { mutableStateOf<List<AssistantBlock>>(emptyList()) }
                 LaunchedEffect(messages) {
                     kotlinx.coroutines.flow.combine(
                         kotlinx.coroutines.flow.flowOf(messages),
                         viewModel.streamingById,
                     ) { msgs, stream ->
                         val merged = if (stream.isEmpty()) msgs else mergeStreamingOverlay(msgs, stream)
-                        merged.filter { it.role == "assistant" }
+                        val all = merged.filter { it.role == "assistant" }
                             .flatMap { it.toolBlocks }
                             .filter { it.toolStatus != null && it.kind != "thinking" && it.kind != "info" }
-                    }.collect { lastToolBlocks = it }
+                        currentTurnToolBlocks(merged) to all
+                    }.collect { (turn, all) -> latestTurnToolBlocks = turn; lastToolBlocks = all }
                 }
                 val allToolBlocks = lastToolBlocks
-                if (lastToolBlocks.isNotEmpty()) {
+                if (latestTurnToolBlocks.isNotEmpty()) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -4530,7 +4544,7 @@ fun ChatScreen(
                             .padding(bottom = 6.dp),
                     ) {
                         FloatingToolStatusBar(
-                            toolBlocks = lastToolBlocks,
+                            toolBlocks = latestTurnToolBlocks,
                             // T14: per-card stop on the floating bar — same
                             // global cancel as the message-list pill button.
                             onStop = { viewModel.cancelStream() },
@@ -4567,7 +4581,7 @@ fun ChatScreen(
                 val upFabVisible = messages.isNotEmpty() && !isNearBottom.value
                 val downFabVisible =
                     userScrolledAway && contentOverflows.value && messages.isNotEmpty()
-                val fabBaseDp = if (lastToolBlocks.isNotEmpty()) 80.dp else 8.dp
+                val fabBaseDp = if (latestTurnToolBlocks.isNotEmpty()) 80.dp else 8.dp
                 val fabStackTopDp = when {
                     upFabVisible -> fabBaseDp + 46.dp + 36.dp
                     downFabVisible -> fabBaseDp + 36.dp
@@ -4648,7 +4662,7 @@ fun ChatScreen(
                 // spacing). Tapping walks BACK one user turn at a time rather
                 // than jumping to the oldest message.
                 if (messages.isNotEmpty() && !isNearBottom.value) {
-                    val upBaseBottom = if (lastToolBlocks.isNotEmpty()) 80.dp else 8.dp
+                    val upBaseBottom = if (latestTurnToolBlocks.isNotEmpty()) 80.dp else 8.dp
                     androidx.compose.material3.FilledIconButton(
                         onClick = {
                             // [T-android-updown-fab-asymmetry] Arm the same flag a
@@ -4690,7 +4704,7 @@ fun ChatScreen(
                 }
 
                 if (userScrolledAway && contentOverflows.value && messages.isNotEmpty()) {
-                    val fabBottomPadding = if (lastToolBlocks.isNotEmpty()) 80.dp else 8.dp
+                    val fabBottomPadding = if (latestTurnToolBlocks.isNotEmpty()) 80.dp else 8.dp
                     androidx.compose.material3.FilledIconButton(
                         onClick = {
                             // [T-android-scroll-fab-down-stuck] Clear the
