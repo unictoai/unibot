@@ -144,7 +144,7 @@ class ConfigConfirmationGateNotifyTest {
         runCurrent()
         assertTrue(notified.isEmpty()) // shown in foreground, no notice yet
 
-        // User switches away → MinisApp calls notifyPending().
+        // User switches away → UnibotApp calls notifyPending().
         appForeground = false
         ConfigConfirmationGate.notifyPending()
         runCurrent()

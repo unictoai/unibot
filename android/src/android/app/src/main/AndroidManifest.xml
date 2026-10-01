@@ -172,7 +172,7 @@
          16+ enables it by default, so this is the compatibility switch rather
          than a new behaviour. -->
     <application
-        android:name=".MinisApp"
+        android:name=".UnibotApp"
         android:allowBackup="true"
         android:fullBackupContent="@xml/unibot_backup_rules"
         android:dataExtractionRules="@xml/unibot_data_extraction_rules"

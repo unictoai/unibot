@@ -2,7 +2,7 @@ package ai.unicto.unibot.media
 
 import android.content.Context
 import android.content.SharedPreferences
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.model.ProviderCredential
 import ai.unicto.unibot.data.model.ProviderInstance
@@ -53,7 +53,7 @@ object MediaModels {
      * unibot Cloud, which relays those same paths (the account's own key is used).
      */
     fun eligibleVideoInstances(context: Context): List<ProviderInstance> {
-        val app = context.applicationContext as? MinisApp ?: return emptyList()
+        val app = context.applicationContext as? UnibotApp ?: return emptyList()
         val repo = app.providerRepositoryOrNull ?: return emptyList()
         val cloudId = UnibotCloud.instance(context)?.id
         return repo.config.value.instances.filter { inst ->
@@ -72,7 +72,7 @@ object MediaModels {
      * provider or switch it off.
      */
     fun videoEndpoint(context: Context): VideoGen.Endpoint? {
-        val app = context.applicationContext as? MinisApp ?: return null
+        val app = context.applicationContext as? UnibotApp ?: return null
         val repo = app.providerRepositoryOrNull ?: return null
         val p = prefs(context)
         val eligible = eligibleVideoInstances(context)
@@ -122,7 +122,7 @@ object MediaModels {
      * the models found, or null when the host could not be reached at all.
      */
     suspend fun checkVideoModels(context: Context, inst: ProviderInstance): List<String>? = withContext(Dispatchers.IO) {
-        val app = context.applicationContext as? MinisApp ?: return@withContext null
+        val app = context.applicationContext as? UnibotApp ?: return@withContext null
         val repo = app.providerRepositoryOrNull ?: return@withContext null
         val key = repo.usableApiKey(inst) ?: return@withContext null
         val host = VideoGen.Endpoint(inst, key, "").host

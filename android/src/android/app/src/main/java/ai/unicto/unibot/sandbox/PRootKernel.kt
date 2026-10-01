@@ -143,7 +143,7 @@ object PRootKernel {
         // Propagate the Android system HTTP proxy into every sandboxed
         // process so curl/wget/pip/npm reuse the user's system or enterprise
         // proxy (and packet-capture tools like Charles / mitmproxy just work).
-        // PROXY_CHANGE_ACTION is wired up in MinisApp so live shells pick up
+        // PROXY_CHANGE_ACTION is wired up in UnibotApp so live shells pick up
         // proxy toggles without a restart.
         customEnvironment.putAll(systemProxyEnv(context))
 
@@ -164,7 +164,7 @@ object PRootKernel {
 
         // T219-6: now that rootfs is on disk, materialize /var/minis/mounts/<name>
         // placeholder dirs that PRoot's `-b` needs as bind targets. The earlier
-        // applyMountedFoldersSnapshot in MinisApp.onCreate ran before boot and
+        // applyMountedFoldersSnapshot in UnibotApp.onCreate ran before boot and
         // its mkdirs went nowhere; this re-run covers the mount entries that
         // were known at app launch.
         applyMountedFoldersSnapshot(context)
@@ -220,7 +220,7 @@ object PRootKernel {
     private const val GUARD_MARKER = "minis-mount-readonly-guard"
 
     /**
-     * Reference to the user-mounted folders store, set by [MinisApp] at
+     * Reference to the user-mounted folders store, set by [UnibotApp] at
      * launch (the file is owned by T219-1 / worker A — we cannot touch it
      * from here, so we receive the instance via this setter instead of a
      * top-level singleton). Nullable: tools and the file-mention index
@@ -750,7 +750,7 @@ object PRootKernel {
         val topWrapper = File(binDir, "top")
         topWrapper.writeText(
             """#!/bin/sh
-            |# Auto-installed by MinisApp PRootKernel.
+            |# Auto-installed by UnibotApp PRootKernel.
             |# busybox top walks all of /proc and aborts on the first unreadable
             |# entry under Android's procfs hidepid restrictions, and this build
             |# of busybox doesn't accept `-p`. Emulate `top` with `ps` over the
@@ -892,7 +892,7 @@ object PRootKernel {
             wrapper.writeText(
                 """#!/bin/sh
                 |# $GUARD_MARKER — reject writes into read-only mounted folders.
-                |# Auto-installed by MinisApp PRootKernel (T219-4).
+                |# Auto-installed by UnibotApp PRootKernel (T219-4).
                 |cfg=/var/minis/.mount-readonly-prefixes
                 |if [ -f "${'$'}cfg" ]; then
                 |    for arg in "${'$'}@"; do

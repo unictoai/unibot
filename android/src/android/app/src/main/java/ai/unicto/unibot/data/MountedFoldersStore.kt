@@ -77,7 +77,7 @@ class MountedFoldersStore(private val context: Context) {
 
     /**
      * T219-5: fired after every CRUD operation that mutates the persisted
-     * list. MinisApp wires this to `PRootKernel.applyMountedFoldersSnapshot`
+     * list. UnibotApp wires this to `PRootKernel.applyMountedFoldersSnapshot`
      * so future shells pick up the new bind specs without a process restart.
      * Note that already-running proot processes are unaffected — proot is
      * one-shot and the next `shell_execute` is what carries the new mounts.

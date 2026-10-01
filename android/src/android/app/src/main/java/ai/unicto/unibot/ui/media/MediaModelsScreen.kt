@@ -31,7 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.model.ProviderInstance
 import ai.unicto.unibot.ui.settings.SettingsChoiceRow
@@ -63,7 +63,7 @@ fun MediaModelsScreen(
     onOpenProviders: () -> Unit,
 ) {
     val context = LocalContext.current
-    val repo = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
+    val repo = (context.applicationContext as? UnibotApp)?.providerRepositoryOrNull
     val config = repo?.config?.collectAsState()?.value
     val defaultGroup = config?.let { cfg -> cfg.modelGroups.firstOrNull { it.id == cfg.defaultPrimaryGroupId } ?: cfg.modelGroups.firstOrNull() }
     val chatEntry = config?.let { cfg -> defaultGroup?.memberEntryIds?.firstNotNullOfOrNull { id -> cfg.modelEntries.firstOrNull { it.id == id } } }

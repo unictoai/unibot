@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.settings.SettingsChoiceRow
 import ai.unicto.unibot.ui.settings.SettingsRow
@@ -53,7 +53,7 @@ const val ROUTE_HANDS = "unibot/hands"
 @Composable
 fun HandsScreen(onBack: () -> Unit, onOpenProviders: () -> Unit) {
     val context = LocalContext.current
-    val repo = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
+    val repo = (context.applicationContext as? UnibotApp)?.providerRepositoryOrNull
     val config = repo?.config?.collectAsState()?.value
     var enabled by remember { mutableStateOf(Hands.enabled(context)) }
     var chosen by remember { mutableStateOf(Hands.modelEntryId(context)) }

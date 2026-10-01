@@ -58,7 +58,7 @@ import ai.unicto.unibot.service.SessionActivityTracker
 import ai.unicto.unibot.ui.MinisImageFetcher
 import kotlinx.coroutines.launch
 
-class MinisApp : Application(), ImageLoaderFactory {
+class UnibotApp : Application(), ImageLoaderFactory {
     /**
      * T-android-safemode-lateinit-crash: true once the heavy subsystem
      * block in [onCreate] has fully run (DB + every repository assigned).
@@ -252,7 +252,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // done in attachBaseContext, which is what makes the :acra
         // process do its job).
         if (ACRA.isACRASenderServiceProcess()) {
-            Log.i("MinisApp", "skipping app init in :acra reporter process")
+            Log.i("UnibotApp", "skipping app init in :acra reporter process")
             return
         }
 
@@ -286,7 +286,7 @@ class MinisApp : Application(), ImageLoaderFactory {
                 java.io.File(filesDir, "logs"),
             )
         } catch (t: Throwable) {
-            Log.w("MinisApp", "NativeCrashHandler install failed: ${t.message}")
+            Log.w("UnibotApp", "NativeCrashHandler install failed: ${t.message}")
         }
 
         // T-android-fgs-timeout-crash: chain an UncaughtExceptionHandler
@@ -311,7 +311,7 @@ class MinisApp : Application(), ImageLoaderFactory {
                         throwable.message?.contains("did not stop within its timeout") == true)
                     if (isFgsTimeout) {
                         Log.w(
-                            "MinisApp",
+                            "UnibotApp",
                             "FGS timeout caught; stopping service before deferring to ACRA: ${throwable.message}",
                         )
                         // Stop the service so the system tears the
@@ -323,14 +323,14 @@ class MinisApp : Application(), ImageLoaderFactory {
                         }
                     }
                 } catch (t: Throwable) {
-                    Log.w("MinisApp", "FGS-timeout handler internal failure: ${t.message}")
+                    Log.w("UnibotApp", "FGS-timeout handler internal failure: ${t.message}")
                 }
                 // Always defer to the prior handler so ACRA's
                 // dump-and-relaunch flow runs intact.
                 priorHandler?.uncaughtException(thread, throwable)
             }
         } catch (t: Throwable) {
-            Log.w("MinisApp", "install FGS-timeout handler failed: ${t.message}")
+            Log.w("UnibotApp", "install FGS-timeout handler failed: ${t.message}")
         }
 
         // T-android-crash-freq-share: local fallback for Crashlytics (#458).
@@ -348,7 +348,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // point of safe-mode is to stop the bleeding before another
         // segfault rewrites the log files.
         if (ai.unicto.unibot.crash.CrashFrequencyDetector.isSafeMode()) {
-            Log.w("MinisApp", "safe-mode ON — skipping app subsystem init")
+            Log.w("UnibotApp", "safe-mode ON — skipping app subsystem init")
             return
         }
 
@@ -367,7 +367,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         try {
             ai.unicto.unibot.diagnostics.LaunchCycleBeacon.recordLaunch(this)
         } catch (t: Throwable) {
-            Log.w("MinisApp", "LaunchCycleBeacon.recordLaunch failed: ${t.message}")
+            Log.w("UnibotApp", "LaunchCycleBeacon.recordLaunch failed: ${t.message}")
         }
 
         // Start the main-thread hang watchdog before the heavier subsystems
@@ -449,7 +449,7 @@ class MinisApp : Application(), ImageLoaderFactory {
             // crash-share dialog rather than composing against unassigned
             // repositories. Do NOT rethrow: that is what turns a one-off init
             // failure into an unrecoverable launch loop.
-            Log.e("MinisApp", "subsystem init failed — app will start in degraded mode", t)
+            Log.e("UnibotApp", "subsystem init failed — app will start in degraded mode", t)
             return
         }
 
@@ -758,14 +758,14 @@ class MinisApp : Application(), ImageLoaderFactory {
                         try {
                             ExecutionCoordinator.broadcastTimezoneChange()
                         } catch (t: Throwable) {
-                            Log.w("MinisApp", "broadcastTimezoneChange failed: ${t.message}")
+                            Log.w("UnibotApp", "broadcastTimezoneChange failed: ${t.message}")
                         }
                     }
                     android.net.Proxy.PROXY_CHANGE_ACTION -> scope.launch {
                         try {
                             ExecutionCoordinator.broadcastProxyChange()
                         } catch (t: Throwable) {
-                            Log.w("MinisApp", "broadcastProxyChange failed: ${t.message}")
+                            Log.w("UnibotApp", "broadcastProxyChange failed: ${t.message}")
                         }
                     }
                 }
@@ -784,7 +784,7 @@ class MinisApp : Application(), ImageLoaderFactory {
             try {
                 ai.unicto.unibot.debug.DebugServer(this).start()
             } catch (e: Exception) {
-                Log.w("MinisApp", "Failed to start debug server: ${e.message}")
+                Log.w("UnibotApp", "Failed to start debug server: ${e.message}")
             }
         }
 
@@ -797,7 +797,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // migration runs at most once. Wrapped in runCatching so an
         // unexpected prefs shape never blocks app launch.
         runCatching { migrateGhostAlarms() }
-            .onFailure { Log.w("MinisApp", "ghost alarm migration failed: ${it.message}") }
+            .onFailure { Log.w("UnibotApp", "ghost alarm migration failed: ${it.message}") }
     }
 
     /**
@@ -867,7 +867,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // still useless ghosts, and leaving the blob would re-trigger
         // migration on every launch.
         prefs.edit().remove("alarms_json").apply()
-        Log.i("MinisApp", "T268 ghost alarm migration: migrated=$migrated skipped=$skipped (prefs cleared)")
+        Log.i("UnibotApp", "T268 ghost alarm migration: migrated=$migrated skipped=$skipped (prefs cleared)")
     }
 
     /**
@@ -925,16 +925,16 @@ class MinisApp : Application(), ImageLoaderFactory {
         }
         if (!dropFormulaCaches) return
 
-        Log.i("MinisApp", "onTrimMemory(level=$level): releasing formula bitmap caches")
+        Log.i("UnibotApp", "onTrimMemory(level=$level): releasing formula bitmap caches")
         runCatching { ai.unicto.unibot.ui.chat.KatexWebViewPool.evictAll() }
-            .onFailure { Log.w("MinisApp", "KatexWebViewPool.evictAll failed: ${it.message}") }
+            .onFailure { Log.w("UnibotApp", "KatexWebViewPool.evictAll failed: ${it.message}") }
         runCatching { ai.unicto.unibot.ui.markdown.KaTeXRendererCache.evictAll() }
-            .onFailure { Log.w("MinisApp", "KaTeXRendererCache.evictAll failed: ${it.message}") }
+            .onFailure { Log.w("UnibotApp", "KaTeXRendererCache.evictAll failed: ${it.message}") }
 
         if (level >= TRIM_MEMORY_COMPLETE) {
-            Log.i("MinisApp", "onTrimMemory(level=$level): tearing down the offscreen KaTeX WebView")
+            Log.i("UnibotApp", "onTrimMemory(level=$level): tearing down the offscreen KaTeX WebView")
             runCatching { ai.unicto.unibot.ui.chat.KatexWebViewPool.releaseWebView() }
-                .onFailure { Log.w("MinisApp", "KatexWebViewPool.releaseWebView failed: ${it.message}") }
+                .onFailure { Log.w("UnibotApp", "KatexWebViewPool.releaseWebView failed: ${it.message}") }
         }
     }
 
@@ -947,7 +947,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         try {
             ai.unicto.unibot.diagnostics.LaunchCycleBeacon.recordCleanExit(this)
         } catch (t: Throwable) {
-            Log.w("MinisApp", "LaunchCycleBeacon.recordCleanExit failed: ${t.message}")
+            Log.w("UnibotApp", "LaunchCycleBeacon.recordCleanExit failed: ${t.message}")
         }
         super.onTerminate()
     }

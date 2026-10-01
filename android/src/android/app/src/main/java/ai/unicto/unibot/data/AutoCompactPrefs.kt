@@ -35,7 +35,7 @@ object AutoCompactPrefs {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * Capture the app context and warm the cache. Called from MinisApp.onCreate,
+     * Capture the app context and warm the cache. Called from UnibotApp.onCreate,
      * so [isEnabled] is safe from call sites that have no Context — the same
      * arrangement [FastModePrefs] uses.
      */

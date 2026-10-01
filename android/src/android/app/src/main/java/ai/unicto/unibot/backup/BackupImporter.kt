@@ -629,8 +629,8 @@ class BackupImporter(
 
     // MARK: - Providers / thinking rules / environment variables
 
-    private val app: ai.unicto.unibot.MinisApp?
-        get() = context.applicationContext as? ai.unicto.unibot.MinisApp
+    private val app: ai.unicto.unibot.UnibotApp?
+        get() = context.applicationContext as? ai.unicto.unibot.UnibotApp
 
     /**
      * Restore `data/provider_config.json` via an order-preserving union merge

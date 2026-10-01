@@ -6,7 +6,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.widget.Toast
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.logging.AppLogger
 import ai.unicto.unibot.provider.voice.VoiceOutputRequest
@@ -325,7 +325,7 @@ class ReadAloudPlayer(context: Context) {
 
     private suspend fun speakOne(text: String) {
         val entry = runCatching {
-            (appContext as? MinisApp)?.providerRepository?.resolveVoiceOutputEntry()
+            (appContext as? UnibotApp)?.providerRepository?.resolveVoiceOutputEntry()
         }.getOrNull()
 
         if (entry != null) {
@@ -392,7 +392,7 @@ class ReadAloudPlayer(context: Context) {
         // Each bail-out logs its reason: these gates used to return false
         // silently, which made "no sound" undiagnosable from a user device
         // (the daily log files showed nothing at all).
-        val repo = (appContext as? MinisApp)
+        val repo = (appContext as? UnibotApp)
             ?.takeIf { it.subsystemsReady() }
             ?.providerRepository
             ?: return false.also { AppLogger.error(TAG, "provider TTS skipped: repository unavailable") }

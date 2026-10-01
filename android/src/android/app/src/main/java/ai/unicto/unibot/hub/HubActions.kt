@@ -10,7 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import androidx.core.app.NotificationCompat
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.accessibility.UnibotAccessibilityService
 import ai.unicto.unibot.data.MemoryGlobalPrefs
@@ -239,7 +239,7 @@ object HubActions {
     private fun task(context: Context, call: IncomingCall) {
         val text = call.args.optString("text").trim()
         if (text.isEmpty()) { call.fail("usage", "text is required"); return }
-        val app = context.applicationContext as? MinisApp
+        val app = context.applicationContext as? UnibotApp
         if (app == null || !app.subsystemsReady()) { call.fail("not_ready", "unibot on the phone is still starting"); return }
         val conversation = call.args.optString("conversation").ifBlank { "from-" + call.from.optString("id").ifBlank { "unknown" } }
         val sessionId = runBlocking { sessionFor(app, conversation, call.senderName) }
@@ -312,7 +312,7 @@ object HubActions {
     }
 
     /** One conversation per remote conversation id, created like a goal's own: seeded from the default group. */
-    private suspend fun sessionFor(app: MinisApp, conversation: String, sender: String): String? {
+    private suspend fun sessionFor(app: UnibotApp, conversation: String, sender: String): String? {
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val key = "hub.session.$conversation"
         p.getString(key, null)?.let { existing ->

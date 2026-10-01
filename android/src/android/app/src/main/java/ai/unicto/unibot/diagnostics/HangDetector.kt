@@ -109,7 +109,7 @@ object HangDetector {
      */
     val renderBreakerActive: StateFlow<Boolean> = _renderBreakerActive.asStateFlow()
 
-    /** Start the watchdog. Idempotent; safe to call from MinisApp.onCreate(). */
+    /** Start the watchdog. Idempotent; safe to call from UnibotApp.onCreate(). */
     fun start(context: Context) {
         if (!started.compareAndSet(false, true)) return
         appContext = context.applicationContext

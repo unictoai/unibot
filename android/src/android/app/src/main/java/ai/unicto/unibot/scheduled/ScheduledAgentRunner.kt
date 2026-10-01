@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R // unibot
 import ai.unicto.unibot.debug.HeadlessChatRunner
 import ai.unicto.unibot.logging.AppLogger
@@ -62,14 +62,14 @@ object ScheduledAgentRunner {
      *   e.g. the minis-scheduled CLI, which runs in its own offload thread.
      * @return the session id once the action has been DISPATCHED (resolved +
      *   prompt sent), or null when the runner couldn't even start (no provider,
-     *   target chat gone, MinisApp not initialized).
+     *   target chat gone, UnibotApp not initialized).
      */
     suspend fun run(
         context: Context,
         task: ScheduledTask,
         waitForCompletion: Boolean = true,
     ): String? {
-        // [T-android-scheduled-lateinit-crash-156] `as? MinisApp` only rules out
+        // [T-android-scheduled-lateinit-crash-156] `as? UnibotApp` only rules out
         // a null / wrong-type Application — it does NOT mean the Application is
         // INITIALIZED, which is what the old comment here claimed. Every
         // `app.chatRepository` read below goes through a lateinit getter that
@@ -86,14 +86,14 @@ object ScheduledAgentRunner {
         // Skipping the run is the right degradation: the task stays scheduled
         // and its next occurrence was already armed by the receiver before this
         // call, so a skipped fire self-heals on the following launch.
-        val app = context.applicationContext as? MinisApp ?: run {
-            AppLogger.error(TAG, "Application is not MinisApp — skipping task ${task.id}")
+        val app = context.applicationContext as? UnibotApp ?: run {
+            AppLogger.error(TAG, "Application is not UnibotApp — skipping task ${task.id}")
             return null
         }
         if (!app.subsystemsReady()) {
             AppLogger.error(
                 TAG,
-                "MinisApp subsystems not initialized (safe-mode or failed init) — skipping task ${task.id}",
+                "UnibotApp subsystems not initialized (safe-mode or failed init) — skipping task ${task.id}",
             )
             return null
         }
@@ -153,7 +153,7 @@ object ScheduledAgentRunner {
      *     RetryRunIntent which has no prompt param).
      */
     private suspend fun dispatch(
-        app: MinisApp,
+        app: UnibotApp,
         task: ScheduledTask,
         sessionId: String,
         wait: Boolean,
@@ -187,7 +187,7 @@ object ScheduledAgentRunner {
         )
     }
 
-    private suspend fun resolveSessionId(app: MinisApp, task: ScheduledTask): String? {
+    private suspend fun resolveSessionId(app: UnibotApp, task: ScheduledTask): String? {
         return when (val mode = task.targetMode) {
             is ScheduledTargetMode.AppendToSession -> {
                 // Follow-up: the target session must still exist. If the user

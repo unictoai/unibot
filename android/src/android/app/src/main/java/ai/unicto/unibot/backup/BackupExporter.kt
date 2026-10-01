@@ -492,8 +492,8 @@ class BackupExporter(
     // policy. These three write only the non-secret structure so a share copy
     // (includeCredentials=false) still carries the provider/model/rule layout.
 
-    private val app: ai.unicto.unibot.MinisApp?
-        get() = context.applicationContext as? ai.unicto.unibot.MinisApp
+    private val app: ai.unicto.unibot.UnibotApp?
+        get() = context.applicationContext as? ai.unicto.unibot.UnibotApp
 
     /**
      * `data/provider_config.json` (the whole [ProviderConfig], array order = the

@@ -2,7 +2,7 @@ package ai.unicto.unibot.debug
 
 import android.content.Context
 import androidx.lifecycle.ViewModelProvider
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.ui.chat.ChatViewModel
 import ai.unicto.unibot.ui.chat.ChatViewModelStore
@@ -33,9 +33,9 @@ internal object HeadlessChatRunner {
     /** sessionId → ViewModelProvider that owns its single ChatViewModel. */
     private val providers = mutableMapOf<String, ViewModelProvider>()
 
-    private fun app(context: Context): MinisApp =
-        context.applicationContext as? MinisApp
-            ?: throw RPCException(-32000, "MinisApp not initialized")
+    private fun app(context: Context): UnibotApp =
+        context.applicationContext as? UnibotApp
+            ?: throw RPCException(-32000, "UnibotApp not initialized")
 
     @Synchronized
     private fun providerFor(context: Context, sessionId: String): ViewModelProvider {

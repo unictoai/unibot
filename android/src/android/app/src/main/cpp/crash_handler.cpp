@@ -1,6 +1,6 @@
 // T283 — native crash → file (NDK signal handler).
 //
-// Registered at app startup from MinisApp.onCreate via JNI. Catches
+// Registered at app startup from UnibotApp.onCreate via JNI. Catches
 // fatal signals raised inside JNI / proot / pty_bridge / any other
 // native code, writes a one-shot text report to the configured logs
 // dir, then hands the signal to the handler that was installed before

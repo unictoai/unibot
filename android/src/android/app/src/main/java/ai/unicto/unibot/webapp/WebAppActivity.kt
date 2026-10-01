@@ -66,7 +66,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewAssetLoader
 import ai.unicto.unibot.MainActivity
 import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -145,7 +145,7 @@ class WebAppActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            val app = applicationContext as MinisApp
+            val app = applicationContext as UnibotApp
             val shortcut = withContext(Dispatchers.IO) {
                 app.webAppShortcutRepository.get(shortcutId)
             }

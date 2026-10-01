@@ -38,7 +38,7 @@ class AlarmOffloadHandler(private val context: Context) : NativeOffloadHandler {
     // T268: AlarmOffloadManager dependency dropped — this handler is now a
     // pure intent-dispatch surface (system Clock's SET_ALARM / SET_TIMER /
     // SHOW_ALARMS). The manager + its SharedPreferences are still around so
-    // the one-shot ghost migration in MinisApp.onCreate can flush any
+    // the one-shot ghost migration in UnibotApp.onCreate can flush any
     // pre-T266 entries; the manager will be deleted once that bake is over.
 
     override fun handle(request: NativeOffloadRequest): NativeOffloadResult {

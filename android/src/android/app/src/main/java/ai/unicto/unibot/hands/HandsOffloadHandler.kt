@@ -20,7 +20,7 @@ import java.util.Locale
  *
  * `run` blocks for the whole task (minutes) and answers with one JSON object. Off by default;
  * with the switch off or a prerequisite missing it exits 3 with the reason and the settings
- * link, so the agent tells the user instead of guessing. Registered in `MinisApp` next to
+ * link, so the agent tells the user instead of guessing. Registered in `UnibotApp` next to
  * `unibot-media`.
  */
 class HandsOffloadHandler(private val context: Context) : NativeOffloadHandler {

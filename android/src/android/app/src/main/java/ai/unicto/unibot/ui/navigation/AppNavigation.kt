@@ -234,14 +234,14 @@ fun AppNavigation(
 ) {
     val context = LocalContext.current
 
-    // T219-5: use the application-scoped singleton from MinisApp so UI
+    // T219-5: use the application-scoped singleton from UnibotApp so UI
     // add/remove shares state with PRootKernel and the lifecycle re-probe
     // path. Pre-T219-5 this `remember { MountedFoldersStore(...) }` created
     // a SECOND independent instance — UI list updated but PRoot never
     // saw the change because PRootKernel.mountedFoldersStore pointed at
-    // the application-scoped singleton in MinisApp.
+    // the application-scoped singleton in UnibotApp.
     val mountedFoldersStore = remember {
-        (context.applicationContext as ai.unicto.unibot.MinisApp).mountedFoldersStore
+        (context.applicationContext as ai.unicto.unibot.UnibotApp).mountedFoldersStore
     }
 
     // unibot: whether SESSION_LIST renders the home shell (compact windows) — decided here,

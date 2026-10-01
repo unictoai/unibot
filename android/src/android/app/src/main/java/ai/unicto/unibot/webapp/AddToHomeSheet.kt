@@ -63,7 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.ui.components.MinisButton
 import ai.unicto.unibot.ui.components.MinisOutlinedButton
 import ai.unicto.unibot.R
@@ -369,7 +369,7 @@ fun AddToHomeSheet(
                                 is IconChoice.Gallery -> "file:${c.uri}"
                                 is IconChoice.Preset -> "preset:${c.preset.name.lowercase()}"
                             }
-                            val app = context.applicationContext as MinisApp
+                            val app = context.applicationContext as UnibotApp
                             val entity = when (source) {
                                 is WebAppSource.ChatAttachment -> {
                                     // htmlPath stays relative under the

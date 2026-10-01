@@ -12,7 +12,7 @@ import org.junit.Test
  * light-on-dark or dark-on-light. The key was `(latex, displayMode)` only, and
  * nothing evicts the cache when the user flips the in-app theme —
  * `KaTeXRendererCache.evictAll()` is wired to memory pressure
- * (MinisApp.onTrimMemory), not to `theme_mode`. So the composable re-read the
+ * (UnibotApp.onTrimMemory), not to `theme_mode`. So the composable re-read the
  * colour, computed the same key, and got the PREVIOUS theme's bitmap back: a
  * formula kept its old ink until the entry happened to be evicted.
  *

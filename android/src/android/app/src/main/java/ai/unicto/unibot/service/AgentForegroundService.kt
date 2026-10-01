@@ -15,7 +15,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -141,10 +141,10 @@ class AgentForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         // Safe-mode bail-out. When CrashFrequencyDetector tripped in
-        // MinisApp.onCreate, the Application skipped its lateinit init
+        // UnibotApp.onCreate, the Application skipped its lateinit init
         // for repositories — but a sticky FG service that was running
         // pre-crash will still be re-created by the system on the next
-        // process spawn. Reading MinisApp.backgroundSettingsRepository
+        // process spawn. Reading UnibotApp.backgroundSettingsRepository
         // from ToolOverlayController.<init> here would throw
         // UninitializedPropertyAccessException and write a second crash
         // log, which is exactly the "detection logic recursively
@@ -336,7 +336,7 @@ class AgentForegroundService : Service() {
      * overlay doesn't draw on top of the chat itself.
      */
     private fun startOverlayObserver() {
-        val app = applicationContext as? MinisApp ?: return
+        val app = applicationContext as? UnibotApp ?: return
         overlayController = ToolOverlayController(applicationContext).apply {
             // [T-android-overlay-reply-status-34599] Tap-to-open or X
             // dismissal clears the lingered completion state so the
@@ -804,11 +804,11 @@ class AgentForegroundService : Service() {
         // Application, NOT against an uninitialized lateinit — the safe call
         // succeeds and then the GETTER throws
         // UninitializedPropertyAccessException. This service can be restarted
-        // by the system with no Activity, so it can observe a MinisApp whose
+        // by the system with no Activity, so it can observe a UnibotApp whose
         // onCreate early-returned under safe-mode. Gate on subsystemsReady()
         // first; a notification built without the dynamic-island style is a
         // cosmetic downgrade, a crash here kills the FGS mid-task.
-        val minisApp = (applicationContext as? MinisApp)?.takeIf { it.subsystemsReady() }
+        val minisApp = (applicationContext as? UnibotApp)?.takeIf { it.subsystemsReady() }
         val dynamicIslandUserEnabled =
             minisApp?.backgroundSettingsRepository?.dynamicIslandEnabled?.value == true
         val dynamicIslandOn = DynamicIslandSupport.isDynamicIslandActive(

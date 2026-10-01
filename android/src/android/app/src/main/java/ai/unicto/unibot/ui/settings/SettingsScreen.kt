@@ -130,7 +130,7 @@ fun SettingsScreen(
     // Muse groups its own (the agent, the data on the phone, the app, about).
     // The card at the top stands where Muse's plan card stands and shows the
     // model the agent talks to, now that the home header no longer does.
-    val providerRepo = (context.applicationContext as? ai.unicto.unibot.MinisApp)?.providerRepositoryOrNull
+    val providerRepo = (context.applicationContext as? ai.unicto.unibot.UnibotApp)?.providerRepositoryOrNull
     val providerConfig = providerRepo?.config?.collectAsState()?.value
     val defaultGroup = providerConfig?.let { cfg -> cfg.modelGroups.firstOrNull { it.id == cfg.defaultPrimaryGroupId } ?: cfg.modelGroups.firstOrNull() }
     val firstEntry = providerConfig?.let { cfg -> defaultGroup?.memberEntryIds?.firstNotNullOfOrNull { id -> cfg.modelEntries.firstOrNull { it.id == id } } }

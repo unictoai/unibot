@@ -1,7 +1,7 @@
 package ai.unicto.unibot.debug
 
 import android.content.Context
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.data.db.MessageEntity
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
@@ -20,12 +20,12 @@ import org.json.JSONObject
 internal object ChatDebugMethods {
 
     private fun chat(context: Context): ChatRepository =
-        (context.applicationContext as? MinisApp
-            ?: throw RPCException(-32000, "MinisApp not initialized")).chatRepository
+        (context.applicationContext as? UnibotApp
+            ?: throw RPCException(-32000, "UnibotApp not initialized")).chatRepository
 
     private fun provider(context: Context): ProviderRepository =
-        (context.applicationContext as? MinisApp
-            ?: throw RPCException(-32000, "MinisApp not initialized")).providerRepository
+        (context.applicationContext as? UnibotApp
+            ?: throw RPCException(-32000, "UnibotApp not initialized")).providerRepository
 
     suspend fun sessionsList(context: Context, params: JSONObject): JSONObject {
         val limit = params.optInt("limit", 50).coerceIn(1, 500)

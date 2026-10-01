@@ -1,6 +1,6 @@
 package ai.unicto.unibot.goals
 
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.data.MemoryGlobalPrefs
 
 /**
@@ -9,7 +9,7 @@ import ai.unicto.unibot.data.MemoryGlobalPrefs
  * chat boots through it, and fall back to the first visible entry.
  */
 object GoalSessions {
-    suspend fun create(app: MinisApp, title: String): String? {
+    suspend fun create(app: UnibotApp, title: String): String? {
         val providers = app.providerRepository
         val defaultGroupId = providers.defaultPrimaryGroupId
         val seedModelId = defaultGroupId

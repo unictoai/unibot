@@ -116,7 +116,7 @@ class SkillRepository(private val context: Context) {
     init {
         // [T-android-safemode-lateinit-crash-147] Never let a bad skill take
         // the whole app down. This constructor runs inline in
-        // MinisApp.onCreate, BEFORE subsystemsInitialized is set, so anything
+        // UnibotApp.onCreate, BEFORE subsystemsInitialized is set, so anything
         // escaping here aborts onCreate with the repositories half-assigned.
         // The Application object is then permanently broken (onCreate never
         // re-runs), every subsequent launch crashes on the first Compose frame
@@ -1203,7 +1203,7 @@ class SkillRepository(private val context: Context) {
             // [T-android-safemode-lateinit-crash-147] Per-row isolation: one
             // malformed skill (a third-party import with a missing column or
             // an unparseable SKILL.md) must not discard every OTHER skill, and
-            // must not escape into MinisApp.onCreate. Skip the bad row, keep
+            // must not escape into UnibotApp.onCreate. Skip the bad row, keep
             // the rest.
             try {
             val id = cursor.getString(cursor.getColumnIndexOrThrow("id"))

@@ -158,11 +158,11 @@ fun UnibotHome(
     var setupDone by remember { mutableStateOf(FirstRunSetup.isDone(context)) }
     val hasProviders = providerConfig.instances.isNotEmpty()
     val hasGroups = providerConfig.modelGroups.isNotEmpty()
-    // The account is required: the flow flips when the sign-in lands (or the key is revoked).
+    // The account is optional (BYOK-first): the flow flips when a provider key lands (or is revoked).
     val signedIn by ai.unicto.unibot.cloud.UnibotCloud.signedIn(context).collectAsState()
     val phase = when {
         !configLoaded || sessions == null || signedIn == null -> HomePhase.LOADING
-        FirstRunSetup.needed(signedIn == true, hasProviders, sessions!!.isNotEmpty(), setupDone) -> HomePhase.SETUP
+        FirstRunSetup.needed(hasProviders, sessions!!.isNotEmpty(), setupDone) -> HomePhase.SETUP
         else -> HomePhase.HOME
     }
     // Once the chat has been shown the setup is over for good: an empty main chat is a draft
@@ -245,7 +245,7 @@ fun UnibotHome(
     /** "Discuss" on a feed card: a side chat that opens on the post. */
     fun discussPost(post: ai.unicto.unibot.feed.FeedPost) {
         scope.launch {
-            val app = context.applicationContext as? ai.unicto.unibot.MinisApp ?: return@launch
+            val app = context.applicationContext as? ai.unicto.unibot.UnibotApp ?: return@launch
             val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 ai.unicto.unibot.goals.GoalSessions.create(app, post.title.take(40))
             } ?: run {

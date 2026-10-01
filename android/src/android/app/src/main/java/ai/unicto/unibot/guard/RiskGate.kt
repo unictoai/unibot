@@ -76,7 +76,7 @@ object RiskGate {
     private val mutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    /** Posts a notification when the app is backgrounded; returns true if it did. Wired in MinisApp. */
+    /** Posts a notification when the app is backgrounded; returns true if it did. Wired in UnibotApp. */
     @Volatile var backgroundNotifier: ((RiskRequest) -> Boolean)? = null
     @Volatile var cancelNotification: ((String) -> Unit)? = null
     private val notified = HashSet<String>()

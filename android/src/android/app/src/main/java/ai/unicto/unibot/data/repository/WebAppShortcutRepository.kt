@@ -6,7 +6,7 @@ import java.util.UUID
 
 /**
  * T-pwa-1 (renamed Pwa → WebApp): thin wrapper around
- * [WebAppShortcutDao]. Constructed once in [ai.unicto.unibot.MinisApp]
+ * [WebAppShortcutDao]. Constructed once in [ai.unicto.unibot.UnibotApp]
  * and shared across UI surfaces (chat attachment chip in T-pwa-2, file
  * browser row in T-pwa-3).
  */

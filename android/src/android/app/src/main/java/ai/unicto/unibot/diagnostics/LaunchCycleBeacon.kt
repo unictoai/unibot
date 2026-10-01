@@ -49,7 +49,7 @@ object LaunchCycleBeacon {
      * naturally returns false for users who didn't actually crash.
      *
      * Reset semantics: the field is process-scoped. It's recomputed once per
-     * process at [recordLaunch] (called from MinisApp.onCreate). A single
+     * process at [recordLaunch] (called from UnibotApp.onCreate). A single
      * cycle that does NOT end in crash_or_stall — even silent_kill, which
      * dwarfs real crashes for daily users — resets the field to 0 on the
      * very next launch, restoring auto-recovery. So a user who hits a

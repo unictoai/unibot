@@ -1,7 +1,7 @@
 package ai.unicto.unibot.sandbox.offload
 
 import android.util.Log
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.browser.BrowserAction
 import ai.unicto.unibot.browser.BrowserActionInput
 import ai.unicto.unibot.browser.BrowserActionResult
@@ -36,7 +36,7 @@ import java.util.TimeZone
  * the shell indefinitely. Exits 0 for success, 1 for runtime errors, 2 for
  * bad arguments. Bare invocation prints help and exits 0 (matches iOS).
  */
-class BrowserUseOffloadHandler(private val app: MinisApp) : NativeOffloadHandler {
+class BrowserUseOffloadHandler(private val app: UnibotApp) : NativeOffloadHandler {
 
     override fun handle(request: NativeOffloadRequest): NativeOffloadResult {
         // Declared-boolean flags: without this set, the shared OffloadArgs

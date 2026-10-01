@@ -64,7 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.speech.VoiceOutputState
 import kotlinx.coroutines.delay
@@ -374,7 +374,7 @@ fun SpeechPlayerCapsule(
         // config .voiceOutput()): bound Voice Output group + System TTS + every
         // provider section with audio-output models and Quick Test — replacing
         // the first-cut flat candidate list.
-        val repo = (LocalContext.current.applicationContext as? MinisApp)?.providerRepository
+        val repo = (LocalContext.current.applicationContext as? UnibotApp)?.providerRepository
         if (repo != null) {
             VoiceOutputPickerSheet(
                 providerRepository = repo,

@@ -32,7 +32,7 @@ object EnvVarRedactor {
     /**
      * Static handoff so non-DI call sites (e.g. ShellExecutor on a
      * background coroutine) can reach the repository without plumbing
-     * it through every layer. Set once from [ai.unicto.unibot.MinisApp.onCreate].
+     * it through every layer. Set once from [ai.unicto.unibot.UnibotApp.onCreate].
      */
     @Volatile
     var envVarRepository: EnvVarRepository? = null

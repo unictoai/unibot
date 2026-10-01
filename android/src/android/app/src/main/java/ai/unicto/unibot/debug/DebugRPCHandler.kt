@@ -666,7 +666,7 @@ class DebugRPCHandler(private val context: Context) {
      * same event a user's long-press → Paste generates.
      *
      * Debug-only by construction: DebugServer is started under
-     * `if (BuildConfig.DEBUG)` in MinisApp, so no release build carries this.
+     * `if (BuildConfig.DEBUG)` in UnibotApp, so no release build carries this.
      */
     private suspend fun handleSetClipboard(params: JSONObject): JSONObject {
         val text = params.optString("text")
@@ -780,7 +780,7 @@ class DebugRPCHandler(private val context: Context) {
 
     private fun metaObject(): JSONObject {
         return JSONObject().apply {
-            put("app", "MinisApp")
+            put("app", "UnibotApp")
             put("version", BuildConfig.VERSION_NAME)
             put("build", BuildConfig.VERSION_CODE)
             put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
@@ -1026,7 +1026,7 @@ class DebugRPCHandler(private val context: Context) {
 
     /**
      * Stub for parity with iOS `debug.cloudSync`. Android does not have an
-     * iCloud-equivalent built into MinisApp, so we report disabled and an
+     * iCloud-equivalent built into UnibotApp, so we report disabled and an
      * empty device list rather than fail the call. Lets cross-platform
      * harnesses skip the check uniformly.
      */
@@ -1220,7 +1220,7 @@ class DebugRPCHandler(private val context: Context) {
         } else argvTail
 
         AppLogger.info("DebugRPC", "debug.modelUse.exec argv=${finalArgv.joinToString(" ")}")
-        val app = context.applicationContext as ai.unicto.unibot.MinisApp
+        val app = context.applicationContext as ai.unicto.unibot.UnibotApp
         val handler = ai.unicto.unibot.sandbox.offload.ModelUseOffloadHandler(context, app.providerRepository)
         val request = ai.unicto.unibot.sandbox.NativeOffloadRequest(
             pid = -1,
@@ -1258,7 +1258,7 @@ class DebugRPCHandler(private val context: Context) {
         }
 
         AppLogger.info("DebugRPC", "debug.sessions.exec argv=${argvTail.joinToString(" ")}")
-        val app = context.applicationContext as ai.unicto.unibot.MinisApp
+        val app = context.applicationContext as ai.unicto.unibot.UnibotApp
         val handler = ai.unicto.unibot.sandbox.offload.SessionsOffloadHandler(app.chatRepository)
         val request = ai.unicto.unibot.sandbox.NativeOffloadRequest(
             pid = -1,

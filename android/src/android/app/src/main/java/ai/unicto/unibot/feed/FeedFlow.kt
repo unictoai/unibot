@@ -1,7 +1,7 @@
 package ai.unicto.unibot.feed
 
 import android.content.Context
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.logging.AppLogger
 import ai.unicto.unibot.scheduled.ScheduledAgentRunner
@@ -77,7 +77,7 @@ object FeedFlow {
      * whenever the Feed tab shows. A conversation the user deleted is recreated and re-bound.
      */
     suspend fun ensureRoutine(context: Context): ScheduledTask? {
-        val app = context.applicationContext as? MinisApp ?: return null
+        val app = context.applicationContext as? UnibotApp ?: return null
         if (!app.subsystemsReady()) return null
         val manager = ScheduledTaskManager(app)
         val p = prefs(app)
@@ -119,7 +119,7 @@ object FeedFlow {
                     AppLogger.warning(TAG, "no model configured; cannot write the feed")
                     return@launch
                 }
-                val app = context.applicationContext as MinisApp
+                val app = context.applicationContext as UnibotApp
                 ScheduledAgentRunner.run(app, task, waitForCompletion = true)
             } finally {
                 _generating.value = false

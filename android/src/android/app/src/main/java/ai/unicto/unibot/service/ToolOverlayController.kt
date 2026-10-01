@@ -28,7 +28,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import kotlin.math.abs
 
@@ -108,7 +108,7 @@ class ToolOverlayController(private val context: Context) {
         context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundRepo =
-        (context.applicationContext as MinisApp).backgroundSettingsRepository
+        (context.applicationContext as UnibotApp).backgroundSettingsRepository
 
     private var view: View? = null
     private var logoView: ImageView? = null

@@ -38,7 +38,7 @@ object AppLogger {
      * early as possible so the read-only helpers below can find
      * `filesDir/logs` even when [init] never ran.
      *
-     * [init] is called from MinisApp.onCreate AFTER the safe-mode
+     * [init] is called from UnibotApp.onCreate AFTER the safe-mode
      * early-return, so on a launch following a crash burst [logDir] stays
      * null — and every reader keyed off it ([listLogFiles],
      * [listLogFileMetas], [readLog], [totalSize]) reported "no logs".

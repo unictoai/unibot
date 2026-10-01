@@ -1,7 +1,7 @@
 package ai.unicto.unibot.debug
 
 import android.content.Context
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.data.model.FallbackStrategy
 import ai.unicto.unibot.data.model.ImageEndpointMode
 import ai.unicto.unibot.data.model.LLMModel
@@ -32,8 +32,8 @@ import java.util.UUID
 internal object ProviderMutationMethods {
 
     private fun repo(context: Context): ProviderRepository =
-        (context.applicationContext as? MinisApp
-            ?: throw RPCException(-32000, "MinisApp not initialized")).providerRepository
+        (context.applicationContext as? UnibotApp
+            ?: throw RPCException(-32000, "UnibotApp not initialized")).providerRepository
 
     // ─── Instances ──────────────────────────────────────────────────────────
 

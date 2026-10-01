@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.provider.Settings
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.accessibility.UnibotAccessibilityService
 import ai.unicto.unibot.data.model.ModelEntry
 import ai.unicto.unibot.data.model.ProviderInstance
@@ -102,7 +102,7 @@ object Hands {
         return all.firstOrNull { Regex("vl|vision", RegexOption.IGNORE_CASE).containsMatchIn(it.modelId) } ?: all.firstOrNull()
     }
 
-    private fun repo(context: Context): ProviderRepository? = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
+    private fun repo(context: Context): ProviderRepository? = (context.applicationContext as? UnibotApp)?.providerRepositoryOrNull
 
     // ── a run in progress ──────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ import android.content.SharedPreferences
  * REQUEST-BUILD time so a flip applies to the very next request of an ongoing
  * session — including offload / title-gen calls that never pass through the
  * ChatViewModel. To reproduce that, [prime] captures the application context
- * once at app startup (MinisApp.onCreate) and warms a volatile cache; the
+ * once at app startup (UnibotApp.onCreate) and warms a volatile cache; the
  * context-free [isEnabled] is then safe to call from any request builder.
  */
 object FastModePrefs {
@@ -29,7 +29,7 @@ object FastModePrefs {
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** Capture the app context and warm the cache. Called from MinisApp.onCreate. */
+    /** Capture the app context and warm the cache. Called from UnibotApp.onCreate. */
     fun prime(context: Context) {
         appContext = context.applicationContext
         cachedEnabled = prefs(context).getBoolean(KEY_ENABLED, false)

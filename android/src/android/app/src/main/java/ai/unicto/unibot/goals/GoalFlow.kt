@@ -1,7 +1,7 @@
 package ai.unicto.unibot.goals
 
 import android.content.Context
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.logging.AppLogger
 import ai.unicto.unibot.scheduled.ScheduledRepeatMode
@@ -122,7 +122,7 @@ object GoalFlow {
 
     private suspend fun setUpGoal(context: Context, goal: Goal, firstCheck: String) {
         try {
-            val app = context.applicationContext as MinisApp
+            val app = context.applicationContext as UnibotApp
             val sessionId: String? = GoalSessions.create(app, goal.title)
             if (sessionId == null) {
                 AppLogger.warning(TAG, "goal ${goal.id}: no provider, no session")
@@ -204,7 +204,7 @@ object GoalFlow {
 
     /** Runs the goal's check right now, in its session. */
     suspend fun checkNow(context: Context, goal: Goal) {
-        val app = context.applicationContext as MinisApp
+        val app = context.applicationContext as UnibotApp
         val task = goal.taskId?.let { ScheduledTaskManager(app).get(it) } ?: return
         withContext(Dispatchers.Default) {
             ai.unicto.unibot.scheduled.ScheduledAgentRunner.run(app, task, waitForCompletion = false)

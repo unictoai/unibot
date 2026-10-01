@@ -128,15 +128,14 @@ object FirstRunSetup {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * Whether the home should show the setup instead of the chat. The account is required —
-     * it is what keeps a person's devices together and what the free model runs on — so
-     * without a sign-in the setup always comes back, as it does without any provider (the chat
-     * could not answer). Otherwise it stays only for a brand-new install — no conversation yet —
-     * until *Start* has been tapped, so the last page is a real step and the hand-off into the
-     * first conversation is deliberate.
+     * Whether the home should show the setup instead of the chat. unibot is BYOK-first: no
+     * account is required — a provider key is enough to talk. So the setup comes back only
+     * when there is no provider at all (the chat could not answer), or for a brand-new
+     * install — no conversation yet — until *Start* has been tapped, so the last page is a
+     * real step and the hand-off into the first conversation is deliberate.
      */
-    fun needed(signedIn: Boolean, hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
-        !signedIn || !hasProviders || (!hasSessions && !done)
+    fun needed(hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
+        !hasProviders || (!hasSessions && !done)
 
     enum class Stage { WELCOME, PASSWORD, CONTRIBUTE, SOURCE, MODELS, HANDS, MEET }
 

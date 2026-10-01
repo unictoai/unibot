@@ -34,7 +34,7 @@ import java.util.Locale
  *
  * A command is judged by [ShellGuard] exactly like one for the phone's own shell and, when it
  * needs it, waits for the approval card — here, on the phone, before it is sent. Registered in
- * `MinisApp` next to `unibot-hands`.
+ * `UnibotApp` next to `unibot-hands`.
  */
 class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
 

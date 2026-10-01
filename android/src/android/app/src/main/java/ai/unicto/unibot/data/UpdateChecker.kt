@@ -36,10 +36,10 @@ object UpdateChecker {
     private const val TAG = "UpdateChecker"
     private const val OWNER = "unictoai"
     // T133: the public repo is OpenMinis/OpenMinis (org + repo share a name).
-    // Previously pointed at OpenMinis/MinisApp, which is the private dev
+    // Previously pointed at OpenMinis/UnibotApp, which is the private dev
     // mirror — every API call 404'd, which we mistranslated as "no release
     // published". The 0.1-preview release is published as a prerelease on
-    // OpenMinis/OpenMinis with a MinisApp-*.apk asset attached.
+    // OpenMinis/OpenMinis with a UnibotApp-*.apk asset attached.
     private const val REPO = "unibot"
     private const val DOWNLOAD_FILENAME = "minis-update.apk"
     /**

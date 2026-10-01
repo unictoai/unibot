@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * T-android-safemode-lateinit-crash: escape hatch for a process whose
-     * [MinisApp.onCreate] early-returned under safe-mode.
+     * [UnibotApp.onCreate] early-returned under safe-mode.
      *
      * That early return is irreversible within the process — the
      * repositories stay unassigned no matter what the safe-mode flag says
@@ -203,21 +203,21 @@ class MainActivity : ComponentActivity() {
         }
 
         // Safe-mode short-circuit: if CrashFrequencyDetector tripped in
-        // MinisApp.onCreate (≥THRESHOLD recent crash files), the
+        // UnibotApp.onCreate (≥THRESHOLD recent crash files), the
         // Application skipped all heavy init — no DB, no repos, no
         // offload server. We must NOT call setContent() / ChatViewModel /
-        // any code that touches MinisApp's lateinit deps; doing so would
+        // any code that touches UnibotApp's lateinit deps; doing so would
         // throw UninitializedPropertyAccessException and overwrite the
         // very crash logs we're trying to ship.
         //
         // Pop the share/dismiss dialog directly and finish() on close so
         // the user's next launch starts fresh. The dialog UI uses
-        // AlertDialog (system-level) which doesn't touch MinisApp state.
+        // AlertDialog (system-level) which doesn't touch UnibotApp state.
         // T-android-safemode-lateinit-crash: gate on the Application's own
         // "did init actually run" flag, NOT on isSafeMode(). The two are
         // not equivalent, and the difference was a hard crash loop:
         // finishClose() sets safe-mode back to false as soon as the user
-        // dismisses the share dialog, but MinisApp.onCreate already
+        // dismisses the share dialog, but UnibotApp.onCreate already
         // early-returned and never re-runs for the life of the process.
         // Any MainActivity created after that dismissal (launcher icon —
         // including the MainActivityIconDark alias — notification tap, or
@@ -232,7 +232,7 @@ class MainActivity : ComponentActivity() {
         // `subsystemsInitialized` only goes true after every repository is
         // assigned, so it stays false for exactly as long as composing is
         // genuinely unsafe.
-        val minisApp = application as? MinisApp
+        val minisApp = application as? UnibotApp
 
         // [T-android-downgrade-compat] A database written by a NEWER build is
         // not a crash — it is a recoverable state with a specific remedy, and
@@ -491,7 +491,7 @@ class MainActivity : ComponentActivity() {
         }
 
         // Non-null and fully initialized — proven by the guard above.
-        val app = requireNotNull(application as? MinisApp)
+        val app = requireNotNull(application as? UnibotApp)
 
         // Parse deep link from launch intent. A real deep-link in the
         // launch intent always wins over a saved-state restore (the

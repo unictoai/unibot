@@ -26,7 +26,7 @@ import java.net.SocketTimeoutException
  * `--compact` / `-q` / `--quiet` flags work the same way as every other
  * `android-*` / `minis-*` offload.
  *
- * Registration is guarded by `BuildConfig.DEBUG` in MinisApp.kt so the
+ * Registration is guarded by `BuildConfig.DEBUG` in UnibotApp.kt so the
  * Release APK contains no trace of this command.
  */
 class DebugOffloadHandler(@Suppress("UNUSED_PARAMETER") context: Context) : NativeOffloadHandler {

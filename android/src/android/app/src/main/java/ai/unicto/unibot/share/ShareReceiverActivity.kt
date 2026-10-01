@@ -199,7 +199,7 @@ class ShareReceiverActivity : ComponentActivity() {
         // throws UninitializedPropertyAccessException — crashing the app and
         // re-feeding the crash-burst detector. Null takes the existing
         // "import failed" path instead.
-        val repo = (applicationContext as? ai.unicto.unibot.MinisApp)?.providerRepositoryOrNull
+        val repo = (applicationContext as? ai.unicto.unibot.UnibotApp)?.providerRepositoryOrNull
         if (repo == null) {
             AppLogger.warning(TAG, "providerRepository unavailable; cannot import")
             toast(getString(ai.unicto.unibot.R.string.share_provider_json_import_failed))

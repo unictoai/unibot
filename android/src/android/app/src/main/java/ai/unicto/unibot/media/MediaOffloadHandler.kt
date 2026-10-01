@@ -26,7 +26,7 @@ import java.util.Locale
  * Files land in the session's `/var/minis/attachments/`, and the JSON reply carries a `markdown`
  * line (`![…](minis://attachments/…)`) that renders inline when the agent puts it in its answer.
  * Without the needed model it exits 3 with a plain reason and the settings link, so the agent can
- * tell the user instead of guessing. Registered in `MinisApp` next to `minis-model-use`.
+ * tell the user instead of guessing. Registered in `UnibotApp` next to `minis-model-use`.
  */
 class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
 

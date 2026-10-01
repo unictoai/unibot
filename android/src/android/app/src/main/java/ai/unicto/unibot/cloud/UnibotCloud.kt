@@ -3,7 +3,7 @@ package ai.unicto.unibot.cloud
 import android.content.Context
 import android.os.Build
 import ai.unicto.unibot.BuildConfig
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.model.LLMModel
 import ai.unicto.unibot.data.model.ModelGroup
@@ -576,7 +576,7 @@ object UnibotCloud {
     // -- internals -------------------------------------------------------------------------------
 
     private fun repo(context: Context): ProviderRepository? =
-        (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
+        (context.applicationContext as? UnibotApp)?.providerRepositoryOrNull
 
     /**
      * After the key: a default group if the user has none, and the image model for the avatar

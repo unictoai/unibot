@@ -1,7 +1,7 @@
 package ai.unicto.unibot.debug
 
 import android.content.Context
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.browser.BrowserAction
 import ai.unicto.unibot.browser.BrowserActionInput
 import ai.unicto.unibot.browser.BrowserTabPool
@@ -13,7 +13,7 @@ import org.json.JSONObject
  * Browser-debug RPC handlers (`debug.browser.*`).
  *
  * Mirrors the iOS `debug.browser.*` surface in `docs/debug-server-api.md`. All
- * methods operate on the application-scoped [MinisApp.sharedBrowserTabPool]
+ * methods operate on the application-scoped [UnibotApp.sharedBrowserTabPool]
  * (the same pool the in-shell `minis-browser-use` agent drives) so external
  * automation sees the tabs the user has actually opened.
  *
@@ -24,8 +24,8 @@ import org.json.JSONObject
 internal object BrowserDebugMethods {
 
     private fun pool(context: Context): BrowserTabPool {
-        val app = context.applicationContext as? MinisApp
-            ?: throw RPCException(-32000, "MinisApp not initialized")
+        val app = context.applicationContext as? UnibotApp
+            ?: throw RPCException(-32000, "UnibotApp not initialized")
         return app.sharedBrowserTabPool
     }
 

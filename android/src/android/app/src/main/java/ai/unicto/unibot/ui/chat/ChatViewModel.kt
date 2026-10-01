@@ -1583,7 +1583,7 @@ class ChatViewModel(
         // T219: provide the SAF-mounted external folders so `@<mountName>`
         // resolves to /var/minis/mounts/<name>/... in the chat composer.
         // PRootKernel holds the MountedFoldersStore reference (set at app
-        // launch by MinisApp); reading via a closure means the index sees
+        // launch by UnibotApp); reading via a closure means the index sees
         // an up-to-date snapshot on every rescan without a manual refresh.
         FileMentionIndex(
             filesDir = java.io.File(context.applicationContext.filesDir, "minis-global"),

@@ -1,7 +1,7 @@
 package ai.unicto.unibot.debug
 
 import android.content.Context
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.data.model.LLMModel
 import ai.unicto.unibot.data.model.ProviderConfig
 import ai.unicto.unibot.data.model.ProviderType
@@ -23,8 +23,8 @@ import org.json.JSONObject
 internal object ProviderDebugMethods {
 
     private fun repo(context: Context): ProviderRepository {
-        val app = context.applicationContext as? MinisApp
-            ?: throw RPCException(-32000, "MinisApp not initialized")
+        val app = context.applicationContext as? UnibotApp
+            ?: throw RPCException(-32000, "UnibotApp not initialized")
         // Force the lazy load HERE, once, for every provider.* handler. These
         // handlers read `config.value` directly, and ProviderRepository loads
         // config lazily on first mutation/access — so on a cold process (app

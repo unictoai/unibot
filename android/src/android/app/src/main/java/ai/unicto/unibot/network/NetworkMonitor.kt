@@ -37,7 +37,7 @@ class NetworkMonitor {
          * clients. Routing them all through this instance is what lets
          * [evictConnectionPool] actually reach provider connections:
          * previously eviction only covered the single client registered via
-         * [start], and MinisApp registers none, so eviction was a no-op.
+         * [start], and UnibotApp registers none, so eviction was a no-op.
          * Through a local VPN/proxy (e.g. clash at 127.0.0.1:7890) the TCP
          * socket to localhost survives network flaps, so the pool kept
          * handing the dead h2 tunnel to every retry — requests wrote into it

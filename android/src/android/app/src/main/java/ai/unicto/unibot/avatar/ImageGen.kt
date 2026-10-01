@@ -4,7 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
-import ai.unicto.unibot.MinisApp
+import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.data.model.LLMMessage
 import ai.unicto.unibot.data.model.LLMModel
 import ai.unicto.unibot.data.model.ModelEntry
@@ -64,7 +64,7 @@ object ImageGen {
 
     /** API-key providers that speak the OpenAI images API (OpenAI itself, xAI, OpenRouter, any custom base). */
     fun eligibleInstances(context: Context): List<ProviderInstance> {
-        val app = context.applicationContext as? MinisApp ?: return emptyList()
+        val app = context.applicationContext as? UnibotApp ?: return emptyList()
         val repo = app.providerRepositoryOrNull ?: return emptyList()
         return repo.config.value.instances.filter { inst ->
             inst.isEnabled && inst.credentialType == ProviderCredential.apiKey && when (inst.providerType) {
@@ -83,7 +83,7 @@ object ImageGen {
      * picture to start from.
      */
     fun imageEntries(context: Context, instance: ProviderInstance): List<ModelEntry> {
-        val app = context.applicationContext as? MinisApp ?: return emptyList()
+        val app = context.applicationContext as? UnibotApp ?: return emptyList()
         val repo = app.providerRepositoryOrNull ?: return emptyList()
         val dashScope = speaksDashScope(baseUrlOf(instance))
         return repo.config.value.modelEntries.filter {
@@ -160,7 +160,7 @@ object ImageGen {
         }
 
     fun endpoint(context: Context): Endpoint? {
-        val app = context.applicationContext as? MinisApp ?: return null
+        val app = context.applicationContext as? UnibotApp ?: return null
         val repo = app.providerRepositoryOrNull ?: return null
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val eligible = eligibleInstances(context)
@@ -178,7 +178,7 @@ object ImageGen {
     }
 
     private fun provider(context: Context, ep: Endpoint, modelId: String): OpenAIProvider {
-        val app = context.applicationContext as MinisApp
+        val app = context.applicationContext as UnibotApp
         val entry = app.providerRepositoryOrNull?.config?.value?.modelEntries
             ?.firstOrNull { it.providerInstanceId == ep.instanceId && it.model.id == modelId }
         val model = entry?.model ?: LLMModel(
