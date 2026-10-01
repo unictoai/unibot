@@ -2550,15 +2550,52 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    // iOS-style centered layout: "unibot" + group row + provider·model row
-                    Box(
+                    // unibot: one-line top bar — the hamburger, the face +
+                    // name, and the "..." menu share a single horizontal
+                    // center line. (The old tall big-face header left the
+                    // corner buttons floating below the avatar, which read
+                    // as a broken layout.)
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // Left: the home shell's round hamburger opens the
+                        // chats drawer; outside the shell it's the back
+                        // arrow, or the sidebar toggle on two-pane.
+                        if (ubHome != null) {
+                            ai.unicto.unibot.ui.home.MuseRoundButton(
+                                icon = Icons.Filled.Menu,
+                                contentDescription = stringResource(R.string.ub_open_drawer),
+                                onClick = ubHome.onOpenDrawer,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                        } else if (!isTwoPane) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        } else if (onToggleSidebar != null) {
+                            IconButton(onClick = onToggleSidebar) {
+                                Icon(
+                                    Icons.Filled.Menu,
+                                    contentDescription = stringResource(
+                                        if (sidebarCollapsed) {
+                                            R.string.chat_show_sidebar
+                                        } else {
+                                            R.string.chat_hide_sidebar
+                                        },
+                                    ),
+                                    modifier = Modifier.size(28.dp),
+                                )
+                            }
+                        }
+
+                        val ubMood = ai.unicto.unibot.ui.avatar.rememberAgentMood(isStreaming, error)
+                        val ubSideChat = ubHome != null && !ubHome.isMainChat
+                        val ubMainChat = ubHome != null && ubHome.isMainChat
                         val noFontPad = androidx.compose.ui.text.TextStyle(
                             platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
                         )
-                        // Fallback pulse animation (iOS: 3× red pulse on model switch)
+                        // Fallback pulse animation (iOS: 3x red pulse on model switch)
                         val fallbackTrigger by viewModel.fallbackTrigger.collectAsState()
                         val fallbackPulseAlpha = remember { androidx.compose.animation.core.Animatable(0f) }
                         LaunchedEffect(fallbackTrigger) {
@@ -2568,32 +2605,23 @@ fun ChatScreen(
                                 fallbackPulseAlpha.animateTo(0f, animationSpec = androidx.compose.animation.core.tween(350))
                             }
                         }
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        val topBarSoul by ai.unicto.unibot.agent.SoulStore
+                            .cachedMetadata.collectAsState()
+                        val displayTitle = topBarSoul.name.trim().ifEmpty { stringResource(R.string.app_name) }
+                        // unibot: while the agent works or waits, the status
+                        // line says what it is doing (Muse's "Generating
+                        // options" / "Waiting for approval").
+                        val ubStatusLine = ai.unicto.unibot.ui.header.rememberUnibotStatusLine(isStreaming, ubMood)
+
+                        // Center: the face + name on one line; the live
+                        // status (or the model rows) as a small second line.
+                        Box(
                             modifier = Modifier
+                                .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color.Red.copy(alpha = 0.35f * fallbackPulseAlpha.value))
-                                // [T-android-topbar-shrink] vertical 4dp→2dp.
-                                // Combined with the expandedHeight drop below,
-                                // closes the dead-space gap between the model
-                                // name row and the TopAppBar bottom edge that
-                                // T-topbar-model-row-clip's 76dp overshoot left
-                                // behind. Horizontal 32dp keeps the fallback
-                                // pulse highlight comfortably padded around
-                                // the longest title.
-                                .padding(horizontal = 32.dp, vertical = 2.dp),
+                                .background(Color.Red.copy(alpha = 0.35f * fallbackPulseAlpha.value)),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            // unibot: the face above the name, as in Muse's
-                            // header. Its mood follows this session's streaming
-                            // state and the app-wide "needs you" gates; tapping
-                            // it opens Settings → Soul (name / icon / style).
-                            val ubMood = ai.unicto.unibot.ui.avatar.rememberAgentMood(isStreaming, error)
-                            // unibot: side chats inside the home shell show
-                            // their title where the face would be (Muse puts
-                            // the face only on the main chat); the main chat
-                            // gets the big face on its disc.
-                            val ubSideChat = ubHome != null && !ubHome.isMainChat
-                            val ubMainChat = ubHome != null && ubHome.isMainChat
                             if (ubSideChat) {
                                 Text(
                                     text = sessionTitle?.trim()?.ifEmpty { null }
@@ -2604,570 +2632,445 @@ fun ChatScreen(
                                     color = ChatColors.primaryText,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
                                     style = noFontPad,
-                                    modifier = Modifier.padding(bottom = 1.dp),
                                 )
-                            } else if (ubMainChat) {
-                                // unibot: the disc follows Settings → Appearance → Avatar size;
-                                // "hidden" leaves the name tag alone. Tapping the face opens the
-                                // agent's profile page, as in Muse.
-                                val ubDisc = ubAvatarSize.disc
-                                if (ubDisc != null) {
-                                    ai.unicto.unibot.ui.avatar.AgentAvatarDisc(
-                                        mood = ubMood,
-                                        discSize = ubDisc,
-                                        contentDescription = stringResource(R.string.ub_avatar_content_description),
-                                        onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
-                                    )
-                                } else {
-                                    Spacer(Modifier.height(10.dp))
-                                }
-                            } else
-                            ai.unicto.unibot.ui.avatar.AgentAvatar(
-                                mood = ubMood,
-                                size = 36.dp,
-                                contentDescription = stringResource(R.string.ub_avatar_content_description),
-                                onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
-                            )
-                            if (!ubSideChat && !ubMainChat) Spacer(Modifier.height(2.dp))
-                            // unibot: the pill is the agent's name (Muse's
-                            // header), never the session title — that one
-                            // stays in the session list and in the chat
-                            // menu's "Rename chat" (showChatTitlePill is
-                            // therefore unused here; the pref is kept for
-                            // minis-config compatibility).
-                            // SoulStore.cachedMetadata is the same source the
-                            // input placeholder uses, so a rename in the first
-                            // conversation or in Settings → Soul shows here live.
-                            // Tap: Settings → Soul, same as the face above.
-                            val topBarSoul by ai.unicto.unibot.agent.SoulStore
-                                .cachedMetadata.collectAsState()
-                            val displayTitle = topBarSoul.name.trim().ifEmpty { stringResource(R.string.app_name) }
-                            // unibot: while the agent works or waits, the
-                            // status line says what it is doing (Muse's
-                            // "Generating options" / "正在等待批准").
-                            val ubStatusLine = ai.unicto.unibot.ui.header.rememberUnibotStatusLine(isStreaming, ubMood)
-                            // unibot: no name pill on side chats — their
-                            // title took the slot above.
-                            if (ubMainChat) {
-                                // unibot: Muse's name tag hangs off the chin
-                                // of the face and carries the status as its
-                                // second line; two lines are always reserved so
-                                // the bar never jumps. Tap: the profile page.
-                                Box(
-                                    modifier = Modifier
-                                        .height(ai.unicto.unibot.ui.home.PILL_AREA_HEIGHT)
-                                        .then(ai.unicto.unibot.ui.home.pullUp(if (ubAvatarSize.shown) ai.unicto.unibot.ui.home.PILL_OVERLAP else 0.dp)),
-                                    contentAlignment = Alignment.TopCenter,
-                                ) {
-                                    ai.unicto.unibot.ui.home.MuseNamePill(
-                                        name = displayTitle,
-                                        statusLine = ubStatusLine,
-                                        statusColor = if (ubMood == ai.unicto.unibot.ui.avatar.AgentMood.WAITING) ChatColors.sendButton else ChatColors.secondaryText,
-                                        onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
-                                    )
-                                }
-                            } else if (!ubSideChat) Text(
-                                text = displayTitle,
-                                fontSize = 16.sp,
-                                lineHeight = 19.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = ChatColors.primaryText,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = noFontPad,
-                                modifier = Modifier
-                                    // unibot: the name sits in a capsule under the face (Muse's name pill).
-                                    .clip(CircleShape)
-                                    .background(ChatColors.userBubble)
-                                    .clickable { ai.unicto.unibot.ui.header.openSoulSettings(context) }
-                                    .padding(horizontal = 12.dp, vertical = 3.dp),
-                            )
-                            // unibot: outside the home shell the status line
-                            // takes the model rows' slot; on the main chat it
-                            // is inside the name tag, so the rows stay put.
-                            if (ubStatusLine != null && !ubMainChat) ai.unicto.unibot.ui.header.UnibotStatusLine(ubStatusLine, ubMood)
-                            // unibot: no model rows under the name unless the Setting asks for them.
-                            else if (!ubHideModelRows)
-                            // Model picker subtitle: green dot + group +
-                            // provider/model. Tap opens the model picker —
-                            // separated from the title above so tapping the
-                            // title rows opens the rename sheet instead.
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    // [T-android-modelpicker-stuck-ripple] Own the
-                                    // interaction source so the press can be
-                                    // released explicitly. Opening the picker
-                                    // sheet puts a modal window over this row, so
-                                    // the pointer's UP never reaches the clickable:
-                                    // Compose emits PressInteraction.Press with no
-                                    // matching Release and the ripple stays lit
-                                    // behind the sheet — still there after the
-                                    // sheet closes, reading as a permanent grey
-                                    // highlight on the title bar.
-                                    .clickable(
-                                        interactionSource = modelPickerInteraction,
-                                        indication = ripple(),
-                                    ) { showModelPicker = true }
-                                    .padding(horizontal = 4.dp, vertical = 1.dp),
-                            ) {
-                                // Line 1: green dot + group name + dropdown arrow (iOS: "● Default ⌄")
+                            } else {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .background(
-                                                if (modelName.isNotEmpty()) Color(0xFF34C759) else Color(0xFFFF9500),
-                                                CircleShape,
-                                            ),
-                                    )
-                                    // T-android-topbar-group-name-fallback:
-                                    // _selectedGroupName is empty during the
-                                    // brief window before loadSession's group
-                                    // resolve runs, or whenever a binding
-                                    // resolve fails. Falling straight to the
-                                    // "Default" badge string masks the
-                                    // active group's real name (e.g. the
-                                    // onboarding-created "Default Models" or
-                                    // any user-renamed group). Insert a real
-                                    // fallback chain: collected VM value →
-                                    // active/default group name from the live
-                                    // config → terminal badge string. Mirrors
-                                    // the #476 TopBar title fallback pattern
-                                    // (commit b4c88775).
-                                    //
-                                    // [T-android-group-resolve-skip-uncredentialed]
-                                    // ...but only while a group is ACTUALLY
-                                    // bound. This chain used to run
-                                    // unconditionally, so a session that failed
-                                    // to resolve its group — and was therefore
-                                    // running on a model from the new-chat
-                                    // default chain, unrelated to any group —
-                                    // still displayed the default group's name.
-                                    // The header then contradicted the model
-                                    // line right below it and made a real
-                                    // routing failure read as normal operation,
-                                    // which is what made that bug hard to spot.
-                                    // Mirrors iOS, which keys the group glyph
-                                    // off the binding (`isGroupBound`) rather
-                                    // than off a name lookup.
-                                    val groupNameDisplay = selectedGroupName.ifEmpty {
-                                        if (selectedGroupId == null) {
-                                            ""
-                                        } else {
-                                            val defaultGroupId = providerRepository.defaultPrimaryGroupId
-                                            availableGroups.firstOrNull { it.id == defaultGroupId }?.name
-                                                ?: stringResource(R.string.model_picker_default_badge)
+                                    // unibot: the face at a fixed 40dp so the
+                                    // bar stays one line; tapping it opens the
+                                    // agent's profile page, as before.
+                                    if (ubMainChat) {
+                                        if (ubAvatarSize.disc != null) {
+                                            ai.unicto.unibot.ui.avatar.AgentAvatarDisc(
+                                                mood = ubMood,
+                                                discSize = 40.dp,
+                                                contentDescription = stringResource(R.string.ub_avatar_content_description),
+                                                onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
+                                            )
                                         }
-                                    }
-                                    // Drop the whole affordance when no group is
-                                    // bound — an empty label would still leave
-                                    // a dangling chevron pointing at nothing.
-                                    if (groupNameDisplay.isNotEmpty()) {
-                                        Text(
-                                            text = groupNameDisplay,
-                                            fontSize = 12.sp,
-                                            lineHeight = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = ChatColors.secondaryText,
-                                            maxLines = 1,
-                                            style = noFontPad,
-                                        )
-                                        Icon(
-                                            Icons.Default.KeyboardArrowDown,
-                                            contentDescription = null,
-                                            tint = ChatColors.tertiaryText,
-                                            modifier = Modifier.size(14.dp),
+                                    } else {
+                                        ai.unicto.unibot.ui.avatar.AgentAvatar(
+                                            mood = ubMood,
+                                            size = 36.dp,
+                                            contentDescription = stringResource(R.string.ub_avatar_content_description),
+                                            onClick = { ai.unicto.unibot.ui.header.openSoulSettings(context) },
                                         )
                                     }
-                                }
-                                // Line 2: "provider · model" (iOS: "MiniMax ·
-                                // MiniMax-M2.7") + the thinking-level badge laid
-                                // out as a Row of two SEPARATE tappable siblings
-                                // (mirrors iOS AIChatView row-2 HStack).
-                                //
-                                // [T-android-thinking-badge-navbar] Gesture
-                                // separation: the whole subtitle Column above owns
-                                // `clickable { showModelPicker = true }`, so a tap
-                                // on the model text still opens the model picker.
-                                // The badge declares its OWN `clickable` (see
-                                // ThinkingLevelBadge), and in Compose the innermost
-                                // clickable consumes the down/up events — so a tap
-                                // that lands on the badge opens the thinking sheet
-                                // and never bubbles up to the Column's model-picker
-                                // handler. Two hit targets, zero gesture conflict,
-                                // no pointerInput plumbing needed.
-                                //
-                                // Sizing: the model text takes `weight(1f, fill =
-                                // false)` so it truncates first (Ellipsis) when the
-                                // navbar is narrow; the badge has no weight, so it
-                                // keeps its intrinsic width and always renders in
-                                // full — the level label never gets clipped.
-                                if (providerName.isNotEmpty() || modelName.isNotEmpty()) {
-                                    val thinkingLevelBadgeState by viewModel.thinkingLevel.collectAsState()
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        // [T-codex-fast-mode] ⚡ badge ahead of the
-                                        // resolved model name — small orange circle
-                                        // + white bolt, shown only while Fast Mode
-                                        // is enabled AND the active model is
-                                        // eligible (iOS 9e3c76ef row-3 placement,
-                                        // 09944220 9pt sizing).
-                                        val fastBadgeEligible by viewModel.showFastModeToggle.collectAsState()
-                                        val fastBadgeOn by viewModel.fastModeEnabled.collectAsState()
-                                        if (fastBadgeEligible && fastBadgeOn) {
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier
-                                                    .size(11.dp)
-                                                    .background(Color(0xFFFF9500), CircleShape),
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Bolt,
-                                                    contentDescription = null,
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(9.dp),
-                                                )
-                                            }
-                                        }
+                                    Column {
                                         Text(
-                                            text = if (providerName.isNotEmpty() && modelName.isNotEmpty()) {
-                                                "$providerName · $modelName"
-                                            } else {
-                                                modelName.ifEmpty { providerName }
-                                            },
-                                            fontSize = 11.sp,
-                                            lineHeight = 13.sp,
-                                            color = ChatColors.tertiaryText,
+                                            text = displayTitle,
+                                            fontSize = 16.sp,
+                                            lineHeight = 19.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = ChatColors.primaryText,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             style = noFontPad,
-                                            // Yield first when space is tight; the
-                                            // badge to the right stays intrinsic.
-                                            modifier = Modifier.weight(1f, fill = false),
+                                            modifier = Modifier.clickable {
+                                                if (ubMainChat) ai.unicto.unibot.ui.header.openAgentProfile(context)
+                                                else ai.unicto.unibot.ui.header.openSoulSettings(context)
+                                            },
                                         )
-                                        // Show the badge whenever thinking is on,
-                                        // and ALSO when it's Off but the active
-                                        // model supports deep thinking (iOS
-                                        // parity, e6bd75efc): the icon + "Off"
-                                        // pill is then a discoverable tap target
-                                        // for enabling thinking via the level
-                                        // sheet. The Off pill is gated on
-                                        // currentModelSupportsReasoning so
-                                        // non-reasoning models don't grow a dead
-                                        // toggle; an enabled level still shows
-                                        // unconditionally (user may have opted in
-                                        // on an unknown-capability model).
-                                        if (viewModel.availableThinkingLevels.isNotEmpty() &&
-                                            (
-                                                thinkingLevelBadgeState.isEnabled ||
-                                                    viewModel.currentModelSupportsReasoning
-                                            )
-                                        ) {
-                                            ThinkingLevelBadge(
-                                                level = thinkingLevelBadgeState,
-                                                onClick = { showThinkingLevelSheet = true },
-                                            )
+                                        if (ubStatusLine != null) {
+                                            // Main chat: the status used to sit
+                                            // in the name pill; elsewhere it
+                                            // keeps its own component.
+                                            if (ubMainChat) {
+                                                Text(
+                                                    text = ubStatusLine,
+                                                    fontSize = 12.sp,
+                                                    lineHeight = 14.sp,
+                                                    color = if (ubMood == ai.unicto.unibot.ui.avatar.AgentMood.WAITING) ChatColors.sendButton else ChatColors.secondaryText,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    style = noFontPad,
+                                                    modifier = Modifier.padding(top = 1.dp),
+                                                )
+                                            } else {
+                                                ai.unicto.unibot.ui.header.UnibotStatusLine(ubStatusLine, ubMood)
+                                            }
+                                        } else if (!ubHideModelRows) {
+                                            // Model picker subtitle: green dot + group +
+                                            // provider/model. Tap opens the model picker —
+                                            // separated from the title above so tapping the
+                                            // title rows opens the rename sheet instead.
+                                            Column(
+                                                horizontalAlignment = Alignment.Start,
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    // [T-android-modelpicker-stuck-ripple] Own the
+                                                    // interaction source so the press can be
+                                                    // released explicitly. Opening the picker
+                                                    // sheet puts a modal window over this row, so
+                                                    // the pointer's UP never reaches the clickable:
+                                                    // Compose emits PressInteraction.Press with no
+                                                    // matching Release and the ripple stays lit
+                                                    // behind the sheet — still there after the
+                                                    // sheet closes, reading as a permanent grey
+                                                    // highlight on the title bar.
+                                                    .clickable(
+                                                        interactionSource = modelPickerInteraction,
+                                                        indication = ripple(),
+                                                    ) { showModelPicker = true }
+                                                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                                            ) {
+                                                // Line 1: green dot + group name + dropdown arrow (iOS: "● Default ⌄")
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(6.dp)
+                                                            .background(
+                                                                if (modelName.isNotEmpty()) Color(0xFF34C759) else Color(0xFFFF9500),
+                                                                CircleShape,
+                                                            ),
+                                                    )
+                                                    // T-android-topbar-group-name-fallback:
+                                                    // _selectedGroupName is empty during the
+                                                    // brief window before loadSession's group
+                                                    // resolve runs, or whenever a binding
+                                                    // resolve fails. Falling straight to the
+                                                    // "Default" badge string masks the
+                                                    // active group's real name (e.g. the
+                                                    // onboarding-created "Default Models" or
+                                                    // any user-renamed group). Insert a real
+                                                    // fallback chain: collected VM value →
+                                                    // active/default group name from the live
+                                                    // config → terminal badge string. Mirrors
+                                                    // the #476 TopBar title fallback pattern
+                                                    // (commit b4c88775).
+                                                    //
+                                                    // [T-android-group-resolve-skip-uncredentialed]
+                                                    // ...but only while a group is ACTUALLY
+                                                    // bound. This chain used to run
+                                                    // unconditionally, so a session that failed
+                                                    // to resolve its group — and was therefore
+                                                    // running on a model from the new-chat
+                                                    // default chain, unrelated to any group —
+                                                    // still displayed the default group's name.
+                                                    // The header then contradicted the model
+                                                    // line right below it and made a real
+                                                    // routing failure read as normal operation,
+                                                    // which is what made that bug hard to spot.
+                                                    // Mirrors iOS, which keys the group glyph
+                                                    // off the binding (`isGroupBound`) rather
+                                                    // than off a name lookup.
+                                                    val groupNameDisplay = selectedGroupName.ifEmpty {
+                                                        if (selectedGroupId == null) {
+                                                            ""
+                                                        } else {
+                                                            val defaultGroupId = providerRepository.defaultPrimaryGroupId
+                                                            availableGroups.firstOrNull { it.id == defaultGroupId }?.name
+                                                                ?: stringResource(R.string.model_picker_default_badge)
+                                                        }
+                                                    }
+                                                    // Drop the whole affordance when no group is
+                                                    // bound — an empty label would still leave
+                                                    // a dangling chevron pointing at nothing.
+                                                    if (groupNameDisplay.isNotEmpty()) {
+                                                        Text(
+                                                            text = groupNameDisplay,
+                                                            fontSize = 12.sp,
+                                                            lineHeight = 14.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = ChatColors.secondaryText,
+                                                            maxLines = 1,
+                                                            style = noFontPad,
+                                                        )
+                                                        Icon(
+                                                            Icons.Default.KeyboardArrowDown,
+                                                            contentDescription = null,
+                                                            tint = ChatColors.tertiaryText,
+                                                            modifier = Modifier.size(14.dp),
+                                                        )
+                                                    }
+                                                }
+                                                // Line 2: "provider · model" (iOS: "MiniMax ·
+                                                // MiniMax-M2.7") + the thinking-level badge laid
+                                                // out as a Row of two SEPARATE tappable siblings
+                                                // (mirrors iOS AIChatView row-2 HStack).
+                                                //
+                                                // [T-android-thinking-badge-navbar] Gesture
+                                                // separation: the whole subtitle Column above owns
+                                                // `clickable { showModelPicker = true }`, so a tap
+                                                // on the model text still opens the model picker.
+                                                // The badge declares its OWN `clickable` (see
+                                                // ThinkingLevelBadge), and in Compose the innermost
+                                                // clickable consumes the down/up events — so a tap
+                                                // that lands on the badge opens the thinking sheet
+                                                // and never bubbles up to the Column's model-picker
+                                                // handler. Two hit targets, zero gesture conflict,
+                                                // no pointerInput plumbing needed.
+                                                //
+                                                // Sizing: the model text takes `weight(1f, fill =
+                                                // false)` so it truncates first (Ellipsis) when the
+                                                // navbar is narrow; the badge has no weight, so it
+                                                // keeps its intrinsic width and always renders in
+                                                // full — the level label never gets clipped.
+                                                if (providerName.isNotEmpty() || modelName.isNotEmpty()) {
+                                                    val thinkingLevelBadgeState by viewModel.thinkingLevel.collectAsState()
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                    ) {
+                                                        // [T-codex-fast-mode] ⚡ badge ahead of the
+                                                        // resolved model name — small orange circle
+                                                        // + white bolt, shown only while Fast Mode
+                                                        // is enabled AND the active model is
+                                                        // eligible (iOS 9e3c76ef row-3 placement,
+                                                        // 09944220 9pt sizing).
+                                                        val fastBadgeEligible by viewModel.showFastModeToggle.collectAsState()
+                                                        val fastBadgeOn by viewModel.fastModeEnabled.collectAsState()
+                                                        if (fastBadgeEligible && fastBadgeOn) {
+                                                            Box(
+                                                                contentAlignment = Alignment.Center,
+                                                                modifier = Modifier
+                                                                    .size(11.dp)
+                                                                    .background(Color(0xFFFF9500), CircleShape),
+                                                            ) {
+                                                                Icon(
+                                                                    Icons.Default.Bolt,
+                                                                    contentDescription = null,
+                                                                    tint = Color.White,
+                                                                    modifier = Modifier.size(9.dp),
+                                                                )
+                                                            }
+                                                        }
+                                                        Text(
+                                                            text = if (providerName.isNotEmpty() && modelName.isNotEmpty()) {
+                                                                "$providerName · $modelName"
+                                                            } else {
+                                                                modelName.ifEmpty { providerName }
+                                                            },
+                                                            fontSize = 11.sp,
+                                                            lineHeight = 13.sp,
+                                                            color = ChatColors.tertiaryText,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            style = noFontPad,
+                                                            // Yield first when space is tight; the
+                                                            // badge to the right stays intrinsic.
+                                                            modifier = Modifier.weight(1f, fill = false),
+                                                        )
+                                                        // Show the badge whenever thinking is on,
+                                                        // and ALSO when it's Off but the active
+                                                        // model supports deep thinking (iOS
+                                                        // parity, e6bd75efc): the icon + "Off"
+                                                        // pill is then a discoverable tap target
+                                                        // for enabling thinking via the level
+                                                        // sheet. The Off pill is gated on
+                                                        // currentModelSupportsReasoning so
+                                                        // non-reasoning models don't grow a dead
+                                                        // toggle; an enabled level still shows
+                                                        // unconditionally (user may have opted in
+                                                        // on an unknown-capability model).
+                                                        if (viewModel.availableThinkingLevels.isNotEmpty() &&
+                                                            (
+                                                                thinkingLevelBadgeState.isEnabled ||
+                                                                    viewModel.currentModelSupportsReasoning
+                                                            )
+                                                        ) {
+                                                            ThinkingLevelBadge(
+                                                                level = thinkingLevelBadgeState,
+                                                                onClick = { showThinkingLevelSheet = true },
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                },
-                navigationIcon = {
-                    // unibot: inside the home shell the slot is Muse's round
-                    // hamburger, which opens the chats drawer.
-                    if (ubHome != null) {
-                        ai.unicto.unibot.ui.home.MuseRoundButton(
-                            icon = Icons.Filled.Menu,
-                            contentDescription = stringResource(R.string.ub_open_drawer),
-                            onClick = ubHome.onOpenDrawer,
-                            modifier = Modifier.padding(start = 12.dp),
-                        )
-                    } else
-                    // [T-android-tablet-split] See `isTwoPane`.
-                    if (!isTwoPane) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    } else if (onToggleSidebar != null) {
-                        // [T-android-tablet-sidebar-collapse] The slot the back
-                        // arrow vacates in two-pane becomes the sidebar toggle.
-                        //
-                        // ONE glyph for both states — the list icon, meaning
-                        // "the session list", with the action stated in the
-                        // content description instead.
-                        //
-                        // A directional chevron was tried for the expanded
-                        // state and is wrong here: this is the slot that used
-                        // to hold the back arrow, so a leading chevron reads as
-                        // "go back" — precisely the meaning two-pane removed.
-                        // Swapping the glyph on toggle also makes the control
-                        // look like two different buttons rather than one
-                        // switch. A stable icon whose accessible label changes
-                        // is both clearer and honest about what it targets.
-                        //
-                        // `Menu` rather than `List`, which this first used.
-                        // List draws a bulleted list — dots plus rules — whose
-                        // ink sat high and left in the 24dp box (measured 41x23
-                        // px with its mass above centre), so it read as a small
-                        // mark floating above the ⋮ at the other end of this
-                        // same bar. Menu's three full-width bars fill the box
-                        // symmetrically and optically centre against it; both
-                        // glyphs now share a baseline to the pixel. Menu is
-                        // also the conventional sidebar-toggle icon.
-                        //
-                        // [T-android-split-toggle-align] Two corrections, both
-                        // measured on a Mate Pad against the SESSION LIST's
-                        // toolbar rather than this bar's own ⋮ — the toggle sits
-                        // hard against the pane seam, so the icons it is read
-                        // beside are the list's Schedule/Terminal, not the
-                        // kebab at the far end of this bar. Aligned only to the
-                        // kebab, it measured 8px shorter and 3.5px lower than
-                        // its actual neighbours.
-                        //
-                        // 1. `offset(y = -2.dp)`: this bar is 68dp (see
-                        //    expandedHeight below — sized for the 3-row title
-                        //    and NOT reducible without re-triggering
-                        //    T-topbar-model-row-clip), while the list's bar is
-                        //    M3's default 64dp. A TopAppBar centres its
-                        //    navigation icon in its OWN height, so the 4dp
-                        //    difference put this glyph 2dp below the list's row.
-                        //    Offsetting by half the delta lands it on the list's
-                        //    baseline while leaving the taller bar intact.
-                        //
-                        // 2. `size(28.dp)`: Menu's three bars ink only ~12 of
-                        //    their 24dp viewport (bars at y=6/11/16), where the
-                        //    circular Schedule and boxy Terminal fill ~20 of
-                        //    theirs. At a matched box size Menu therefore reads
-                        //    markedly lighter and smaller. Scaling the box to
-                        //    28dp brings its ink to ~14dp, closing most of the
-                        //    optical gap. The IconButton's 48dp touch target is
-                        //    unchanged, so this is purely visual weight.
-                        IconButton(
-                            onClick = onToggleSidebar,
-                            modifier = Modifier.offset(y = (-2).dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.Menu,
-                                contentDescription = stringResource(
-                                    if (sidebarCollapsed) {
-                                        R.string.chat_show_sidebar
-                                    } else {
-                                        R.string.chat_hide_sidebar
-                                    },
-                                ),
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    // iOS: "..." circle button → dropdown menu
-                    Box {
-                        // unibot: Muse's round "•••" when hosted in the home shell.
-                        if (ubHome != null) {
-                            ai.unicto.unibot.ui.home.MuseRoundButton(
-                                icon = Icons.Filled.MoreHoriz,
-                                contentDescription = stringResource(R.string.ub_more),
-                                onClick = { showChatMenu = true },
-                                modifier = Modifier.padding(end = 12.dp),
-                            )
-                        } else
-                        IconButton(onClick = { showChatMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More")
-                        }
-                        MinisMenu(
-                            expanded = showChatMenu,
-                            onDismissRequest = { showChatMenu = false },
-                        ) {
-                            // [T-android-memory-enabled-minisconfig] Gate the
-                            // "Memories in Session" item below on the session's
-                            // live memoryEnabled — when memory is off the entry
-                            // disappears, consistent with the per-session gating
-                            // of the memory_get / memory_write tools and the
-                            // system-prompt injection.
-                            val menuMemoryEnabled by viewModel.memoryEnabled.collectAsState()
-                            // [T-new-chat-menu-entry] New Chat — first item
-                            // (iOS parity: square.and.pencil at the top of the
-                            // "..." menu). Streaming sessions confirm first.
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_menu_new_chat)) },
-                                onClick = {
-                                    showChatMenu = false
-                                    if (isStreaming) {
-                                        showNewChatStopDialog = true
-                                    } else {
-                                        onNewChat()
-                                    }
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Forum, contentDescription = null)
-                                },
-                            )
-                            // unibot: the top-bar pill now carries the agent's
-                            // name, so the session edit sheet (title / emoji)
-                            // moved here from the title tap.
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.ub_chat_menu_rename)) },
-                                onClick = {
-                                    showChatMenu = false
-                                    coroutineScope.launch {
-                                        editingSession = viewModel.loadSessionEntity()
-                                    }
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Edit, contentDescription = null)
-                                },
-                            )
-                            // unibot: with the model rows off the header, the
-                            // picker opens from here.
-                            if (ubHideModelRows) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.ub_chat_menu_model)) },
-                                    onClick = {
-                                        showChatMenu = false
-                                        showModelPicker = true
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Outlined.Tune, contentDescription = null)
-                                    },
-                                )
-                            }
-                            MinisMenuDivider()
-                            // Clear Chat (iOS parity, red)
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_menu_clear_chat), color = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    showChatMenu = false
-                                    showClearChatDialog = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                },
-                            )
-                            MinisMenuDivider()
-                            // Open Terminal (iOS parity) — session-bound, starts in /var/minis
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_menu_open_terminal)) },
-                                onClick = {
-                                    showChatMenu = false
-                                    onOpenTerminal()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Terminal, contentDescription = null)
-                                },
-                            )
-                            // Open Browser (iOS parity)
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_menu_open_browser)) },
-                                onClick = {
-                                    showChatMenu = false
-                                    viewModel.toggleBrowserSheet()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Language, contentDescription = null)
-                                },
-                            )
-                            // Browse Chat Files (iOS parity) — opens file browser at /var/minis
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_menu_browse_chat_files)) },
-                                onClick = {
-                                    showChatMenu = false
-                                    onBrowseChatFiles()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Description, contentDescription = null)
-                                },
-                            )
-                            MinisMenuDivider()
-                            // Session Skills (iOS parity)
-                            if (skillRepository != null) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.session_skills_title)) },
-                                    onClick = {
-                                        showChatMenu = false
-                                        showSkillsSheet = true
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Build, contentDescription = null)
-                                    },
-                                )
-                            }
-                            // [T-mcp-integration-android] MCPs in Session, next to Skills.
-                            if (mcpRepository != null) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.session_mcps_title)) },
-                                    onClick = {
-                                        showChatMenu = false
-                                        showMcpsSheet = true
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Extension, contentDescription = null)
-                                    },
-                                )
-                            }
-                            // Session Memory (iOS parity)
-                            if (memoryRepository != null && menuMemoryEnabled) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.session_memory_title)) },
-                                    onClick = {
-                                        showChatMenu = false
-                                        viewModel.toggleMemorySheet()
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Psychology, contentDescription = null)
-                                    },
-                                )
-                            }
-                            MinisMenuDivider()
-                            // Token Usage (iOS parity)
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.settings_token_usage)) },
-                                onClick = {
-                                    showChatMenu = false
-                                    showTokenUsageSheet = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.DataUsage, contentDescription = null)
-                                },
-                            )
-                            // Enhanced Cache (iOS parity, commit 57aaf122):
-                            // 1-hour Anthropic cache TTL. Only shown for the
-                            // official Anthropic API (not relays / other
-                            // providers) — showEnhancedCacheToggle recomputes on
-                            // model/provider switch. First enable prompts a
-                            // one-time extra-billing confirmation.
-                            val showEnhancedCache by viewModel.showEnhancedCacheToggle.collectAsState()
-                            val enhancedCacheOn by viewModel.enhancedCacheEnabled.collectAsState()
-                            if (showEnhancedCache) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.chat_menu_enhanced_cache)) },
-                                    onClick = {
-                                        if (enhancedCacheOn) {
-                                            viewModel.setEnhancedCacheEnabled(false)
-                                        } else if (viewModel.isEnhancedCacheConfirmed()) {
-                                            viewModel.setEnhancedCacheEnabled(true)
-                                        } else {
+
+                        // Right: "..." and its menu.
+                        Box(modifier = Modifier.padding(end = 4.dp)) {
+                                // unibot: Muse's round "•••" when hosted in the home shell.
+                                if (ubHome != null) {
+                                    ai.unicto.unibot.ui.home.MuseRoundButton(
+                                        icon = Icons.Filled.MoreHoriz,
+                                        contentDescription = stringResource(R.string.ub_more),
+                                        onClick = { showChatMenu = true },
+                                        modifier = Modifier.padding(end = 12.dp),
+                                    )
+                                } else
+                                IconButton(onClick = { showChatMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                }
+                                MinisMenu(
+                                    expanded = showChatMenu,
+                                    onDismissRequest = { showChatMenu = false },
+                                ) {
+                                    // [T-android-memory-enabled-minisconfig] Gate the
+                                    // "Memories in Session" item below on the session's
+                                    // live memoryEnabled — when memory is off the entry
+                                    // disappears, consistent with the per-session gating
+                                    // of the memory_get / memory_write tools and the
+                                    // system-prompt injection.
+                                    val menuMemoryEnabled by viewModel.memoryEnabled.collectAsState()
+                                    // [T-new-chat-menu-entry] New Chat — first item
+                                    // (iOS parity: square.and.pencil at the top of the
+                                    // "..." menu). Streaming sessions confirm first.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_new_chat)) },
+                                        onClick = {
                                             showChatMenu = false
-                                            showEnhancedCacheDialog = true
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Bolt, contentDescription = null)
-                                    },
-                                    trailingIcon = {
-                                        SettingsSwitch(
-                                            checked = enhancedCacheOn,
-                                            onCheckedChange = {
+                                            if (isStreaming) {
+                                                showNewChatStopDialog = true
+                                            } else {
+                                                onNewChat()
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.Forum, contentDescription = null)
+                                        },
+                                    )
+                                    // unibot: the top-bar pill now carries the agent's
+                                    // name, so the session edit sheet (title / emoji)
+                                    // moved here from the title tap.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ub_chat_menu_rename)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            coroutineScope.launch {
+                                                editingSession = viewModel.loadSessionEntity()
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Edit, contentDescription = null)
+                                        },
+                                    )
+                                    // unibot: with the model rows off the header, the
+                                    // picker opens from here.
+                                    if (ubHideModelRows) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.ub_chat_menu_model)) },
+                                            onClick = {
+                                                showChatMenu = false
+                                                showModelPicker = true
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.Tune, contentDescription = null)
+                                            },
+                                        )
+                                    }
+                                    MinisMenuDivider()
+                                    // Clear Chat (iOS parity, red)
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_clear_chat), color = MaterialTheme.colorScheme.error) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            showClearChatDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                        },
+                                    )
+                                    MinisMenuDivider()
+                                    // Open Terminal (iOS parity) — session-bound, starts in /var/minis
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_open_terminal)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onOpenTerminal()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Terminal, contentDescription = null)
+                                        },
+                                    )
+                                    // Open Browser (iOS parity)
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_open_browser)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            viewModel.toggleBrowserSheet()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Language, contentDescription = null)
+                                        },
+                                    )
+                                    // Browse Chat Files (iOS parity) — opens file browser at /var/minis
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_browse_chat_files)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onBrowseChatFiles()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Description, contentDescription = null)
+                                        },
+                                    )
+                                    MinisMenuDivider()
+                                    // Session Skills (iOS parity)
+                                    if (skillRepository != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.session_skills_title)) },
+                                            onClick = {
+                                                showChatMenu = false
+                                                showSkillsSheet = true
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Build, contentDescription = null)
+                                            },
+                                        )
+                                    }
+                                    // [T-mcp-integration-android] MCPs in Session, next to Skills.
+                                    if (mcpRepository != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.session_mcps_title)) },
+                                            onClick = {
+                                                showChatMenu = false
+                                                showMcpsSheet = true
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Extension, contentDescription = null)
+                                            },
+                                        )
+                                    }
+                                    // Session Memory (iOS parity)
+                                    if (memoryRepository != null && menuMemoryEnabled) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.session_memory_title)) },
+                                            onClick = {
+                                                showChatMenu = false
+                                                viewModel.toggleMemorySheet()
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Psychology, contentDescription = null)
+                                            },
+                                        )
+                                    }
+                                    MinisMenuDivider()
+                                    // Token Usage (iOS parity)
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.settings_token_usage)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            showTokenUsageSheet = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.DataUsage, contentDescription = null)
+                                        },
+                                    )
+                                    // Enhanced Cache (iOS parity, commit 57aaf122):
+                                    // 1-hour Anthropic cache TTL. Only shown for the
+                                    // official Anthropic API (not relays / other
+                                    // providers) — showEnhancedCacheToggle recomputes on
+                                    // model/provider switch. First enable prompts a
+                                    // one-time extra-billing confirmation.
+                                    val showEnhancedCache by viewModel.showEnhancedCacheToggle.collectAsState()
+                                    val enhancedCacheOn by viewModel.enhancedCacheEnabled.collectAsState()
+                                    if (showEnhancedCache) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.chat_menu_enhanced_cache)) },
+                                            onClick = {
                                                 if (enhancedCacheOn) {
                                                     viewModel.setEnhancedCacheEnabled(false)
                                                 } else if (viewModel.isEnhancedCacheConfirmed()) {
@@ -3177,118 +3080,116 @@ fun ChatScreen(
                                                     showEnhancedCacheDialog = true
                                                 }
                                             },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Bolt, contentDescription = null)
+                                            },
+                                            trailingIcon = {
+                                                SettingsSwitch(
+                                                    checked = enhancedCacheOn,
+                                                    onCheckedChange = {
+                                                        if (enhancedCacheOn) {
+                                                            viewModel.setEnhancedCacheEnabled(false)
+                                                        } else if (viewModel.isEnhancedCacheConfirmed()) {
+                                                            viewModel.setEnhancedCacheEnabled(true)
+                                                        } else {
+                                                            showChatMenu = false
+                                                            showEnhancedCacheDialog = true
+                                                        }
+                                                    },
+                                                )
+                                            },
                                         )
-                                    },
-                                )
-                            }
-                            // [T-codex-fast-mode] Fast Mode (iOS parity,
-                            // fb671083 + 838ba929): shown when the active model
-                            // is a gpt-family model served through the
-                            // Responses path (useResponsesAPI instance or Codex
-                            // OAuth). App-level persisted toggle; while on, the
-                            // Responses body carries service_tier="priority"
-                            // (≈1.5x faster at 2x credit burn on the ChatGPT
-                            // subscription) and the nav model row shows a ⚡
-                            // badge. Sits next to Enhanced Cache — both are
-                            // model-invocation controls (iOS 09944220 grouping).
-                            val showFastMode by viewModel.showFastModeToggle.collectAsState()
-                            val fastModeOn by viewModel.fastModeEnabled.collectAsState()
-                            if (showFastMode) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.chat_menu_fast_mode)) },
-                                    onClick = { viewModel.setFastModeEnabled(!fastModeOn) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Bolt, contentDescription = null)
-                                    },
-                                    trailingIcon = {
-                                        SettingsSwitch(
-                                            checked = fastModeOn,
-                                            onCheckedChange = { viewModel.setFastModeEnabled(it) },
+                                    }
+                                    // [T-codex-fast-mode] Fast Mode (iOS parity,
+                                    // fb671083 + 838ba929): shown when the active model
+                                    // is a gpt-family model served through the
+                                    // Responses path (useResponsesAPI instance or Codex
+                                    // OAuth). App-level persisted toggle; while on, the
+                                    // Responses body carries service_tier="priority"
+                                    // (≈1.5x faster at 2x credit burn on the ChatGPT
+                                    // subscription) and the nav model row shows a ⚡
+                                    // badge. Sits next to Enhanced Cache — both are
+                                    // model-invocation controls (iOS 09944220 grouping).
+                                    val showFastMode by viewModel.showFastModeToggle.collectAsState()
+                                    val fastModeOn by viewModel.fastModeEnabled.collectAsState()
+                                    if (showFastMode) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.chat_menu_fast_mode)) },
+                                            onClick = { viewModel.setFastModeEnabled(!fastModeOn) },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Bolt, contentDescription = null)
+                                            },
+                                            trailingIcon = {
+                                                SettingsSwitch(
+                                                    checked = fastModeOn,
+                                                    onCheckedChange = { viewModel.setFastModeEnabled(it) },
+                                                )
+                                            },
                                         )
-                                    },
-                                )
-                            }
-                            // Auto Compact: app-level persisted toggle mirroring
-                            // iOS `autoCompactEnabled`. On → crossing the
-                            // compact threshold before a send compacts silently
-                            // and sends; off → the user is asked first. Lives
-                            // beside Fast Mode because both are model-invocation
-                            // controls the user flips mid-conversation.
-                            val autoCompactOn by viewModel.autoCompactEnabled.collectAsState()
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_menu_auto_compact)) },
-                                onClick = { viewModel.setAutoCompactEnabled(!autoCompactOn) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Compress, contentDescription = null)
-                                },
-                                trailingIcon = {
-                                    SettingsSwitch(
-                                        checked = autoCompactOn,
-                                        onCheckedChange = { viewModel.setAutoCompactEnabled(it) },
+                                    }
+                                    // Auto Compact: app-level persisted toggle mirroring
+                                    // iOS `autoCompactEnabled`. On → crossing the
+                                    // compact threshold before a send compacts silently
+                                    // and sends; off → the user is asked first. Lives
+                                    // beside Fast Mode because both are model-invocation
+                                    // controls the user flips mid-conversation.
+                                    val autoCompactOn by viewModel.autoCompactEnabled.collectAsState()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_auto_compact)) },
+                                        onClick = { viewModel.setAutoCompactEnabled(!autoCompactOn) },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Compress, contentDescription = null)
+                                        },
+                                        trailingIcon = {
+                                            SettingsSwitch(
+                                                checked = autoCompactOn,
+                                                onCheckedChange = { viewModel.setAutoCompactEnabled(it) },
+                                            )
+                                        },
                                     )
-                                },
-                            )
-                            // T287: debug-only crash trigger so the user can verify
-                            // ACRA/native crash log generation (T283). Throws a
-                            // RuntimeException from the click handler — the
-                            // uncaught-exception handler catches it and writes
-                            // a crash-<stamp>.log under filesDir/logs/.
-                            if (BuildConfig.DEBUG) {
-                                MinisMenuDivider()
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            stringResource(R.string.debug_trigger_crash_menu),
-                                            color = MaterialTheme.colorScheme.error,
+                                    // T287: debug-only crash trigger so the user can verify
+                                    // ACRA/native crash log generation (T283). Throws a
+                                    // RuntimeException from the click handler — the
+                                    // uncaught-exception handler catches it and writes
+                                    // a crash-<stamp>.log under filesDir/logs/.
+                                    if (BuildConfig.DEBUG) {
+                                        MinisMenuDivider()
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    stringResource(R.string.debug_trigger_crash_menu),
+                                                    color = MaterialTheme.colorScheme.error,
+                                                )
+                                            },
+                                            onClick = {
+                                                showChatMenu = false
+                                                throw RuntimeException(
+                                                    "Debug crash triggered by user (T287)",
+                                                )
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.BugReport,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                )
+                                            },
                                         )
-                                    },
-                                    onClick = {
-                                        showChatMenu = false
-                                        throw RuntimeException(
-                                            "Debug crash triggered by user (T287)",
-                                        )
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.BugReport,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                        )
-                                    },
-                                )
-                            }
+                                    }
+                                }
                         }
                     }
                 },
+                navigationIcon = {},
+                actions = {},
                 windowInsets = WindowInsets.statusBars,
                 colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
                     containerColor = ChatColors.background.copy(alpha = 0.92f),
                     scrolledContainerColor = ChatColors.background.copy(alpha = 0.92f),
                 ),
-                // [T-android-topbar-shrink] 76dp → 68dp. The earlier
-                // T-topbar-model-row-clip fix bumped 60dp → 76dp to give the
-                // 3-row title (14sp/lh17 + 12sp/lh14 + 11sp/lh13 ≈ 44sp text
-                // + 4dp+2dp+1dp vertical padding ≈ 51dp on mdpi, mid-60s on
-                // xxhdpi) room to breathe — but overshot, leaving visible
-                // dead-space below the model row. This trim pairs with the
-                // outer Column's vertical-padding drop (4dp→2dp above):
-                // budget is now ~44sp text + 2dp+2dp+1dp ≈ 49dp typical,
-                // ~58-62dp at xxhdpi 2.625× rounding. 68dp keeps a 6-10dp
-                // safety margin so the model name still fits at any
-                // user-configured font scale on xhdpi/xxhdpi without
-                // re-clipping (T-topbar-model-row-clip regression check).
-                // Font sizes + lineHeights stay untouched per spec.
-                // unibot: 68dp held the 3-row title; the face (36dp) and the
-                // capsule padding sit on top of that. In the home shell the
-                // main chat's disc (76dp) needs more, a side chat's one-line
-                // title less.
-                expandedHeight = when {
-                    ubHome == null -> 108.dp
-                    // unibot: disc (per the Avatar size setting; 10dp spacer when hidden)
-                    // + the two-line name tag area, + the model rows when on.
-                    ubHome.isMainChat -> (ubAvatarSize.disc ?: 10.dp) + 55.dp + (if (ubHideModelRows) 0.dp else 20.dp)
-                    else -> 72.dp
-                },
+                // unibot: one-line bar — M3's standard 64dp. The old
+                // expanded heights belonged to the tall big-face header.
+                expandedHeight = 64.dp,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
