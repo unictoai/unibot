@@ -17,6 +17,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  issues: write # failure diagnostics: publish assembleDebug log tail as an issue
 
 env:
   NDK_VERSION: 27.2.12479018
@@ -82,10 +83,23 @@ jobs:
           bash scripts/android/build-natives.sh
 
       - name: assembleDebug
+        id: assemble
         working-directory: android/src/android
         run: |
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
-          ./gradlew :app:assembleDebug --console=plain --no-daemon
+          set -o pipefail
+          ./gradlew :app:assembleDebug --console=plain --no-daemon 2>&1 | tee "$RUNNER_TEMP/assemble.log"
+
+      - name: Report assembleDebug failure
+        if: failure() && steps.assemble.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # CI job logs are not readable without auth; publish the failure tail
+          # as an issue so it can be diagnosed.
+          { echo 'assembleDebug failed. Tail of the Gradle log:'; echo '```'; tail -c 30000 "$RUNNER_TEMP/assemble.log"; echo '```'; } > /tmp/assemble-tail.txt || true
+          gh issue create --title "CI: assembleDebug failed on ${{ github.sha }}" \
+            --body-file /tmp/assemble-tail.txt || true
 
       - name: Badging
         run: |
