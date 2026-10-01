@@ -11,7 +11,7 @@ workspace/
 *.enc
 *.key
 audit.jsonl
-sessions/
+/sessions/
 logs/
 
 # python

@@ -27,7 +27,7 @@
 
 unibot is an open-source personal agent for Android: one agent with a name and a look of its own that **does things instead of answering questions**. The whole agent runs **on the phone** — a Linux root file system, a shell, a browser, MCP, skills and scheduled tasks inside the APK — with hands for the apps that never had an API (the phone's own screen, with your permission). It keeps working while the app is closed, remembers you, and stops to ask before anything you could not undo.
 
-unibot is a friendly fork of [unibot](https://github.com/unictoai/unibot) (which itself grew out of [OpenMinis](https://github.com/OpenMinis/OpenMinis)), rebranded and refocused on bring-your-own-key: any model, any provider, your key. GPL-3.0-or-later, like upstream.
+unibot is based on [nanoMuse](https://github.com/MuseHQ/nanoMuse) (which itself grew out of [OpenMinis](https://github.com/OpenMinis/OpenMinis)), rebranded and refocused on bring-your-own-key: any model, any provider, your key. GPL-3.0-or-later, like upstream.
 
 ## Get it
 
@@ -52,4 +52,4 @@ Everything the agent does happens on your device; the only network traffic is yo
 
 ## License
 
-GPL-3.0-or-later — see [LICENSE](LICENSE). unibot is a fork of unibot by the unibot contributors, which builds on OpenMinis; their copyright notices and license terms are preserved.
+GPL-3.0-or-later — see [LICENSE](LICENSE). unibot is based on nanoMuse by the nanoMuse contributors, which builds on OpenMinis; their copyright notices and license terms are preserved.
