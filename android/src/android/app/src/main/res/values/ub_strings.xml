@@ -588,8 +588,8 @@
     <string name="ub_cloud_mode_password">With a password</string>
     <string name="ub_cloud_password">Password</string>
     <string name="ub_cloud_forgot_password">Forgot the password? Sign in with a code</string>
-    <string name="ub_cloud_identifier">Mainland China phone number or e-mail</string>
-    <string name="ub_cloud_identifier_hint">138 0000 0000 · you@example.com</string>
+    <string name="ub_cloud_identifier">Phone number or e-mail</string>
+    <string name="ub_cloud_identifier_hint">you@example.com</string>
     <string name="ub_cloud_code">Code</string>
     <string name="ub_cloud_send_code">Send code</string>
     <string name="ub_cloud_resend">Send again</string>
@@ -624,7 +624,7 @@
     <string name="ub_cloud_err_code_too_often">Too many codes in a row. Wait a few minutes.</string>
     <string name="ub_cloud_err_not_invited">This relay is private; that address is not on its list.</string>
     <string name="ub_cloud_err_send_failed">The code could not be sent. Try again in a moment.</string>
-    <string name="ub_cloud_err_phone_region">Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address.</string>
+    <string name="ub_cloud_err_phone_region">Codes do not reach every region yet; if no code arrives, sign in with an e-mail address.</string>
     <string name="ub_cloud_err_disabled">This account has been disabled.</string>
     <string name="ub_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
     <string name="ub_cloud_err_out_of_tokens">The allowance is used up.</string>
