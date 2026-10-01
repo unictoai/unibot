@@ -70,7 +70,7 @@ jobs:
         with:
           packages: platforms;android-36 build-tools;35.0.0 cmake;3.22.1 ndk;${{ env.NDK_VERSION }}
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Native artifacts (proot, Alpine rootfs, rclone.aar)
         env:
