@@ -1628,6 +1628,10 @@
     <string name="voice_panel_no_engine_download_offline">Download offline voice (%1$s)</string>
     <string name="voice_panel_no_engine_downloading">Downloading… %1$d%%</string>
     <string name="voice_panel_no_engine_download_failed">Download failed — tap to retry</string>
+    <string name="voice_panel_no_engine_offline_title">Offline voice — pick a size</string>
+    <string name="voice_panel_no_engine_offline_hint">Bigger is more accurate. Downloaded once, then works without internet.</string>
+    <string name="voice_panel_no_engine_retry">Retry</string>
+    <string name="voice_panel_no_engine_use">Use</string>
     <string name="voice_panel_expand">Expand voice panel</string>
     <string name="voice_panel_language">Recognition language</string>
     <string name="voice_panel_tap_to_speak">Tap to speak</string>

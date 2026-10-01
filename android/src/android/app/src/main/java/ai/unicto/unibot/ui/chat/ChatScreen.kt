@@ -2636,18 +2636,41 @@ fun ChatScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             if (ubSideChat) {
-                                Text(
-                                    text = sessionTitle?.trim()?.ifEmpty { null }
-                                        ?: stringResource(R.string.ub_drawer_untitled),
-                                    fontSize = 17.sp,
-                                    lineHeight = 21.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = ChatColors.primaryText,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center,
-                                    style = noFontPad,
-                                )
+                                // unibot: side chats show the dragon face +
+                                // the chat title on one line, like the main
+                                // chat shows face + name.
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    if (ubAvatarSize.disc != null) {
+                                        ai.unicto.unibot.ui.avatar.AgentAvatarDisc(
+                                            mood = ubMood,
+                                            discSize = 40.dp,
+                                            contentDescription = stringResource(R.string.ub_avatar_content_description),
+                                            onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
+                                        )
+                                    } else {
+                                        ai.unicto.unibot.ui.avatar.AgentAvatar(
+                                            mood = ubMood,
+                                            size = 36.dp,
+                                            contentDescription = stringResource(R.string.ub_avatar_content_description),
+                                            onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
+                                        )
+                                    }
+                                    Text(
+                                        text = sessionTitle?.trim()?.ifEmpty { null }
+                                            ?: stringResource(R.string.ub_drawer_untitled),
+                                        fontSize = 17.sp,
+                                        lineHeight = 21.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = ChatColors.primaryText,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Start,
+                                        style = noFontPad,
+                                    )
+                                }
                             } else {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,

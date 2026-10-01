@@ -18,9 +18,10 @@ import kotlin.math.log10
 import kotlin.math.sqrt
 
 /**
- * On-device speech-to-text via whisper.cpp (`tiny.en` quantized, ~31 MB).
+ * On-device speech-to-text via whisper.cpp (English q5_1, user picks the
+ * size: Quick ~31 MB, Balanced ~57 MB or Best ~181 MB).
  *
- * The model is NOT bundled in the APK — the user opts into downloading it
+ * The model is NOT bundled in the APK — the user opts into downloading one
  * from the `voice-model-v1` GitHub release via [WhisperModelManager], after
  * which this engine reports [isAvailable] and the mic works fully offline:
  * no API key, no account, no network.
@@ -53,7 +54,7 @@ class WhisperCppSpeechRecognitionEngine(private val appContext: Context) : Speec
     override val isAvailable: Boolean
         get() = !degraded &&
             WhisperCpp.isLoaded &&
-            WhisperModelManager.isDownloaded(appContext)
+            WhisperModelManager.activeModelFile(appContext) != null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var captureJob: Job? = null
@@ -78,8 +79,8 @@ class WhisperCppSpeechRecognitionEngine(private val appContext: Context) : Speec
             )
             return
         }
-        val modelFile = WhisperModelManager.modelFile(appContext)
-        if (!modelFile.isFile) {
+        val modelFile = WhisperModelManager.activeModelFile(appContext)
+        if (modelFile == null || !modelFile.isFile) {
             listener.onError(
                 RecognitionError.OEM_NO_SERVICE,
                 "Offline voice model not downloaded.",
@@ -93,9 +94,10 @@ class WhisperCppSpeechRecognitionEngine(private val appContext: Context) : Speec
         cancelled.set(false)
 
         captureJob = scope.launch {
-            // Load the model off the UI thread; ~31 MB, well under a second
-            // on modern phones. Per-session init keeps the process footprint
-            // lean when voice isn't in use.
+            // Load the model off the UI thread; even the ~181 MB model
+            // loads in well under a few seconds on modern phones.
+            // Per-session init keeps the process footprint lean when voice
+            // isn't in use.
             val ctx = withContext(Dispatchers.Default) {
                 runCatching { WhisperCpp.nativeInit(modelFile.absolutePath) }.getOrDefault(0L)
             }

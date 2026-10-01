@@ -1283,8 +1283,9 @@ private fun VoiceEngineUnavailableNotice(
             }
         }
 
-        // Optional on-device voice: the model (~31 MB) is downloaded from the
-        // voice-model-v1 GitHub release only when the user taps here — it is
+        // Optional on-device voice: the user picks a size — Quick (~31 MB),
+        // Balanced (~57 MB) or Best (~181 MB) — downloaded from the
+        // voice-model-v1 GitHub release only when they tap a row. Models are
         // never bundled in the APK.
         Spacer(modifier = Modifier.height(8.dp))
         OfflineVoiceDownloadButton(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -1292,17 +1293,28 @@ private fun VoiceEngineUnavailableNotice(
 }
 
 /**
- * Opt-in download for the offline whisper.cpp voice model. Shows idle /
- * progress / failed states; on success it selects the offline engine and the
- * notice above disappears because an engine is now available.
+ * Opt-in download for the offline whisper.cpp voice models. Three size
+ * tiers — Quick (~31MB), Balanced (~57MB), Best (~181MB) — each with its own
+ * idle / progress / failed state; tapping a downloaded row selects it. On
+ * any success the offline engine is selected and the notice above disappears
+ * because an engine is now available.
  */
 @Composable
 private fun OfflineVoiceDownloadButton(modifier: Modifier = Modifier) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val downloadState by ai.unicto.unibot.speech.WhisperModelManager.downloadState
+    val states by ai.unicto.unibot.speech.WhisperModelManager.downloadStates
+        .collectAsState()
+    val selected by ai.unicto.unibot.speech.WhisperModelManager.selectedModel
         .collectAsState()
 
-    if (downloadState is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Done) {
+    LaunchedEffect(Unit) {
+        ai.unicto.unibot.speech.WhisperModelManager.loadSelection(ctx)
+    }
+
+    val anyDone = ai.unicto.unibot.speech.WhisperModelManager.models.any { model ->
+        states[model.id] is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Done
+    }
+    if (anyDone) {
         LaunchedEffect(Unit) {
             ai.unicto.unibot.speech.SpeechRecognitionManager.selectEngine("whisper-offline")
             ai.unicto.unibot.speech.SpeechRecognitionManager.refreshAvailability()
@@ -1310,23 +1322,125 @@ private fun OfflineVoiceDownloadButton(modifier: Modifier = Modifier) {
         return
     }
 
-    val (label, enabled) = when (val s = downloadState) {
-        is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Downloading ->
-            stringResource(
-                R.string.voice_panel_no_engine_downloading,
-                (s.fraction * 100).toInt(),
-            ) to false
-        is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Failed ->
-            stringResource(R.string.voice_panel_no_engine_download_failed) to true
-        else ->
-            stringResource(
-                R.string.voice_panel_no_engine_download_offline,
-                ai.unicto.unibot.speech.WhisperModelManager.MODEL_SIZE_LABEL,
-            ) to true
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.voice_panel_no_engine_offline_title),
+            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        ai.unicto.unibot.speech.WhisperModelManager.models.forEach { model ->
+            VoiceModelRow(
+                model = model,
+                state = states[model.id]
+                    ?: ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Idle,
+                isSelected = selected.id == model.id,
+                onDownload = {
+                    ai.unicto.unibot.speech.WhisperModelManager.download(ctx, model)
+                },
+                onSelect = {
+                    ai.unicto.unibot.speech.WhisperModelManager.select(ctx, model)
+                },
+            )
+        }
+        Text(
+            text = stringResource(R.string.voice_panel_no_engine_offline_hint),
+            style = TextStyle(fontSize = 11.sp),
+            color = ChatColors.secondaryText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(horizontal = 16.dp),
+        )
     }
-    Box(modifier = modifier) {
-        NoticeActionButton(label) {
-            if (enabled) ai.unicto.unibot.speech.WhisperModelManager.download(ctx)
+}
+
+/** One row of the offline voice model picker: tier, hint, size/progress/action. */
+@Composable
+private fun VoiceModelRow(
+    model: ai.unicto.unibot.speech.WhisperModel,
+    state: ai.unicto.unibot.speech.WhisperModelManager.DownloadState,
+    isSelected: Boolean,
+    onDownload: () -> Unit,
+    onSelect: () -> Unit,
+) {
+    val downloaded =
+        state is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Done
+    val accent = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ChatColors.inputIconBg, RoundedCornerShape(14.dp))
+            .border(
+                width = if (downloaded && isSelected) 1.dp else 0.5.dp,
+                color = if (downloaded && isSelected) accent else ChatColors.inputIconBorder,
+                shape = RoundedCornerShape(14.dp),
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                enabled = state !is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Downloading,
+            ) { if (downloaded) onSelect() else onDownload() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Selection dot.
+            Box(
+                modifier = Modifier
+                    .size(14.dp)
+                    .border(1.5.dp, ChatColors.secondaryText, CircleShape)
+                    .background(
+                        if (downloaded && isSelected) accent else Color.Transparent,
+                        CircleShape,
+                    ),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = model.title,
+                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = model.hint,
+                    style = TextStyle(fontSize = 11.sp),
+                    color = ChatColors.secondaryText,
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            when (state) {
+                is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Downloading ->
+                    Text(
+                        text = stringResource(
+                            R.string.voice_panel_no_engine_downloading,
+                            (state.fraction * 100).toInt(),
+                        ),
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = accent,
+                    )
+                is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Failed ->
+                    Text(
+                        text = stringResource(R.string.voice_panel_no_engine_retry),
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                is ai.unicto.unibot.speech.WhisperModelManager.DownloadState.Done ->
+                    Text(
+                        text = if (isSelected) "✓" else stringResource(R.string.voice_panel_no_engine_use),
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = if (isSelected) accent else ChatColors.secondaryText,
+                    )
+                else ->
+                    Text(
+                        text = model.sizeLabel,
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+            }
         }
     }
 }
