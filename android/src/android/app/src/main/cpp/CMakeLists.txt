@@ -36,7 +36,6 @@ FetchContent_Declare(
     whispercpp
     GIT_REPOSITORY https://github.com/ggml-org/whisper.cpp.git
     GIT_TAG v1.9.4
-    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(whispercpp)
 
