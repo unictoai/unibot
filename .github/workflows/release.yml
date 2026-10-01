@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  issues: write # failure diagnostics: publish assembleRelease log tail as an issue
 
 env:
   NDK_VERSION: 27.2.12479018
