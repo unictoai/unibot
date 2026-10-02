@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.core.net.toUri
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Image
@@ -45,7 +46,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.navigation.NavController
 import ai.unicto.unibot.logging.AppLogger
 import ai.unicto.unibot.share.PendingShare
@@ -103,7 +103,7 @@ fun VisualAskScreen(
         pendingCaptureFile = null
         if (result.resultCode == Activity.RESULT_OK && file != null && file.exists() && file.length() > 0) {
             scope.launch(Dispatchers.IO) {
-                val ok = stagePhotoIntoComposer(context, androidx.core.net.toUri(file), question)
+                val ok = stagePhotoIntoComposer(context, file.toUri(), question)
                 file.delete()
                 withContext(Dispatchers.Main) {
                     busy = false
