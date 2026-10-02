@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.ui.theme.Motion
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import ai.unicto.unibot.deeplink.DeepLinkAction
 import ai.unicto.unibot.deeplink.DeepLinkCoordinator
 import ai.unicto.unibot.ui.settings.KEY_LAUNCH_SESSION
@@ -252,6 +253,10 @@ fun AppNavigation(
     initialDeepLink: DeepLinkAction? = null,
 ) {
     val context = LocalContext.current
+    // [v0.4.0-premium-feel] Hoisted 24.dp slide distance in px — the
+    // NavHost transition offset lambdas don't carry a Density receiver in
+    // this Compose version, so 24.dp.roundToPx() can't resolve there.
+    val slidePx = with(LocalDensity.current) { 24.dp.roundToPx() }
 
     // T219-5: use the application-scoped singleton from UnibotApp so UI
     // add/remove shares state with PRootKernel and the lifecycle re-probe
@@ -573,25 +578,25 @@ fun AppNavigation(
         // flashes.
         enterTransition = {
             slideInHorizontally(
-                initialOffsetX = { 24.dp.roundToPx() },
+                initialOffsetX = { slidePx },
                 animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
             ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn))
         },
         exitTransition = {
             slideOutHorizontally(
-                targetOffsetX = { -24.dp.roundToPx() },
+                targetOffsetX = { -slidePx },
                 animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn),
             ) + fadeOut(animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn))
         },
         popEnterTransition = {
             slideInHorizontally(
-                initialOffsetX = { -24.dp.roundToPx() },
+                initialOffsetX = { -slidePx },
                 animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
             ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn))
         },
         popExitTransition = {
             slideOutHorizontally(
-                targetOffsetX = { 24.dp.roundToPx() },
+                targetOffsetX = { slidePx },
                 animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn),
             ) + fadeOut(animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn))
         },
