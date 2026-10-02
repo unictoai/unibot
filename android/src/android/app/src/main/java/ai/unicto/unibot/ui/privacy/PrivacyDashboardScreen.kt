@@ -14,6 +14,7 @@ import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -232,9 +233,9 @@ private fun PrivacyHero() {
     )
 
     // The tracker counter: counts down from a "scan" to the honest 0.
-    val counter = remember { androidx.compose.animation.core.Animatable(100) }
+    val counter = remember { androidx.compose.animation.core.Animatable(100f) }
     LaunchedEffect(Unit) {
-        counter.animateTo(0, tween(1200, easing = Motion.Linear))
+        counter.animateTo(0f, tween(1200, easing = Motion.Linear))
     }
 
     Column(
