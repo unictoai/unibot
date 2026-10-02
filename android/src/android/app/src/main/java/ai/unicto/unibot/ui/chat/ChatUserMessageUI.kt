@@ -615,6 +615,9 @@ internal fun UserAttachmentList(
         }
     }
 
+    // P5 data analysis: offer "Analyze" under CSV attachments.
+    CsvAnalyzeChips(fileNames)
+
     previewImageIndex?.let { startIdx ->
         // T-imgswipe-4f446d83: route through the shared swipe-able
         // viewer so user-bubble image attachments get the same caption
