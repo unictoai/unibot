@@ -689,6 +689,12 @@ fun AppNavigation(
                 onOpenDevices = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
             )
         }
+        // P4 (v0.2.0): phone-to-desktop pairing — QR code + remote sessions.
+        composable(ai.unicto.unibot.ui.pairing.ROUTE_PAIRING) {
+            ai.unicto.unibot.ui.pairing.P4PairingScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
         // unibot: the agent's page behind the face — today's activity, approvals, daily,
         // soul & memory; the pen offers "Change avatar" (back to the chat, pre-typed) and
         // "Edit name".
@@ -773,6 +779,7 @@ fun AppNavigation(
                 onHandsClick = { navController.safeNavigate(ai.unicto.unibot.ui.hands.ROUTE_HANDS) }, // unibot
                 onComputersClick = { navController.safeNavigate(ai.unicto.unibot.ui.reach.ROUTE_COMPUTERS) }, // unibot
                 onCodingClick = { navController.safeNavigate(ai.unicto.unibot.ui.coding.ROUTE_CODING) }, // unibot
+                onPairingClick = { navController.safeNavigate(ai.unicto.unibot.ui.pairing.ROUTE_PAIRING) }, // P4 v0.2.0
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },
                 onUsageClick = { navController.safeNavigate(Routes.USAGE_STATS) },
                 onAppearanceClick = { navController.safeNavigate(Routes.APPEARANCE) },
