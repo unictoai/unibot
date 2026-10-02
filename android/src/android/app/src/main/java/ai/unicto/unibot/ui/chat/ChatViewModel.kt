@@ -7334,12 +7334,22 @@ class ChatViewModel(
                     _messages.value,
                     excludeAssistantId = assistantId,
                 )
+                // [local-capabilities] App-side capabilities for the on-device
+                // model: date/time always in; phone state + live web results
+                // when triggered. Runs before inference, never inside the
+                // backend (which keeps its zero-network promise).
+                val (augSystem, augPrompt) =
+                    ai.unicto.unibot.local.LocalCapabilities.augment(
+                        context,
+                        model.systemPrompt,
+                        userText,
+                    )
                 ai.unicto.unibot.local.LocalChatService.generate(
                     context = context,
                     model = model,
-                    systemPrompt = model.systemPrompt,
+                    systemPrompt = augSystem,
                     history = turns,
-                    prompt = userText,
+                    prompt = augPrompt,
                     onToken = { piece ->
                         sb.append(piece)
                         updateAssistantMessage(

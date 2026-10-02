@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.local.LlamaModel
 import ai.unicto.unibot.local.LlamaModelManager
+import ai.unicto.unibot.local.LocalCapabilities
 import ai.unicto.unibot.local.LocalChatService
 import ai.unicto.unibot.ui.theme.ChatColors
 
@@ -105,10 +107,39 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
             OfflineBadge()
         }
         Text(
-            text = "Private chat that works in airplane mode — no API key, no account, nothing leaves your phone.",
+            text = "Private chat that works in airplane mode — no API key, no account, nothing leaves your phone except optional web searches below.",
             style = TextStyle(fontSize = 12.sp),
             color = ChatColors.secondaryText,
         )
+
+        // ── Web search toggle ──
+        var webSearch by remember { mutableStateOf(LocalCapabilities.isWebSearchEnabled(ctx)) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Web search",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "When a question needs live info, look it up online and feed the results to the on-device model. Sends the question text to DuckDuckGo.",
+                    style = TextStyle(fontSize = 12.sp),
+                    color = ChatColors.secondaryText,
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(
+                checked = webSearch,
+                onCheckedChange = {
+                    webSearch = it
+                    LocalCapabilities.setWebSearchEnabled(ctx, it)
+                },
+            )
+        }
 
         if (lowRam) {
             LowRamWarning()
