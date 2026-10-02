@@ -23,17 +23,23 @@ What this does:
 
 Idempotent: re-running reproduces the same files.
 """
+
 import sys
 from pathlib import Path
-from PIL import Image, ImageOps
+
+from PIL import Image
 
 REPO = Path(__file__).resolve().parent.parent
 RES = REPO / "android/src/android/app/src/main/res"
 BRAND = Path.home() / "workspace/unibot-branding/final"
 
-NINJA = BRAND / "media-generation-unibot-ninja-icon-no-u-0-1d33ce8c-ea4c-4f67-bb93-0535b05b22f4.webp"
+NINJA = (
+    BRAND / "media-generation-unibot-ninja-icon-no-u-0-1d33ce8c-ea4c-4f67-bb93-0535b05b22f4.webp"
+)
 U_ICON = BRAND / "media-generation-unibot-u-icon-0-66d319b9-0fa1-40cf-94de-46a9613ff764.webp"
-WORDMARK = BRAND / "media-generation-unibot-wordmark-final-0-7813cca1-9084-49eb-b7cb-abe3d029ce03.webp"
+WORDMARK = (
+    BRAND / "media-generation-unibot-wordmark-final-0-7813cca1-9084-49eb-b7cb-abe3d029ce03.webp"
+)
 
 DENSITIES = {  # mipmap dir -> (foreground px @108dp, legacy px)
     "mipmap-xxxhdpi": (432, 192),
@@ -67,7 +73,9 @@ def main() -> None:
         light_fg = Image.new("RGB", (fg_px, fg_px), "white")
         light_fg.paste(Image.new("RGB", (fg_px, fg_px), "black"), (0, 0), mask)
         light_fg.save(mdir / "ic_launcher_foreground_u_light.png")
-        light_fg.resize((leg_px, leg_px), Image.LANCZOS).save(mdir / "ic_launcher_classic_light.png")
+        light_fg.resize((leg_px, leg_px), Image.LANCZOS).save(
+            mdir / "ic_launcher_classic_light.png"
+        )
 
     # Wordmark for in-app use (splash / about / settings header).
     nodpi = RES / "drawable-nodpi"
@@ -84,15 +92,24 @@ def main() -> None:
 """
     variants = {
         # (anydpi xml, night xml, bg color ref, foreground mipmap)
-        ("mipmap-anydpi-v26/ic_launcher.xml",
-         "mipmap-night-anydpi-v26/ic_launcher.xml",
-         "ic_launcher_background", "ic_launcher_foreground"),
-        ("mipmap-anydpi-v26/ic_launcher_classic_dark.xml",
-         "mipmap-night-anydpi-v26/ic_launcher_classic_dark.xml",
-         "ic_launcher_bg_force_dark", "ic_launcher_foreground"),
-        ("mipmap-anydpi-v26/ic_launcher_classic_light.xml",
-         "mipmap-night-anydpi-v26/ic_launcher_classic_light.xml",
-         "ic_launcher_bg_force_light", "ic_launcher_foreground_u_light"),
+        (
+            "mipmap-anydpi-v26/ic_launcher.xml",
+            "mipmap-night-anydpi-v26/ic_launcher.xml",
+            "ic_launcher_background",
+            "ic_launcher_foreground",
+        ),
+        (
+            "mipmap-anydpi-v26/ic_launcher_classic_dark.xml",
+            "mipmap-night-anydpi-v26/ic_launcher_classic_dark.xml",
+            "ic_launcher_bg_force_dark",
+            "ic_launcher_foreground",
+        ),
+        (
+            "mipmap-anydpi-v26/ic_launcher_classic_light.xml",
+            "mipmap-night-anydpi-v26/ic_launcher_classic_light.xml",
+            "ic_launcher_bg_force_light",
+            "ic_launcher_foreground_u_light",
+        ),
     }
     for day, night, bg, fg in variants:
         for xml in (day, night):
@@ -101,17 +118,21 @@ def main() -> None:
     # Pure-black launcher backgrounds so the ninja blends seamlessly.
     (RES / "values/ic_launcher_background.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
-        '    <color name="ic_launcher_background">#FF000000</color>\n</resources>\n')
+        '    <color name="ic_launcher_background">#FF000000</color>\n</resources>\n'
+    )
     (RES / "values-night/ic_launcher_background.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
-        '    <color name="ic_launcher_background">#FF000000</color>\n</resources>\n')
+        '    <color name="ic_launcher_background">#FF000000</color>\n</resources>\n'
+    )
     alt = RES / "values/ic_launcher_alt_colors.xml"
     alt.write_text(alt.read_text().replace("#0F1B33", "#FF000000"))
 
     # Remove the violet-U vectors this branding replaces (now unreferenced).
-    for vec in ("ic_launcher_foreground_ub.xml",
-                "ic_launcher_foreground_ub_dark.xml",
-                "ic_launcher_monochrome.xml"):
+    for vec in (
+        "ic_launcher_foreground_ub.xml",
+        "ic_launcher_foreground_ub_dark.xml",
+        "ic_launcher_monochrome.xml",
+    ):
         p = RES / "drawable" / vec
         if p.exists():
             p.unlink()
@@ -120,10 +141,13 @@ def main() -> None:
     # Safety: fail loudly if live code/resources still reference the deleted vectors
     # (scripts/ are historical generator records and may mention them).
     import subprocess
+
     refs = subprocess.run(
-        ["grep", "-rn", "ic_launcher_foreground_ub\\|ic_launcher_monochrome",
-         "android/src"],
-        capture_output=True, text=True, cwd=REPO).stdout.strip()
+        ["grep", "-rn", "ic_launcher_foreground_ub\\|ic_launcher_monochrome", "android/src"],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    ).stdout.strip()
     if refs:
         sys.exit("still referenced:\n" + refs)
 

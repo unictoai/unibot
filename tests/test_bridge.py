@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from tests.test_server import tc, wait_for, wait_idle
 from unibot.bridge.cli import BridgeClient, browser_main, device_main, open_main, parse_pairs
 from unibot.bridge.server import Bridge, BridgeError
 from unibot.bridge.tokens import BRIDGE_TOKEN_ENV, BRIDGE_URL_ENV, BridgeTokens
@@ -20,7 +21,6 @@ from unibot.schema import LLMResponse, RiskLevel, ToolResult
 from unibot.server import bridge_url, create_app
 from unibot.server.service import MuseService
 from unibot.tools.base import BaseTool, CallAssessment
-from tests.test_server import tc, wait_for, wait_idle
 
 
 # ----------------------------------------------------------------------------- tokens
@@ -188,7 +188,9 @@ class FakeClipboard(BaseTool):
 
 def _bridge_command(*args: str) -> str:
     """Run the program from this interpreter (the venv's bin may not be on PATH here)."""
-    code = f"from unibot.bridge.cli import device_main; raise SystemExit(device_main({list(args)!r}))"
+    code = (
+        f"from unibot.bridge.cli import device_main; raise SystemExit(device_main({list(args)!r}))"
+    )
     return f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
 
 

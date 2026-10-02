@@ -191,9 +191,7 @@ async def test_boxed_shell_sees_only_the_workspace(tmp_path: Path):
     # the parent (and with it the rest of the machine) is not there
     r = await shell.execute(command=f"cat {tmp_path / 'secret.txt'}")
     assert not r.ok and "outside" not in r.output and "secret.txt" in r.output
-    r = await shell.execute(
-        command="ls $HOME/.ssh 2>&1; echo HOME=$HOME; echo BOX=$UNIBOT_SANDBOX"
-    )
+    r = await shell.execute(command="ls $HOME/.ssh 2>&1; echo HOME=$HOME; echo BOX=$UNIBOT_SANDBOX")
     assert r.ok and "HOME=/tmp/home" in r.output and "BOX=bwrap" in r.output
     # system paths are read-only
     r = await shell.execute(command="touch /usr/owned 2>&1 || echo READONLY")

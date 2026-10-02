@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.test_phone import AutoApproveUI, png
 from unibot.computer import hands as hands_mod
 from unibot.computer.link import ComputerLink
 from unibot.config import GUISettings, HandsSettings, Settings
@@ -25,7 +26,6 @@ from unibot.sentinel import AuditLog, Sentinel
 from unibot.server import create_app
 from unibot.server.service import MuseService
 from unibot.tools.computer import ComputerAct, ComputerScreen, ComputerTask
-from tests.test_phone import AutoApproveUI, png
 
 SCREEN_RAW = {
     "app": "firefox",

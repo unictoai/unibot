@@ -1189,8 +1189,7 @@ def test_reminders_fire_in_their_chat_and_are_pushed_once(server, monkeypatch):
     assert said["final"] is True and "call mum" in said["text"]
     assert [p["kind"] for p in pushed] == ["background"]
     assert (
-        pushed[-1]["title"] == "unibot · reminder"
-        and pushed[-1]["url"] == f"/?thread={side['id']}"
+        pushed[-1]["title"] == "unibot · reminder" and pushed[-1]["url"] == f"/?thread={side['id']}"
     )
     # the main chat was not touched
     assert not [e for e in events_of(client, "main") if e["type"] != "notice" or e.get("source")]
