@@ -442,6 +442,10 @@ fun UnibotHome(
                         }
                     }
                 }
+
+                // v0.2.0 P5: Canvas editor host — renders a dialog only when a
+                // document is open in the Canvas store; no-op otherwise.
+                ai.unicto.unibot.ui.chat.CanvasHost()
             }
         }
     }

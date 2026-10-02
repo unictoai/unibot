@@ -1882,7 +1882,6 @@ class ChatViewModel(
             title = "Chat",
             subtitle = "Back to automatic routing",
         ),
-        ),
     )
 
     // [T-android-split-chat] filteredSlashCommands / updateSlashMenuState /
