@@ -25,11 +25,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ai.unicto.unibot.connectors.calendar.CalendarConnector
 import ai.unicto.unibot.connectors.drive.DriveConnector
+import ai.unicto.unibot.connectors.github.GitHubConnector
 import ai.unicto.unibot.connectors.gmail.GmailOAuth
 import ai.unicto.unibot.connectors.gmail.GmailStore
 import ai.unicto.unibot.connectors.google.GoogleOAuth
+import ai.unicto.unibot.connectors.telegram.TelegramConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
 import kotlinx.coroutines.launch
 
@@ -100,6 +105,26 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> CalendarConnector.disconnect(ctx) },
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_github,
+                name = stringResource(R.string.ub_connectors_github),
+                description = stringResource(R.string.ub_connectors_github_desc),
+                hint = stringResource(R.string.ub_connectors_github_hint),
+                isConnected = { ctx -> GitHubConnector.isConnected(ctx) },
+                label = { ctx -> GitHubConnector.store.label(ctx) },
+                onSave = { ctx, token -> GitHubConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> GitHubConnector.disconnect(ctx) },
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_telegram,
+                name = stringResource(R.string.ub_connectors_telegram),
+                description = stringResource(R.string.ub_connectors_telegram_desc),
+                hint = stringResource(R.string.ub_connectors_telegram_hint),
+                isConnected = { ctx -> TelegramConnector.isConnected(ctx) },
+                label = { ctx -> TelegramConnector.store.label(ctx) },
+                onSave = { ctx, token -> TelegramConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> TelegramConnector.disconnect(ctx) },
             )
         }
     }
@@ -221,6 +246,161 @@ private fun ConnectorRow(
                         refresh()
                     }
                 }) {
+                    Text(stringResource(R.string.ub_connectors_disconnect))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisconnectConfirm = false }) {
+                    Text(stringResource(R.string.ub_connectors_cancel))
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Row for token-based connectors (GitHub PAT, Telegram bot token). The user
+ * pastes their own token; it is validated against the service's API and
+ * stored in EncryptedSharedPreferences.
+ */
+@Composable
+private fun TokenConnectorRow(
+    logoRes: Int,
+    name: String,
+    description: String,
+    hint: String,
+    isConnected: (android.content.Context) -> Boolean,
+    label: (android.content.Context) -> String?,
+    onSave: suspend (android.content.Context, String) -> String?,
+    onDisconnect: suspend (android.content.Context) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var connected by remember { mutableStateOf(isConnected(context)) }
+    var connectedLabel by remember { mutableStateOf(label(context)) }
+    var token by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showDisconnectConfirm by remember { mutableStateOf(false) }
+
+    fun refresh() {
+        connected = isConnected(context)
+        connectedLabel = label(context)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(
+                painter = painterResource(logoRes),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    if (connected && connectedLabel != null)
+                        stringResource(R.string.ub_connectors_connected_as, connectedLabel!!)
+                    else
+                        description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (busy) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else if (connected) {
+                UnibotTextButton(onClick = { showDisconnectConfirm = true }) {
+                    Text(stringResource(R.string.ub_connectors_disconnect))
+                }
+            }
+        }
+        if (!connected) {
+            Text(
+                hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = { token = it; error = null },
+                    label = { Text(stringResource(R.string.ub_connectors_token_label)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(),
+                )
+                UnibotTextButton(
+                    onClick = {
+                        if (token.isBlank()) return@UnibotTextButton
+                        busy = true
+                        error = null
+                        scope.launch {
+                            val who = onSave(context, token)
+                            busy = false
+                            if (who != null) {
+                                token = ""
+                                refresh()
+                            } else {
+                                error = context.getString(R.string.ub_connectors_token_invalid)
+                            }
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.ub_connectors_save))
+                }
+            }
+        }
+        if (error != null) {
+            Text(
+                error!!,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+    if (showDisconnectConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDisconnectConfirm = false },
+            title = { Text(stringResource(R.string.ub_connectors_disconnect_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.ub_connectors_confirm_disconnect_named,
+                        name,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            onDisconnect(context)
+                            showDisconnectConfirm = false
+                            refresh()
+                        }
+                    },
+                ) {
                     Text(stringResource(R.string.ub_connectors_disconnect))
                 }
             },

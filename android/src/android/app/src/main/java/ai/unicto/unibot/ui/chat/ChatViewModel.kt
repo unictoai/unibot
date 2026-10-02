@@ -70,6 +70,8 @@ import ai.unicto.unibot.tools.FileEditTool
 import ai.unicto.unibot.tools.FileReadTool
 import ai.unicto.unibot.tools.FileWriteTool
 import ai.unicto.unibot.tools.GmailTool
+import ai.unicto.unibot.tools.GitHubTool
+import ai.unicto.unibot.tools.TelegramTool
 import ai.unicto.unibot.tools.DriveTool
 import ai.unicto.unibot.tools.CalendarTool
 import ai.unicto.unibot.tools.MemoryTools
@@ -1263,6 +1265,8 @@ class ChatViewModel(
             gmailConnected = GmailTool.isConnected(context),
             driveConnected = DriveTool.isConnected(context),
             calendarConnected = CalendarTool.isConnected(context),
+            githubConnected = GitHubTool.isConnected(context),
+            telegramConnected = TelegramTool.isConnected(context),
         )
     /**
      * Per-session loop detector. Reset alongside [agentHistory] whenever the
@@ -9980,6 +9984,14 @@ class ChatViewModel(
             DriveTool.READ_NAME -> DriveTool.executeRead(argsJson, context)
             CalendarTool.LIST_NAME -> CalendarTool.executeList(argsJson, context)
             CalendarTool.CREATE_NAME -> CalendarTool.executeCreate(argsJson, context)
+            // [unibot-connectors] GitHub + Telegram (token-based) tools.
+            GitHubTool.REPOS_NAME -> GitHubTool.executeRepos(argsJson, context)
+            GitHubTool.READ_NAME -> GitHubTool.executeRead(argsJson, context)
+            GitHubTool.ISSUES_NAME -> GitHubTool.executeIssues(argsJson, context)
+            GitHubTool.CREATE_ISSUE_NAME -> GitHubTool.executeCreateIssue(argsJson, context)
+            TelegramTool.RESOLVE_NAME -> TelegramTool.executeResolve(argsJson, context)
+            TelegramTool.SEND_NAME -> TelegramTool.executeSend(argsJson, context)
+            TelegramTool.READ_NAME -> TelegramTool.executeRead(argsJson, context)
             else -> ToolExecutionResult("Unknown tool: $name", false)
         }
     }
@@ -10037,6 +10049,8 @@ class ChatViewModel(
             gmailConnected = GmailTool.isConnected(context),
             driveConnected = DriveTool.isConnected(context),
             calendarConnected = CalendarTool.isConnected(context),
+            githubConnected = GitHubTool.isConnected(context),
+            telegramConnected = TelegramTool.isConnected(context),
         )
         val workerMessages = mutableListOf(
             LLMMessage(

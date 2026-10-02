@@ -989,5 +989,15 @@
     <string name="ub_connectors_calendar">Google Calendar</string>
     <string name="ub_connectors_calendar_desc">See and create events</string>
     <string name="ub_connectors_confirm_disconnect_named">Disconnect %1$s? The agent will lose access to it.</string>
+    <string name="ub_connectors_github">GitHub</string>
+    <string name="ub_connectors_github_desc">List repos, read files, manage issues</string>
+    <string name="ub_connectors_github_hint">Create a personal access token at github.com → Settings → Developer settings → Personal access tokens. The app stores it encrypted on this phone only.</string>
+    <string name="ub_connectors_telegram">Telegram</string>
+    <string name="ub_connectors_telegram_desc">Send and read messages via your bot</string>
+    <string name="ub_connectors_telegram_hint">Create a bot with @BotFather on Telegram and paste its token. Then message your bot once so the agent can find the chat.</string>
+    <string name="ub_connectors_token_label">Token</string>
+    <string name="ub_connectors_save">Save</string>
+    <string name="ub_connectors_token_invalid">That token didn't work. Check it and try again.</string>
+    <string name="ub_connectors_token_saved">Connected.</string>
 </resources>
 

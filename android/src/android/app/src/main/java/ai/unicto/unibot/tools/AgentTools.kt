@@ -38,6 +38,9 @@ object AgentTools {
         // [unibot-connectors] Drive + Calendar, same gating.
         driveConnected: Boolean = false,
         calendarConnected: Boolean = false,
+        // [unibot-connectors] Token-based: GitHub PAT + Telegram bot token.
+        githubConnected: Boolean = false,
+        telegramConnected: Boolean = false,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -62,6 +65,12 @@ object AgentTools {
         }
         if (calendarConnected) {
             addAll(CalendarTool.definitions())
+        }
+        if (githubConnected) {
+            addAll(GitHubTool.definitions())
+        }
+        if (telegramConnected) {
+            addAll(TelegramTool.definitions())
         }
     }
 
