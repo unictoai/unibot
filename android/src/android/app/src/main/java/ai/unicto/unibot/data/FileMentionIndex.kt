@@ -64,6 +64,12 @@ class FileMentionIndex(
         SHARED("shared", 3, 300),
         WORKSPACE("workspace", 4, 200),
         MEMORY("memory", 5, 100),
+        // [P2-prompt-library] Pseudo-scope for prompt-library TEXT presets
+        // surfaced in the @-mention picker. These entries are NOT produced
+        // by the file scan — ChatViewModel prepends them in `mentionEntries`
+        // — so order/rankBoost only matter for the badge label + any future
+        // unified ranking.
+        PROMPT("prompt", 6, 700),
     }
 
     data class MountEntry(val name: String, val root: File)

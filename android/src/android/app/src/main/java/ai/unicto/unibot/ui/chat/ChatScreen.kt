@@ -3785,6 +3785,8 @@ fun ChatScreen(
                     is FlatChatItem.AssistantTyping -> false
                     is FlatChatItem.AssistantError -> grayedMap[originalMessageId(messageId)] == true
                     is FlatChatItem.AssistantLegacyContent -> grayedMap[originalMessageId(messageId)] == true
+                    // [P2-branching] Action rows never grayed.
+                    is FlatChatItem.BranchActions -> false
                 }
                 // SelectionContainer must wrap the WHOLE LazyColumn — placing
                 // it per-item breaks long-press because items get disposed
@@ -4206,6 +4208,10 @@ fun ChatScreen(
                                 onDeleteFromHere = if (isStreaming) null else ({
                                     deleteFromHereTargetId = item.message.id
                                 }),
+                                // [P2-fork] Gated while streaming like Retry/Edit.
+                                onForkFromHere = if (isStreaming) null else ({
+                                    safeMutate { viewModel.forkFromMessage(item.message.id) }
+                                }),
                                 // T187: long-press → Edit pulls the user message
                                 // text into the composer; the next send truncates
                                 // from this turn (inclusive) before persisting
@@ -4437,6 +4443,16 @@ fun ChatScreen(
                                     coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                     safeMutate { viewModel.retryLast() }
                                 },
+                            )
+                            // [P2-branching] Sibling pager + regenerate/fork
+                            // row under the assistant turn. UI lives in
+                            // MessageBranching.kt; the VM callbacks are safe
+                            // to call from composition (they launch their own
+                            // coroutines and no-op while streaming).
+                            is FlatChatItem.BranchActions -> ai.unicto.unibot.ui.chat.BranchActionsRow(
+                                viewModel = viewModel,
+                                anchorUserMessageId = item.anchorUserMessageId,
+                                assistantMessageId = item.assistantMessageId,
                             )
                             is FlatChatItem.AssistantLegacyContent -> BoundsTrackedBlock(
                                 messageId = item.messageId,

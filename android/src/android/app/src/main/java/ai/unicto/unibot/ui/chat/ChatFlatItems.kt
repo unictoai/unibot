@@ -485,6 +485,21 @@ internal sealed class FlatChatItem {
     }
 
     /**
+     * [P2-branching] Action row under an assistant turn: sibling pager
+     * ("‹ 1/3 ›") when archived variants exist, plus regenerate + fork
+     * affordances. Anchored to the USER message that prompted the turn
+     * (stable across regenerations) + the assistant message id (for the
+     * regenerate/fork callbacks).
+     */
+    data class BranchActions(
+        val anchorUserMessageId: String,
+        val assistantMessageId: String,
+    ) : FlatChatItem() {
+        override val key = "branch:$assistantMessageId"
+        override val contentType = "branch"
+    }
+
+    /**
      * See [AssistantText] — same cheap-equals rationale.
      */
     class AssistantLegacyContent(
@@ -592,6 +607,10 @@ internal fun buildFlatChatItems(
             is FlatChatItem.UnibotAllowance -> item.copy(messageId = "${item.messageId}#$n") // unibot
             is FlatChatItem.AssistantTyping -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantError -> item.copy(messageId = "${item.messageId}#$n")
+            // [P2-branching] Never remap: the ids address DB rows and
+            // _messages entries. Key collisions can't happen — the key
+            // embeds the unique assistant message id.
+            is FlatChatItem.BranchActions -> item
             is FlatChatItem.AssistantLegacyContent -> FlatChatItem.AssistantLegacyContent(
                 messageId = "${item.messageId}#$n",
                 content = item.content,
@@ -817,6 +836,21 @@ internal fun buildFlatChatItems(
         // Inline error banner
         message.error?.let {
             out.add(dedupe(FlatChatItem.AssistantError(message.id, it)))
+        }
+
+        // [P2-branching] Action row under every settled assistant turn:
+        // sibling pager + regenerate + fork. Suppressed while streaming
+        // (content is still arriving) and for system rows. The anchor is
+        // the nearest preceding USER message — the id the variant store
+        // keys on, stable across regenerations.
+        if (!isSystem && message.role == "assistant" && !message.isStreaming) {
+            val anchorId = (idx - 1 downTo 0).asSequence()
+                .map { messages[it] }
+                .firstOrNull { it.role == "user" }
+                ?.id
+            if (anchorId != null) {
+                out.add(dedupe(FlatChatItem.BranchActions(anchorId, message.id)))
+            }
         }
     }
     return out

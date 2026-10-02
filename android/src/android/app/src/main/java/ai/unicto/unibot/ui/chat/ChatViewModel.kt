@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Extension
 import ai.unicto.unibot.data.BPETokenizer
@@ -93,7 +94,7 @@ import java.io.ByteArrayOutputStream
 
 class ChatViewModel(
     internal val sessionId: String,
-    private val chatRepository: ChatRepository,
+    internal val chatRepository: ChatRepository,
     private val providerRepository: ProviderRepository,
     internal val context: Context,
     val memoryRepository: MemoryRepository? = null,
@@ -492,7 +493,7 @@ class ChatViewModel(
 
     private val mediaStore = ai.unicto.unibot.data.storage.MediaStore(context)
 
-    private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    internal val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
     // ── Long-session window cap ────────────────────────────────────────
@@ -773,7 +774,7 @@ class ChatViewModel(
         _inputText.value = joined
     }
 
-    private val _isStreaming = MutableStateFlow(false)
+    internal val _isStreaming = MutableStateFlow(false)
     val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
 
     /**
@@ -1605,11 +1606,27 @@ class ChatViewModel(
 
     /** Live-filtered candidate list. Combines the index's [FileMentionIndex.entries]
      * with [mentionFilter] so matches refresh as the user types and as the
-     * background scan emits more entries. Capped at 50 like iOS. */
+     * background scan emits more entries. Capped at 50 like iOS.
+     *
+     * [P2-prompt-library] TEXT presets from the prompt library are prepended
+     * as PROMPT-scoped entries (badge "prompt"); selecting one inserts the
+     * preset's content — see [selectMention] in ChatViewModelMentionExt.kt. */
     val mentionEntries: StateFlow<List<FileMentionIndex.Entry>> = combine(
         fileMentionIndex.entries,
         _mentionFilter,
-    ) { _, filter -> fileMentionIndex.matches(filter, limit = 50) }
+        PromptLibraryStore.presets,
+    ) { _, filter, _ ->
+        val promptEntries = PromptLibraryStore.matchTextPresets(filter).map { preset ->
+            FileMentionIndex.Entry(
+                linuxPath = "prompt/${preset.name}",
+                scope = FileMentionIndex.Scope.PROMPT,
+                mountName = null,
+                modifiedAt = preset.createdAt,
+                isDirectory = false,
+            )
+        }
+        promptEntries + fileMentionIndex.matches(filter, limit = 50)
+    }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val isMentionScanning: StateFlow<Boolean>
@@ -1625,6 +1642,27 @@ class ChatViewModel(
      */
     internal val _mentionSelectedIndex = MutableStateFlow(-1)
     val mentionSelectedIndex: StateFlow<Int> = _mentionSelectedIndex.asStateFlow()
+
+    // ── [P2-modes] Active composer mode (Study Mode / custom modes) ──────
+    // Global, owned by PromptLibraryStore: a mode stays on across chats
+    // until the user turns it off. Behaviour in ChatViewModelModeExt.kt;
+    // this is just a convenient read for chat UI.
+    val activeComposerMode: PromptPreset?
+        get() = PromptLibraryStore.activeModeNow()
+
+    // ── [P2-branching] Sibling-variant state ─────────────────────────────
+    // _branchVariants: anchor user-message id → archived variants (index ASC).
+    // _branchSelection: anchor id → selected sibling index, where
+    // `variants.size` addresses the LIVE row content. _branchLiveCache keeps
+    // the live rows' snapshot the first time the user switches away, so
+    // "back to live" restores them (in-memory only — resets on restart).
+    internal val _branchVariants =
+        MutableStateFlow<Map<String, List<ai.unicto.unibot.data.db.MessageVariantEntity>>>(emptyMap())
+    val branchVariants: StateFlow<Map<String, List<ai.unicto.unibot.data.db.MessageVariantEntity>>> =
+        _branchVariants.asStateFlow()
+    internal val _branchSelection = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val branchSelection: StateFlow<Map<String, Int>> = _branchSelection.asStateFlow()
+    internal val _branchLiveCache = mutableMapOf<String, List<Pair<String, String>>>()
 
     val currentModelSupportsReasoning: Boolean
         get() = currentModel?.supportsReasoning == true
@@ -1802,6 +1840,13 @@ class ChatViewModel(
             title = "Thinking",
             subtitle = "",
         ),
+        // [P2-modes] Toggles the built-in Socratic Study Mode overlay.
+        SlashCommand(
+            id = "study",
+            icon = Icons.Default.School,
+            title = "Study",
+            subtitle = "",
+        ),
     )
 
     // [T-android-split-chat] filteredSlashCommands / updateSlashMenuState /
@@ -1858,11 +1903,17 @@ class ChatViewModel(
         _showSlashMenu.value = false
         _slashMenuSelectedIndex.value = -1
 
-        when (cmd.id) {
+        // [P2-modes] Mode rows toggle the preset as the active composer mode
+        // (tap the active one again to turn it off).
+        if (cmd.id.startsWith("mode:")) {
+            toggleModeById(cmd.id.removePrefix("mode:"))
+        } else when (cmd.id) {
             "compact" -> compactAll()
             "memory" -> toggleMemoryEnabled()
             "thinking" -> toggleThinking()
             "clear" -> _clearChatConfirmRequested.value = true
+            // [P2-modes] Built-in Socratic tutor overlay.
+            "study" -> toggleStudyMode()
             else -> AppLogger.info(TAG, "[Slash] unrecognized id=${cmd.id} — no dispatch")
         }
         // [T-android-slash-menu-align-ios-prepend] Action command: restore the
@@ -1974,7 +2025,7 @@ class ChatViewModel(
      * iOS `appendSystemInfo` behavior which surfaces a local notice in the chat
      * stream. Future work: wire real conversation compaction through the LLM.
      */
-    private fun appendSystemInfo(text: String, iconKind: String, payload: String? = null) {
+    internal fun appendSystemInfo(text: String, iconKind: String, payload: String? = null) {
         val block = AssistantBlock(
             id = "sysinfo_${System.currentTimeMillis()}",
             kind = "info",
@@ -3666,6 +3717,9 @@ class ChatViewModel(
             _isIncognito.value = true
             _memoryEnabled.value = false
         }
+        // [P2-prompt-library] Seed the preset library (built-ins + customs)
+        // before the @-mention combine subscribes to it.
+        PromptLibraryStore.ensureInit(context)
         loadSession()
         // [T-session-paused-badge-active-false-positive] Drive the session-list
         // PAUSED badge directly off canResume — the authoritative "this session
@@ -4027,6 +4081,8 @@ class ChatViewModel(
 
     private fun loadSession() {
         _nmContinueAsk.value = null // unibot: the "continue?" card belongs to the session that hit the ceiling
+        // [P2-branching] The live-row snapshot cache is per-session.
+        _branchLiveCache.clear()
         // T-android-crash-detected-halt: when CrashFrequencyDetector
         // tripped (#459, ≥3 crashes in last hour), skip the heavy
         // session-restore path entirely. Re-running the same persisted
@@ -4340,6 +4396,8 @@ class ChatViewModel(
                 applyCompactMarkerGraying(ordered, marker, loaded.messages, historyDbIds)
             }
             ubSeedFirstConversation() // unibot: re-seat the virtual opening in the session it belongs to
+            // [P2-branching] Load archived sibling variants for the pager rows.
+            refreshBranchVariants()
 
             // Cold-start interrupt detection: an agent loop that was killed by
             // the OS (or app force-quit) leaves agentHistory in one of four
@@ -10924,6 +10982,10 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
             // unibot: the feed's conversation carries the user's feed preferences and the post protocol.
             ai.unicto.unibot.feed.FeedFlow.systemAddendum(context, realSessionId.ifEmpty { sessionId })
                 ?.let { append("\n\n").append(it) }
+            // [P2-modes] Active composer mode overlay (Study Mode / custom
+            // modes). Appended last like the other unibot addenda so the
+            // cacheable prefix above stays byte-stable.
+            activeComposerModeSection()?.let { append("\n\n").append(it) }
         }
     }
 
@@ -12544,7 +12606,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         }
     }
 
-    private fun List<MessageEntity>.toChatMessages(): List<ChatMessage> {
+    internal fun List<MessageEntity>.toChatMessages(): List<ChatMessage> {
         // First pass: extract all toolResult data keyed by toolUseId
         val toolResultMap = mutableMapOf<String, ToolResultData>()
         for (entity in this) {

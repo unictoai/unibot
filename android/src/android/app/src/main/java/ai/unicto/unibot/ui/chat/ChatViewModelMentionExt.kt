@@ -211,7 +211,22 @@ internal fun ChatViewModel.selectMention(
     while (endOffset < currentText.length && !currentText[endOffset].isWhitespace()) {
         endOffset++
     }
-    val replacement = "@${entry.linuxPath} "
+    // [P2-prompt-library] A PROMPT-scoped entry is a text preset from the
+    // prompt library: replace the `@<token>` with the preset's CONTENT
+    // (not a path), so `@explain simply` expands to the full snippet.
+    val replacement = if (entry.scope == FileMentionIndex.Scope.PROMPT) {
+        val presetName = entry.linuxPath.removePrefix("prompt/")
+        val preset = PromptLibraryStore.presets.value.firstOrNull {
+            it.kind == PresetKind.TEXT && it.name == presetName
+        }
+        if (preset == null) {
+            dismissMentionMenu()
+            return currentText to currentCaret
+        }
+        preset.content + " "
+    } else {
+        "@${entry.linuxPath} "
+    }
     val newText = currentText.substring(0, anchor) +
         replacement +
         currentText.substring(endOffset)

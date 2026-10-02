@@ -14,8 +14,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CompactMarkerEntity::class,
         WebAppShortcutEntity::class,
         FolderEntity::class,
+        MessageVariantEntity::class,
     ],
-    version = 12,
+    version = 13,
     // [T-android-downgrade-compat] Kept ON so MigrationTestHelper and CI can
     // validate every migration (and its downgrade counterpart) against the
     // committed schema json. Without it the upgrade/downgrade chain has no
@@ -308,6 +309,44 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * [P2-branching] `message_variants` table: archived sibling responses
+         * anchored to the prompting user message. Purely additive — no
+         * existing table is touched, existing rows are untouched.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS message_variants (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        session_id TEXT NOT NULL,
+                        anchor_user_message_id TEXT NOT NULL,
+                        variant_index INTEGER NOT NULL,
+                        parts_json TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        model_id TEXT,
+                        model_display_name TEXT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_message_variants_session_id_anchor_user_message_id ON message_variants(session_id, anchor_user_message_id)")
+            }
+        }
+
+        /**
+         * [T-android-downgrade-compat] Downgrade 13 → 12. Deliberately a NO-OP,
+         * same rationale as MIGRATION_12_11 above: the additive
+         * `message_variants` table is left in place so an older build can open
+         * a newer database (extra tables are ignored by Room's schema
+         * validation) and a later upgrade back loses no archived variants.
+         */
+        val MIGRATION_13_12 = object : Migration(13, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Intentionally empty — see the doc comment above.
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -318,10 +357,11 @@ abstract class AppDatabase : RoomDatabase() {
                     // MIGRATION_12_11 is the downgrade counterpart of
                     // MIGRATION_11_12 — registering it is what lets an older
                     // build open a newer database instead of failing to start.
+                    // MIGRATION_13_12 is the same for the P2 message_variants table.
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
                         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                        MIGRATION_11_12, MIGRATION_12_11,
+                        MIGRATION_11_12, MIGRATION_12_11, MIGRATION_12_13, MIGRATION_13_12,
                     )
                     .build()
                     .also { INSTANCE = it }

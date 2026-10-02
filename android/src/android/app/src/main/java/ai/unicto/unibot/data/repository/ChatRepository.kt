@@ -127,6 +127,8 @@ class ChatRepository(internal val dao: ChatDao) {
         // session-scoped in their own store — clear those regardless.
         if (!incognito(id)) {
             dao.deleteMessages(id)
+            // [P2-branching] Variants are keyed by session — drop them with it.
+            dao.deleteMessageVariantsForSession(id)
             dao.deleteSession(id)
         }
         ai.unicto.unibot.guard.Grants.clearSession(id) // unibot
@@ -348,6 +350,109 @@ class ChatRepository(internal val dao: ChatDao) {
         if (ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognitoMessage(id)) return
         dao.updateMessageParts(id, partsJson)
     }
+
+    /**
+     * [P2-import] Insert one imported message, preserving the original role
+     * and timestamp. New id + next sort_order (import order = array order).
+     * Parts are capped with the same truncation as [appendMessage] so an
+     * oversize exported row can't break CursorWindow on read.
+     */
+    suspend fun importMessage(
+        sessionId: String,
+        role: String,
+        partsJson: String,
+        createdAt: Long,
+    ): MessageEntity {
+        val capped = if (partsJson.length > MAX_MESSAGE_PARTS_JSON_LENGTH) {
+            buildTruncatedPartsJson(partsJson)
+        } else {
+            partsJson
+        }
+        val message = MessageEntity(
+            id = UUID.randomUUID().toString(),
+            sessionId = sessionId,
+            role = role,
+            partsJson = capped,
+            createdAt = createdAt,
+            sortOrder = dao.nextSortOrder(sessionId),
+        )
+        dao.insertMessage(message)
+        return message
+    }
+
+    // ─── Message variants (P2 branching) ────────────────────────────────
+
+    /** All archived sibling variants for a session, ordered by anchor then index. */
+    suspend fun listMessageVariants(sessionId: String): List<ai.unicto.unibot.data.db.MessageVariantEntity> =
+        dao.listMessageVariants(sessionId)
+
+    /** Variants for one turn (one anchor user message), ordered by index ASC. */
+    suspend fun listMessageVariantsForAnchor(
+        sessionId: String,
+        anchorUserMessageId: String,
+    ): List<ai.unicto.unibot.data.db.MessageVariantEntity> =
+        dao.listMessageVariantsForAnchor(sessionId, anchorUserMessageId)
+
+    /**
+     * Archive [rows] (the turn's rows in sort_order: role → parts_json) as
+     * the next sibling variant for [anchorUserMessageId]. Returns the stored
+     * entity.
+     *
+     * Rows are stored POSITIONALLY (JSON array of {role, parts} in turn
+     * order), not by entity id: regenerating a turn deletes its rows and
+     * mints new ids via the retry path, so id-keyed snapshots would go
+     * stale after the first regeneration. On switch, snapshots zip onto
+     * the CURRENT live rows by position.
+     */
+    suspend fun archiveMessageVariant(
+        sessionId: String,
+        anchorUserMessageId: String,
+        rows: List<Pair<String, String>>,
+        modelId: String? = null,
+        modelDisplayName: String? = null,
+    ): ai.unicto.unibot.data.db.MessageVariantEntity {
+        val index = dao.maxVariantIndexForAnchor(sessionId, anchorUserMessageId) + 1
+        val packed = org.json.JSONArray()
+        for ((role, parts) in rows) {
+            packed.put(org.json.JSONObject().apply {
+                put("role", role)
+                put("parts", parts)
+            })
+        }
+        val variant = ai.unicto.unibot.data.db.MessageVariantEntity(
+            id = UUID.randomUUID().toString(),
+            sessionId = sessionId,
+            anchorUserMessageId = anchorUserMessageId,
+            variantIndex = index,
+            partsJson = packed.toString(),
+            createdAt = System.currentTimeMillis(),
+            modelId = modelId,
+            modelDisplayName = modelDisplayName,
+        )
+        dao.insertMessageVariant(variant)
+        return variant
+    }
+
+    /**
+     * Unpack a variant's parts_json back into the turn-ordered
+     * (role → parts_json) snapshot list.
+     */
+    fun unpackMessageVariant(variant: ai.unicto.unibot.data.db.MessageVariantEntity): List<Pair<String, String>> {
+        val out = ArrayList<Pair<String, String>>()
+        runCatching {
+            val arr = org.json.JSONArray(variant.partsJson)
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                out.add(obj.optString("role", "") to obj.optString("parts", ""))
+            }
+        }
+        return out
+    }
+
+    suspend fun deleteMessageVariantsForAnchor(sessionId: String, anchorUserMessageId: String) =
+        dao.deleteMessageVariantsForAnchor(sessionId, anchorUserMessageId)
+
+    suspend fun getMessageById(id: String): MessageEntity? = dao.getMessageById(id)
 
     /** [T-error-persist-android] Set/clear the error sticker on a row by id. */
     suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?) {

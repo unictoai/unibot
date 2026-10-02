@@ -604,6 +604,34 @@ fun SessionListScreen(
     var folderToDelete by remember { mutableStateOf<Pair<FolderEntity, Int>?>(null) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
+    // [P2-import] Chat import: pick an exported .zip / messages.json and
+    // materialize it as a new session, then open it.
+    val importPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                val defaultModelId = providerRepository.config.value.modelEntries
+                    .firstOrNull()?.model?.id ?: ""
+                val result = ai.unicto.unibot.share.ChatImporter.importFromUri(
+                    context, uri, chatRepository, defaultModelId,
+                )
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(R.string.ub_import_done),
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                onSessionClick(result.sessionId)
+            } catch (t: Throwable) {
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(R.string.ub_import_failed),
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
     var editSession by remember { mutableStateOf<ChatSessionEntity?>(null) }
     var showBrowserSheet by remember { mutableStateOf(false) }
     var showBrowserSettings by remember { mutableStateOf(false) }
@@ -886,6 +914,17 @@ fun SessionListScreen(
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Outlined.Settings, contentDescription = null)
+                                    },
+                                )
+                                // [P2-import] Import a previously exported chat.
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.ub_import_chat)) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        importPicker.launch(arrayOf("application/zip", "application/json"))
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.UploadFile, contentDescription = null)
                                     },
                                 )
                             }
