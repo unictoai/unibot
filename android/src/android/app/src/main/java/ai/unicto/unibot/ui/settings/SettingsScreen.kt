@@ -85,7 +85,7 @@ import androidx.compose.ui.res.stringResource
 import ai.unicto.unibot.BuildConfig
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.openExternalUrl
-import ai.unicto.unibot.i18n.uppercaseForDisplay
+import ai.unicto.unibot.ui.theme.staggeredEntrance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,7 +191,8 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // -- The model (Muse: the plan card) --
-            ai.unicto.unibot.ui.muse.MuseCard {
+            // [v0.4.0-premium-feel] Cards stagger in on first composition.
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(0)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -265,7 +266,7 @@ fun SettingsScreen(
             ai.unicto.unibot.ui.muse.MuseGap()
 
             // -- The agent --
-            ai.unicto.unibot.ui.muse.MuseCard {
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(1)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_soul), icon = Icons.Outlined.AutoAwesome, onClick = onSoulClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_avatar_title), icon = Icons.Outlined.Face, onClick = onAvatarClick)
@@ -366,7 +367,7 @@ fun SettingsScreen(
             ai.unicto.unibot.ui.muse.MuseGap()
 
             // -- The phone: what the agent may touch, where its files live --
-            ai.unicto.unibot.ui.muse.MuseCard {
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(2)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_permissions), icon = Icons.Outlined.Shield, onClick = onPermissionsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.bg_section_header), icon = Icons.Outlined.BatteryFull, onClick = onBackgroundClick)
@@ -388,7 +389,7 @@ fun SettingsScreen(
             ai.unicto.unibot.ui.muse.MuseGap()
 
             // -- The app --
-            ai.unicto.unibot.ui.muse.MuseCard {
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(3)) {
                 // unibot P6: spoken replies — on-device TTS voices, engine status, speed.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_read_aloud_title), icon = Icons.Outlined.RecordVoiceOver, onClick = onReadAloudClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -402,7 +403,7 @@ fun SettingsScreen(
             ai.unicto.unibot.ui.muse.MuseGap()
 
             // -- About --
-            ai.unicto.unibot.ui.muse.MuseCard {
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(4)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_about_unibot), icon = Icons.Outlined.Info, onClick = onAboutClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(

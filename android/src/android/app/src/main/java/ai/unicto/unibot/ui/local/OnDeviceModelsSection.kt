@@ -82,6 +82,24 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
         localId = LlamaModelManager.localModeModelId(ctx)
     }
 
+    // [v0.4.0-premium-feel] Haptics for model downloads: a tick when a
+    // download starts, a warm confirmation when one finishes.
+    val haptics = ai.unicto.unibot.ui.util.rememberHaptic()
+    var seenDoneIds by remember { mutableStateOf(setOf<String>()) }
+    var hapticsArmed by remember { mutableStateOf(false) }
+    LaunchedEffect(states) {
+        val nowDone = states
+            .filterValues { it is LlamaModelManager.DownloadState.Done }
+            .keys
+        // Only buzz for completions that happen while this screen is open —
+        // never for models that were already downloaded before it opened.
+        if (hapticsArmed && (nowDone - seenDoneIds).isNotEmpty()) {
+            haptics.success()
+        }
+        seenDoneIds = nowDone
+        hapticsArmed = true
+    }
+
     val lowRam = remember { LlamaModelManager.isLowRamDevice(ctx) }
     val accent = MaterialTheme.colorScheme.primary
 
@@ -167,9 +185,11 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
                             onDone()
                         }
                         state is LlamaModelManager.DownloadState.Failed -> {
+                            haptics.tap()
                             LlamaModelManager.download(ctx, model)
                         }
                         else -> {
+                            haptics.tap()
                             LlamaModelManager.download(ctx, model)
                         }
                     }

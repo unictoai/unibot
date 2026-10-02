@@ -177,12 +177,17 @@ fun SettingsSwitch(
     enabled: Boolean = true,
     colors: androidx.compose.material3.SwitchColors = SwitchDefaults.colors(),
 ) {
+    // [v0.4.0-premium-feel] Haptic tick on every settings toggle.
+    val haptics = ai.unicto.unibot.ui.util.rememberHaptic()
     CompositionLocalProvider(
         LocalMinimumInteractiveComponentSize provides Dp.Unspecified,
     ) {
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = { value ->
+                haptics.toggle()
+                onCheckedChange?.invoke(value)
+            },
             modifier = modifier,
             enabled = enabled,
             colors = colors,

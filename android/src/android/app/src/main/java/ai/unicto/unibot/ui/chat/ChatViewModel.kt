@@ -796,6 +796,21 @@ class ChatViewModel(
     val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
 
     /**
+     * [v0.4.0-premium-feel] Staged thinking indicator state. The chat's
+     * typing indicator follows this so a live turn reads as progress
+     * ("Reading your message…" → "Thinking…" → "Writing…") instead of one
+     * static line. Defaults to REASONING; call [setThinkingStage] as the
+     * turn moves through stages. Pure UI state — never persisted.
+     */
+    private val _thinkingStage = MutableStateFlow(ThinkingState.REASONING)
+    val thinkingStage: StateFlow<ThinkingState> = _thinkingStage.asStateFlow()
+
+    /** Move the thinking indicator to [stage] (e.g. SEARCHING when a web lookup starts). */
+    fun setThinkingStage(stage: ThinkingState) {
+        _thinkingStage.value = stage
+    }
+
+    /**
      * T261: tool detail sheet visibility, persistent across LazyColumn
      * recomposition / item disposal so a streaming tool's sheet doesn't
      * snap shut when its pill scrolls out of viewport. Stable key = tool

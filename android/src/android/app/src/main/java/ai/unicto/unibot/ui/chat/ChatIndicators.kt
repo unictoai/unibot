@@ -161,6 +161,32 @@ internal fun CompactProgressIndicator(
 // Muse-grade polish: the label gets a slow violet shimmer sweep, the dots
 // pulse with staggered scale+alpha (smooth FastOutSlowIn, not a hard bounce),
 // and the whole row fades in so it materializes instead of popping.
+
+/**
+ * Staged reasoning states for the thinking indicator (v0.4.0 premium feel).
+ *
+ * The indicator label follows whichever stage is active, so a long turn reads
+ * as progress ("Reading your message…" → "Thinking…" → "Writing…") instead of
+ * one static line. [ChatViewModel.thinkingStage] is the source of truth;
+ * [IDLE] means no turn is live and the indicator should be hidden.
+ */
+enum class ThinkingState(val label: String) {
+    /** No active turn — [TypingIndicator] renders nothing. */
+    IDLE(""),
+
+    /** The turn just started; the model is reading the prompt. */
+    READING("Reading your message…"),
+
+    /** A web search or tool call is in flight. */
+    SEARCHING("Searching the web…"),
+
+    /** The model is reasoning — the default while a turn is live. */
+    REASONING("Thinking…"),
+
+    /** Tokens are streaming in. */
+    WRITING("Writing…"),
+}
+
 @Composable
 internal fun TypingIndicator() {
     // Live Soul name → "<custom name> is thinking…" when the user renamed
@@ -170,6 +196,25 @@ internal fun TypingIndicator() {
     // recompose the indicator immediately when it changes.
     val soulMeta by ai.unicto.unibot.agent.SoulStore.cachedMetadata.collectAsState()
     val soulName = soulMeta.name.trim().ifEmpty { "unibot" }
+    TypingIndicatorRow(label = stringResource(R.string.chat_typing_indicator, soulName))
+}
+
+/**
+ * Staged variant of [TypingIndicator]: the label names the active
+ * [ThinkingState] instead of the generic "<name> is thinking…". The shimmer
+ * sweep and pulsing dots are identical — only the label changes.
+ *
+ * [ThinkingState.IDLE] renders nothing; callers should hide the row then.
+ */
+@Composable
+internal fun TypingIndicator(stage: ThinkingState) {
+    if (stage == ThinkingState.IDLE) return
+    TypingIndicatorRow(label = stage.label)
+}
+
+/** Shared shimmer-label + pulsing-dots row behind both [TypingIndicator] overloads. */
+@Composable
+private fun TypingIndicatorRow(label: String) {
     val violet = ChatColors.thinking
 
     // Fade-in entrance.
@@ -200,7 +245,7 @@ internal fun TypingIndicator() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = stringResource(R.string.chat_typing_indicator, soulName),
+            text = label,
             fontSize = 15.sp,
             style = TextStyle(
                 brush = Brush.linearGradient(

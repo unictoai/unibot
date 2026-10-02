@@ -228,18 +228,15 @@ private fun LogsBody(
         }
 
         // While the IO load is in flight (single frame in practice, but the
-        // dir scan + 100×stat can spike on slow eMMC), show a centered
-        // spinner instead of the empty-state row — otherwise the screen
-        // briefly reads as "no logs yet" before the real list pops in.
+        // dir scan + 100×stat can spike on slow eMMC), show skeleton
+        // placeholders shaped like the log list instead of a bare spinner —
+        // otherwise the screen briefly reads as "no logs yet" before the
+        // real list pops in. [v0.4.0-premium-feel]
         if (loading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+            ai.unicto.unibot.ui.components.SkeletonList(
+                count = 3,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
             return@Column
         }
 

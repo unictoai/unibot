@@ -1,10 +1,10 @@
 package ai.unicto.unibot.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +14,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import ai.unicto.unibot.ui.theme.Motion
 import androidx.compose.ui.platform.LocalContext
 import ai.unicto.unibot.deeplink.DeepLinkAction
 import ai.unicto.unibot.deeplink.DeepLinkCoordinator
@@ -77,13 +79,6 @@ import ai.unicto.unibot.sandbox.RootfsManager
 import ai.unicto.unibot.sandbox.TerminalSession
 import ai.unicto.unibot.ui.terminal.TerminalScreen
 import ai.unicto.unibot.ui.onboarding.OnboardingModelSelectionScreen
-
-// T342: Material 3 motion easing curves. Compose-Material3 (1.3.x) ships
-// `MotionScheme` only in 1.4-alpha; mirror the spec values directly so we
-// don't take a dependency-bump tax just for two CubicBezierEasing instances.
-// Source: m3.material.io/styles/motion/easing-and-duration/tokens-specs
-private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
-private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
 
 object Routes {
     const val SESSION_LIST = "sessions"
@@ -566,48 +561,39 @@ fun AppNavigation(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        // T342: Material 3 motion — shared-axis X transition.
-        // Spec (m3.material.io/styles/motion/transitions):
-        //   - enter uses EmphasizedDecelerate (cubic-bezier 0.05, 0.7, 0.1, 1.0)
-        //     so the new destination eases in confidently
-        //   - exit uses EmphasizedAccelerate (cubic-bezier 0.3, 0.0, 0.8, 0.15)
-        //     so the leaving destination clears out fast
-        //   - both legs together feel like a single 300ms motion (200ms
-        //     exit overlapping 300ms enter), short enough that a rapid second
-        //     tap still lands on the next destination once safeNavigate's
-        //     RESUMED guard releases
-        //   - the small slide distance (~SlideDirection default ≈ container
-        //     width ÷ N — Compose's slideIntoContainer already picks a
-        //     subtle distance) plus fade reads as a single coordinated
-        //     motion rather than a hard cut, matching Settings/Files in
-        //     Material You system apps.
+        // [v0.4.0-premium-feel] Unified motion language (ui.theme.Motion):
+        // every push/pop is a subtle fade + 24.dp slide on FastOutSlowIn —
+        // entrances take Motion.Standard (300ms), exits Motion.Quick (200ms)
+        // so the leaving screen clears fast. The pop legs mirror the push
+        // legs. This replaces the older full-width shared-axis X spec; the
+        // shorter slide reads as polish rather than travel, and matching
+        // Settings/Files in Material You system apps.
         // RESUMED guard via safeNavigate + the colorScheme.background
         // modifier above (T333) still defend against rapid-tap white
-        // flashes; the slightly longer enter spec (300ms vs 220ms) is
-        // covered by the same guard.
+        // flashes.
         enterTransition = {
-            slideIntoContainer(
-                AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300, easing = EmphasizedDecelerate),
-            ) + fadeIn(animationSpec = tween(300, easing = EmphasizedDecelerate))
+            slideInHorizontally(
+                initialOffsetX = { 24.dp.roundToPx() },
+                animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+            ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn))
         },
         exitTransition = {
-            slideOutOfContainer(
-                AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(200, easing = EmphasizedAccelerate),
-            ) + fadeOut(animationSpec = tween(200, easing = EmphasizedAccelerate))
+            slideOutHorizontally(
+                targetOffsetX = { -24.dp.roundToPx() },
+                animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn),
+            ) + fadeOut(animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn))
         },
         popEnterTransition = {
-            slideIntoContainer(
-                AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300, easing = EmphasizedDecelerate),
-            ) + fadeIn(animationSpec = tween(300, easing = EmphasizedDecelerate))
+            slideInHorizontally(
+                initialOffsetX = { -24.dp.roundToPx() },
+                animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+            ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn))
         },
         popExitTransition = {
-            slideOutOfContainer(
-                AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(200, easing = EmphasizedAccelerate),
-            ) + fadeOut(animationSpec = tween(200, easing = EmphasizedAccelerate))
+            slideOutHorizontally(
+                targetOffsetX = { 24.dp.roundToPx() },
+                animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn),
+            ) + fadeOut(animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn))
         },
     ) {
         // [T-android-tablet-split] SESSION_LIST and CHAT both render the same

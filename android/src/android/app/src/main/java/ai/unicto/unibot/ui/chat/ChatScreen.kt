@@ -4454,7 +4454,13 @@ fun ChatScreen(
                                     )
                                 }
                             }
-                            is FlatChatItem.AssistantTyping -> TypingIndicator()
+                            is FlatChatItem.AssistantTyping -> {
+                                // [v0.4.0-premium-feel] The typing indicator
+                                // follows the ViewModel's staged thinking
+                                // state so a live turn reads as progress.
+                                val thinkingStage by viewModel.thinkingStage.collectAsState()
+                                TypingIndicator(thinkingStage)
+                            }
                             is FlatChatItem.AssistantError -> InlineErrorBanner(
                                 error = item.error,
                                 onRetry = {
@@ -6875,6 +6881,9 @@ fun ChatScreen(
                         if (!ubPill) Spacer(modifier = Modifier.width(8.dp))
                         if (!ubPill || ubPillBusy) { // unibot: the pill shows send/stop only when there is something to do
 
+                        // [v0.4.0-premium-feel] Haptic tick on send.
+                        val sendHaptics = ai.unicto.unibot.ui.util.rememberHaptic()
+
                         // Right: 3-state Send / Enqueue / Stop button (mirrors iOS sendButton).
                         //   • streaming + hasText  → SEND (routes through viewModel.sendMessage,
                         //     which dispatches to enqueuePrompt since _isStreaming is true).
@@ -6915,6 +6924,8 @@ fun ChatScreen(
                             GlowingSendButton(
                                 canActivate = canActivate,
                                 onSend = {
+                                    // [v0.4.0-premium-feel] Haptic tick on send.
+                                    sendHaptics.tap()
                                     // T-drag-send-queue: route through the
                                     // shared send-or-enqueue handler (same
                                     // semantics as before).

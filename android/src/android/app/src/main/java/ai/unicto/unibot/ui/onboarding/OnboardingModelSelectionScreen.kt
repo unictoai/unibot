@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -131,21 +130,21 @@ fun OnboardingModelSelectionScreen(
             Spacer(Modifier.height(8.dp))
 
             if (allEntries.isEmpty()) {
-                Box(
+                // [v0.4.0-premium-feel] Skeleton placeholders shaped like the
+                // model list, instead of a bare spinner.
+                Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            stringResource(R.string.onboarding_loading_models),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    ai.unicto.unibot.ui.components.SkeletonList(count = 5)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.onboarding_loading_models),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             } else {
                 LazyColumn(
