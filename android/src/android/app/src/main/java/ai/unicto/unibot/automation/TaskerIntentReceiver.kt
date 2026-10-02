@@ -29,15 +29,24 @@ import kotlinx.coroutines.withTimeout
  *         same way its AlarmManager fire does. The routine's id is the
  *         one shown in Goals → Routines (long-press → Run records).
  *
- * No auth: it is the user's own device, and every action is something
- * the user could already do by tapping the app. ASK never sends without
- * the user reviewing the text; RUN_ROUTINE only runs routines the user
- * already created (disabled routines are skipped), and the agent's own
- * approval gates still apply to whatever the run does.
+ * Auth: external automation is opt-in (Settings → Background →
+ * Automation, default OFF) — see [isExternalAutomationEnabled]. The
+ * receiver is exported so Tasker/MacroDroid can reach it, but any
+ * installed app can send broadcasts, so nothing is honored until the
+ * user enables it. Every action is something the user could already do
+ * by tapping the app: ASK never sends without the user reviewing the
+ * text; RUN_ROUTINE only runs routines the user already created
+ * (disabled routines are skipped), and the agent's own approval gates
+ * still apply to whatever the run does.
  */
 class TaskerIntentReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        // [unibot-audit] Drop external broadcasts unless the user opted in.
+        if (!isExternalAutomationEnabled(context)) {
+            AppLogger.info(TAG, "external automation disabled — ignored ${intent.action}")
+            return
+        }
         when (intent.action) {
             ACTION_ASK -> {
                 val text = intent.getStringExtra(EXTRA_TEXT).orEmpty()
@@ -118,5 +127,22 @@ class TaskerIntentReceiver : BroadcastReceiver() {
 
         const val EXTRA_TEXT = "text"
         const val EXTRA_ROUTINE_ID = "routine_id"
+
+        // [unibot-audit] External automation is opt-in (default OFF). The
+        // receiver is exported so Tasker/MacroDroid can reach it, but any
+        // installed app can send these broadcasts — so nothing is honored
+        // until the user flips the switch in Settings → Background →
+        // Automation. This keeps the feature without censoring it.
+        private const val PREFS = "automation_prefs"
+        private const val KEY_EXTERNAL_ENABLED = "external_automation_enabled"
+
+        fun isExternalAutomationEnabled(context: Context): Boolean =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_EXTERNAL_ENABLED, false)
+
+        fun setExternalAutomationEnabled(context: Context, enabled: Boolean) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_EXTERNAL_ENABLED, enabled).apply()
+        }
     }
 }

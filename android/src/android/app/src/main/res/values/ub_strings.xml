@@ -883,6 +883,9 @@
     <string name="ub_bg_automation_title">Automation</string>
     <string name="ub_bg_automation_sub">Tasker intents, widgets &amp; background approvals</string>
     <!-- v0.2.0 P3: Automation help screen -->
+    <string name="ub_automation_external_section">External apps</string>
+    <string name="ub_automation_external_title">Allow automation apps</string>
+    <string name="ub_automation_external_desc">Let apps like Tasker, Automate or MacroDroid send commands to unibot. Off by default \u2014 any installed app can send these broadcasts, so only enable it if you use it.</string>
     <string name="ub_automation_title">Automation</string>
     <string name="ub_automation_intents_section">Automation intents</string>
     <string name="ub_automation_intents_caption">Send these broadcasts from Tasker, Automate, MacroDroid, or adb — no authentication needed, it is your own device.</string>

@@ -41,14 +41,15 @@ Any OpenAI-compatible endpoint works: OpenAI, Anthropic, DeepSeek, OpenRouter, x
 ## What's new in unibot
 
 - **v0.1.0** — the first unibot release: full rebrand (new name, violet theme, new icon), bring-your-own-key onboarding with no account, update checks against this repo, and signed release APKs built by GitHub Actions.
+- Newer releases keep shipping — grab the [latest](https://github.com/unictoai/unibot/releases/latest); see the [release notes](https://github.com/unictoai/unibot/releases) for what's in each.
 
 ## Build it yourself
 
-See [docs/android.md](docs/android.md). In short: install the Android SDK (API 36, NDK r27c), then `./gradlew :app:assembleDebug` under `android/src/android`. Release builds sign with the project key when `android/keystore.properties` exists, otherwise the debug key.
+See [docs/android.md](docs/android.md). In short: install the Android SDK (API 36, NDK r27c), then `./gradlew :app:assembleDebug` under `android/src/android`. Release builds sign with the project key when `android/keystore.properties` exists, and refuse to assemble otherwise — a release never ships on the debug key.
 
 ## Privacy
 
-Everything the agent does happens on your device; the only network traffic is yours — to the model provider whose key you pasted. See [docs/privacy.md](docs/privacy.md).
+Everything the agent does happens on your device; there is no unibot server and no account. Network traffic goes only to services you use: your model provider (API calls), GitHub (update checks), Google (OAuth for Gmail/Drive/Calendar/YouTube, only when you connect them), plus whatever websites the agent browses for you and any MCP servers you configure. Nothing is sent anywhere you didn't ask for. See [docs/privacy.md](docs/privacy.md).
 
 ## License
 

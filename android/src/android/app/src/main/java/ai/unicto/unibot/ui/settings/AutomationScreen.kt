@@ -17,11 +17,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -35,6 +40,7 @@ import ai.unicto.unibot.ui.muse.MuseRow
 import ai.unicto.unibot.ui.muse.MuseRowDivider
 import ai.unicto.unibot.ui.muse.MuseSectionLabel
 import ai.unicto.unibot.ui.muse.MuseTopAppBar
+import ai.unicto.unibot.automation.TaskerIntentReceiver
 
 /**
  * v0.2.0 P3 — the Automation help screen (Settings → Background →
@@ -69,6 +75,36 @@ fun AutomationScreen(onBack: () -> Unit) {
         ) {
             Spacer(Modifier.size(8.dp))
 
+            // [unibot-audit] External automation is opt-in (default OFF):
+            // the broadcast receiver is exported, so any installed app can
+            // send these intents. Nothing is honored until the user enables
+            // this — the feature keeps working for those who want it.
+            MuseSectionLabel(stringResource(R.string.ub_automation_external_section))
+            MuseCard {
+                val context = LocalContext.current
+                var externalOn by remember {
+                    mutableStateOf(TaskerIntentReceiver.isExternalAutomationEnabled(context))
+                }
+                fun setExternal(on: Boolean) {
+                    externalOn = on
+                    TaskerIntentReceiver.setExternalAutomationEnabled(context, on)
+                }
+                MuseRow(
+                    title = stringResource(R.string.ub_automation_external_title),
+                    value = null,
+                    chevron = false,
+                    onClick = { setExternal(!externalOn) },
+                    trailing = {
+                        Switch(
+                            checked = externalOn,
+                            onCheckedChange = ::setExternal,
+                        )
+                    },
+                )
+            }
+            MuseCaption(stringResource(R.string.ub_automation_external_desc))
+
+            MuseGap()
             MuseSectionLabel(stringResource(R.string.ub_automation_intents_section))
             MuseCard {
                 IntentDocRow(

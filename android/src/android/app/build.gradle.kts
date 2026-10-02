@@ -101,7 +101,24 @@ android {
                 "proguard-rules.pro"
             )
             // unibot: project key if present, debug key otherwise (see signingConfigs).
+            // A release assembled without the project key is refused outright by
+            // the guard below — a "release" must never ship on the debug key.
             signingConfig = signingConfigs.findByName("unibot") ?: signingConfigs.getByName("debug")
+        }
+    }
+
+    // [unibot-audit] Fail release assembly when the project signing key is
+    // absent, instead of silently shipping a debug-signed "release".
+    // Checked at task-execution time so plain debug builds keep working.
+    afterEvaluate {
+        tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach {
+            doFirst {
+                check(signingConfigs.findByName("unibot") != null) {
+                    "Refusing to build a release APK without the project signing key " +
+                        "(keystore.properties missing). A release must never be signed " +
+                        "with the debug key."
+                }
+            }
         }
     }
 
