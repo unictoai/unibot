@@ -38,6 +38,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -364,6 +365,11 @@ fun InlineVoiceInputPanel(
                 val joined = captureBase + sep + finalText
                 captureBase = joined
                 setTranscript(joined)
+                // P4 voice workflow (v0.2.0): a final transcript with the
+                // toggle on arms workflow routing for the upcoming send.
+                if (ai.unicto.unibot.ui.chat.agentic.P4ModeStore.isVoiceWorkflow(panelContext)) {
+                    ai.unicto.unibot.ui.chat.agentic.P4ModeStore.armVoiceWorkflow(panelContext)
+                }
             },
             onError = { error, message ->
                 when (error) {
@@ -809,6 +815,53 @@ private fun ExpandedContent(
         // [P1-dictation-cleanup] Opt-in filler-word cleanup toggle, right
         // under the engine chip where voice settings live.
         ai.unicto.unibot.speech.DictationCleanupRow()
+        // P4 voice workflow mode (v0.2.0): when ON, the next final transcript
+        // routes that send through the agent loop as a multi-step workflow
+        // (decompose → act → narrate) instead of a plain chat reply.
+        Spacer(Modifier.height(8.dp))
+        WorkflowModeRow()
+    }
+}
+
+// ── P4 voice workflow toggle (v0.2.0) ──────────────────────────────────────
+
+@Composable
+private fun WorkflowModeRow() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var enabled by remember { mutableStateOf(ai.unicto.unibot.ui.chat.agentic.P4ModeStore.isVoiceWorkflow(context)) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                else ChatColors.secondaryText.copy(alpha = 0.08f),
+            )
+            .clickable { enabled = !enabled; ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setVoiceWorkflow(context, enabled) }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Workflow mode",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Spoken tasks run as steps, without re-prompting",
+                style = MaterialTheme.typography.labelSmall,
+                color = ChatColors.secondaryText,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Switch(
+            checked = enabled,
+            onCheckedChange = {
+                enabled = it
+                ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setVoiceWorkflow(context, it)
+            },
+        )
+>>>>>>> v02-p4
     }
 }
 

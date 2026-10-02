@@ -59,8 +59,8 @@ android {
         applicationId = "ai.unicto.unibot"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.1.9"
+        versionCode = 11
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -290,6 +290,9 @@ dependencies {
 
     // Chrome Custom Tabs (in-app browser for OAuth)
     implementation("androidx.browser:browser:1.8.0")
+
+    // P4 (v0.2.0): QR code rendering for phone-to-desktop pairing.
+    implementation("com.google.zxing:core:3.5.3")
 
     // T-pwa-1: WebViewAssetLoader serves pinned PWA HTML under
     // https://appassets.androidplatform.net/ inside PwaActivity, so

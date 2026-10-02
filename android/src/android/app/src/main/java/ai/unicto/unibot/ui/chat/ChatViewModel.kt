@@ -22,9 +22,19 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Extension
+// P4 agentic mode slash commands (v0.2.0).
+import androidx.compose.material.icons.outlined.AccountTree
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material.icons.outlined.TravelExplore
 import ai.unicto.unibot.data.BPETokenizer
 import ai.unicto.unibot.data.ContextOffload
 import ai.unicto.unibot.data.ContextPolicy
+import ai.unicto.unibot.ui.chat.agentic.P4Actions
+import ai.unicto.unibot.ui.chat.agentic.P4Mode
+import ai.unicto.unibot.ui.chat.agentic.p4ApplyRouting
+import ai.unicto.unibot.ui.chat.agentic.p4PreSend
+import ai.unicto.unibot.ui.chat.agentic.p4SetForcedMode
 import ai.unicto.unibot.logging.AppLogger
 import ai.unicto.unibot.data.FileMentionIndex
 import ai.unicto.unibot.data.db.CompactMarkerEntity
@@ -1847,6 +1857,32 @@ class ChatViewModel(
             title = "Study",
             subtitle = "",
         ),
+        // P4 agentic modes (v0.2.0): manual override for the auto-router.
+        SlashCommand(
+            id = "p4mode_agent",
+            icon = Icons.Outlined.SmartToy,
+            title = "Agent",
+            subtitle = "Autonomous mode: to-do list, web tasks, checkpoints",
+        ),
+        SlashCommand(
+            id = "p4mode_research",
+            icon = Icons.Outlined.TravelExplore,
+            title = "Research",
+            subtitle = "Deep research across sources, cited report",
+        ),
+        SlashCommand(
+            id = "p4mode_workflow",
+            icon = Icons.Outlined.AccountTree,
+            title = "Workflow",
+            subtitle = "Multi-step tasks: decompose, act, narrate",
+        ),
+        SlashCommand(
+            id = "p4mode_chat",
+            icon = Icons.Outlined.ChatBubbleOutline,
+            title = "Chat",
+            subtitle = "Back to automatic routing",
+        ),
+        ),
     )
 
     // [T-android-split-chat] filteredSlashCommands / updateSlashMenuState /
@@ -1914,6 +1950,11 @@ class ChatViewModel(
             "clear" -> _clearChatConfirmRequested.value = true
             // [P2-modes] Built-in Socratic tutor overlay.
             "study" -> toggleStudyMode()
+            // P4 agentic modes (v0.2.0): manual override for the auto-router.
+            "p4mode_agent" -> p4SetForcedMode(P4Mode.AGENT)
+            "p4mode_research" -> p4SetForcedMode(P4Mode.RESEARCH)
+            "p4mode_workflow" -> p4SetForcedMode(P4Mode.WORKFLOW)
+            "p4mode_chat" -> p4SetForcedMode(null)
             else -> AppLogger.info(TAG, "[Slash] unrecognized id=${cmd.id} — no dispatch")
         }
         // [T-android-slash-menu-align-ios-prepend] Action command: restore the
@@ -2024,7 +2065,13 @@ class ChatViewModel(
      * Append a system-info block to the conversation. Not persisted — matches the
      * iOS `appendSystemInfo` behavior which surfaces a local notice in the chat
      * stream. Future work: wire real conversation compaction through the LLM.
+     * P4 (v0.2.0): route badge — a subtle centered divider row ("routed to
+     * Agent mode") renders through this row via [p4NoteRoute].
      */
+    internal fun p4NoteRoute(text: String) {
+        appendSystemInfo(text = text, iconKind = "p4_route")
+    }
+
     internal fun appendSystemInfo(text: String, iconKind: String, payload: String? = null) {
         val block = AssistantBlock(
             id = "sysinfo_${System.currentTimeMillis()}",
@@ -6815,6 +6862,11 @@ class ChatViewModel(
      *   re-entry with `skipCompactCheck`.
      */
     private fun sendMessage(text: String, skipContextCheck: Boolean) {
+        // P4 agentic routing (v0.2.0): computes the routing decision and
+        // returns a per-send token; the coroutine applies it after
+        // ensureSession(). Null when confidently plain chat. Never blocks
+        // the send.
+        val p4Route = p4PreSend(text)
         // [T-android-paste-mediaref] `[Pasted#N]` markers are NOT expanded here
         // any more.
         //
@@ -6930,6 +6982,11 @@ class ChatViewModel(
             try {
             // Ensure session exists in DB (creates on first message for draft sessions)
             val activeSessionId = ensureSession()
+
+            // P4 agentic routing (v0.2.0): injects the mode addendum + route
+            // badge, and (Smart routing on + uncertain heuristic) runs the
+            // one-shot LLM classifier before the request is built.
+            p4ApplyRouting(activeSessionId, provider, p4Route)
 
             if (editingId != null) {
                 truncateBeforeEdit(editingId)
@@ -12490,6 +12547,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         // persisted, so closing it erases it.
         IncognitoSessions.clear(sessionId)
         IncognitoSessions.clear(realSessionId)
+        P4Actions.unbind(this) // P4 agentic cards (v0.2.0)
         // Tear down whichever shell was actually serving this VM. Terminate
         // both ids when the rename happened, since a draft shell may still
         // linger if the agent ran a tool before `ensureSession()`.

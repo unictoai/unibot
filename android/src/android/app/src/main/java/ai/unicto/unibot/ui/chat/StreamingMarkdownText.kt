@@ -875,6 +875,16 @@ fun MarkdownBlock(
      */
     shardId: TextShardId? = null,
 ) {
+    // P4 agentic artifacts (v0.2.0): complete ```unibot-card / unibot-todo /
+    // unibot-research / unibot-checkpoint fences render as rich cards instead
+    // of raw code. Partial fences keep the normal markdown path.
+    ai.unicto.unibot.ui.chat.agentic.P4Artifacts.detect(rawText)?.let { artifact ->
+        ai.unicto.unibot.ui.chat.agentic.P4ArtifactHost(
+            artifact = artifact,
+            isStreaming = isStreaming,
+        )
+        return
+    }
     if (shardId != null) {
         androidx.compose.runtime.CompositionLocalProvider(LocalShardId provides shardId) {
             // [T-android-markdown-longtext-selection-broken] Disambiguate the

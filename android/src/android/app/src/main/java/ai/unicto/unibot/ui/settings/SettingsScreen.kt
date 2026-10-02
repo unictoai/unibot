@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Devices // P4: pairing row (v0.2.0)
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Extension
@@ -44,6 +45,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.Route // P4: smart routing row (v0.2.0)
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -54,6 +56,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch // P4: smart routing toggle (v0.2.0)
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -103,6 +106,7 @@ fun SettingsScreen(
     onHandsClick: () -> Unit = {}, // unibot: Settings → Hands (the screen as a hand)
     onComputersClick: () -> Unit = {}, // unibot: Settings → Computers (the phone drives a PC)
     onCodingClick: () -> Unit = {}, // unibot: Settings → Coding agents (Cursor/Codex/Claude Code on the account's computers)
+    onPairingClick: () -> Unit = {}, // P4: Settings → Pair a computer (v0.2.0)
     onPermissionsClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
@@ -290,6 +294,40 @@ fun SettingsScreen(
                 }
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_env_vars), icon = Icons.Outlined.Terminal, onClick = onEnvVarsClick)
+                // P4 (v0.2.0): phone-to-desktop pairing + smart routing.
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                run {
+                    val paired = remember { ai.unicto.unibot.ui.pairing.P4PairingStore.remoteSessions(context).size }
+                    ai.unicto.unibot.ui.muse.MuseRow(
+                        title = "Pair a computer",
+                        icon = Icons.Outlined.Devices,
+                        value = if (paired == 0) "Not paired" else "$paired paired",
+                        onClick = onPairingClick,
+                    )
+                }
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                run {
+                    var smart by remember { mutableStateOf(ai.unicto.unibot.ui.chat.agentic.P4ModeStore.isSmartRouting(context)) }
+                    ai.unicto.unibot.ui.muse.MuseRow(
+                        title = "Smart routing",
+                        icon = Icons.Outlined.Route,
+                        value = if (smart) "On" else "Off",
+                        chevron = false,
+                        trailing = {
+                            Switch(
+                                checked = smart,
+                                onCheckedChange = {
+                                    smart = it
+                                    ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setSmartRouting(context, it)
+                                },
+                            )
+                        },
+                        onClick = {
+                            smart = !smart
+                            ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setSmartRouting(context, smart)
+                        },
+                    )
+                }
             }
             ai.unicto.unibot.ui.muse.MuseGap()
 
