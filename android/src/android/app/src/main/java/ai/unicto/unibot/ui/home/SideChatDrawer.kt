@@ -128,9 +128,9 @@ fun SideChatDrawer(
                 .clip(RoundedCornerShape(14.dp))
                 .background(if (mainSelected) MuseTones.fill else MuseTones.surface)
                 .clickable(onClick = onOpenMain)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 18.dp),
         ) {
-            Icon(Icons.Outlined.Home, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Outlined.Home, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.size(12.dp))
             Text(
                 text = stringResource(R.string.ub_drawer_main_chat),
@@ -149,9 +149,9 @@ fun SideChatDrawer(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .clickable(onClick = onDevices)
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 18.dp),
             ) {
-                Icon(Icons.Outlined.Devices, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Icon(Icons.Outlined.Devices, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.size(12.dp))
                 Text(
                     text = stringResource(R.string.ub_devices_title),
@@ -181,9 +181,9 @@ fun SideChatDrawer(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .clickable(onClick = onCoding)
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 18.dp),
             ) {
-                Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.size(12.dp))
                 Text(
                     text = stringResource(R.string.ub_coding_title),
