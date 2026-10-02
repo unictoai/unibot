@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CloudQueue // unibot: unibot Cloud row
 import androidx.compose.material.icons.outlined.PhoneAndroid // unibot: on-device models row
+import androidx.compose.material.icons.outlined.PlayArrow // unibot: YouTube dashboard row
 import androidx.compose.material.icons.outlined.Computer // unibot: Computers row
 import androidx.compose.material.icons.outlined.TouchApp // unibot: Hands row
 import androidx.compose.material.icons.outlined.BarChart
