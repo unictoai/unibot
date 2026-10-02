@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.pairing
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +65,7 @@ import java.util.Date
  * language; the QR itself is always black-on-white so it scans in any
  * theme. Entry: Settings → Pair a computer.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun P4PairingScreen(onBack: () -> Unit) {
     val context = LocalContext.current

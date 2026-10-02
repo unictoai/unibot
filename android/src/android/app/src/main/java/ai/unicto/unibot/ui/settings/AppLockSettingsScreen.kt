@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,7 @@ import ai.unicto.unibot.ui.muse.MuseTopAppBar
  * PIN / pattern) — if the phone has no lock set, the toggle is disabled
  * with an explanation, since there would be nothing to confirm with.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppLockSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current

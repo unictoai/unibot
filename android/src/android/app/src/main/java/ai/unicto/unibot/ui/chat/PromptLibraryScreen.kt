@@ -4,6 +4,7 @@ package ai.unicto.unibot.ui.chat
 // composer modes. Entry points: Settings → Prompt Library (see
 // SettingsScreen), `/` menu mode rows, @-mention text snippets.
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +57,7 @@ import ai.unicto.unibot.ui.muse.MuseRowDivider
 import ai.unicto.unibot.ui.muse.MuseSectionLabel
 import ai.unicto.unibot.ui.muse.MuseTopAppBar
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PromptLibraryScreen(onBack: () -> Unit) {
     val context = LocalContext.current

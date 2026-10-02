@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.marketplace
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.MCPRepository
 import ai.unicto.unibot.data.repository.SkillRepository
@@ -64,6 +65,7 @@ import kotlinx.coroutines.withContext
  * path as a manual SKILL.md import, so they show up under Settings → Skills
  * with enable/disable), MCP servers via [MCPRepository] (Settings → MCP).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketplaceScreen(
     skillRepository: SkillRepository,

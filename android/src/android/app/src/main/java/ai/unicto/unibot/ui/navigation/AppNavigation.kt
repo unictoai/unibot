@@ -861,10 +861,7 @@ fun AppNavigation(
             ai.unicto.unibot.ui.projects.ProjectDetailScreen(
                 projectId = projectId,
                 navController = navController,
-                onProjectsClick = { navController.safeNavigate(Routes.PROJECTS) }, // unibot P6
-                onVisualAskClick = { navController.safeNavigate(Routes.VISUAL_ASK) }, // unibot P6
-                onReadAloudClick = { navController.safeNavigate(Routes.READ_ALOUD) }, // unibot P6
-                onAutofillClick = { navController.safeNavigate(Routes.AUTOFILL) }, // unibot P6
+                onBack = { navController.safePopBackStack() },
             )
         }
 

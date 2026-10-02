@@ -52,6 +52,8 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Storefront // P8: marketplace row
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.CameraAlt // unibot P6: visual ask row
+import androidx.compose.material.icons.outlined.CompareArrows // unibot P2: compare row
+import androidx.compose.material.icons.outlined.LibraryBooks // unibot P2: prompt library row
 import androidx.compose.material.icons.outlined.RecordVoiceOver // unibot P6: read aloud row
 import androidx.compose.material.icons.outlined.AutoFixHigh // unibot P6: autofill row
 import androidx.compose.material3.ExperimentalMaterial3Api

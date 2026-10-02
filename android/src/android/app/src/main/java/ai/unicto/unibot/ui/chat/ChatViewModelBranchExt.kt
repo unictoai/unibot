@@ -18,6 +18,7 @@ package ai.unicto.unibot.ui.chat
 
 import ai.unicto.unibot.data.db.MessageEntity
 import ai.unicto.unibot.logging.AppLogger
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -108,7 +109,7 @@ private suspend fun ChatViewModel.writeSnapshots(
             val (role, parts) = snapshots[i]
             if (role.isNotEmpty() && role != liveRows[i].role) {
                 AppLogger.warning(
-                    TAG,
+                    ChatViewModel.TAG,
                     "[Branch] role drift at position $i (snapshot=$role live=${liveRows[i].role}) — writing anyway",
                 )
             }
@@ -154,7 +155,7 @@ fun ChatViewModel.regenerateBranch(assistantMessageId: String) {
         val count = _branchVariants.value[anchor.id]?.size ?: 0
         _branchSelection.value = _branchSelection.value + (anchor.id to count)
         _branchLiveCache.remove(anchor.id)
-        AppLogger.info(TAG, "[Branch] regenerate anchored at ${anchor.id} (archived ${turnRows.size} row(s))")
+        AppLogger.info(ChatViewModel.TAG, "[Branch] regenerate anchored at ${anchor.id} (archived ${turnRows.size} row(s))")
         // Reuse the battle-tested retry path: truncates after the anchor,
         // rebuilds agentHistory, streams the new turn.
         retryFromMessage(anchor.id)
@@ -218,6 +219,6 @@ fun ChatViewModel.selectBranchVariant(anchorUserMessageId: String, index: Int) {
             _messages.value = patched
         }
         _branchSelection.value = _branchSelection.value + (anchorUserMessageId to index)
-        AppLogger.info(TAG, "[Branch] selected sibling $index/${variants.size} at $anchorUserMessageId")
+        AppLogger.info(ChatViewModel.TAG, "[Branch] selected sibling $index/${variants.size} at $anchorUserMessageId")
     }
 }

@@ -6,6 +6,7 @@ package ai.unicto.unibot.ui.chat
 import ai.unicto.unibot.data.SessionForkManager
 import ai.unicto.unibot.logging.AppLogger
 import android.widget.Toast
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,7 +69,7 @@ fun ChatViewModel.forkFromMessage(messageId: String) {
             forkManager.forkSessionFrom(sid, anchorDbId)
         }
         if (newId != null) {
-            AppLogger.info(TAG, "[Fork] $sid @ $anchorDbId → $newId")
+            AppLogger.info(ChatViewModel.TAG, "[Fork] $sid @ $anchorDbId → $newId")
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Forked into a new chat.", Toast.LENGTH_SHORT).show()
             }

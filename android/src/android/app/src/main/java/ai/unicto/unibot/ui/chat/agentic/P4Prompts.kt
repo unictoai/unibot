@@ -18,7 +18,7 @@ object P4Prompts {
      * fenced code blocks the model emits in its reply; the app renders them
      * as rich cards instead of code.
      */
-    const val FENCE_PROTOCOL = """
+    val FENCE_PROTOCOL = """
         UI fences (emit exactly as shown; the app renders them as cards):
         - To-do list: ```unibot-todo {"title":"Plan name","items":[{"t":"Step text","done":false}]} ```
           Emit once at the start; re-emit the WHOLE list with updated done flags as steps complete.

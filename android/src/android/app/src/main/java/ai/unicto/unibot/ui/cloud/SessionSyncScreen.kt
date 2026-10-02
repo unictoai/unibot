@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.cloud
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import ai.unicto.unibot.R
 import ai.unicto.unibot.cloud.UnibotCloud
 import ai.unicto.unibot.data.repository.ChatRepository
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
  * relay cannot take it. The limitation is stated on the screen itself, not
  * buried in a log.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionSyncScreen(
     chatRepository: ChatRepository,

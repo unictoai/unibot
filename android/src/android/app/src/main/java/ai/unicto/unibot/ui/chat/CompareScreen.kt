@@ -84,9 +84,9 @@ class CompareViewModel(app: Application) : AndroidViewModel(app) {
     val entryB: StateFlow<ModelEntry?> = _entryB.asStateFlow()
 
     private val _paneA = MutableStateFlow(ComparePaneState())
-    val paneA: StateFlow<ComparePaneState> = _paneA.asStateFlow()
+    internal val paneA: StateFlow<ComparePaneState> = _paneA.asStateFlow()
     private val _paneB = MutableStateFlow(ComparePaneState())
-    val paneB: StateFlow<ComparePaneState> = _paneB.asStateFlow()
+    internal val paneB: StateFlow<ComparePaneState> = _paneB.asStateFlow()
 
     private var jobA: Job? = null
     private var jobB: Job? = null

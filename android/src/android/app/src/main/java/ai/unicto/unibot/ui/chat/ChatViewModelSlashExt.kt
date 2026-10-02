@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Extension
 import ai.unicto.unibot.data.BPETokenizer

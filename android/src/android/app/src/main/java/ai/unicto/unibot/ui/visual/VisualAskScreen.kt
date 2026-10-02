@@ -1,15 +1,13 @@
 package ai.unicto.unibot.ui.visual
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.view.ViewGroup
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
+import android.provider.MediaStore
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,10 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.navigation.NavController
@@ -83,7 +79,6 @@ fun VisualAskScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     var question by remember { mutableStateOf("") }
     var hasCameraPermission by remember {
@@ -94,8 +89,33 @@ fun VisualAskScreen(
     }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val imageCapture = remember { ImageCapture.Builder().build() }
     var pickRequest by remember { mutableStateOf(false) }
+    // The file the system camera writes into (filesDir/camera-photos/, kept
+    // out of cacheDir so MIUI can't evict it mid-capture).
+    var pendingCaptureFile by remember { mutableStateOf<File?>(null) }
+
+    // System camera capture (ACTION_IMAGE_CAPTURE) — the same path as the
+    // chat composer's "Take Photo" entry (see createCameraOutputUri).
+    val cameraResult = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val file = pendingCaptureFile
+        pendingCaptureFile = null
+        if (result.resultCode == Activity.RESULT_OK && file != null && file.exists() && file.length() > 0) {
+            scope.launch(Dispatchers.IO) {
+                val ok = stagePhotoIntoComposer(context, androidx.core.net.toUri(file), question)
+                file.delete()
+                withContext(Dispatchers.Main) {
+                    busy = false
+                    if (ok) navController.popBackStack() else error = "Couldn't attach that photo."
+                }
+            }
+        } else {
+            file?.delete()
+            busy = false
+            if (result.resultCode != Activity.RESULT_CANCELED) error = "Capture failed."
+        }
+    }
 
     val pickImage = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
@@ -114,7 +134,7 @@ fun VisualAskScreen(
         if (pickRequest) {
             pickRequest = false
             pickImage.launch(
-                androidx.activity.result.contract.ActivityResultContracts.PickVisualMediaRequest(
+                androidx.activity.result.PickVisualMediaRequest(
                     androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly,
                 ),
             )
@@ -125,9 +145,8 @@ fun VisualAskScreen(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
     ) { granted -> hasCameraPermission = granted }
 
-    // Camera binding lives with the PreviewView: bind once it can provide a
-    // surface, unbind when the view is released (screen exit).
-    var cameraBound by remember { mutableStateOf(false) }
+    // Capture goes through the system camera app (ACTION_IMAGE_CAPTURE) —
+    // no in-app preview; the viewfinder lives in the camera app itself.
 
     Scaffold(
         containerColor = MuseTones.canvas,
@@ -153,76 +172,47 @@ fun VisualAskScreen(
                         .clip(RoundedCornerShape(24.dp))
                         .background(MuseTones.fill),
                 ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            PreviewView(ctx).apply {
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                )
-                                scaleType = PreviewView.ScaleType.FILL_CENTER
-                            }
-                        },
-                        update = { view ->
-                            if (!cameraBound) {
-                                cameraBound = true
-                                val providerFuture = ProcessCameraProvider.getInstance(context)
-                                providerFuture.addListener({
-                                    runCatching {
-                                        val provider = providerFuture.get()
-                                        val preview = Preview.Builder().build().also {
-                                            it.setSurfaceProvider(view.surfaceProvider)
-                                        }
-                                        provider.unbindAll()
-                                        provider.bindToLifecycle(
-                                            lifecycleOwner,
-                                            CameraSelector.DEFAULT_BACK_CAMERA,
-                                            preview,
-                                            imageCapture,
-                                        )
-                                    }.onFailure {
-                                        cameraBound = false
-                                        AppLogger.warning("VisualAsk", "camera bind failed: ${it.message}")
-                                    }
-                                }, ContextCompat.getMainExecutor(context))
-                            }
-                        },
-                        onRelease = {
-                            runCatching { ProcessCameraProvider.getInstance(context).get().unbindAll() }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    // No live in-app preview: tapping capture hands off to the
+                    // system camera app, whose viewfinder is the preview.
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            Icons.Outlined.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Tap capture to take a photo with your camera app.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 21.sp,
+                        )
+                    }
                     IconButton(
                         onClick = {
                             if (busy) return@IconButton
                             busy = true
-                            val out = File(context.cacheDir, "visual_ask_${System.currentTimeMillis()}.jpg")
-                            imageCapture.takePicture(
-                                ImageCapture.OutputFileOptions.Builder(out).build(),
-                                ContextCompat.getMainExecutor(context),
-                                object : ImageCapture.OnImageSavedCallback {
-                                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                        scope.launch(Dispatchers.IO) {
-                                            val ok = stagePhotoIntoComposer(
-                                                context,
-                                                out.toUri(),
-                                                question,
-                                            )
-                                            out.delete()
-                                            withContext(Dispatchers.Main) {
-                                                busy = false
-                                                if (ok) navController.popBackStack()
-                                                else error = "Couldn't attach that photo."
-                                            }
-                                        }
-                                    }
-
-                                    override fun onError(exc: ImageCaptureException) {
-                                        busy = false
-                                        error = "Capture failed: ${exc.message}"
-                                    }
-                                },
-                            )
+                            error = null
+                            val (uri, file) = ai.unicto.unibot.ui.chat.createCameraOutputUri(context)
+                            pendingCaptureFile = file
+                            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                                putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            runCatching { cameraResult.launch(intent) }
+                                .onFailure {
+                                    AppLogger.warning("VisualAsk", "camera launch failed: ${it.message}")
+                                    pendingCaptureFile = null
+                                    file.delete()
+                                    busy = false
+                                    error = "Couldn't open the camera app."
+                                }
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

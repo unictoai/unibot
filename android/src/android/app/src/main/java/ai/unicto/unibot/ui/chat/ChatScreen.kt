@@ -246,7 +246,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.VisibilityOff // [P1-incognito]
-import androidx.compose.material.icons.filled.VisibilityOff as VisibilityOffFilled // [P1-incognito]
+import androidx.compose.material.icons.filled.VisibilityOff // [P1-incognito]
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -3028,7 +3028,7 @@ fun ChatScreen(
                                         },
                                         leadingIcon = {
                                             Icon(
-                                                if (isIncognito) VisibilityOffFilled
+                                                if (isIncognito) Icons.Filled.VisibilityOff
                                                 else Icons.Outlined.VisibilityOff,
                                                 contentDescription = null,
                                             )

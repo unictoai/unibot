@@ -118,7 +118,7 @@ class UnibotAutofillService : AutofillService() {
                 h.contains("email") -> return FieldKind.EMAIL
                 h.contains(View.AUTOFILL_HINT_PHONE) -> return FieldKind.PHONE
                 h.contains("phone") || h.contains("tel") -> return FieldKind.PHONE
-                h.contains(View.AUTOFILL_HINT_PERSON_NAME) -> return FieldKind.NAME
+                h.contains(View.AUTOFILL_HINT_NAME) -> return FieldKind.NAME
                 h.contains("name") && !h.contains("username") -> return FieldKind.NAME
             }
         }
