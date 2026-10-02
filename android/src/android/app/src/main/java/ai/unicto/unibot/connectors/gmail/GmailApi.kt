@@ -208,7 +208,7 @@ object GmailApi {
         if (payload == null) return ""
         val mime = payload.optString("mimeType", "")
         if (mime.startsWith("text/plain", ignoreCase = true)) {
-            val data = payload.optJSONObject("body")?.optString("data", "")
+            val data = payload.optJSONObject("body")?.optString("data", "").orEmpty()
             if (data.isNotEmpty()) return decodeBody(data)
         }
         val parts = payload.optJSONArray("parts") ?: return ""

@@ -288,7 +288,7 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [unibot-connectors] Connectors — Gmail etc.
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_connectors_title), icon = Icons.Outlined.Link, onClick = onConnectorsClick)
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_connectors_title), icon = Icons.Outlined.Email, onClick = onConnectorsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // P8: marketplace — community skills and MCP servers.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_market_title), icon = Icons.Outlined.Storefront, onClick = onMarketplaceClick)
