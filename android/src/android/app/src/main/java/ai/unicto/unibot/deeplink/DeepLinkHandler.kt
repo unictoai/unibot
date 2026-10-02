@@ -69,6 +69,15 @@ sealed class DeepLinkAction {
     data object NewCameraChat : DeepLinkAction()
 
     /**
+     * v0.2.0 P3 — quick-ask entry: `unibot://ask?text=...`.
+     * Opens the home shell's main chat with [text] prefilled in the
+     * composer (via HomeBus, same path as the profile page's pre-typed
+     * request). Used by the Quick-ask home-screen widget and the
+     * `ai.unicto.unibot.ASK` Tasker broadcast.
+     */
+    data class Ask(val text: String) : DeepLinkAction()
+
+    /**
      * T183: any settings screen reachable by route string. Extends the
      * sealed family so consumers don't have to learn 14 new case types
      * — they `safeNavigate(action.route)` and the route table in
@@ -125,6 +134,10 @@ object DeepLinkHandler {
                 "camera_chat" -> DeepLinkAction.NewCameraChat
                 else -> DeepLinkAction.Unknown
             }
+            // v0.2.0 P3: quick-ask — `unibot://ask?text=...` (widget / Tasker).
+            // The text is prefilled, never auto-sent: the user reviews it
+            // in the composer before anything runs.
+            "ask" -> DeepLinkAction.Ask(text = uri.getQueryParameter("text").orEmpty())
             "settings" -> parseSettingsPath(uri)
             "session" -> {
                 // unibot://session/<sessionId>                → OpenSession
@@ -206,6 +219,16 @@ object DeepLinkHandler {
             "coding", "agents" -> DeepLinkAction.OpenSettingsScreen(ai.unicto.unibot.ui.coding.ROUTE_CODING) // unibot: the coding agents on the account's computers
             "profile" -> DeepLinkAction.OpenSettingsScreen(ai.unicto.unibot.ui.profile.ROUTE_AGENT_PROFILE) // unibot: the face links here
             "background" -> DeepLinkAction.OpenSettingsScreen(Routes.BACKGROUND)
+            // v0.2.0 P3: the Tasks home-screen widget taps through here.
+            // `?task=<id>` opens that routine's editor directly.
+            "routines", "scheduled", "scheduled-tasks", "scheduled_tasks" -> {
+                val taskId = uri.getQueryParameter("task")
+                if (!taskId.isNullOrBlank()) {
+                    DeepLinkAction.OpenSettingsScreen(Routes.scheduledTaskEdit(taskId))
+                } else {
+                    DeepLinkAction.OpenSettingsScreen(Routes.SCHEDULED_TASKS)
+                }
+            }
             "about" -> DeepLinkAction.OpenSettingsScreen(Routes.ABOUT)
             "permissions" -> DeepLinkAction.OpenPermissionSettings
             // mirrors live as a section inside Rootfs management — no

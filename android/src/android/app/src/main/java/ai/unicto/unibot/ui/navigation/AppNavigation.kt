@@ -175,6 +175,8 @@ object Routes {
     const val LOG_DETAIL = "log_detail/{fileName}"
     const val APPEARANCE = "appearance"
     const val BACKGROUND = "background"
+    /** v0.2.0 P3: Automation help — Tasker intents, widgets, background approvals. */
+    const val AUTOMATION = "automation"
     const val ABOUT = "about"
     const val ONBOARDING_MODELS = "onboarding_models"
     /** T219-2: Mount external folders settings + detail. */
@@ -335,6 +337,15 @@ fun AppNavigation(
                 // unibot: except in compact windows, where the home shell opens the draft.
                 if (ubHomeActive && quickActionSession != null) {
                     ai.unicto.unibot.ui.home.HomeShell.openSession(navController, quickActionSession)
+                }
+            }
+            // v0.2.0 P3: cold-start quick-ask (`unibot://ask?text=...`). The
+            // home shell mounts the main chat by itself; HomeBus replays
+            // the prefill to the shell's collector even if it subscribes
+            // a frame later. Never auto-sends.
+            is DeepLinkAction.Ask -> {
+                if (initialDeepLink.text.isNotBlank()) {
+                    ai.unicto.unibot.ui.home.HomeBus.prefillComposer(initialDeepLink.text)
                 }
             }
             else -> {}
@@ -1531,6 +1542,17 @@ fun AppNavigation(
 
         composable(Routes.BACKGROUND) {
             BackgroundSettingsScreen(
+                onBack = { navController.safePopBackStack() },
+                // v0.2.0 P3: Automation help screen (Tasker intents, widgets).
+                onAutomationClick = { navController.safeNavigate(Routes.AUTOMATION) },
+            )
+        }
+
+        // v0.2.0 P3: Automation help — documents the Tasker/Automate
+        // broadcast intents, the home-screen widgets, and background
+        // approval notifications.
+        composable(Routes.AUTOMATION) {
+            ai.unicto.unibot.ui.settings.AutomationScreen(
                 onBack = { navController.safePopBackStack() },
             )
         }
