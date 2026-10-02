@@ -106,8 +106,9 @@ object TelegramConnector {
                         val msg = arr.optJSONObject(i)?.optJSONObject("message") ?: continue
                         val chat = msg.optJSONObject("chat") ?: continue
                         lastId = chat.optLong("id", 0L)
-                        lastFrom = msg.optJSONObject("from")?.optString("username", "")
-                            ?: msg.optJSONObject("from")?.optString("first_name", "")
+                        val from = msg.optJSONObject("from")
+                        lastFrom = from?.optString("username", "").orEmpty()
+                            .ifBlank { from?.optString("first_name", "").orEmpty() }
                     }
                     if (lastId == 0L) {
                         return@withContext ApiResult.Error(
