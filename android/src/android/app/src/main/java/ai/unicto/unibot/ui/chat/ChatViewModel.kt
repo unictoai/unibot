@@ -77,6 +77,10 @@ import ai.unicto.unibot.tools.DiscordTool
 import ai.unicto.unibot.tools.SlackTool
 import ai.unicto.unibot.tools.DriveTool
 import ai.unicto.unibot.tools.CalendarTool
+import ai.unicto.unibot.tools.SpotifyTool
+import ai.unicto.unibot.tools.NotionTool
+import ai.unicto.unibot.tools.RedditTool
+import ai.unicto.unibot.tools.RssTool
 import ai.unicto.unibot.tools.MemoryTools
 import ai.unicto.unibot.tools.WebSearchTool
 import ai.unicto.unibot.local.FactMemoryStore
@@ -1358,6 +1362,11 @@ class ChatViewModel(
             youtubeConnected = YouTubeTool.isConnected(context),
             discordConnected = DiscordTool.isConnected(context),
             slackConnected = SlackTool.isConnected(context),
+            // [v0.6.0-wave2] Spotify + Notion + Reddit + RSS.
+            spotifyConnected = SpotifyTool.isConnected(context),
+            notionConnected = NotionTool.isConnected(context),
+            redditConnected = RedditTool.isConnected(context),
+            rssConnected = RssTool.isConnected(context),
             // [v0.5.0-agentic-core] Real web_search tool for the agent loop.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )
@@ -10183,6 +10192,17 @@ class ChatViewModel(
             DiscordTool.SEND_NAME -> DiscordTool.executeSend(argsJson, context)
             SlackTool.READ_NAME -> SlackTool.executeRead(argsJson, context)
             SlackTool.SEND_NAME -> SlackTool.executeSend(argsJson, context)
+            // [v0.6.0-wave2] Spotify + Notion + Reddit + RSS tools.
+            SpotifyTool.NOW_PLAYING_NAME -> SpotifyTool.executeNowPlaying(argsJson, context)
+            SpotifyTool.CONTROL_NAME -> SpotifyTool.executeControl(argsJson, context)
+            SpotifyTool.PLAYLISTS_NAME -> SpotifyTool.executePlaylists(argsJson, context)
+            NotionTool.SEARCH_NAME -> NotionTool.executeSearch(argsJson, context)
+            NotionTool.READ_NAME -> NotionTool.executeRead(argsJson, context)
+            NotionTool.APPEND_NAME -> NotionTool.executeAppend(argsJson, context)
+            RedditTool.SEARCH_NAME -> RedditTool.executeSearch(argsJson, context)
+            RedditTool.TOP_NAME -> RedditTool.executeTop(argsJson, context)
+            RssTool.FEEDS_NAME -> RssTool.executeFeeds(argsJson, context)
+            RssTool.LATEST_NAME -> RssTool.executeLatest(argsJson, context)
             // [v0.5.0-agentic-core] Real web search (was "Unknown tool" before).
             WebSearchTool.NAME -> WebSearchTool.execute(argsJson)
             else -> ToolExecutionResult("Unknown tool: $name", false)
@@ -10247,6 +10267,11 @@ class ChatViewModel(
             youtubeConnected = YouTubeTool.isConnected(context),
             discordConnected = DiscordTool.isConnected(context),
             slackConnected = SlackTool.isConnected(context),
+            // [v0.6.0-wave2] Workers get the new connectors too.
+            spotifyConnected = SpotifyTool.isConnected(context),
+            notionConnected = NotionTool.isConnected(context),
+            redditConnected = RedditTool.isConnected(context),
+            rssConnected = RssTool.isConnected(context),
             // [v0.5.0-agentic-core] Workers can search the web too.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )

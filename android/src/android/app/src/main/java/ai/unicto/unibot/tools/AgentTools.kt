@@ -45,6 +45,11 @@ object AgentTools {
         youtubeConnected: Boolean = false,
         discordConnected: Boolean = false,
         slackConnected: Boolean = false,
+        // [v0.6.0-wave2] Spotify (OAuth) + Notion (token) + Reddit/RSS (no-auth).
+        spotifyConnected: Boolean = false,
+        notionConnected: Boolean = false,
+        redditConnected: Boolean = false,
+        rssConnected: Boolean = false,
         // [v0.5.0-agentic-core] Live web search (keyless DuckDuckGo). Off
         // when the user disables it in Settings — the model then can't even
         // attempt the call.
@@ -91,6 +96,19 @@ object AgentTools {
         }
         if (slackConnected) {
             addAll(SlackTool.definitions())
+        }
+        // [v0.6.0-wave2] Spotify + Notion + Reddit + RSS.
+        if (spotifyConnected) {
+            addAll(SpotifyTool.definitions())
+        }
+        if (notionConnected) {
+            addAll(NotionTool.definitions())
+        }
+        if (redditConnected) {
+            addAll(RedditTool.definitions())
+        }
+        if (rssConnected) {
+            addAll(RssTool.definitions())
         }
     }
 

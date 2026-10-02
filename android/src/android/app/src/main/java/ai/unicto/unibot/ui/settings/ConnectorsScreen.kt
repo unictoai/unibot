@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,11 +38,18 @@ import ai.unicto.unibot.connectors.github.GitHubConnector
 import ai.unicto.unibot.connectors.gmail.GmailOAuth
 import ai.unicto.unibot.connectors.gmail.GmailStore
 import ai.unicto.unibot.connectors.google.GoogleOAuth
+import ai.unicto.unibot.connectors.notion.NotionConnector
+import ai.unicto.unibot.connectors.reddit.RedditConnector
+import ai.unicto.unibot.connectors.rss.RssConnector
+import ai.unicto.unibot.connectors.spotify.SpotifyConnector
+import ai.unicto.unibot.connectors.spotify.SpotifyOAuth
 import ai.unicto.unibot.connectors.telegram.TelegramConnector
 import ai.unicto.unibot.connectors.youtube.YouTubeConnector
 import ai.unicto.unibot.connectors.discord.DiscordConnector
 import ai.unicto.unibot.connectors.slack.SlackConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
+import ai.unicto.unibot.ui.theme.Motion
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -165,6 +176,41 @@ fun ConnectorsScreen(
                 onSave = { ctx, token -> TelegramConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> TelegramConnector.disconnect(ctx) },
             )
+            // [v0.6.0-wave2] Spotify (OAuth), Notion (token), Reddit + RSS (no-auth).
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_spotify,
+                name = stringResource(R.string.ub_connectors_spotify),
+                description = stringResource(R.string.ub_connectors_spotify_desc),
+                isConnected = { ctx -> SpotifyConnector.isConnected(ctx) },
+                accountEmail = { ctx -> SpotifyConnector.store.accountEmail(ctx) },
+                isConfigured = { SpotifyConnector.isConfigured() },
+                onConnect = { ctx ->
+                    when (val r = SpotifyConnector.authorize(ctx)) {
+                        is SpotifyOAuth.Result.Success -> ConnectOutcome.Ok
+                        is SpotifyOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is SpotifyOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> SpotifyConnector.disconnect(ctx) },
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_notion,
+                name = stringResource(R.string.ub_connectors_notion),
+                description = stringResource(R.string.ub_connectors_notion_desc),
+                hint = stringResource(R.string.ub_connectors_notion_hint),
+                isConnected = { ctx -> NotionConnector.isConnected(ctx) },
+                label = { ctx -> NotionConnector.store.label(ctx) },
+                onSave = { ctx, token -> NotionConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> NotionConnector.disconnect(ctx) },
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_reddit,
+                name = stringResource(R.string.ub_connectors_reddit),
+                description = stringResource(R.string.ub_connectors_reddit_desc),
+                isEnabled = { ctx -> RedditConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> RedditConnector.setEnabled(ctx, enabled) },
+            )
+            RssConnectorRow()
         }
     }
 }
@@ -194,6 +240,14 @@ private fun ConnectorRow(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showDisconnectConfirm by remember { mutableStateOf(false) }
+    // [v0.6.0-wave2] Success pulse: brief scale-up when a connect succeeds.
+    val pulseScale = remember { Animatable(1f) }
+    var pulseTrigger by remember { mutableStateOf(0) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger == 0) return@LaunchedEffect
+        pulseScale.animateTo(1.035f, tween(160, easing = Motion.FastOutSlowIn))
+        pulseScale.animateTo(1f, tween(280, easing = Motion.FastOutSlowIn))
+    }
 
     fun refresh() {
         connected = isConnected(context)
@@ -203,6 +257,10 @@ private fun ConnectorRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pulseScale.value
+                scaleY = pulseScale.value
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -246,7 +304,10 @@ private fun ConnectorRow(
                     error = null
                     scope.launch {
                         when (val r = onConnect(context)) {
-                            is ConnectOutcome.Ok -> refresh()
+                            is ConnectOutcome.Ok -> {
+                                refresh()
+                                pulseTrigger++
+                            }
                             is ConnectOutcome.Cancelled ->
                                 error = context.getString(R.string.ub_connectors_cancelled)
                             is ConnectOutcome.Failed ->
@@ -321,6 +382,14 @@ private fun TokenConnectorRow(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showDisconnectConfirm by remember { mutableStateOf(false) }
+    // [v0.6.0-wave2] Success pulse on token save.
+    val pulseScale = remember { Animatable(1f) }
+    var pulseTrigger by remember { mutableStateOf(0) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger == 0) return@LaunchedEffect
+        pulseScale.animateTo(1.035f, tween(160, easing = Motion.FastOutSlowIn))
+        pulseScale.animateTo(1f, tween(280, easing = Motion.FastOutSlowIn))
+    }
 
     fun refresh() {
         connected = isConnected(context)
@@ -330,6 +399,10 @@ private fun TokenConnectorRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pulseScale.value
+                scaleY = pulseScale.value
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -399,6 +472,7 @@ private fun TokenConnectorRow(
                             if (who != null) {
                                 token = ""
                                 refresh()
+                                pulseTrigger++
                             } else {
                                 error = context.getString(R.string.ub_connectors_token_invalid)
                             }
@@ -449,5 +523,224 @@ private fun TokenConnectorRow(
                 }
             },
         )
+    }
+}
+
+/**
+ * Row for no-account connectors (Reddit): a simple enable/disable toggle.
+ * Nothing is stored except the on/off flag — public reads need no login.
+ */
+@Composable
+private fun ToggleConnectorRow(
+    logoRes: Int,
+    name: String,
+    description: String,
+    isEnabled: (android.content.Context) -> Boolean,
+    onToggle: (android.content.Context, Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(isEnabled(context)) }
+    // [v0.6.0-wave2] Success pulse on toggle.
+    val pulseScale = remember { Animatable(1f) }
+    var pulseTrigger by remember { mutableStateOf(0) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger == 0) return@LaunchedEffect
+        pulseScale.animateTo(1.035f, tween(160, easing = Motion.FastOutSlowIn))
+        pulseScale.animateTo(1f, tween(280, easing = Motion.FastOutSlowIn))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pulseScale.value
+                scaleY = pulseScale.value
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(
+                painter = painterResource(logoRes),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            androidx.compose.material3.Switch(
+                checked = enabled,
+                onCheckedChange = {
+                    enabled = it
+                    onToggle(context, it)
+                    pulseTrigger++
+                },
+            )
+        }
+    }
+}
+
+/**
+ * RSS feeds connector row: manage the on-device feed list (add/remove URLs).
+ * Feeds stay on this phone; nothing is uploaded anywhere.
+ */
+@Composable
+private fun RssConnectorRow() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var feeds by remember { mutableStateOf(RssConnector.feeds(context)) }
+    var newUrl by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    // [v0.6.0-wave2] Success pulse on feed add.
+    val pulseScale = remember { Animatable(1f) }
+    var pulseTrigger by remember { mutableStateOf(0) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger == 0) return@LaunchedEffect
+        pulseScale.animateTo(1.035f, tween(160, easing = Motion.FastOutSlowIn))
+        pulseScale.animateTo(1f, tween(280, easing = Motion.FastOutSlowIn))
+    }
+
+    fun refresh() {
+        feeds = RssConnector.feeds(context)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pulseScale.value
+                scaleY = pulseScale.value
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_connector_rss),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.ub_connectors_rss),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    stringResource(R.string.ub_connectors_rss_desc) +
+                        " (${feeds.size})",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            UnibotTextButton(onClick = { expanded = !expanded }) {
+                Text(
+                    if (expanded) stringResource(R.string.ub_connectors_cancel)
+                    else stringResource(R.string.ub_connectors_rss_add),
+                )
+            }
+        }
+        if (expanded) {
+            Text(
+                stringResource(R.string.ub_connectors_rss_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = newUrl,
+                    onValueChange = { newUrl = it; error = null },
+                    label = { Text(stringResource(R.string.ub_connectors_rss_url_label)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(),
+                )
+                UnibotTextButton(
+                    onClick = {
+                        if (newUrl.isBlank()) return@UnibotTextButton
+                        scope.launch {
+                            val ok = RssConnector.addFeed(context, newUrl)
+                            if (ok) {
+                                newUrl = ""
+                                refresh()
+                                pulseTrigger++
+                            } else {
+                                error = context.getString(R.string.ub_connectors_token_invalid)
+                            }
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.ub_connectors_save))
+                }
+            }
+            if (error != null) {
+                Text(
+                    error!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            if (feeds.isEmpty()) {
+                Text(
+                    stringResource(R.string.ub_connectors_rss_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            } else {
+                feeds.forEach { feed ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            feed,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                        )
+                        UnibotTextButton(
+                            onClick = {
+                                scope.launch {
+                                    RssConnector.removeFeed(context, feed)
+                                    delay(50)
+                                    refresh()
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.ub_connectors_rss_remove))
+                        }
+                    }
+                }
+            }
+        }
     }
 }

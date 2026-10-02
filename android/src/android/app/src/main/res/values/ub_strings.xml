@@ -1010,5 +1010,20 @@
     <string name="ub_connectors_slack">Slack</string>
     <string name="ub_connectors_slack_desc">Read and send channel messages via your bot</string>
     <string name="ub_connectors_slack_hint">Create a Slack app, install it to your workspace (chat:write, channels:history), and paste the Bot User OAuth Token (xoxb-…).</string>
+    <string name="ub_connectors_spotify">Spotify</string>
+    <string name="ub_connectors_spotify_desc">Now playing, playback control, your playlists</string>
+    <string name="ub_connectors_spotify_hint">Needs a Spotify app: create one at developer.spotify.com/dashboard, add http://127.0.0.1:53712/callback as a Redirect URI, and put the Client ID into the app build.</string>
+    <string name="ub_connectors_notion">Notion</string>
+    <string name="ub_connectors_notion_desc">Search pages, read and append content</string>
+    <string name="ub_connectors_notion_hint">Create an internal integration at notion.so/my-account/integrations, share pages with it, and paste the token (ntn_… or secret_…).</string>
+    <string name="ub_connectors_reddit">Reddit</string>
+    <string name="ub_connectors_reddit_desc">Search posts and read top of subreddits — no account needed</string>
+    <string name="ub_connectors_rss">RSS feeds</string>
+    <string name="ub_connectors_rss_desc">Latest headlines from your feeds, on demand</string>
+    <string name="ub_connectors_rss_hint">Add RSS or Atom feed URLs. They stay on this phone; the agent reads them only when you ask.</string>
+    <string name="ub_connectors_rss_add">Add feed</string>
+    <string name="ub_connectors_rss_url_label">Feed URL</string>
+    <string name="ub_connectors_rss_empty">No feeds yet — add one above.</string>
+    <string name="ub_connectors_rss_remove">Remove</string>
 </resources>
 
