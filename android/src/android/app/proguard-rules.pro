@@ -26,3 +26,12 @@
 # NOTE FOR VERIFICATION: debug builds don't minify, so this bug is invisible
 # there. Any change here must be checked against an assembleRelease APK.
 -keep class io.codeconcept.realtimecutvadlibrary.** { *; }
+
+# [P7-on-device-llm] llama_jni.cpp calls back into
+# ai.unicto.unibot.local.LlamaTokenForwarder BY NAME through JNI
+# (GetMethodID "onToken"). It has no Kotlin-side caller, so without this
+# rule R8 renames it (same failure mode as the VAD callback above) and
+# token streaming breaks with NoSuchMethodError on release builds.
+-keep class ai.unicto.unibot.local.LlamaTokenForwarder {
+    void onToken(java.lang.String);
+}

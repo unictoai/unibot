@@ -1,0 +1,65 @@
+name: LLM model
+
+# One-time (and on-demand) publisher for unibot's on-device LLM chat models.
+# The app never bundles a GGUF in the APK — the user opts into a download
+# (~1 GB each, with explicit size warnings) in the model picker's "On-device"
+# section and it fetches the file from the llm-model-v1 GitHub release below.
+#
+# Runs when this file is pushed (so the first push publishes the models)
+# and on manual dispatch for re-publishing.
+#
+# NOTE: the upstream filenames/sizes below were written without access to
+# HuggingFace (blocked from the build environment). If the first run 404s,
+# fix the repo/file names here and re-run; then pin the exact byte sizes
+# into LlamaModelManager (see its minBytes KDoc).
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/llm-model.yml"]
+
+permissions:
+  contents: write
+
+env:
+  # file|upstream-url|min-bytes — one per line.
+  MODEL_SPECS: |
+    Qwen3-1.7B-Q4_K_M.gguf|https://huggingface.co/bartowski/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf|1000000000
+    LFM2-1.2B-Q4_K_M.gguf|https://huggingface.co/bartowski/LFM2-1.2B-GGUF/resolve/main/LFM2-1.2B-Q4_K_M.gguf|650000000
+
+jobs:
+  publish:
+    name: publish LLM models
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download models from upstream
+        run: |
+          set -euo pipefail
+          mkdir -p llm-models
+          while IFS='|' read -r file url min_bytes; do
+            [ -z "$file" ] && continue
+            echo "downloading $file ..."
+            curl -sSL --retry 3 -o "llm-models/$file" "$url"
+            bytes=$(stat -c%s "llm-models/$file")
+            echo "  $bytes bytes"
+            if [ "$bytes" -lt "$min_bytes" ]; then
+              echo "model file too small ($bytes bytes) — refusing to publish" >&2
+              exit 1
+            fi
+          done <<< "$MODEL_SPECS"
+
+      - name: Publish to llm-model-v1 release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view llm-model-v1 >/dev/null 2>&1 || \
+            gh release create llm-model-v1 \
+              --title "On-device LLM v1" \
+              --notes "llama.cpp GGUF chat models for unibot's on-device chat (Qwen3-1.7B-Q4_K_M ~1.1 GB, LFM2-1.2B-Q4_K_M ~800 MB). Downloaded in-app only when the user explicitly opts in — never bundled in the APK."
+          gh release upload llm-model-v1 llm-models/* --clobber
+          echo "published:"
+          gh release view llm-model-v1 --json assets --jq '.assets[].name'

@@ -41,3 +41,23 @@ FetchContent_MakeAvailable(whispercpp)
 
 add_library(unibot_whisper SHARED whisper_jni.cpp)
 target_link_libraries(unibot_whisper PRIVATE whisper ${log-lib})
+
+# ── On-device LLM chat (llama.cpp) ──────────────────────────────────────
+# Same pattern as whisper.cpp above: pinned tag via FetchContent, built from
+# source, thin JNI bridge in llama_jni.cpp. The app never bundles a GGUF in
+# the APK — the user opts into a download from the llm-model-v1 GitHub
+# release (see .github/workflows/llm-model.yml), and chat templates are
+# applied in Kotlin (LocalLlamaBackend), so LLAMA_BUILD_COMMON stays off.
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_COMMON OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    llamacpp
+    GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
+    GIT_TAG v0.5.0
+)
+FetchContent_MakeAvailable(llamacpp)
+
+add_library(unibot_llama SHARED llama_jni.cpp)
+target_link_libraries(unibot_llama PRIVATE llama ${log-lib})

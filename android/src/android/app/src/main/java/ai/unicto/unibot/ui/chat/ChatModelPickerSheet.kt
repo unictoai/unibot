@@ -501,6 +501,17 @@ internal fun ModelPickerSheet(
                     .fillMaxWidth()
                     .weight(1f, fill = false),
             ) {
+                // ── On-device (llama.cpp, offline) ──────────────────────────
+                // [P7-on-device-llm] Route selector + opt-in downloader for the
+                // on-device chat models. Self-contained: selection writes
+                // LlamaModelManager's local-mode flag, which ChatViewModel
+                // checks before the cloud agent loop. Dismisses the sheet on
+                // a route change so the chat's offline banner appears.
+                item {
+                    ai.unicto.unibot.ui.local.OnDeviceModelsSection(
+                        onDone = onDismiss,
+                    )
+                }
                 // ── Model Groups (grouped section card with embedded header) ──
                 if (filteredGroups.isNotEmpty()) {
                     // Section card: header + rows live in the same surface so

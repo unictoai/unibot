@@ -6900,6 +6900,20 @@ class ChatViewModel(
             )
             return
         }
+        // [P7-on-device-llm] Local route: when the user picked an on-device
+        // model in the model picker, the turn runs on llama.cpp (fully
+        // offline) instead of the cloud agent loop. Placed before the
+        // provider guard so local chat works with no provider configured,
+        // and before the context check (cloud context policy doesn't apply).
+        if (ai.unicto.unibot.local.LlamaModelManager.isLocalModeActive(context)) {
+            if (_attachments.value.isNotEmpty()) {
+                _error.value =
+                    "On-device chat is text-only for now — remove attachments or switch back to a cloud model."
+                return
+            }
+            sendLocalMessage(text)
+            return
+        }
         // Context pressure check. Unlike before, needsCompact now HOLDS the
         // send: either compact silently (auto-compact on) or ask first. The
         // whole point is that the request which tripped the threshold must not
@@ -7198,6 +7212,184 @@ class ChatViewModel(
                 }
             }
         }
+    }
+
+    // ── [P7-on-device-llm] Local chat route ────────────────────────────────
+    // When LlamaModelManager is in local mode, turns bypass the cloud agent
+    // loop entirely and stream from the on-device llama.cpp backend. No
+    // provider, no tools, no network — the `local` package owns everything
+    // below the message-list / DB writes done here.
+
+    /** Sessions that already got the "fully offline" banner this process. */
+    private val offlineBannerSessions = mutableSetOf<String>()
+
+    /**
+     * The in-chat offline indicator: a one-line system divider the first
+     * time a session goes local. Renders through the existing info-block
+     * path, so no ChatScreen changes were needed; the longer explanation
+     * rides in the payload behind the info icon.
+     */
+    private fun maybeAppendOfflineBanner(sessionId: String) {
+        if (!offlineBannerSessions.add(sessionId)) return
+        val model = ai.unicto.unibot.local.LlamaModelManager.activeModel(context)
+        appendSystemInfo(
+            text = "On-device mode · ${model?.title ?: "local model"} — fully offline",
+            iconKind = "offline",
+            payload = "This chat is running on a model stored on your phone " +
+                "(${model?.title ?: "on-device"}). No text, voice, images, or usage " +
+                "data leaves the device — it works in airplane mode. " +
+                "On-device replies are shorter and less capable than cloud " +
+                "models, and can't use tools. Switch back any time in the " +
+                "model picker.",
+        )
+    }
+
+    /** Entry point for the local route (called from [sendMessage]). */
+    private fun sendLocalMessage(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isBlank()) return
+        _error.value = null
+        _inputText.value = ""
+        // T145 (same as cloud): claim _isStreaming synchronously so a rapid
+        // second tap can't slip past the entry guard.
+        AppLogger.info(TAG_STREAM, "sendLocal _isStreaming=true (sync)")
+        _isStreaming.value = true
+        if (_streamingById.value.isNotEmpty()) {
+            AppLogger.warning(
+                TAG_STREAM,
+                "sendLocal: sweeping ${_streamingById.value.size} orphan streaming delta(s)",
+            )
+            flushAllStreamingDeltas()
+        }
+        viewModelScope.launch {
+            var streamLaunched = false
+            try {
+                val activeSessionId = ensureSession()
+                maybeAppendOfflineBanner(activeSessionId)
+                streamLaunched = true
+                runLocalTurn(activeSessionId, trimmed)
+                // Drain anything the user queued mid-turn, one prompt at a time.
+                while (true) {
+                    val next = _promptQueue.value.firstOrNull() ?: break
+                    removeQueuedPrompt(next.id)
+                    if (next.attachments.isNotEmpty()) {
+                        appendSystemInfo(
+                            text = "Skipped a queued message with attachments — on-device chat is text-only for now.",
+                            iconKind = "offline",
+                        )
+                        continue
+                    }
+                    runLocalTurn(activeSessionId, next.text)
+                }
+            } catch (e: CancellationException) {
+                AppLogger.info(TAG_STREAM, "sendLocal CANCELLED")
+                // runLocalTurn's finally already finalized the bubble.
+            } catch (e: Exception) {
+                AppLogger.error(
+                    TAG_STREAM,
+                    "sendLocal EXCEPTION ${e.javaClass.simpleName}: ${e.message}",
+                )
+                setInlineError(e.message ?: "On-device chat failed")
+            } finally {
+                if (streamLaunched) {
+                    AppLogger.info(TAG_STREAM, "sendLocal _isStreaming=false")
+                }
+                _isStreaming.value = false
+            }
+        }
+    }
+
+    /**
+     * One local turn: persist the user message, stream tokens from
+     * [ai.unicto.unibot.local.LocalChatService] into a normal assistant
+     * message via the streaming side-channel, then persist the reply.
+     * Cancellation (stop button) flows through streamJob like the cloud path.
+     */
+    private suspend fun runLocalTurn(activeSessionId: String, userText: String) {
+        val model =
+            ai.unicto.unibot.local.LlamaModelManager.activeModel(context)
+                ?: throw IllegalStateException(
+                    "The on-device model isn't downloaded any more — pick it again in the model picker.",
+                )
+        val userPartsJson = """[{"type":"text","value":${escapeJson(userText)}}]"""
+        val persistedUser = chatRepository.appendMessage(activeSessionId, "user", userPartsJson)
+        _messages.value = _messages.value + ChatMessage(
+            id = persistedUser.id,
+            role = "user",
+            content = userText,
+        )
+
+        val assistantId = "local_${System.currentTimeMillis()}_${(0..99999).random()}"
+        _messages.value = _messages.value + ChatMessage(
+            id = assistantId,
+            role = "assistant",
+            content = "",
+            isStreaming = true,
+            isAwaitingModelResponse = true,
+        )
+
+        val sb = StringBuilder()
+        streamJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val turns = ai.unicto.unibot.local.LocalChatRouter.buildTurns(
+                    _messages.value,
+                    excludeAssistantId = assistantId,
+                )
+                ai.unicto.unibot.local.LocalChatService.generate(
+                    context = context,
+                    model = model,
+                    systemPrompt = model.systemPrompt,
+                    history = turns,
+                    prompt = userText,
+                    onToken = { piece ->
+                        sb.append(piece)
+                        updateAssistantMessage(
+                            assistantId,
+                            sb.toString(),
+                            true,
+                            emptyList(),
+                            isAwaitingModelResponse = false,
+                        )
+                    },
+                )
+            } catch (e: CancellationException) {
+                AppLogger.info(TAG_STREAM, "sendLocal turn CANCELLED")
+                throw e
+            } catch (e: Exception) {
+                AppLogger.error(
+                    TAG_STREAM,
+                    "sendLocal turn EXCEPTION ${e.javaClass.simpleName}: ${e.message}",
+                )
+                setInlineError(e.message ?: "On-device model failed")
+            } finally {
+                // Drain the side-channel into the canonical message on Main,
+                // mirroring the in-loop-stop orphan guard: a late delta must
+                // not resurrect the streaming state after this.
+                withContext(Dispatchers.Main) {
+                    updateAssistantMessage(
+                        assistantId, sb.toString(), false, emptyList(),
+                        isAwaitingModelResponse = false,
+                    )
+                    clearStreamFlushState(assistantId)
+                    if (_streamingById.value.containsKey(assistantId)) {
+                        _streamingById.value = _streamingById.value - assistantId
+                    }
+                }
+                if (sb.isNotEmpty()) {
+                    val partsJson = """[{"type":"text","value":${escapeJson(sb.toString())}}]"""
+                    chatRepository.appendMessage(activeSessionId, "assistant", partsJson)
+                } else {
+                    // Drop the empty bubble so a failed turn doesn't leave a
+                    // permanent blank assistant message behind.
+                    _messages.value = _messages.value.filterNot { it.id == assistantId }
+                }
+            }
+            // NOTE: _isStreaming stays true across the whole sendLocalMessage
+            // (including the queue drain) and is cleared exactly once in its
+            // finally — clearing it here per-turn would let a rapid tap slip
+            // a concurrent turn past the entry guard mid-drain.
+        }
+        streamJob?.join()
     }
 
     /** Set error inline on the last assistant message (iOS: message.error).
