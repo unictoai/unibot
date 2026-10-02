@@ -5436,6 +5436,8 @@ class ChatViewModel(
         // rejected by the entry guard (same rationale as retryFromMessage T145).
         AppLogger.info(TAG_STREAM, "rerunFromToolBlock _isStreaming=true (sync, sid=$activeSessionId)")
         _isStreaming.value = true
+        // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
+        setThinkingStage(ThinkingState.READING)
 
         viewModelScope.launch {
             var streamLaunched = false
@@ -5624,6 +5626,8 @@ class ChatViewModel(
         // then flip the UI to "stopped" while the second job was still running.
         AppLogger.info(TAG_STREAM, "retry _isStreaming=true (sync, sid=$activeSessionId)")
         _isStreaming.value = true
+        // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
+        setThinkingStage(ThinkingState.READING)
 
         viewModelScope.launch {
             // If setup throws before the inner streamJob is launched, the
@@ -5941,6 +5945,8 @@ class ChatViewModel(
             if (streamJob === coroutineContext[Job]) {
                 AppLogger.info(TAG_STREAM, "$label _isStreaming=false (about to set)")
                 _isStreaming.value = false
+                // [v0.4.1-visible-premium] Turn over — park the indicator.
+                setThinkingStage(ThinkingState.IDLE)
             } else {
                 AppLogger.info(TAG_STREAM, "$label _isStreaming SKIPPED (stale job; current=${streamJob?.hashCode()} this=${coroutineContext[Job]?.hashCode()})")
             }
@@ -6999,6 +7005,8 @@ class ChatViewModel(
         // slip past the entry guard during DB/OAuth setup. See retryFromMessage.
         AppLogger.info(TAG_STREAM, "send _isStreaming=true (sync, sid=$activeSessionId)")
         _isStreaming.value = true
+        // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
+        setThinkingStage(ThinkingState.READING)
 
         // [T-android-thinking-indicator-linger] Invariant sweep: a fresh send
         // only reaches here when no turn is streaming (the _isStreaming guard
@@ -7232,6 +7240,8 @@ class ChatViewModel(
                 if (streamJob === coroutineContext[Job]) {
                     AppLogger.info(TAG_STREAM, "send _isStreaming=false (about to set)")
                     _isStreaming.value = false
+                    // [v0.4.1-visible-premium] Turn over — park the indicator.
+                    setThinkingStage(ThinkingState.IDLE)
                 } else {
                     AppLogger.info(TAG_STREAM, "send _isStreaming SKIPPED (stale job)")
                 }
@@ -7241,6 +7251,8 @@ class ChatViewModel(
                 if (!streamLaunched) {
                     AppLogger.info(TAG_STREAM, "send _isStreaming=false (setup aborted)")
                     _isStreaming.value = false
+                    // [v0.4.1-visible-premium] Turn over — park the indicator.
+                    setThinkingStage(ThinkingState.IDLE)
                 }
             }
         }
@@ -7286,6 +7298,8 @@ class ChatViewModel(
         // second tap can't slip past the entry guard.
         AppLogger.info(TAG_STREAM, "sendLocal _isStreaming=true (sync)")
         _isStreaming.value = true
+        // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
+        setThinkingStage(ThinkingState.READING)
         if (_streamingById.value.isNotEmpty()) {
             AppLogger.warning(
                 TAG_STREAM,
@@ -7327,6 +7341,8 @@ class ChatViewModel(
                     AppLogger.info(TAG_STREAM, "sendLocal _isStreaming=false")
                 }
                 _isStreaming.value = false
+                // [v0.4.1-visible-premium] Turn over — park the indicator.
+                setThinkingStage(ThinkingState.IDLE)
             }
         }
     }
@@ -7361,6 +7377,9 @@ class ChatViewModel(
         )
 
         val sb = StringBuilder()
+        // [v0.4.1-visible-premium] Flip the thinking stage to WRITING on the
+        // first local token (mirrors the cloud Text-chunk hook).
+        val localFirstTokenSeen = java.util.concurrent.atomic.AtomicBoolean(false)
         streamJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val turns = ai.unicto.unibot.local.LocalChatRouter.buildTurns(
@@ -7384,6 +7403,9 @@ class ChatViewModel(
                     history = turns,
                     prompt = augPrompt,
                     onToken = { piece ->
+                        if (localFirstTokenSeen.compareAndSet(false, true)) {
+                            setThinkingStage(ThinkingState.WRITING)
+                        }
                         sb.append(piece)
                         updateAssistantMessage(
                             assistantId,
@@ -7636,6 +7658,8 @@ class ChatViewModel(
         // T145: claim _isStreaming synchronously — see retryFromMessage for rationale.
         AppLogger.info(TAG_STREAM, "retryLast _isStreaming=true (sync, sid=$activeSessionId)")
         _isStreaming.value = true
+        // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
+        setThinkingStage(ThinkingState.READING)
 
         viewModelScope.launch {
             var streamLaunched = false
@@ -7755,6 +7779,8 @@ class ChatViewModel(
                 if (streamJob === coroutineContext[Job]) {
                     AppLogger.info(TAG_STREAM, "retryLast _isStreaming=false (about to set)")
                     _isStreaming.value = false
+                    // [v0.4.1-visible-premium] Turn over — park the indicator.
+                    setThinkingStage(ThinkingState.IDLE)
                 } else {
                     AppLogger.info(TAG_STREAM, "retryLast _isStreaming SKIPPED (stale job)")
                 }
@@ -7764,6 +7790,8 @@ class ChatViewModel(
                 if (!streamLaunched) {
                     AppLogger.info(TAG_STREAM, "retryLast _isStreaming=false (setup aborted)")
                     _isStreaming.value = false
+                    // [v0.4.1-visible-premium] Turn over — park the indicator.
+                    setThinkingStage(ThinkingState.IDLE)
                 }
             }
         }
@@ -8672,6 +8700,9 @@ class ChatViewModel(
                             "provider=${currentProvider.javaClass.simpleName} " +
                             "historySize=${agentHistory.size}",
                     )
+                    // [v0.4.1-visible-premium] Request is out — the model is
+                    // reasoning while we wait for the first chunk.
+                    setThinkingStage(ThinkingState.REASONING)
                     val firstChunkWatchdog = viewModelScope.launch(Dispatchers.IO) {
                         var waited = 0L
                         while (!firstChunkSeen.get()) {
@@ -8725,6 +8756,10 @@ class ChatViewModel(
                         }
                     }
                     is LLMStreamChunk.Text -> {
+                        // [v0.4.1-visible-premium] Tokens are flowing — the
+                        // thinking indicator (where still visible) reads WRITING.
+                        // Idempotent: StateFlow drops identical values.
+                        setThinkingStage(ThinkingState.WRITING)
                         // [T-android-readaloud-stop-stale] First actual text of
                         // this reply — stop the previous reply's Read Aloud so
                         // old and new audio don't overlap. Deferred to here
@@ -9666,7 +9701,12 @@ class ChatViewModel(
                 }
 
                 android.util.Log.d("ToolChain[VM]", "[turn=$turn] executeTool START name=$name args=${argsStr.take(200)}")
+                // [v0.4.1-visible-premium] Web searches surface as a live
+                // thinking stage while the tool runs.
+                if (name == "web_search") setThinkingStage(ThinkingState.SEARCHING)
                 val result = executeTool(name, argsStr, id, allToolBlocks, assistantId, accumulatedText)
+                // Back to reasoning once the tool result is in.
+                setThinkingStage(ThinkingState.REASONING)
                 android.util.Log.d("ToolChain[VM]", "[turn=$turn] executeTool END name=$name success=${result.success} title=${result.toolTitle} outputLen=${result.output.length} output=${result.output.take(200)}")
 
                 // Record post-execution. WARNING text is appended to the tool

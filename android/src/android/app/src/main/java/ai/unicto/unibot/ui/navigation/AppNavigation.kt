@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.navigation
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -580,7 +581,13 @@ fun AppNavigation(
             slideInHorizontally(
                 initialOffsetX = { slidePx },
                 animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
-            ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn))
+            ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn)) +
+                // [v0.4.1-visible-premium] Subtle 0.98 → 1.0 settle so screen
+                // changes are perceptible, not just a slide.
+                scaleIn(
+                    initialScale = 0.98f,
+                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                )
         },
         exitTransition = {
             slideOutHorizontally(
@@ -592,7 +599,12 @@ fun AppNavigation(
             slideInHorizontally(
                 initialOffsetX = { -slidePx },
                 animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
-            ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn))
+            ) + fadeIn(animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn)) +
+                // [v0.4.1-visible-premium] Mirror of the push settle.
+                scaleIn(
+                    initialScale = 0.98f,
+                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                )
         },
         popExitTransition = {
             slideOutHorizontally(

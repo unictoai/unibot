@@ -3,12 +3,15 @@ package ai.unicto.unibot.ui.theme
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -17,6 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import ai.unicto.unibot.ui.theme.Motion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,6 +101,14 @@ fun GlowingSendButton(
         ),
         label = "glow",
     )
+    // [v0.4.1-visible-premium] Springy press-down so taps feel physical.
+    val pressSource = remember { MutableInteractionSource() }
+    val pressed by pressSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = tween(Motion.Instant, easing = Motion.FastOutSlowIn),
+        label = "send_press",
+    )
     Box(
         modifier = Modifier
             .size(size)
@@ -111,13 +124,19 @@ fun GlowingSendButton(
         Box(
             modifier = Modifier
                 .size(size)
+                .scale(pressScale)
                 .background(
                     if (canActivate) activeColor
                     else activeColor.copy(alpha = 0.25f),
                     CircleShape,
                 )
                 .clip(CircleShape)
-                .clickable(enabled = canActivate, onClick = onSend),
+                .clickable(
+                    enabled = canActivate,
+                    interactionSource = pressSource,
+                    indication = null,
+                    onClick = onSend,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

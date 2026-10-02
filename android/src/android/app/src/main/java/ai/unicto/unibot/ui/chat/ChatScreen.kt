@@ -29,10 +29,13 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import ai.unicto.unibot.ui.theme.Motion
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Compress
@@ -4274,7 +4277,31 @@ fun ChatScreen(
                             // grey bubbles per block, no name above each turn (the face
                             // in the header says who is talking); a small gap keeps the
                             // turns apart.
-                            is FlatChatItem.AssistantHeader -> if (ubHome != null) Spacer(Modifier.height(6.dp)) else AssistantHeader()
+                            is FlatChatItem.AssistantHeader -> {
+                                // [v0.4.1-visible-premium] New assistant turns
+                                // glide in (fade + 12dp rise). Remembered per
+                                // messageId so scroll-back never replays it;
+                                // history items simply settle once on open.
+                                var entered by remember(item.messageId) { mutableStateOf(false) }
+                                LaunchedEffect(item.messageId) { entered = true }
+                                val enterAlpha by animateFloatAsState(
+                                    targetValue = if (entered) 1f else 0f,
+                                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                                    label = "asst_enter_alpha",
+                                )
+                                val enterRise by animateDpAsState(
+                                    targetValue = if (entered) 0.dp else 12.dp,
+                                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                                    label = "asst_enter_rise",
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer { alpha = enterAlpha }
+                                        .offset(y = enterRise),
+                                ) {
+                                    if (ubHome != null) Spacer(Modifier.height(6.dp)) else AssistantHeader()
+                                }
+                            }
                             is FlatChatItem.AssistantText -> BoundsTrackedBlock(
                                 messageId = item.messageId,
                                 slotKey = "text:${item.block.id}",
