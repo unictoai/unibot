@@ -997,7 +997,7 @@
     <string name="ub_connectors_telegram_hint">Create a bot with @BotFather on Telegram and paste its token. Then message your bot once so the agent can find the chat.</string>
     <string name="ub_connectors_token_label">Token</string>
     <string name="ub_connectors_save">Save</string>
-    <string name="ub_connectors_token_invalid">That token didn't work. Check it and try again.</string>
+    <string name="ub_connectors_token_invalid">That token didn\'t work. Check it and try again.</string>
     <string name="ub_connectors_token_saved">Connected.</string>
     <string name="ub_connectors_youtube">YouTube</string>
     <string name="ub_connectors_youtube_desc">Search videos, see your channel stats</string>
