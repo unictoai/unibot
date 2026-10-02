@@ -60,6 +60,8 @@ object LocalCapabilities {
         Regex("\\bright\\s+now\\b", RegexOption.IGNORE_CASE),
         Regex("\\bcurrent\\b", RegexOption.IGNORE_CASE),
         Regex("\\btoday'?s\\b", RegexOption.IGNORE_CASE),
+        Regex("\\byesterday\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bthis\\s+week\\b", RegexOption.IGNORE_CASE),
         Regex("\\bprice\\b", RegexOption.IGNORE_CASE),
         Regex("\\bhow\\s+much\\b", RegexOption.IGNORE_CASE),
         Regex("\\bcost\\s+of\\b", RegexOption.IGNORE_CASE),
@@ -79,7 +81,36 @@ object LocalCapabilities {
         Regex("\\bleft\\s+the\\s+(show|house)\\b", RegexOption.IGNORE_CASE),
         Regex("\\bwinner\\b", RegexOption.IGNORE_CASE),
         Regex("\\bnominat", RegexOption.IGNORE_CASE),
+        // -- v0.5.0 agentic core: recency / intent triggers --
+        Regex("\\bwhat\\s+happened\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bwhat'?s\\s+(new|happening)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bnews\\s+about\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bprice\\s+of\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bhow\\s+much\\s+is\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bmatch\\s+result\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bwho\\s+scored\\b", RegexOption.IGNORE_CASE),
+        Regex("\\belection\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bannounce(d|ment)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\blaunch(ed)?\\b.{0,30}\\b(price|date|specs)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\b(is|are)\\b.{0,40}\\bstill\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bupdate(s)?\\s+(on|about)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\blive\\s+(score|updates|coverage)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bbreaking\\b", RegexOption.IGNORE_CASE),
+        Regex("\\btrending\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bforecast\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bexchange\\s+rate\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bcrypto\\b", RegexOption.IGNORE_CASE),
+        Regex("\\b(movie|film)\\s+(release|cast|review)\\b", RegexOption.IGNORE_CASE),
     )
+
+    /**
+     * [v0.5.0-agentic-core] The results of the most recent [augment] web
+     * search, so the chat UI can render a Sources card. Empty when the last
+     * turn didn't trigger a search. Written on the caller's coroutine;
+     * read on Main for block building — plain var is fine (last-write-wins).
+     */
+    var lastSearchResults: List<WebResult> = emptyList()
+        private set
 
     /**
      * Conservative heuristic: does this message look like it needs live
@@ -148,9 +179,11 @@ object LocalCapabilities {
         }
         val extras = StringBuilder()
         phoneStateLine(appContext, userText)?.let { extras.appendLine(it) }
+        lastSearchResults = emptyList()
         if (isWebSearchEnabled(appContext) && needsWebSearch(userText)) {
             val results = runCatching { LocalWebSearch.search(userText) }.getOrDefault(emptyList())
             if (results.isNotEmpty()) {
+                lastSearchResults = results
                 extras.appendLine(buildSearchBlock(results))
             }
         }

@@ -392,8 +392,13 @@ internal fun AssistantMessageView(message: ChatMessage, onRetry: (() -> Unit)? =
                     }
                 }
                 else -> {
-                    // tool_use
-                    ToolCallPill(block, allToolBlocks = toolPillBlocks)
+                    // tool_use — [v0.5.0-agentic-core] web_search renders as
+                    // a Sources card on the legacy path too.
+                    if (block.toolName == "web_search") {
+                        WebSearchSourcesCard(block)
+                    } else {
+                        ToolCallPill(block, allToolBlocks = toolPillBlocks)
+                    }
                 }
             }
         }

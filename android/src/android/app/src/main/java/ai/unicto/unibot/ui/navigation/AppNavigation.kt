@@ -695,6 +695,12 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
             )
         }
+        // unibot v0.5.0: "remember that …" fact memories (encrypted on-device).
+        composable(ai.unicto.unibot.ui.settings.ROUTE_FACT_MEMORIES) {
+            ai.unicto.unibot.ui.settings.FactMemoriesScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
         // unibot: unibot Cloud — sign in with a phone/e-mail code for a starter allowance,
         // and the account page (balance, sign out) behind Settings.
         composable(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) {
@@ -830,6 +836,7 @@ fun AppNavigation(
                 onAvatarClick = { navController.safeNavigate(ai.unicto.unibot.ui.avatar.ROUTE_AVATAR_STUDIO) }, // unibot
                 onMediaModelsClick = { navController.safeNavigate(ai.unicto.unibot.ui.media.ROUTE_MEDIA_MODELS) }, // unibot
                 onOnDeviceModelsClick = { navController.safeNavigate(ai.unicto.unibot.ui.local.ROUTE_ON_DEVICE_MODELS) }, // unibot: offline LLM
+                onFactMemoriesClick = { navController.safeNavigate(ai.unicto.unibot.ui.settings.ROUTE_FACT_MEMORIES) }, // unibot v0.5.0: saved memories
                 onCloudClick = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // unibot
                 onHandsClick = { navController.safeNavigate(ai.unicto.unibot.ui.hands.ROUTE_HANDS) }, // unibot
                 onComputersClick = { navController.safeNavigate(ai.unicto.unibot.ui.reach.ROUTE_COMPUTERS) }, // unibot

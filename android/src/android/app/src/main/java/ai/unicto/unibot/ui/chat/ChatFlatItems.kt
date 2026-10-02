@@ -500,6 +500,20 @@ internal sealed class FlatChatItem {
     }
 
     /**
+     * [v0.5.0-agentic-core] Follow-up suggestion chips under the last
+     * assistant turn. Chips are generated rule-based from the anchor user
+     * message + answer ([generateFollowUpChips]); tapping one sends it.
+     * Never remapped by dedupe (key embeds the assistant message id).
+     */
+    data class FollowUpChips(
+        val assistantMessageId: String,
+        val chips: List<String>,
+    ) : FlatChatItem() {
+        override val key = "followup:$assistantMessageId"
+        override val contentType = "followup"
+    }
+
+    /**
      * See [AssistantText] — same cheap-equals rationale.
      */
     class AssistantLegacyContent(
@@ -611,6 +625,8 @@ internal fun buildFlatChatItems(
             // _messages entries. Key collisions can't happen — the key
             // embeds the unique assistant message id.
             is FlatChatItem.BranchActions -> item
+            // [v0.5.0-agentic-core] Follow-up chips: same no-remap rule.
+            is FlatChatItem.FollowUpChips -> item
             is FlatChatItem.AssistantLegacyContent -> FlatChatItem.AssistantLegacyContent(
                 messageId = "${item.messageId}#$n",
                 content = item.content,
@@ -844,12 +860,23 @@ internal fun buildFlatChatItems(
         // the nearest preceding USER message — the id the variant store
         // keys on, stable across regenerations.
         if (!isSystem && message.role == "assistant" && !message.isStreaming) {
-            val anchorId = (idx - 1 downTo 0).asSequence()
+            val anchorUserMsg = (idx - 1 downTo 0).asSequence()
                 .map { messages[it] }
                 .firstOrNull { it.role == "user" }
-                ?.id
+            val anchorId = anchorUserMsg?.id
             if (anchorId != null) {
                 out.add(dedupe(FlatChatItem.BranchActions(anchorId, message.id)))
+            }
+            // [v0.5.0-agentic-core] Follow-up chips — only under the LAST
+            // assistant turn (a newer user turn pushes older turns into
+            // history, where chips would be stale). Rule-based, no model call.
+            val isLastAssistantTurn = idx == messages.lastIndex ||
+                (idx + 1 until messages.size).all { messages[it].role != "assistant" }
+            if (isLastAssistantTurn && anchorUserMsg != null && joinedMarkdown.isNotBlank()) {
+                val chips = generateFollowUpChips(anchorUserMsg.content, joinedMarkdown)
+                if (chips.isNotEmpty()) {
+                    out.add(dedupe(FlatChatItem.FollowUpChips(message.id, chips)))
+                }
             }
         }
     }

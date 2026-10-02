@@ -45,6 +45,10 @@ object AgentTools {
         youtubeConnected: Boolean = false,
         discordConnected: Boolean = false,
         slackConnected: Boolean = false,
+        // [v0.5.0-agentic-core] Live web search (keyless DuckDuckGo). Off
+        // when the user disables it in Settings — the model then can't even
+        // attempt the call.
+        webSearchEnabled: Boolean = true,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -54,6 +58,9 @@ object AgentTools {
             add(ReadImageTool.definition())
         }
         add(browserUseDefinition())
+        if (webSearchEnabled) {
+            add(WebSearchTool.definition())
+        }
         if (memoryEnabled) {
             add(memoryWriteDefinition())
             add(memoryGetDefinition())

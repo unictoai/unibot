@@ -810,6 +810,74 @@ class ChatViewModel(
         _thinkingStage.value = stage
     }
 
+    // ── [v0.5.0-agentic-core] Long-term fact memories ─────────────────────
+    // "remember that …" facts in encrypted on-device storage
+    // (FactMemoryStore) — separate from the agent's session memory system.
+    // When a turn matches a fact, the model gets it in context AND the UI
+    // shows a dismissible "I remember" note so the recall is visible.
+
+    private val factMemoryStore by lazy { ai.unicto.unibot.local.FactMemoryStore(context) }
+
+    private val _memoryRecallNote = MutableStateFlow<String?>(null)
+    /** Dismissible "I remember: …" note shown when a turn matched a fact. */
+    val memoryRecallNote: StateFlow<String?> = _memoryRecallNote.asStateFlow()
+
+    fun dismissMemoryRecallNote() {
+        _memoryRecallNote.value = null
+    }
+
+    /**
+     * Intercepts "remember …" / "forget …" commands. Returns true when the
+     * text was consumed (persisted as user + assistant lines, no model call).
+     */
+    private fun ubInterceptRemember(text: String): Boolean {
+        val sid = realSessionId.ifEmpty { sessionId }
+        FactMemoryStore.parseRememberCommand(text)?.let { fact ->
+            val saved = factMemoryStore.add(fact)
+            viewModelScope.launch {
+                ubAppendUserLine(sid, text)
+                ubAppendAssistantLine(
+                    sid,
+                    if (saved != null) "Got it — I'll remember that \"${saved.text}\"."
+                    else "I couldn't save that — it was empty.",
+                )
+            }
+            return true
+        }
+        FactMemoryStore.parseForgetCommand(text)?.let { phrase ->
+            val removed = factMemoryStore.deleteMatching(phrase)
+            viewModelScope.launch {
+                ubAppendUserLine(sid, text)
+                ubAppendAssistantLine(
+                    sid,
+                    if (removed > 0) "Forgotten — removed $removed memor${if (removed == 1) "y" else "ies"} matching \"$phrase\"."
+                    else "I don't have anything memorized about \"$phrase\".",
+                )
+            }
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Facts matching [text], for injection into the turn's model context.
+     * Also arms the UI recall note. Cheap — call per send.
+     */
+    private fun recallFactsFor(text: String): List<ai.unicto.unibot.local.FactMemory> {
+        // Never match remember/forget commands against themselves.
+        if (FactMemoryStore.parseRememberCommand(text) != null ||
+            FactMemoryStore.parseForgetCommand(text) != null
+        ) return emptyList()
+        return factMemoryStore.findMatches(text)
+    }
+
+    /** "Relevant memories:\n- fact…" block prepended to the model's turn text. */
+    private fun memoryContextBlock(facts: List<ai.unicto.unibot.local.FactMemory>): String =
+        buildString {
+            appendLine("Relevant memories (the user asked you to remember these — use them when answering):")
+            facts.forEach { appendLine("- ${it.text}") }
+        }.trimEnd()
+
     /**
      * T261: tool detail sheet visibility, persistent across LazyColumn
      * recomposition / item disposal so a streaming tool's sheet doesn't
@@ -1288,6 +1356,8 @@ class ChatViewModel(
             youtubeConnected = YouTubeTool.isConnected(context),
             discordConnected = DiscordTool.isConnected(context),
             slackConnected = SlackTool.isConnected(context),
+            // [v0.5.0-agentic-core] Real web_search tool for the agent loop.
+            webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )
     /**
      * Per-session loop detector. Reset alongside [agentHistory] whenever the
@@ -6522,6 +6592,9 @@ class ChatViewModel(
         // unibot: "change your avatar to …" (and a pick while the options are
         // up) is handled in the app, not by the model.
         if (ubInterceptAvatar(text)) return
+        // [v0.5.0-agentic-core] "remember that …" / "forget …" never reach
+        // the model — persisted locally with a confirmation line.
+        if (ubInterceptRemember(text)) return
         // unibot: during the first conversation the text goes to the model as
         // it is; the model says what it meant in a `unibot-naming` block and
         // ubAfterTurn moves the phase (see FirstConversation).
@@ -7007,6 +7080,8 @@ class ChatViewModel(
         _isStreaming.value = true
         // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
         setThinkingStage(ThinkingState.READING)
+        // [v0.5.0-agentic-core] Fresh turn — drop any stale recall note.
+        _memoryRecallNote.value = null
 
         // [T-android-thinking-indicator-linger] Invariant sweep: a fresh send
         // only reaches here when no turn is streaming (the _isStreaming guard
@@ -7112,8 +7187,17 @@ class ChatViewModel(
             // session reload, compaction) sees the identical text.
             val modelBody = pasted?.modelText ?: trimmed
 
+            // [v0.5.0-agentic-core] Fact recall: matched "remember" facts go
+            // to the MODEL (never the bubble) + arm the dismissible UI note.
+            val recalledFacts = recallFactsFor(trimmed)
+            _memoryRecallNote.value =
+                recalledFacts.firstOrNull()?.let { "I remember: \"${it.text}\"" }
+            val modelBodyWithMemory = if (recalledFacts.isNotEmpty()) {
+                "${memoryContextBlock(recalledFacts)}\n\n$modelBody"
+            } else modelBody
+
             val userContentParts = mutableListOf<AgentContentPart>()
-            if (modelBody.isNotEmpty()) userContentParts.add(AgentContentPart.Text(modelBody))
+            if (modelBodyWithMemory.isNotEmpty()) userContentParts.add(AgentContentPart.Text(modelBodyWithMemory))
             imageParts.forEachIndexed { idx, part ->
                 val path = prepared.imageUploadPaths.getOrNull(idx)
                 if (path != null) userContentParts.add(AgentContentPart.Text("[attached image: $path]"))
@@ -7123,7 +7207,7 @@ class ChatViewModel(
 
             agentHistory.add(LLMMessage(
                 role = LLMMessage.Role.USER,
-                content = modelBody,
+                content = modelBodyWithMemory,
                 imageParts = imageParts,
                 contentParts = userContentParts,
                 dbMessageId = persistedUser.id,
@@ -7300,6 +7384,8 @@ class ChatViewModel(
         _isStreaming.value = true
         // [v0.4.1-visible-premium] Live thinking stage: the turn just started.
         setThinkingStage(ThinkingState.READING)
+        // [v0.5.0-agentic-core] Fresh turn — drop any stale recall note.
+        _memoryRecallNote.value = null
         if (_streamingById.value.isNotEmpty()) {
             AppLogger.warning(
                 TAG_STREAM,
@@ -7390,18 +7476,46 @@ class ChatViewModel(
                 // model: date/time always in; phone state + live web results
                 // when triggered. Runs before inference, never inside the
                 // backend (which keeps its zero-network promise).
+                // [v0.5.0-agentic-core] Fact recall on the local path too:
+                // memories go into the prompt (never the bubble) + arm the
+                // dismissible UI note. Applied AFTER augment so the search
+                // trigger still evaluates the raw user text.
+                val localRecalledFacts = recallFactsFor(userText)
+                _memoryRecallNote.value =
+                    localRecalledFacts.firstOrNull()?.let { "I remember: \"${it.text}\"" }
+                val willSearch = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context) &&
+                    ai.unicto.unibot.local.LocalCapabilities.needsWebSearch(userText)
+                if (willSearch) setThinkingStage(ThinkingState.SEARCHING)
                 val (augSystem, augPrompt) =
                     ai.unicto.unibot.local.LocalCapabilities.augment(
                         context,
                         model.systemPrompt,
                         userText,
                     )
+                val finalPrompt = if (localRecalledFacts.isNotEmpty()) {
+                    "${memoryContextBlock(localRecalledFacts)}\n\n$augPrompt"
+                } else augPrompt
+                val localSearchBlocks = ai.unicto.unibot.local.LocalCapabilities.lastSearchResults
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { results ->
+                        listOf(
+                            AssistantBlock(
+                                id = "${assistantId}_websearch",
+                                kind = "tool_use",
+                                toolName = "web_search",
+                                toolTitle = "Web search",
+                                toolStatus = ToolBlockStatus.SUCCESS,
+                                content = ai.unicto.unibot.local.LocalCapabilities.buildSearchBlock(results),
+                            ),
+                        )
+                    }.orEmpty()
+                if (willSearch) setThinkingStage(ThinkingState.REASONING)
                 ai.unicto.unibot.local.LocalChatService.generate(
                     context = context,
                     model = model,
                     systemPrompt = augSystem,
                     history = turns,
-                    prompt = augPrompt,
+                    prompt = finalPrompt,
                     onToken = { piece ->
                         if (localFirstTokenSeen.compareAndSet(false, true)) {
                             setThinkingStage(ThinkingState.WRITING)
@@ -7411,7 +7525,7 @@ class ChatViewModel(
                             assistantId,
                             sb.toString(),
                             true,
-                            emptyList(),
+                            localSearchBlocks,
                             isAwaitingModelResponse = false,
                         )
                     },
@@ -7431,7 +7545,7 @@ class ChatViewModel(
                 // not resurrect the streaming state after this.
                 withContext(Dispatchers.Main) {
                     updateAssistantMessage(
-                        assistantId, sb.toString(), false, emptyList(),
+                        assistantId, sb.toString(), false, localSearchBlocks,
                         isAwaitingModelResponse = false,
                     )
                     clearStreamFlushState(assistantId)
@@ -10061,6 +10175,8 @@ class ChatViewModel(
             DiscordTool.SEND_NAME -> DiscordTool.executeSend(argsJson, context)
             SlackTool.READ_NAME -> SlackTool.executeRead(argsJson, context)
             SlackTool.SEND_NAME -> SlackTool.executeSend(argsJson, context)
+            // [v0.5.0-agentic-core] Real web search (was "Unknown tool" before).
+            WebSearchTool.NAME -> WebSearchTool.execute(argsJson)
             else -> ToolExecutionResult("Unknown tool: $name", false)
         }
     }
@@ -10123,6 +10239,8 @@ class ChatViewModel(
             youtubeConnected = YouTubeTool.isConnected(context),
             discordConnected = DiscordTool.isConnected(context),
             slackConnected = SlackTool.isConnected(context),
+            // [v0.5.0-agentic-core] Workers can search the web too.
+            webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )
         val workerMessages = mutableListOf(
             LLMMessage(
@@ -11174,6 +11292,7 @@ Available tools:
 - file_read: Read file contents (faster than cat).
 - file_write: Create new files or overwrite existing files (faster than echo/tee).
 - file_edit: Edit existing files with exact string replacement (old_string → new_string). Preferred over file_write for modifications — always file_read first.
+- web_search: Search the LIVE web for current information. CALL THIS whenever the user's question needs fresh/external facts — recent events, news, scores, prices, release dates, weather, or anything that may have changed since your training data. Prefer it over browser_use for quick factual lookups (much faster); use browser_use only when you must open and interact with a specific page. After searching, answer using ONLY the results and cite sources.
 - browser_use: Web browsing (navigate, screenshot, click, type, get_text, scroll, scroll_and_collect, get_readable, get_backbone, fetch, etc.). Starts with a desktop Chrome user agent. Use screenshot to see the page.
   当 browser_use 触达 Google 登录 / OAuth 页（accounts.google.com、signin.google.com、myaccount.google.com、oauth2.googleapis.com 等）或网页返回 "disallowed_useragent" / 403 包含 "browser is not secure" 字样时，**不要重试或尝试登录** — Google 永久禁止 in-app WebView 完成登录，重试只会浪费 turn。改为告诉用户："此页面需要在系统 Chrome 完成登录" 并给出可点击的 Markdown link [在 Chrome 中打开](https://accounts.google.com/...)。点该 link 时 app 会跳出 Custom Tab；用户在 Chrome 完成操作后，请他**把所需结果（邮件正文 / 文档摘要 / 表格数据）粘贴回 chat**，你再继续帮他处理。这是 Android 平台限制，不是 bug。${toolListMemoryBullets}
 

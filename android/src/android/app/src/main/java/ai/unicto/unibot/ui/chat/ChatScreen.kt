@@ -603,6 +603,8 @@ fun ChatScreen(
     // [T-android-compact-progress] null when no compaction is running.
     val compactProgress by viewModel.compactProgress.collectAsState()
     val error by viewModel.error.collectAsState()
+    // [v0.5.0-agentic-core] Dismissible "I remember" note on fact recall.
+    val memoryRecallNote by viewModel.memoryRecallNote.collectAsState()
     val modelName by viewModel.modelName.collectAsState()
     val sessionTitle by viewModel.sessionTitle.collectAsState()
     // [P1-incognito] Drives the top-bar badge + the menu toggle label.
@@ -4401,7 +4403,13 @@ fun ChatScreen(
                                     )
                                 }
                             }
-                            is FlatChatItem.AssistantToolUse -> ToolCallPill(
+                            is FlatChatItem.AssistantToolUse -> if (item.block.toolName == "web_search") {
+                                // [v0.5.0-agentic-core] Web searches render as
+                                // a tappable Sources card, not a tool pill.
+                                ai.unicto.unibot.ui.chat.WebSearchSourcesCard(
+                                    block = item.block,
+                                )
+                            } else ToolCallPill(
                                 block = item.block,
                                 allToolBlocks = item.allToolBlocks,
                                 onRetry = if (item.isLastCancelled && !isStreaming && !canResume) ({ safeMutate { viewModel.retryLast() } }) else null,
@@ -4526,6 +4534,14 @@ fun ChatScreen(
                                 viewModel = viewModel,
                                 anchorUserMessageId = item.anchorUserMessageId,
                                 assistantMessageId = item.assistantMessageId,
+                            )
+                            // [v0.5.0-agentic-core] Follow-up chips under the
+                            // last assistant turn — tap sends as next message.
+                            is FlatChatItem.FollowUpChips -> ai.unicto.unibot.ui.chat.FollowUpChipsRow(
+                                chips = item.chips,
+                                onChipClick = { chip ->
+                                    safeMutate { viewModel.sendMessage(chip) }
+                                },
                             )
                             is FlatChatItem.AssistantLegacyContent -> BoundsTrackedBlock(
                                 messageId = item.messageId,
@@ -4663,6 +4679,14 @@ fun ChatScreen(
                     controller = selectionController,
                     listState = listState,
                     reverseLayout = true,
+                )
+                // [v0.5.0-agentic-core] Dismissible "I remember" note — shown
+                // when the current turn matched a saved fact memory. Floats
+                // above the latest messages; cleared on dismiss or next send.
+                MemoryRecallBanner(
+                    note = memoryRecallNote,
+                    onDismiss = { viewModel.dismissMemoryRecallNote() },
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
                 } // Box (selection scope)
                 } // CompositionLocalProvider
