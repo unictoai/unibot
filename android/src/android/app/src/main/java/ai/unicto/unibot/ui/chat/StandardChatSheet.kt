@@ -65,7 +65,7 @@ fun StandardChatSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = ChatColors.background,
-        dragHandle = { CompactDragHandle() },
+        dragHandle = { ai.unicto.unibot.ui.muse.MuseSheetDragHandle() },
     ) {
         Column(
             modifier = Modifier
@@ -82,31 +82,6 @@ fun StandardChatSheet(
                 content()
             }
         }
-    }
-}
-
-/**
- * Slim replacement for [androidx.compose.material3.BottomSheetDefaults.DragHandle].
- * Same 32×4 indicator pill, but with 6dp top + 4dp bottom padding so the title
- * sits closer to the indicator than the Material default (22dp / 22dp).
- */
-@Composable
-private fun CompactDragHandle() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp, bottom = 4.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        Box(
-            modifier = Modifier
-                .width(32.dp)
-                .height(4.dp)
-                .background(
-                    color = ChatColors.secondaryText.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(2.dp),
-                ),
-        )
     }
 }
 

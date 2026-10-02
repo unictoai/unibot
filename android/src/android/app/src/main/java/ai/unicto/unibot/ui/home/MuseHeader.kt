@@ -158,7 +158,7 @@ fun MuseNamePill(
     }
 }
 
-/** Muse's corner buttons: a white disc, one glyph. */
+/** Muse's corner buttons: a filled disc (48dp, matching the settings screen), one glyph. */
 @Composable
 fun MuseRoundButton(
     icon: ImageVector,
@@ -175,14 +175,14 @@ fun MuseRoundButton(
             color = MuseTones.surface,
             border = if (MuseTones.isDark) BorderStroke(1.dp, MuseTones.hairline) else null,
             shadowElevation = 2.dp,
-            modifier = Modifier.size(44.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = contentDescription,
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }

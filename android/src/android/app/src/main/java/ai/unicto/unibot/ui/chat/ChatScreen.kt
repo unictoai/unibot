@@ -2583,23 +2583,25 @@ fun ChatScreen(
                                 modifier = Modifier.padding(start = 4.dp),
                             )
                         } else if (!isTwoPane) {
-                            IconButton(onClick = onBack) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                            }
+                            ai.unicto.unibot.ui.home.MuseRoundButton(
+                                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = onBack,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
                         } else if (onToggleSidebar != null) {
-                            IconButton(onClick = onToggleSidebar) {
-                                Icon(
-                                    Icons.Filled.Menu,
-                                    contentDescription = stringResource(
-                                        if (sidebarCollapsed) {
-                                            R.string.chat_show_sidebar
-                                        } else {
-                                            R.string.chat_hide_sidebar
-                                        },
-                                    ),
-                                    modifier = Modifier.size(28.dp),
-                                )
-                            }
+                            ai.unicto.unibot.ui.home.MuseRoundButton(
+                                icon = Icons.Filled.Menu,
+                                contentDescription = stringResource(
+                                    if (sidebarCollapsed) {
+                                        R.string.chat_show_sidebar
+                                    } else {
+                                        R.string.chat_hide_sidebar
+                                    },
+                                ),
+                                onClick = onToggleSidebar,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
                         }
 
                         val ubMood = ai.unicto.unibot.ui.avatar.rememberAgentMood(isStreaming, error)
@@ -2937,9 +2939,11 @@ fun ChatScreen(
                                         modifier = Modifier.padding(end = 12.dp),
                                     )
                                 } else
-                                IconButton(onClick = { showChatMenu = true }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "More")
-                                }
+                                ai.unicto.unibot.ui.home.MuseRoundButton(
+                                    icon = Icons.Default.MoreVert,
+                                    contentDescription = "More",
+                                    onClick = { showChatMenu = true },
+                                )
                                 UnibotMenu(
                                     expanded = showChatMenu,
                                     onDismissRequest = { showChatMenu = false },

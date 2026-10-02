@@ -386,27 +386,7 @@ internal fun ModelPickerSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        // Match the slim drag handle used by StandardChatSheet (6dp top / 4dp
-        // bottom) so the title sits flush with the indicator instead of the
-        // Material default's ~44dp whitespace gap above it.
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 4.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(4.dp)
-                        .background(
-                            color = ChatColors.secondaryText.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(2.dp),
-                        ),
-                )
-            }
-        },
+        dragHandle = { ai.unicto.unibot.ui.muse.MuseSheetDragHandle() },
     ) {
         Column(
             modifier = Modifier
