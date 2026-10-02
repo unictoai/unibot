@@ -274,6 +274,11 @@ class UnibotApp : Application(), ImageLoaderFactory {
         // Activity context.
         ai.unicto.unibot.data.AutoCompactPrefs.prime(this)
 
+        // [P1-app-lock] Load the lock toggle/timeout and start watching
+        // foreground/background transitions for the lock gate.
+        ai.unicto.unibot.guard.AppLock.init(this)
+        ai.unicto.unibot.guard.AppLock.install(this)
+
         // T283: install NDK signal handler for native crashes (SIGSEGV/
         // SIGABRT/SIGBUS/SIGFPE/SIGILL/SIGSYS). Writes a one-shot text
         // report to filesDir/logs/native-crash-<stamp>.log before re-raising

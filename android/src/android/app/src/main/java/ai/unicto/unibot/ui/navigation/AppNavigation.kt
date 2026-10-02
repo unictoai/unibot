@@ -113,6 +113,8 @@ object Routes {
     const val ADD_CUSTOM_MODEL = "add_custom_model/{instanceId}"
     const val STORAGE = "storage"
     const val BACKUP = "backup"
+    // [P1-app-lock] Settings → App lock screen.
+    const val APP_LOCK = "app_lock"
     const val BACKUP_DESTINATIONS = "backup_destinations"
     const val BACKUP_HISTORY_DETAIL = "backup_history_detail"
     const val BACKUP_DESTINATION_BROWSE = "backup_destination_browse"
@@ -778,9 +780,17 @@ fun AppNavigation(
                 onAppearanceClick = { navController.safeNavigate(Routes.APPEARANCE) },
                 onBackgroundClick = { navController.safeNavigate(Routes.BACKGROUND) },
                 onLogsClick = { navController.safeNavigate(Routes.LOGS) },
+                onAppLockClick = { navController.safeNavigate(Routes.APP_LOCK) }, // [P1-app-lock]
                 onAboutClick = { navController.safeNavigate(Routes.ABOUT) },
                 onMountedFoldersClick = { navController.safeNavigate(Routes.MOUNTED_FOLDERS) },
                 onSharedFoldersClick = { navController.safeNavigate(Routes.SHARED_FOLDERS) },
+            )
+        }
+
+        // [P1-app-lock] Biometric / device-credential gate settings.
+        composable(Routes.APP_LOCK) {
+            ai.unicto.unibot.ui.settings.AppLockSettingsScreen(
+                onBack = { navController.safePopBackStack() },
             )
         }
 

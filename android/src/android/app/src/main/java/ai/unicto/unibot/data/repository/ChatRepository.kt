@@ -11,6 +11,15 @@ import java.util.UUID
 
 class ChatRepository(internal val dao: ChatDao) {
 
+    /**
+     * [P1-incognito] True while the session is incognito — every session-
+     * scoped write below no-ops so nothing about the chat ever reaches the
+     * database. The UI keeps running off the ViewModel's in-memory message
+     * list, and the flag is dropped when the chat closes.
+     */
+    private fun incognito(sessionId: String): Boolean =
+        ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognito(sessionId)
+
     fun observeSessions(): Flow<List<ChatSessionEntity>> = dao.observeSessions()
 
     suspend fun createSession(
@@ -22,6 +31,9 @@ class ChatRepository(internal val dao: ChatDao) {
         // here; existing call sites that omit it keep the prior
         // memoryEnabled=1 behavior (legacy default).
         memoryEnabled: Boolean = true,
+        // [P1-incognito] When true the row is never inserted — the caller
+        // (ChatViewModel.ensureSession) marks the fresh id incognito itself.
+        incognito: Boolean = false,
     ): ChatSessionEntity {
         val now = System.currentTimeMillis()
         val session = ChatSessionEntity(
@@ -32,7 +44,7 @@ class ChatRepository(internal val dao: ChatDao) {
             updatedAt = now,
             memoryEnabled = if (memoryEnabled) 1 else 0,
         )
-        dao.insertSession(session)
+        if (!incognito) dao.insertSession(session)
         return session
     }
 
@@ -91,24 +103,32 @@ class ChatRepository(internal val dao: ChatDao) {
     }
 
     suspend fun updateSessionTitle(id: String, title: String) {
+        if (incognito(id)) return // [P1-incognito]
         dao.updateSessionTitle(id, title, System.currentTimeMillis())
     }
 
     suspend fun updateSessionTitleAndCategory(id: String, title: String, category: String?) {
+        if (incognito(id)) return // [P1-incognito]
         dao.updateSessionTitleAndCategory(id, title, category, System.currentTimeMillis())
     }
 
     suspend fun updateSessionModel(sessionId: String, modelId: String) {
+        if (incognito(sessionId)) return // [P1-incognito]
         dao.updateSessionModel(sessionId, modelId)
     }
 
     suspend fun updateSessionBinding(sessionId: String, binding: String, modelId: String) {
+        if (incognito(sessionId)) return // [P1-incognito]
         dao.updateSessionBinding(sessionId, binding, modelId)
     }
 
     suspend fun deleteSession(id: String) {
-        dao.deleteMessages(id)
-        dao.deleteSession(id)
+        // [P1-incognito] Nothing was ever persisted, but grants are
+        // session-scoped in their own store — clear those regardless.
+        if (!incognito(id)) {
+            dao.deleteMessages(id)
+            dao.deleteSession(id)
+        }
         ai.unicto.unibot.guard.Grants.clearSession(id) // unibot
     }
 
@@ -312,8 +332,10 @@ class ChatRepository(internal val dao: ChatDao) {
         return result
     }
 
-    suspend fun deleteMessagesAfter(sessionId: String, keepCount: Int) =
+    suspend fun deleteMessagesAfter(sessionId: String, keepCount: Int) {
+        if (incognito(sessionId)) return // [P1-incognito]
         dao.deleteMessagesAfter(sessionId, keepCount)
+    }
 
     /**
      * Rewrite a single message row's parts_json in place. Used by
@@ -321,20 +343,28 @@ class ChatRepository(internal val dao: ChatDao) {
      * boundary cut to trim the kept assistant row to the parts before the
      * target tool_use. Mirrors iOS ChatStore.updateMessageParts.
      */
-    suspend fun updateMessageParts(id: String, partsJson: String) =
+    suspend fun updateMessageParts(id: String, partsJson: String) {
+        // [P1-incognito] The id belongs to an in-memory-only row; nothing to rewrite.
+        if (ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognitoMessage(id)) return
         dao.updateMessageParts(id, partsJson)
+    }
 
     /** [T-error-persist-android] Set/clear the error sticker on a row by id. */
-    suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?) =
+    suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?) {
+        // [P1-incognito] In-memory-only row; nothing to sticker.
+        if (ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognitoMessage(messageId)) return
         dao.updateMessageErrorInfo(messageId, errorInfo)
+    }
 
     /**
      * [T-error-persist-android] Set/clear the error sticker on a session's last
      * assistant row. See [ChatDao.updateLastAssistantError]. No-op when no
      * assistant row exists yet.
      */
-    suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?) =
+    suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?) {
+        if (incognito(sessionId)) return // [P1-incognito]
         dao.updateLastAssistantError(sessionId, errorInfo)
+    }
 
     /**
      * [T-token-attribution-snapshot] `modelSnapshot` records which model
@@ -356,6 +386,28 @@ class ChatRepository(internal val dao: ChatDao) {
         reasoningContent: String? = null,
         modelSnapshot: ModelAttributionSnapshot? = null,
     ): MessageEntity {
+        // [P1-incognito] Never touch the database: hand back an in-memory
+        // row (callers key UI state and in-flight turn updates off its id)
+        // and register the id so the per-message update paths below no-op.
+        if (incognito(sessionId)) {
+            val now = System.currentTimeMillis()
+            val ghost = MessageEntity(
+                id = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                role = role,
+                partsJson = partsJson,
+                createdAt = now,
+                tokenUsage = tokenUsage,
+                sortOrder = 0,
+                reasoningContent = reasoningContent,
+                modelId = modelSnapshot?.modelId,
+                modelDisplayName = modelSnapshot?.displayName,
+                providerType = modelSnapshot?.providerTypeRaw,
+                providerInstanceId = modelSnapshot?.providerInstanceId,
+            )
+            ai.unicto.unibot.ui.chat.IncognitoSessions.trackMessage(sessionId, ghost.id)
+            return ghost
+        }
         val sortOrder = dao.nextSortOrder(sessionId)
         val now = System.currentTimeMillis()
         // Cap the body so a runaway tool_result (e.g. a 13 MB browser_use
@@ -420,6 +472,7 @@ class ChatRepository(internal val dao: ChatDao) {
      * payload yields no preview (avoids overwriting a good preview with null).
      */
     suspend fun updateSessionPreview(sessionId: String, partsJson: String) {
+        if (incognito(sessionId)) return // [P1-incognito]
         val preview = extractTextPreview(partsJson) ?: return
         dao.updateLastMessage(sessionId, preview, System.currentTimeMillis())
     }

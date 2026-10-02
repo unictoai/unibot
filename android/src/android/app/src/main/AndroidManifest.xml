@@ -593,5 +593,31 @@
             android:exported="false"
             android:foregroundServiceType="remoteMessaging" />
 
+        <!-- [P1-qs-tile] Quick Settings tiles: "Voice ask" opens a new chat
+             with voice input engaged, "New chat" opens a fresh draft. Both
+             fire the matching unibot://action/… deep link at MainActivity.
+             User-added from the QS editor; BIND_QUICK_SETTINGS_TILE is the
+             required permission for TileService. -->
+        <service
+            android:name=".qs.UnibotVoiceTileService"
+            android:exported="true"
+            android:label="@string/qs_tile_voice_ask"
+            android:icon="@drawable/ic_shortcut_voice_chat"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".qs.UnibotNewChatTileService"
+            android:exported="true"
+            android:label="@string/qs_tile_new_chat"
+            android:icon="@drawable/ic_shortcut_new_chat"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>

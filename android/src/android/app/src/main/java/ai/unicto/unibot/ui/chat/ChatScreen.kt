@@ -245,6 +245,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.VisibilityOff // [P1-incognito]
+import androidx.compose.material.icons.filled.VisibilityOff as VisibilityOffFilled // [P1-incognito]
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -528,6 +530,9 @@ fun ChatScreen(
      *  navigates to a fresh draft chat (same funnel as the session list's
      *  new-chat button), replacing this chat on the back stack. */
     onNewChat: () -> Unit = {},
+    /** [P1-incognito] "New incognito chat" from the chat "…" menu — a draft
+     *  that is never persisted to the database. */
+    onNewIncognitoChat: () -> Unit = {},
     onOpenTerminal: () -> Unit = {},
     /** Open the in-app terminal with [command] pre-filled at the prompt
      *  (no trailing newline — the user reviews and presses Enter manually).
@@ -593,6 +598,8 @@ fun ChatScreen(
     val error by viewModel.error.collectAsState()
     val modelName by viewModel.modelName.collectAsState()
     val sessionTitle by viewModel.sessionTitle.collectAsState()
+    // [P1-incognito] Drives the top-bar badge + the menu toggle label.
+    val isIncognito by viewModel.isIncognito.collectAsState()
     val sessionCategory by viewModel.sessionCategory.collectAsState()
     val attachments by viewModel.attachments.collectAsState()
     // [T-android-paste-placeholder] Folded pastes, rendered as chips above the
@@ -918,6 +925,9 @@ fun ChatScreen(
     // current session is still streaming — stopping the running task needs
     // an explicit confirm; idle sessions skip the dialog entirely.
     var showNewChatStopDialog by remember { mutableStateOf(false) }
+    // [P1-incognito] The stop-dialog confirm navigates to a fresh INCOGNITO
+    // draft instead of a regular one when set by the incognito menu item.
+    var pendingIncognitoStop by remember { mutableStateOf(false) }
     // [T-android-enhanced-cache] First-enable confirmation dialog visibility.
     var showEnhancedCacheDialog by remember { mutableStateOf(false) }
 
@@ -2672,6 +2682,8 @@ fun ChatScreen(
                                         textAlign = TextAlign.Start,
                                         style = noFontPad,
                                     )
+                                    // [P1-incognito] Subtle badge while incognito.
+                                    if (isIncognito) IncognitoBadge()
                                 }
                             } else {
                                 Row(
@@ -2699,20 +2711,29 @@ fun ChatScreen(
                                         )
                                     }
                                     Column {
-                                        Text(
-                                            text = displayTitle,
-                                            fontSize = 16.sp,
-                                            lineHeight = 19.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = ChatColors.primaryText,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            style = noFontPad,
-                                            modifier = Modifier.clickable {
-                                                if (ubMainChat) ai.unicto.unibot.ui.header.openAgentProfile(context)
-                                                else ai.unicto.unibot.ui.header.openSoulSettings(context)
-                                            },
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Text(
+                                                text = displayTitle,
+                                                fontSize = 16.sp,
+                                                lineHeight = 19.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = ChatColors.primaryText,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                style = noFontPad,
+                                                modifier = Modifier
+                                                    .weight(1f, fill = false)
+                                                    .clickable {
+                                                        if (ubMainChat) ai.unicto.unibot.ui.header.openAgentProfile(context)
+                                                        else ai.unicto.unibot.ui.header.openSoulSettings(context)
+                                                    },
+                                            )
+                                            // [P1-incognito] Subtle badge while incognito.
+                                            if (isIncognito) IncognitoBadge()
+                                        }
                                         if (ubStatusLine != null) {
                                             // Main chat: the status used to sit
                                             // in the name pill; elsewhere it
@@ -2970,6 +2991,47 @@ fun ChatScreen(
                                         },
                                         leadingIcon = {
                                             Icon(Icons.Outlined.Forum, contentDescription = null)
+                                        },
+                                    )
+                                    // [P1-incognito] New incognito chat — a
+                                    // draft that is never persisted to the DB.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_menu_new_incognito_chat)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            if (isStreaming) {
+                                                pendingIncognitoStop = true
+                                                showNewChatStopDialog = true
+                                            } else {
+                                                onNewIncognitoChat()
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.VisibilityOff, contentDescription = null)
+                                        },
+                                    )
+                                    // [P1-incognito] Per-chat persistence
+                                    // toggle: when on, nothing about this chat
+                                    // is written to the database from here on.
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(
+                                                    if (isIncognito) R.string.chat_menu_incognito_off
+                                                    else R.string.chat_menu_incognito_on,
+                                                ),
+                                            )
+                                        },
+                                        onClick = {
+                                            showChatMenu = false
+                                            viewModel.setIncognito(!isIncognito)
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (isIncognito) VisibilityOffFilled
+                                                else Icons.Outlined.VisibilityOff,
+                                                contentDescription = null,
+                                            )
                                         },
                                     )
                                     // unibot: the top-bar pill now carries the agent's
@@ -6971,7 +7033,10 @@ fun ChatScreen(
             // dismiss → stay in the current chat.
             if (showNewChatStopDialog) {
                 UnibotAlertDialog(
-                    onDismissRequest = { showNewChatStopDialog = false },
+                    onDismissRequest = {
+                        showNewChatStopDialog = false
+                        pendingIncognitoStop = false // [P1-incognito]
+                    },
                     title = stringResource(R.string.chat_menu_new_chat),
                     text = stringResource(R.string.chat_new_chat_stop_dialog_body),
                     confirmText = stringResource(R.string.chat_new_chat_stop_dialog_confirm),
@@ -6979,7 +7044,14 @@ fun ChatScreen(
                     onConfirm = {
                         showNewChatStopDialog = false
                         viewModel.cancelStream()
-                        onNewChat()
+                        // [P1-incognito] The stop was requested from the
+                        // incognito menu item — land on an incognito draft.
+                        if (pendingIncognitoStop) {
+                            pendingIncognitoStop = false
+                            onNewIncognitoChat()
+                        } else {
+                            onNewChat()
+                        }
                     },
                 )
             }

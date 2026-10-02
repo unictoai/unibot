@@ -194,6 +194,8 @@ fun InlineVoiceInputPanel(
     // Idempotent, so running on every composition is harmless.
     val panelContext = androidx.compose.ui.platform.LocalContext.current
     VoiceModePrefs.init(panelContext)
+    // [P1-dictation-cleanup] Load the opt-in cleanup toggle (default off).
+    ai.unicto.unibot.speech.DictationCleanupPrefs.init(panelContext)
 
     var expanded by remember { mutableStateOf(VoiceModePrefs.expanded) }
     var transcript by remember { mutableStateOf(inputText) }
@@ -350,8 +352,16 @@ fun InlineVoiceInputPanel(
                 if (isEditing) return@startRecording
                 if (!isFinal) return@startRecording
                 if (text.isBlank()) return@startRecording
+                // [P1-dictation-cleanup] Opt-in local pass: strip filler
+                // words, fix capitalization/punctuation. No network, no LLM.
+                val finalText =
+                    if (ai.unicto.unibot.speech.DictationCleanupPrefs.isEnabled)
+                        ai.unicto.unibot.speech.DictationCleanup.clean(text)
+                    else text
+                // Cleanup may strip the utterance down to nothing ("um").
+                if (finalText.isBlank()) return@startRecording
                 val sep = if (captureBase.isEmpty() || captureBase.endsWith(" ")) "" else " "
-                val joined = captureBase + sep + text
+                val joined = captureBase + sep + finalText
                 captureBase = joined
                 setTranscript(joined)
             },
@@ -795,6 +805,10 @@ private fun ExpandedContent(
                 tint = ChatColors.secondaryText.copy(alpha = 0.6f),
             )
         }
+
+        // [P1-dictation-cleanup] Opt-in filler-word cleanup toggle, right
+        // under the engine chip where voice settings live.
+        ai.unicto.unibot.speech.DictationCleanupRow()
     }
 }
 

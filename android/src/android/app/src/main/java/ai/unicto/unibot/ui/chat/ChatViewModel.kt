@@ -3594,7 +3594,28 @@ class ChatViewModel(
     // group name is ever set on the draft chat — exactly the bug T203 was
     // chasing through the wrong layer.
     /** Whether this is a draft session (not yet persisted to DB). */
-    private val isDraft: Boolean = sessionId.startsWith("__new__")
+    private val isDraft: Boolean = sessionId.startsWith("__new__") ||
+        IncognitoSessions.isIncognitoDraft(sessionId)
+
+    /**
+     * [P1-incognito] Whether this chat is currently incognito. Backed by the
+     * in-memory [IncognitoSessions] registry — toggling it stops/starts DB
+     * persistence from that moment on; already-persisted messages stay.
+     */
+    private val _isIncognito =
+        kotlinx.coroutines.flow.MutableStateFlow(IncognitoSessions.isIncognito(sessionId))
+    val isIncognito: kotlinx.coroutines.flow.StateFlow<Boolean> = _isIncognito
+
+    /** Flip incognito for the current chat (menu toggle). */
+    fun setIncognito(on: Boolean) {
+        val key = realSessionId.ifEmpty { sessionId }
+        IncognitoSessions.setIncognito(key, on)
+        _isIncognito.value = on
+        // [P1-incognito] Going incognito also stops memory writes — nothing
+        // about the chat may land in the persistent memory store. Turning
+        // incognito back off leaves the memory toggle as the user left it.
+        if (on) _memoryEnabled.value = false
+    }
 
     /** Model group ID from long-press FAB, encoded in the draft session ID.
      *  substringBefore strips the folder marker in case both are present. */
@@ -3635,6 +3656,16 @@ class ChatViewModel(
     }
 
     init {
+        // [P1-incognito] Chats born from "New incognito chat" carry the
+        // __incognito__ draft prefix — flag the draft key before anything
+        // reads it; ensureSession() rebinds the flag onto the real id.
+        // Memory writes are forced off too: an incognito chat must not leak
+        // facts into the persistent memory store.
+        if (IncognitoSessions.isIncognitoDraft(sessionId)) {
+            IncognitoSessions.setIncognito(sessionId, true)
+            _isIncognito.value = true
+            _memoryEnabled.value = false
+        }
         loadSession()
         // [T-session-paused-badge-active-false-positive] Drive the session-list
         // PAUSED badge directly off canResume — the authoritative "this session
@@ -3855,12 +3886,24 @@ class ChatViewModel(
         val session = chatRepository.createSession(
             modelId = modelId,
             memoryEnabled = _memoryEnabled.value,
+            // [P1-incognito] Draft was flagged incognito (born via "New
+            // incognito chat", or toggled before the first send): the row is
+            // never inserted and the flag moves onto the fresh id.
+            incognito = IncognitoSessions.isIncognito(sessionId),
         )
         realSessionId = session.id
+        if (IncognitoSessions.isIncognito(sessionId)) {
+            IncognitoSessions.rebind(sessionId, session.id)
+            _isIncognito.value = true
+        }
         // "New Chat in Group": file the just-promoted draft into its folder.
         // Unconditional (vs iOS setFolderIfUnfiled) — the session is seconds
         // old and nothing else can have filed it yet.
-        initialFolderId?.let { chatRepository.setFolderForSessions(it, listOf(session.id)) }
+        // [P1-incognito] No DB row exists for an incognito session, so there
+        // is nothing to file.
+        if (!IncognitoSessions.isIncognito(session.id)) {
+            initialFolderId?.let { chatRepository.setFolderForSessions(it, listOf(session.id)) }
+        }
         // Move our cached VM from the draft key ("__new__...") to the real
         // sessionId so re-entering the session reuses the same instance.
         if (isDraft) {
@@ -12381,6 +12424,10 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
 
     override fun onCleared() {
         super.onCleared()
+        // [P1-incognito] Drop the in-memory flag(s) — the chat was never
+        // persisted, so closing it erases it.
+        IncognitoSessions.clear(sessionId)
+        IncognitoSessions.clear(realSessionId)
         // Tear down whichever shell was actually serving this VM. Terminate
         // both ids when the rename happened, since a draft shell may still
         // linger if the agent ran a tool before `ensureSession()`.

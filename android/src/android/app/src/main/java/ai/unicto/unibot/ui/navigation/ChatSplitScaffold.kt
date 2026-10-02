@@ -288,6 +288,8 @@ fun ChatSplitScaffold(
         sessionId: String,
         onBack: () -> Unit,
         onNewChatInPane: () -> Unit,
+        /** [P1-incognito] Fresh incognito draft in the detail pane. */
+        onNewIncognitoChatInPane: () -> Unit,
         onMoveToInPane: (String) -> Unit,
         /**
          * [T-android-tablet-sidebar-collapse] Show/hide the session list, or
@@ -434,6 +436,16 @@ fun ChatSplitScaffold(
         // the "New Chat" menu item cannot drift into doing different things.
         val openNewDraft: () -> Unit = {
             val draft = newDraftSessionId()
+            selectedSessionId = draft
+            scope.launch {
+                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, draft)
+            }
+        }
+
+        // [P1-incognito] Same funnel as openNewDraft but mints an incognito
+        // draft (never persisted) — the two-pane "New incognito chat".
+        val openNewIncognitoDraft: () -> Unit = {
+            val draft = ai.unicto.unibot.ui.chat.IncognitoSessions.newDraftId()
             selectedSessionId = draft
             scope.launch {
                 navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, draft)
@@ -595,6 +607,8 @@ fun ChatSplitScaffold(
                         // screen over both panes on a tablet — the phone
                         // behaviour, in the one layout that exists to avoid it.
                         openNewDraft,
+                        // [P1-incognito] Incognito twin of the above.
+                        openNewIncognitoDraft,
                         { targetId ->
                             selectedSessionId = targetId
                             scope.launch {
@@ -825,7 +839,9 @@ fun newDraftSessionId(): String = "__new__${UUID.randomUUID()}"
  * [newDraftSessionId] — i.e. a chat that exists only on screen and has no
  * database row yet.
  */
-fun isDraftSessionId(id: String?): Boolean = id?.startsWith("__new__") == true
+fun isDraftSessionId(id: String?): Boolean =
+    id?.startsWith("__new__") == true ||
+        ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognitoDraft(id.orEmpty())
 
 /**
  * [T-android-tablet-split] Route-level wiring for [ChatSplitScaffold].
@@ -870,8 +886,8 @@ fun ChatSplitScaffoldRoute(
                 draftPlaceholderId = draftPlaceholderId,
             )
         },
-        detailPane = { sessionId, onBackInPane, onNewChatInPane, onMoveToInPane,
-            onToggleSidebar, sidebarCollapsed ->
+        detailPane = { sessionId, onBackInPane, onNewChatInPane, onNewIncognitoChatInPane,
+            onMoveToInPane, onToggleSidebar, sidebarCollapsed ->
             ai.unicto.unibot.ui.chat.ChatScreen(
                 // The pane navigator's contentKey IS the session id, so a
                 // draft ("__new__…") flows through unchanged and ChatScreen's
@@ -900,6 +916,8 @@ fun ChatSplitScaffoldRoute(
                 // highlighting a row (no persisted id matches a draft) — the
                 // two-pane equivalent of the old popUpTo(SESSION_LIST) push.
                 onNewChat = onNewChatInPane,
+                // [P1-incognito] Incognito draft in the detail pane.
+                onNewIncognitoChat = onNewIncognitoChatInPane,
                 // Everything below leaves the list/detail pair entirely and so
                 // stays on the OUTER NavHost as a full-screen push.
                 onOpenTerminal = {

@@ -1294,6 +1294,27 @@
 
     <!-- T184-chatmenu-i18n — ChatScreen overflow ⋮ menu, longpress, attach -->
     <string name="chat_menu_new_chat">New Chat</string>
+    <!-- [P1-incognito] Chat menu entries + top-bar badge -->
+    <string name="chat_menu_new_incognito_chat">New incognito chat</string>
+    <string name="chat_menu_incognito_on">Turn on incognito</string>
+    <string name="chat_menu_incognito_off">Turn off incognito</string>
+    <string name="incognito_badge">Incognito</string>
+    <!-- [P1-dictation-cleanup] Voice panel toggle -->
+    <string name="dictation_cleanup_title">Clean up dictation</string>
+    <string name="dictation_cleanup_subtitle">Remove um, uh, like and fix capitalization automatically</string>
+    <!-- [P1-app-lock] Settings → App lock -->
+    <string name="settings_app_lock">App lock</string>
+    <string name="app_lock_row_title">Require unlock</string>
+    <string name="app_lock_timeout_title">Lock after</string>
+    <string name="app_lock_footer">When enabled, returning to unibot after the chosen time asks for your phone\u2019s screen lock (fingerprint, face, PIN or pattern).</string>
+    <string name="app_lock_no_device_lock">Set a screen lock (PIN, pattern, fingerprint or face) in your phone\u2019s settings first \u2014 there\u2019s nothing to confirm with otherwise.</string>
+    <string name="app_lock_overlay_title">unibot is locked</string>
+    <string name="app_lock_overlay_subtitle">Confirm it\u2019s you to continue.</string>
+    <string name="app_lock_overlay_retry">That didn\u2019t confirm \u2014 try again.</string>
+    <string name="app_lock_overlay_unlock">Unlock</string>
+    <!-- [P1-qs-tile] Quick Settings tile labels -->
+    <string name="qs_tile_voice_ask">Voice ask</string>
+    <string name="qs_tile_new_chat">New chat</string>
     <string name="chat_new_chat_stop_dialog_body">A task is running in this chat. Starting a new chat will stop it.</string>
     <string name="chat_new_chat_stop_dialog_confirm">Stop &amp; New Chat</string>
     <string name="chat_menu_clear_chat">Clear Chat</string>

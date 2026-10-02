@@ -65,6 +65,7 @@ import ai.unicto.unibot.scheduled.ScheduledTaskManager
 import ai.unicto.unibot.ui.chat.ChatScreen
 import ai.unicto.unibot.ui.chat.ChatViewModel
 import ai.unicto.unibot.ui.chat.ChatViewModelStore
+import ai.unicto.unibot.ui.chat.IncognitoSessions // [P1-incognito]
 import ai.unicto.unibot.ui.navigation.FilePreviewHolder
 import ai.unicto.unibot.ui.navigation.Routes
 import ai.unicto.unibot.ui.navigation.safeNavigate
@@ -349,6 +350,8 @@ fun UnibotHome(
                             mcpRepository = mcpRepository,
                             onBack = { if (!isMainChat) showMain() },
                             onNewChat = { showSession("__new__${UUID.randomUUID()}") },
+                            // [P1-incognito] Menu "New incognito chat".
+                            onNewIncognitoChat = { showSession(IncognitoSessions.newDraftId()) },
                             onOpenTerminal = { navController.safeNavigate(Routes.terminal(sessionId = sid)) },
                             onOpenTerminalWithCommand = { command ->
                                 navController.safeNavigate(Routes.terminal(initCommand = command, sessionId = sid))

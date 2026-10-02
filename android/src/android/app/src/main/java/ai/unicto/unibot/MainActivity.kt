@@ -20,6 +20,7 @@ import android.app.AlertDialog
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -604,6 +605,13 @@ class MainActivity : ComponentActivity() {
                 // agent triggers a change. Mirrors iOS UnibotApp.swift
                 // root-level `.sheet(item: gate.pending)`.
                 ai.unicto.unibot.ui.settings.ConfigConfirmDialogHost()
+
+                // [P1-app-lock] Foreground gate: full-screen lock overlay
+                // above everything while the app is locked.
+                val appLocked by ai.unicto.unibot.guard.AppLock.locked.collectAsState()
+                if (appLocked) {
+                    ai.unicto.unibot.ui.settings.AppLockOverlay()
+                }
             }
         }
     }

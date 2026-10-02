@@ -117,6 +117,9 @@ fun SettingsScreen(
     // OEM autostart guidance). Default no-op so older callers/tests
     // don't need to be retrofitted.
     onBackgroundClick: () -> Unit = {},
+    // [P1-app-lock] Settings → App lock. Default no-op for callers that
+    // haven't wired the route yet.
+    onAppLockClick: () -> Unit = {},
     // Hook accepted for forward-compat with AppNavigation's About route. The
     // About row below still has a TODO onClick in HEAD; future settings-bucket
     // work will wire this through.
@@ -298,6 +301,9 @@ fun SettingsScreen(
             // -- The app --
             ai.unicto.unibot.ui.muse.MuseCard {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_appearance), icon = Icons.Outlined.Palette, onClick = onAppearanceClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [P1-app-lock] Biometric / device-credential gate on foreground.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_app_lock), icon = Icons.Outlined.Lock, onClick = onAppLockClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_logs), icon = Icons.Outlined.Description, onClick = onLogsClick)
             }
