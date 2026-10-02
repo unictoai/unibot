@@ -17,14 +17,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.AlertDialog
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ai.unicto.unibot.ui.theme.Motion
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -528,37 +533,69 @@ class MainActivity : ComponentActivity() {
                 onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
             }
 
-            val darkTheme = when (themeMode) {
-                1 -> false
-                2 -> true
-                3 -> true // Fluid Black is always dark (pure #000000)
-                else -> isSystemInDarkTheme()
-            }
-            val fluidBlack = themeMode == 3
+            // [v0.4.2] Hoisted above the theme crossfade: Crossfade briefly
+            // keeps both the old and new trees composed, and a fresh
+            // NavController per tree would reset navigation and re-fire the
+            // launch deep link. One shared controller keeps the back stack
+            // intact across the transition.
+            val navController = rememberNavController().also { this.navController = it }
             val fontScale = fontScaleForLevel(appBaseLevel)
 
-            SideEffect {
-                val barStyle = if (darkTheme) {
-                    SystemBarStyle.dark(Color.TRANSPARENT)
-                } else {
-                    // T205: SystemBarStyle.light(...) auto-applies a ~30% black
-                    // scrim behind the status bar on Android 13+ for icon
-                    // legibility, which leaks through as a grey strip even
-                    // when the activity paints its own surface color
-                    // edge-to-edge. SystemBarStyle.auto with both scrim args
-                    // TRANSPARENT lets the system pick light/dark icons by
-                    // luminance but suppresses the auto-scrim, so the screen's
-                    // own background color paints all the way to the top/bottom
-                    // edges. Per-screen `isAppearanceLightStatusBars` overrides
-                    // (e.g. FilePreviewScreen DisposableEffect) still control
-                    // icon contrast.
-                    SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
-                }
-                enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
-            }
+            // [v0.4.2] The launch deep link is consumed by the first tree
+            // only — later trees (theme switches) receive null so
+            // AppNavigation's LaunchedEffect(initialDeepLink) never
+            // re-navigates mid-session.
+            var deepLinkConsumed by remember { mutableStateOf(false) }
 
-            UnibotTheme(darkTheme = darkTheme, fluidBlack = fluidBlack, fontScale = fontScale) {
-                val navController = rememberNavController().also { this.navController = it }
+            // [v0.4.2] Launch splash: shown once per process start (plain
+            // remember, so rotation never replays it). The overlay covers
+            // the first paint and dismisses itself; content loads
+            // underneath, never delayed.
+            var showSplash by remember { mutableStateOf(true) }
+
+            // [v0.4.2-first-impression] Theme switch crossfade: changing
+            // Appearance → theme crossfades the whole UI (Motion.Standard)
+            // instead of a hard cut.
+            Crossfade(
+                targetState = themeMode,
+                animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                label = "theme_crossfade",
+            ) { mode ->
+                val crossDarkTheme = when (mode) {
+                    1 -> false
+                    2 -> true
+                    3 -> true // Fluid Black is always dark (pure #000000)
+                    else -> isSystemInDarkTheme()
+                }
+                val crossFluidBlack = mode == 3
+
+                SideEffect {
+                    val barStyle = if (crossDarkTheme) {
+                        SystemBarStyle.dark(Color.TRANSPARENT)
+                    } else {
+                        // T205: SystemBarStyle.light(...) auto-applies a ~30% black
+                        // scrim behind the status bar on Android 13+ for icon
+                        // legibility, which leaks through as a grey strip even
+                        // when the activity paints its own surface color
+                        // edge-to-edge. SystemBarStyle.auto with both scrim args
+                        // TRANSPARENT lets the system pick light/dark icons by
+                        // luminance but suppresses the auto-scrim, so the screen's
+                        // own background color paints all the way to the top/bottom
+                        // edges. Per-screen `isAppearanceLightStatusBars` overrides
+                        // (e.g. FilePreviewScreen DisposableEffect) still control
+                        // icon contrast.
+                        SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+                    }
+                    enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+                }
+
+                if (!deepLinkConsumed) {
+                    LaunchedEffect(Unit) { deepLinkConsumed = true }
+                }
+
+                UnibotTheme(darkTheme = crossDarkTheme, fluidBlack = crossFluidBlack, fontScale = fontScale) {
+                // navController is hoisted above the theme Crossfade (see
+                // above) so theme switches never reset navigation state.
 
                 // T166: drive `SessionActivityTracker.setPresent` /
                 // `setAbsent` from the nav back-stack so the foreground
@@ -596,7 +633,9 @@ class MainActivity : ComponentActivity() {
                     mcpRepository = app.mcpRepository,
                     memoryRepository = app.memoryRepository,
                     navController = navController,
-                    initialDeepLink = launchDeepLink,
+                    // [v0.4.2] First tree consumes the launch deep link;
+                    // theme-switch trees get null (deepLinkConsumed above).
+                    initialDeepLink = if (deepLinkConsumed) null else launchDeepLink,
                 )
 
                 // T-config: root-level unibot-config confirm dialog.
@@ -614,9 +653,18 @@ class MainActivity : ComponentActivity() {
                 if (appLocked) {
                     ai.unicto.unibot.ui.settings.AppLockOverlay()
                 }
-            }
-        }
-    }
+
+                // [v0.4.2-first-impression] Launch splash — topmost layer,
+                // dismisses itself after the brand beat.
+                if (showSplash) {
+                    ai.unicto.unibot.ui.splash.SplashOverlay(
+                        onDismissed = { showSplash = false },
+                    )
+                }
+            } // UnibotTheme
+            } // Crossfade
+        } // setContent
+    } // onCreate
 
     /**
      * T166: persist the current chat sessionId so an LMK kill while in

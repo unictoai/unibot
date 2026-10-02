@@ -4193,6 +4193,27 @@ fun ChatScreen(
                         ) {
                         when (item) {
                             is FlatChatItem.UserBubble -> {
+                                // [v0.4.2-first-impression] User bubbles glide
+                                // in exactly like assistant turns (fade +
+                                // 12dp rise, Motion.Standard). Keyed per
+                                // messageId so scroll-back never replays it.
+                                var userEntered by remember(item.message.id) { mutableStateOf(false) }
+                                LaunchedEffect(item.message.id) { userEntered = true }
+                                val userEnterAlpha by animateFloatAsState(
+                                    targetValue = if (userEntered) 1f else 0f,
+                                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                                    label = "user_enter_alpha",
+                                )
+                                val userEnterRise by animateDpAsState(
+                                    targetValue = if (userEntered) 0.dp else 12.dp,
+                                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
+                                    label = "user_enter_rise",
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer { alpha = userEnterAlpha }
+                                        .offset(y = userEnterRise),
+                                ) {
                                 // User bubbles intentionally don't register
                                 // UnibotTextKit shards — long-press on a user
                                 // bubble shows its own action menu (Copy /
@@ -4272,6 +4293,7 @@ fun ChatScreen(
                                     }
                                 },
                             )
+                            } // close v0.4.2 entrance Box
                             } // close UserBubble SideEffect + UserMessageBubble block
                             // unibot: in the home shell the agent's reply is Muse's —
                             // grey bubbles per block, no name above each turn (the face
@@ -5518,9 +5540,27 @@ fun ChatScreen(
                         }
                     },
                 ) {
+                // [v0.4.2-first-impression] Composer focus glow: a 1dp violet
+                // ring fades in (Motion.Quick) while the text field holds
+                // focus. `hasFocus` covers the whole subtree so taps on the
+                // field, buttons, or chips inside the composer all count.
+                var composerFocused by remember { mutableStateOf(false) }
+                val glowAlpha by animateFloatAsState(
+                    targetValue = if (composerFocused) 1f else 0f,
+                    animationSpec = tween(Motion.Quick, easing = Motion.FastOutSlowIn),
+                    label = "composer_glow",
+                )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .onFocusChanged { composerFocused = it.hasFocus }
+                        // [v0.4.2] Focus glow sits before the pill clip so
+                        // the full 1dp ring stays visible (not half-clipped).
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha * 0.9f),
+                            shape = if (ubPill) RoundedCornerShape(26.dp) else RoundedCornerShape(20.dp),
+                        )
                         // unibot: Muse's capsule — flat grey, no shadow.
                         .then(
                             if (ubPill) Modifier
