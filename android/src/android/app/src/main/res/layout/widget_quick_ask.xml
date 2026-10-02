@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v0.2.0 P3 — "Quick ask" widget. Dark minimal: card, fake input row, violet send. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp"
+    android:background="@drawable/widget_bg">
+
+    <TextView
+        android:id="@+id/widget_ask_field"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:text="@string/ub_widget_quick_ask_hint"
+        android:textColor="#8E8E93"
+        android:textSize="15sp"
+        android:background="@drawable/widget_field_bg" />
+
+    <ImageButton
+        android:id="@+id/widget_ask_send"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/widget_send_bg"
+        android:src="@drawable/ic_widget_send"
+        android:scaleType="center"
+        android:contentDescription="@string/ub_widget_quick_ask_label" />
+</LinearLayout>

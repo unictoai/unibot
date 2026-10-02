@@ -376,6 +376,17 @@
             </intent-filter>
         </activity>
 
+        <!-- v0.2.0 P3: text-entry sheet behind the "Quick ask" widget.
+             Translucent + noHistory + excluded from recents so it feels
+             like a sheet over the launcher, not an app screen. -->
+        <activity
+            android:name=".widget.QuickAskActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:windowSoftInputMode="stateVisible|adjustResize"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+
         <!-- T-pwa-1 (renamed Pwa → WebApp): WebApp shortcut host.
              Reachable only via explicit Intent from a pinned launcher
              shortcut (ACTION_OPEN_WEBAPP + extras). Old ACTION_OPEN_PWA
@@ -502,6 +513,46 @@
         <receiver
             android:name=".scheduled.ScheduledTaskAlarmReceiver"
             android:exported="false" />
+
+        <!-- v0.2.0 P3: home-screen widgets. Exported=false per the
+             AppWidgetProvider contract — the system delivers APPWIDGET_UPDATE
+             to the explicit component; the custom ROUTINES_CHANGED action is
+             broadcast by our own ScheduledTaskManager only. -->
+        <receiver
+            android:name=".widget.QuickAskWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_ask_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.TasksWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ai.unicto.unibot.ROUTINES_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tasks_widget_info" />
+        </receiver>
+
+        <!-- v0.2.0 P3: the Tasker / Automate / MacroDroid intent API —
+             ai.unicto.unibot.ASK / NEW_CHAT / RUN_ROUTINE. Exported so
+             automation apps can send the broadcasts; no auth needed, it is
+             the user's own device. -->
+        <receiver
+            android:name=".automation.TaskerIntentReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="ai.unicto.unibot.ASK" />
+                <action android:name="ai.unicto.unibot.NEW_CHAT" />
+                <action android:name="ai.unicto.unibot.RUN_ROUTINE" />
+            </intent-filter>
+        </receiver>
 
         <!-- unibot: Allow / Deny buttons on the approval notification -->
         <receiver

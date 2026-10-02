@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,7 +81,11 @@ import ai.unicto.unibot.i18n.uppercaseForDisplay
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BackgroundSettingsScreen(onBack: () -> Unit) {
+fun BackgroundSettingsScreen(
+    onBack: () -> Unit,
+    // v0.2.0 P3: opens the Automation help screen (Tasker intents, widgets).
+    onAutomationClick: () -> Unit = {},
+) {
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -165,6 +170,18 @@ fun BackgroundSettingsScreen(onBack: () -> Unit) {
                 onCheckedChange = { backgroundRepo.setTaskNotificationsEnabled(it) },
             )
             BgFooter(stringResource(R.string.settings_task_notifications_footer))
+
+            // v0.2.0 P3: Automation — Tasker/Automate intents, home-screen
+            // widgets, background approvals. Full docs live on the
+            // Automation screen; this row is the way in.
+            Spacer(Modifier.size(8.dp))
+            BgRow(
+                icon = Icons.Outlined.AutoAwesome,
+                iconColor = ChatColors.thinking,
+                title = stringResource(R.string.ub_bg_automation_title),
+                subtitle = stringResource(R.string.ub_bg_automation_sub),
+                onClick = onAutomationClick,
+            )
 
             // T-bg-overlay phase 2: floating tool-status overlay toggle.
             // Tapping ON without SYSTEM_ALERT_WINDOW deep-links the user to

@@ -787,6 +787,23 @@ class MainActivity : ComponentActivity() {
                     launchSingleTop = true
                 }
             }
+            // v0.2.0 P3: quick-ask — `unibot://ask?text=...` (home-screen
+            // widget, `ai.unicto.unibot.ASK` Tasker broadcast). Lands on the
+            // home shell and prefills the main chat's composer via HomeBus —
+            // the same path the profile page's pre-typed request uses.
+            // Never auto-sends: the user reviews the text first.
+            is DeepLinkAction.Ask -> {
+                if (ai.unicto.unibot.ui.home.HomeShell.active) {
+                    nav.popBackStack(Routes.SESSION_LIST, inclusive = false)
+                } else {
+                    nav.navigate(Routes.SESSION_LIST) {
+                        popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                    }
+                }
+                if (action.text.isNotBlank()) {
+                    ai.unicto.unibot.ui.home.HomeBus.prefillComposer(action.text)
+                }
+            }
             is DeepLinkAction.OpenAlarmList -> {
                 // T297: unibot://views/alarm now opens the system Clock app
                 // directly via AlarmClock.ACTION_SHOW_ALARMS — the in-app

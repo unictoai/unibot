@@ -36,6 +36,7 @@ class ScheduledTaskManager(private val context: Context) {
     fun create(task: ScheduledTask): ScheduledTask {
         store.upsert(task)
         if (task.enabled) registerAlarm(task)
+        notifyWidgets()
         return task
     }
 
@@ -43,6 +44,7 @@ class ScheduledTaskManager(private val context: Context) {
         cancelAlarm(task.id)
         store.upsert(task)
         if (task.enabled) registerAlarm(task)
+        notifyWidgets()
         return task
     }
 
@@ -51,11 +53,26 @@ class ScheduledTaskManager(private val context: Context) {
         val updated = t.copy(enabled = enabled)
         store.upsert(updated)
         if (enabled) registerAlarm(updated) else cancelAlarm(taskId)
+        notifyWidgets()
     }
 
     fun delete(taskId: String) {
         cancelAlarm(taskId)
         store.delete(taskId)
+        notifyWidgets()
+    }
+
+    /**
+     * v0.2.0 P3: nudge the Routines home-screen widget to re-read the
+     * store after any mutation. Cheap (no-op when no widget is placed)
+     * and keeps the widget from going stale.
+     */
+    private fun notifyWidgets() {
+        runCatching {
+            ai.unicto.unibot.widget.TasksWidgetProvider.requestUpdate(
+                context.applicationContext,
+            )
+        }
     }
 
     /**

@@ -865,4 +865,47 @@
     <string name="ub_import_chat">Import chat</string>
     <string name="ub_import_failed">Could not import that file.</string>
     <string name="ub_import_done">Chat imported.</string>
+    <!-- v0.2.0 P3: home-screen widgets -->
+    <string name="ub_widget_quick_ask_label">Quick ask</string>
+    <string name="ub_widget_quick_ask_desc">Ask unibot from your home screen</string>
+    <string name="ub_widget_quick_ask_hint">Ask unibot…</string>
+    <string name="ub_widget_quick_ask_send">Ask</string>
+    <string name="ub_widget_tasks_label">Routines</string>
+    <string name="ub_widget_tasks_desc">Your scheduled routines at a glance</string>
+    <string name="ub_widget_tasks_header">Routines</string>
+    <string name="ub_widget_tasks_empty">No routines yet</string>
+    <string name="ub_widget_tasks_empty_hint">Create one in unibot → Goals → Routines</string>
+    <plurals name="ub_widget_tasks_count">
+        <item quantity="one">%d routine</item>
+        <item quantity="other">%d routines</item>
+    </plurals>
+    <!-- v0.2.0 P3: Background → Automation row -->
+    <string name="ub_bg_automation_title">Automation</string>
+    <string name="ub_bg_automation_sub">Tasker intents, widgets &amp; background approvals</string>
+    <!-- v0.2.0 P3: Automation help screen -->
+    <string name="ub_automation_title">Automation</string>
+    <string name="ub_automation_intents_section">Automation intents</string>
+    <string name="ub_automation_intents_caption">Send these broadcasts from Tasker, Automate, MacroDroid, or adb — no authentication needed, it is your own device.</string>
+    <string name="ub_automation_ask_title">Ask unibot</string>
+    <string name="ub_automation_ask_extra">Extra: text (string)</string>
+    <string name="ub_automation_ask_desc">Opens unibot with your text prefilled in the main chat\u2019s composer. Never auto-sends — you review it first.</string>
+    <string name="ub_automation_newchat_title">New chat</string>
+    <string name="ub_automation_newchat_desc">Opens a fresh draft chat.</string>
+    <string name="ub_automation_routine_title">Run routine</string>
+    <string name="ub_automation_routine_extra">Extra: routine_id (string) — the routine\u2019s id, from Goals → Routines</string>
+    <string name="ub_automation_routine_desc">Runs one of your scheduled routines headlessly in the background, the same way its timer fire does. Disabled routines are skipped.</string>
+    <string name="ub_automation_tap_to_copy">Tap a row to copy its action</string>
+    <string name="ub_automation_tasker_section">In Tasker</string>
+    <string name="ub_automation_tasker_step1">New task → + → System → Send Intent.</string>
+    <string name="ub_automation_tasker_step2">Set Action to one of the intents above, e.g. ai.unicto.unibot.ASK.</string>
+    <string name="ub_automation_tasker_step3">Add the extra: text → your question.</string>
+    <string name="ub_automation_tasker_step4">Target: Broadcast Receiver. Done — run the task.</string>
+    <string name="ub_automation_tasker_caption">Automate and MacroDroid have the same \u201csend broadcast\u201d action with an action string and extras.</string>
+    <string name="ub_automation_widgets_section">Home-screen widgets</string>
+    <string name="ub_automation_widget_ask_title">Quick ask</string>
+    <string name="ub_automation_widget_ask_desc">Long-press your home screen → Widgets → unibot → Quick ask. Type a question; it lands prefilled in the chat composer.</string>
+    <string name="ub_automation_widget_tasks_title">Routines</string>
+    <string name="ub_automation_widget_tasks_desc">Your scheduled routines with their next run time. Tap a routine to edit it, tap the header for the full list.</string>
+    <string name="ub_automation_approvals_section">Background approvals</string>
+    <string name="ub_automation_approvals_desc">When the agent needs your yes while the app is in the background — a routine at 3 a.m. wanting to delete something — a notification with Allow and Deny buttons appears. The decision resumes the agent immediately; the app does not need to be open. Standing grants are only ever given from the in-chat approval card, never from a notification.</string>
 </resources>
