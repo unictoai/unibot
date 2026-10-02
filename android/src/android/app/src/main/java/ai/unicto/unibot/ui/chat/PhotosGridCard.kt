@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.ui.theme.staggeredEntrance
+import ai.unicto.unibot.ui.theme.ChatColors
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import java.io.File
