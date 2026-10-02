@@ -164,6 +164,10 @@
             <action android:name="android.intent.action.SENDTO" />
             <data android:scheme="mailto" />
         </intent>
+        <!-- [v0.7.0-whatsapp] Android 11+ package visibility: lets the
+             WhatsApp share intent resolve com.whatsapp directly. Without this
+             resolveActivity() returns null even when WhatsApp is installed. -->
+        <package android:name="com.whatsapp" />
     </queries>
 
     <!-- [T-android-tablet-split] enableOnBackInvokedCallback (on <application>):

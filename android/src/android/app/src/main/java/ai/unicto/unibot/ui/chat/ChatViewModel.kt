@@ -79,8 +79,11 @@ import ai.unicto.unibot.tools.DriveTool
 import ai.unicto.unibot.tools.CalendarTool
 import ai.unicto.unibot.tools.SpotifyTool
 import ai.unicto.unibot.tools.NotionTool
+import ai.unicto.unibot.tools.OutlookTool
+import ai.unicto.unibot.tools.PhotosTool
 import ai.unicto.unibot.tools.RedditTool
 import ai.unicto.unibot.tools.RssTool
+import ai.unicto.unibot.tools.WhatsAppTool
 import ai.unicto.unibot.tools.MemoryTools
 import ai.unicto.unibot.tools.WebSearchTool
 import ai.unicto.unibot.local.FactMemoryStore
@@ -1367,6 +1370,11 @@ class ChatViewModel(
             notionConnected = NotionTool.isConnected(context),
             redditConnected = RedditTool.isConnected(context),
             rssConnected = RssTool.isConnected(context),
+            // [v0.7.0-wave3] Outlook, Photos, WhatsApp.
+            outlookConnected = OutlookTool.isConnected(context),
+            photosConnected = PhotosTool.isConnected(context),
+            whatsappInstalled = WhatsAppTool.isShareAvailable(context),
+            whatsappListenerEnabled = WhatsAppTool.isListenerEnabled(context),
             // [v0.5.0-agentic-core] Real web_search tool for the agent loop.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )
@@ -10203,6 +10211,14 @@ class ChatViewModel(
             RedditTool.TOP_NAME -> RedditTool.executeTop(argsJson, context)
             RssTool.FEEDS_NAME -> RssTool.executeFeeds(argsJson, context)
             RssTool.LATEST_NAME -> RssTool.executeLatest(argsJson, context)
+            // [v0.7.0-wave3] Outlook, Google Photos, WhatsApp tools.
+            OutlookTool.SEARCH_NAME -> OutlookTool.executeSearch(argsJson, context)
+            OutlookTool.READ_NAME -> OutlookTool.executeRead(argsJson, context)
+            OutlookTool.SEND_NAME -> OutlookTool.executeSend(argsJson, context)
+            PhotosTool.SEARCH_NAME -> PhotosTool.executeSearch(argsJson, context)
+            PhotosTool.LIST_RECENT_NAME -> PhotosTool.executeListRecent(argsJson, context)
+            WhatsAppTool.SHARE_NAME -> WhatsAppTool.executeShare(argsJson, context)
+            WhatsAppTool.RECENT_NAME -> WhatsAppTool.executeRecent(argsJson, context)
             // [v0.5.0-agentic-core] Real web search (was "Unknown tool" before).
             WebSearchTool.NAME -> WebSearchTool.execute(argsJson)
             else -> ToolExecutionResult("Unknown tool: $name", false)
@@ -10272,6 +10288,11 @@ class ChatViewModel(
             notionConnected = NotionTool.isConnected(context),
             redditConnected = RedditTool.isConnected(context),
             rssConnected = RssTool.isConnected(context),
+            // [v0.7.0-wave3] Outlook, Photos, WhatsApp.
+            outlookConnected = OutlookTool.isConnected(context),
+            photosConnected = PhotosTool.isConnected(context),
+            whatsappInstalled = WhatsAppTool.isShareAvailable(context),
+            whatsappListenerEnabled = WhatsAppTool.isListenerEnabled(context),
             // [v0.5.0-agentic-core] Workers can search the web too.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )

@@ -39,12 +39,24 @@ import ai.unicto.unibot.connectors.gmail.GmailOAuth
 import ai.unicto.unibot.connectors.gmail.GmailStore
 import ai.unicto.unibot.connectors.google.GoogleOAuth
 import ai.unicto.unibot.connectors.notion.NotionConnector
+import ai.unicto.unibot.connectors.outlook.OutlookConnector
+import ai.unicto.unibot.connectors.outlook.OutlookOAuth
+import ai.unicto.unibot.connectors.photos.PhotosConnector
 import ai.unicto.unibot.connectors.reddit.RedditConnector
 import ai.unicto.unibot.connectors.rss.RssConnector
 import ai.unicto.unibot.connectors.spotify.SpotifyConnector
 import ai.unicto.unibot.connectors.spotify.SpotifyOAuth
 import ai.unicto.unibot.connectors.telegram.TelegramConnector
+import ai.unicto.unibot.connectors.whatsapp.WhatsAppConnector
 import ai.unicto.unibot.connectors.youtube.YouTubeConnector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.Icon
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import ai.unicto.unibot.connectors.discord.DiscordConnector
 import ai.unicto.unibot.connectors.slack.SlackConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
@@ -146,6 +158,23 @@ fun ConnectorsScreen(
                 },
                 onDisconnect = { ctx -> YouTubeConnector.disconnect(ctx) },
             )
+            // [v0.7.0-wave3] Google Photos (Google OAuth, readonly).
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_photos,
+                name = stringResource(R.string.ub_connectors_photos),
+                description = stringResource(R.string.ub_connectors_photos_desc),
+                isConnected = { ctx -> PhotosConnector.isConnected(ctx) },
+                accountEmail = { ctx -> PhotosConnector.store.accountEmail(ctx) },
+                isConfigured = { true },
+                onConnect = { ctx ->
+                    when (val r = PhotosConnector.authorize(ctx)) {
+                        is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
+                        is GoogleOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is GoogleOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> PhotosConnector.disconnect(ctx) },
+            )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_discord,
                 name = stringResource(R.string.ub_connectors_discord),
@@ -193,6 +222,23 @@ fun ConnectorsScreen(
                 },
                 onDisconnect = { ctx -> SpotifyConnector.disconnect(ctx) },
             )
+            // [v0.7.0-wave3] Outlook (Microsoft Graph OAuth).
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_outlook,
+                name = stringResource(R.string.ub_connectors_outlook),
+                description = stringResource(R.string.ub_connectors_outlook_desc),
+                isConnected = { ctx -> OutlookConnector.isConnected(ctx) },
+                accountEmail = { ctx -> OutlookConnector.store.accountEmail(ctx) },
+                isConfigured = { OutlookConnector.isConfigured() },
+                onConnect = { ctx ->
+                    when (val r = OutlookConnector.authorize(ctx)) {
+                        is OutlookOAuth.Result.Success -> ConnectOutcome.Ok
+                        is OutlookOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is OutlookOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> OutlookConnector.disconnect(ctx) },
+            )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_notion,
                 name = stringResource(R.string.ub_connectors_notion),
@@ -210,6 +256,8 @@ fun ConnectorsScreen(
                 isEnabled = { ctx -> RedditConnector.isEnabled(ctx) },
                 onToggle = { ctx, enabled -> RedditConnector.setEnabled(ctx, enabled) },
             )
+            // [v0.7.0-wave3] WhatsApp: share (no auth) + opt-in notification reader.
+            WhatsAppConnectorRow()
             RssConnectorRow()
         }
     }
@@ -587,6 +635,125 @@ private fun ToggleConnectorRow(
                     onToggle(context, it)
                     pulseTrigger++
                 },
+            )
+        }
+    }
+}
+
+/**
+ * WhatsApp connector row: share needs no setup; the notification reader is
+ * an opt-in switch. Toggling it ON opens the system Notification Access
+ * settings (the only place Android allows that grant). State reflects the
+ * effective reader state (in-app opt-in AND system grant) and refreshes on
+ * resume so a grant made in system settings shows immediately.
+ *
+ * Privacy: the reader sees only WhatsApp notifications, buffers them
+ * in memory on this phone only, and never uploads anything.
+ */
+@Composable
+private fun WhatsAppConnectorRow() {
+    val context = LocalContext.current
+    var readerOn by remember { mutableStateOf(WhatsAppConnector.isListenerEnabled(context)) }
+    val pulseScale = remember { Animatable(1f) }
+    var pulseTrigger by remember { mutableStateOf(0) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger == 0) return@LaunchedEffect
+        pulseScale.animateTo(1.035f, tween(160, easing = Motion.FastOutSlowIn))
+        pulseScale.animateTo(1f, tween(280, easing = Motion.FastOutSlowIn))
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                readerOn = WhatsAppConnector.isListenerEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pulseScale.value
+                scaleY = pulseScale.value
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_connector_whatsapp),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.ub_connectors_whatsapp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (readerOn) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            stringResource(R.string.ub_connectors_whatsapp_private),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                Text(
+                    stringResource(R.string.ub_connectors_whatsapp_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            androidx.compose.material3.Switch(
+                checked = readerOn,
+                onCheckedChange = { on ->
+                    if (on) {
+                        WhatsAppConnector.setListenerEnabled(context, true)
+                        WhatsAppConnector.requestAccess(context)
+                    } else {
+                        WhatsAppConnector.setListenerEnabled(context, false)
+                    }
+                    readerOn = WhatsAppConnector.isListenerEnabled(context)
+                    pulseTrigger++
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = context.getString(R.string.ub_connectors_whatsapp_read)
+                },
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Shield,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.ub_connectors_whatsapp_privacy),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

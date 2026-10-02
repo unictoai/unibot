@@ -59,6 +59,7 @@ internal fun toolAccentColor(toolName: String, isDark: Boolean): Color {
         "file_edit" -> Color(0xFFFF9500)
         "browser_use" -> violet
         "read_image" -> Color(0xFFAF52DE)
+        "photos_search", "photos_list_recent" -> Color(0xFFAF52DE)
         "memory_write", "memory_get" -> Color(0xFFFF2D55)
         "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
         else -> Color(0xFF8E8E93)
@@ -73,6 +74,7 @@ internal fun toolIconFor(toolName: String) = when (toolName) {
     "file_edit" -> Icons.Default.EditNote             // iOS: square.and.pencil
     "browser_use" -> Icons.Default.Language            // iOS: globe
     "read_image" -> Icons.Default.Image                // iOS: photo
+    "photos_search", "photos_list_recent" -> Icons.Default.Image
     "memory_write", "memory_get" -> Icons.Default.Psychology // iOS: brain.head.profile
     "web_search" -> Icons.Default.Search               // iOS: magnifyingglass
     else -> Icons.Default.Build

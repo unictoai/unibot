@@ -1039,6 +1039,11 @@ internal fun ToolDetailSheet(
                         )
                     }
 
+                    // ── [v0.7.0] Google Photos: staggered thumbnail grid ──
+                    "photos_search", "photos_list_recent" -> {
+                        PhotosGridCard(content = block.content)
+                    }
+
                     // ── read_image: inline image preview + metadata (iOS parity) ──
                     "read_image" -> {
                         val imgPath = block.imageFilePath

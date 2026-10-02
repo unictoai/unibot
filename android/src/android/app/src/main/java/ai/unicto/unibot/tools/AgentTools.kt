@@ -50,6 +50,12 @@ object AgentTools {
         notionConnected: Boolean = false,
         redditConnected: Boolean = false,
         rssConnected: Boolean = false,
+        // [v0.7.0-wave3] Outlook (Graph OAuth), Google Photos (Google OAuth),
+        // WhatsApp share (installed) + opt-in notification reader.
+        outlookConnected: Boolean = false,
+        photosConnected: Boolean = false,
+        whatsappInstalled: Boolean = false,
+        whatsappListenerEnabled: Boolean = false,
         // [v0.5.0-agentic-core] Live web search (keyless DuckDuckGo). Off
         // when the user disables it in Settings — the model then can't even
         // attempt the call.
@@ -109,6 +115,19 @@ object AgentTools {
         }
         if (rssConnected) {
             addAll(RssTool.definitions())
+        }
+        // [v0.7.0-wave3] Outlook, Google Photos, WhatsApp.
+        if (outlookConnected) {
+            addAll(OutlookTool.definitions())
+        }
+        if (photosConnected) {
+            addAll(PhotosTool.definitions())
+        }
+        if (whatsappInstalled) {
+            addAll(WhatsAppTool.shareDefinitions())
+        }
+        if (whatsappListenerEnabled) {
+            addAll(WhatsAppTool.recentDefinitions())
         }
     }
 

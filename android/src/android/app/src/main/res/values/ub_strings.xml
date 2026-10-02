@@ -1013,6 +1013,16 @@
     <string name="ub_connectors_spotify">Spotify</string>
     <string name="ub_connectors_spotify_desc">Now playing, playback control, your playlists</string>
     <string name="ub_connectors_spotify_hint">Needs a Spotify app: create one at developer.spotify.com/dashboard, add http://127.0.0.1:53712/callback as a Redirect URI, and put the Client ID into the app build.</string>
+    <string name="ub_connectors_outlook">Outlook</string>
+    <string name="ub_connectors_outlook_desc">Search, read and send mail from your Outlook account</string>
+    <string name="ub_connectors_outlook_hint">Register an app at portal.azure.com, then paste the client ID in OutlookOAuth.kt</string>
+    <string name="ub_connectors_photos">Google Photos</string>
+    <string name="ub_connectors_photos_desc">Search and view your recent photos</string>
+    <string name="ub_connectors_whatsapp">WhatsApp</string>
+    <string name="ub_connectors_whatsapp_desc">Share text into WhatsApp, read recent message notifications</string>
+    <string name="ub_connectors_whatsapp_privacy">Reads only WhatsApp notifications, on this phone only. Nothing is uploaded.</string>
+    <string name="ub_connectors_whatsapp_read">Read WhatsApp notifications</string>
+    <string name="ub_connectors_whatsapp_private">Private</string>
     <string name="ub_connectors_notion">Notion</string>
     <string name="ub_connectors_notion_desc">Search pages, read and append content</string>
     <string name="ub_connectors_notion_hint">Create an internal integration at notion.so/my-account/integrations, share pages with it, and paste the token (ntn_… or secret_…).</string>
