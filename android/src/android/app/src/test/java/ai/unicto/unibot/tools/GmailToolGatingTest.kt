@@ -9,8 +9,15 @@ import org.junit.Test
  */
 class GmailToolGatingTest {
 
-    private fun names(gmailConnected: Boolean): Set<String> =
-        AgentTools.makeAgentTools(gmailConnected = gmailConnected).map { it.name }.toSet()
+    private fun names(
+        gmailConnected: Boolean,
+        driveConnected: Boolean = false,
+        calendarConnected: Boolean = false,
+    ): Set<String> = AgentTools.makeAgentTools(
+        gmailConnected = gmailConnected,
+        driveConnected = driveConnected,
+        calendarConnected = calendarConnected,
+    ).map { it.name }.toSet()
 
     @Test
     fun `gmail tools absent when not connected`() {
@@ -40,5 +47,28 @@ class GmailToolGatingTest {
         assertTrue(byName[GmailTool.READ_NAME]!!.required.contains("id"))
         val send = byName[GmailTool.SEND_NAME]!!
         assertTrue(send.required.containsAll(listOf("to", "subject", "body")))
+    }
+
+    @Test
+    fun `drive and calendar tools gated independently`() {
+        val none = names(gmailConnected = false)
+        assertFalse(none.contains(DriveTool.SEARCH_NAME))
+        assertFalse(none.contains(CalendarTool.LIST_NAME))
+
+        val driveOnly = names(gmailConnected = false, driveConnected = true)
+        assertTrue(driveOnly.contains(DriveTool.SEARCH_NAME))
+        assertTrue(driveOnly.contains(DriveTool.READ_NAME))
+        assertFalse(driveOnly.contains(CalendarTool.LIST_NAME))
+        assertFalse(driveOnly.contains(GmailTool.SEARCH_NAME))
+
+        val calOnly = names(gmailConnected = false, calendarConnected = true)
+        assertTrue(calOnly.contains(CalendarTool.LIST_NAME))
+        assertTrue(calOnly.contains(CalendarTool.CREATE_NAME))
+        assertFalse(calOnly.contains(DriveTool.SEARCH_NAME))
+
+        val all = names(gmailConnected = true, driveConnected = true, calendarConnected = true)
+        assertTrue(all.contains(GmailTool.SEND_NAME))
+        assertTrue(all.contains(DriveTool.READ_NAME))
+        assertTrue(all.contains(CalendarTool.CREATE_NAME))
     }
 }

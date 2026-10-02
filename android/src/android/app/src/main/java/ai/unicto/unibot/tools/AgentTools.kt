@@ -35,6 +35,9 @@ object AgentTools {
         // [unibot-connectors] Gmail connector tools, only when the user has
         // connected their Google account in Settings → Connectors.
         gmailConnected: Boolean = false,
+        // [unibot-connectors] Drive + Calendar, same gating.
+        driveConnected: Boolean = false,
+        calendarConnected: Boolean = false,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -53,6 +56,12 @@ object AgentTools {
         }
         if (gmailConnected) {
             addAll(GmailTool.definitions())
+        }
+        if (driveConnected) {
+            addAll(DriveTool.definitions())
+        }
+        if (calendarConnected) {
+            addAll(CalendarTool.definitions())
         }
     }
 

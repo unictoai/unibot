@@ -1,1 +1,229 @@
-{"entries":[{"author":"unibot","bundled":true,"description":"Guides the agent through writing a well-formed SKILL.md for a new skill: name, description, instructions and examples.","id":"skill-creator","name":"Skill Creator","tags":["meta","built-in"],"type":"skill","version":"2.0.0"},{"author":"community","description":"Turns a raw meeting transcript or a handful of jotted lines into structured notes: decisions, action items with owners, and open questions.","id":"meeting-notes","name":"Meeting Notes","skill_body":"---\nname: meeting-notes\ndescription: Turn raw meeting transcripts or jotted lines into structured notes with decisions, action items and open questions.\nversion: 1.0.0\n---\n\n# Meeting Notes\n\nWhen the user shares a meeting transcript, a recording summary, or rough\nnotes from a meeting, produce structured notes in this shape:\n\n## Decisions\n- One line per decision, with who decided when it is known.\n\n## Action items\n- [ ] Action — Owner (due date if mentioned)\n\n## Open questions\n- Anything unresolved or ambiguous.\n\nRules:\n- Keep it tight: no filler, no repeating the transcript back.\n- If owners are unclear, write \"Owner: ?\" rather than guessing.\n- Ask at most one clarifying question when the input is too thin to be useful.\n","source_url":"","tags":["productivity","writing"],"type":"skill","version":"1.0.0"},{"author":"community","description":"A careful second pair of eyes for a diff or a pasted snippet: correctness bugs first, then edge cases, then style — with file and line references.","id":"code-reviewer","name":"Code Reviewer","skill_body":"---\nname: code-reviewer\ndescription: Review a diff or pasted code for correctness bugs, edge cases and style, with file and line references.\nversion: 1.0.0\n---\n\n# Code Reviewer\n\nWhen the user asks for a code review (a diff, a file, or a pasted snippet):\n\n1. **Correctness first** — logic bugs, off-by-ones, null handling, error paths,\n   concurrency hazards. Quote the exact lines.\n2. **Edge cases** — empty inputs, huge inputs, failure modes of dependencies.\n3. **Style last** — only flag what genuinely hurts readability or maintenance.\n\nFormat findings as: severity (blocker / suggestion), file:line, what is wrong,\nand a concrete fix. End with a one-line verdict: ship it, fix-then-ship, or\nneeds rework. Never rewrite the whole file unasked — show the smallest diff\nthat fixes each blocker.\n","source_url":"","tags":["coding","review"],"type":"skill","version":"1.0.0"},{"author":"modelcontextprotocol","description":"Lets the agent fetch a URL and read its content as markdown. Runs locally via uvx — no account, no key.","id":"fetch-mcp","mcp":{"args":["mcp-server-fetch"],"command":"uvx","env":{}},"name":"Fetch","source_url":"https://github.com/modelcontextprotocol/servers","tags":["web","community"],"type":"mcp","version":"1.0.0"}],"name":"unibot community catalog","version":1}
+{
+  "entries": [
+    {
+      "author": "unibot",
+      "bundled": true,
+      "description": "Guides the agent through writing a well-formed SKILL.md for a new skill: name, description, instructions and examples.",
+      "id": "skill-creator",
+      "name": "Skill Creator",
+      "tags": [
+        "meta",
+        "built-in"
+      ],
+      "type": "skill",
+      "version": "2.0.0"
+    },
+    {
+      "author": "community",
+      "description": "Turns a raw meeting transcript or a handful of jotted lines into structured notes: decisions, action items with owners, and open questions.",
+      "id": "meeting-notes",
+      "name": "Meeting Notes",
+      "skill_body": "---\nname: meeting-notes\ndescription: Turn raw meeting transcripts or jotted lines into structured notes with decisions, action items and open questions.\nversion: 1.0.0\n---\n\n# Meeting Notes\n\nWhen the user shares a meeting transcript, a recording summary, or rough\nnotes from a meeting, produce structured notes in this shape:\n\n## Decisions\n- One line per decision, with who decided when it is known.\n\n## Action items\n- [ ] Action — Owner (due date if mentioned)\n\n## Open questions\n- Anything unresolved or ambiguous.\n\nRules:\n- Keep it tight: no filler, no repeating the transcript back.\n- If owners are unclear, write \"Owner: ?\" rather than guessing.\n- Ask at most one clarifying question when the input is too thin to be useful.\n",
+      "source_url": "",
+      "tags": [
+        "productivity",
+        "writing"
+      ],
+      "type": "skill",
+      "version": "1.0.0"
+    },
+    {
+      "author": "community",
+      "description": "A careful second pair of eyes for a diff or a pasted snippet: correctness bugs first, then edge cases, then style — with file and line references.",
+      "id": "code-reviewer",
+      "name": "Code Reviewer",
+      "skill_body": "---\nname: code-reviewer\ndescription: Review a diff or pasted code for correctness bugs, edge cases and style, with file and line references.\nversion: 1.0.0\n---\n\n# Code Reviewer\n\nWhen the user asks for a code review (a diff, a file, or a pasted snippet):\n\n1. **Correctness first** — logic bugs, off-by-ones, null handling, error paths,\n   concurrency hazards. Quote the exact lines.\n2. **Edge cases** — empty inputs, huge inputs, failure modes of dependencies.\n3. **Style last** — only flag what genuinely hurts readability or maintenance.\n\nFormat findings as: severity (blocker / suggestion), file:line, what is wrong,\nand a concrete fix. End with a one-line verdict: ship it, fix-then-ship, or\nneeds rework. Never rewrite the whole file unasked — show the smallest diff\nthat fixes each blocker.\n",
+      "source_url": "",
+      "tags": [
+        "coding",
+        "review"
+      ],
+      "type": "skill",
+      "version": "1.0.0"
+    },
+    {
+      "author": "modelcontextprotocol",
+      "description": "Lets the agent fetch a URL and read its content as markdown. Runs locally via uvx — no account, no key.",
+      "id": "fetch-mcp",
+      "mcp": {
+        "args": [
+          "mcp-server-fetch"
+        ],
+        "command": "uvx",
+        "env": {}
+      },
+      "name": "Fetch",
+      "source_url": "https://github.com/modelcontextprotocol/servers",
+      "tags": [
+        "web",
+        "community"
+      ],
+      "type": "mcp",
+      "version": "1.0.0"
+    },
+    {
+      "id": "pdf-reader",
+      "type": "skill",
+      "name": "PDF Reader",
+      "description": "Extracts text from PDF files so the agent can summarize, search and quote documents.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "documents",
+        "productivity"
+      ],
+      "skill_body": "---\nname: pdf-reader\ndescription: Extract text from PDF files for summarizing, searching and quoting.\n---\n\n# PDF Reader\n\nWhen the user points at a PDF (or you find one in the workspace), extract its\ntext before trying to answer questions about it.\n\n## How to read a PDF\n\n1. Prefer `pdftotext` when available:\n   `pdftotext /path/to/file.pdf - | head -c 60000`\n2. Fallback: `python3 -c \"import pypdf; r=pypdf.PdfReader('/path/to/file.pdf'); print('\\n'.join(p.extract_text() or '' for p in r.pages))\"`\n3. For scanned/image PDFs with no text layer, say so honestly and offer to\n   read specific pages as images with read_image instead of guessing.\n\n## Rules\n\n- Never invent page numbers or quotes. Quote verbatim or say the text was\n  unclear.\n- For long documents, extract in chunks and summarize section by section.\n- If the PDF is password-protected, ask the user for the password — never\n  try to crack it.\n",
+      "source_url": ""
+    },
+    {
+      "id": "youtube-summarizer",
+      "type": "skill",
+      "name": "YouTube Summarizer",
+      "description": "Summarizes YouTube videos from transcripts: key points, timestamps, takeaways.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "video",
+        "productivity"
+      ],
+      "skill_body": "---\nname: youtube-summarizer\ndescription: Summarize a YouTube video from its transcript with key points and timestamps.\n---\n\n# YouTube Summarizer\n\nWhen the user shares a YouTube link and wants the gist, fetch the transcript\nand summarize — don't make them watch 20 minutes.\n\n## Steps\n\n1. Try `yt-dlp --skip-download --write-auto-sub --sub-lang en --convert-subs srt -o /tmp/subs '%(id)s.%(ext)s' <url>` then read the .srt.\n2. If subtitles are unavailable, use browser_use to open the video page and\n   read the description/chapters, and say the summary is partial.\n3. Produce: one-line verdict, 5-8 key points with timestamps where known,\n   and any action items or links mentioned.\n\n## Rules\n\n- Never invent timestamps. If the transcript has none, say so.\n- Keep it tight: the user wants the 2-minute version, not a retelling.\n",
+      "source_url": ""
+    },
+    {
+      "id": "email-drafter",
+      "type": "skill",
+      "name": "Email Drafter",
+      "description": "Drafts clear, well-structured emails from a few rough lines. Pairs with the Gmail connector.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "writing",
+        "productivity"
+      ],
+      "skill_body": "---\nname: email-drafter\ndescription: Turn rough notes into a clear, well-structured email draft.\n---\n\n# Email Drafter\n\nTurn the user's rough lines into an email that reads like they meant it.\n\n## Process\n\n1. Ask (or infer from context): recipient, purpose, tone (formal / friendly /\n   firm), and any deadline.\n2. Draft with: clear subject line, greeting, 2-4 short paragraphs, explicit\n   ask or next step, sign-off.\n3. Show the FULL draft and wait for approval before sending anything —\n   never send email on a first draft without the user saying send.\n\n## Rules\n\n- Match the user's language (if they write in Hinglish, keep the flavor\n  professional, not stiff).\n- One ask per email. If they ramble about three topics, suggest splitting.\n- If the Gmail connector is available, offer to send via gmail_send only\n  after explicit approval.\n",
+      "source_url": ""
+    },
+    {
+      "id": "travel-planner",
+      "type": "skill",
+      "name": "Travel Planner",
+      "description": "Builds day-by-day trip itineraries from a destination, dates and budget.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "travel",
+        "planning"
+      ],
+      "skill_body": "---\nname: travel-planner\ndescription: Build day-by-day trip itineraries from destination, dates and budget.\n---\n\n# Travel Planner\n\nTurn \"I want to go to X\" into a day-by-day plan the user can actually follow.\n\n## Process\n\n1. Collect: destination, dates (or duration), budget level (budget / mid /\n   comfortable), interests (food, nature, history, shopping), pace\n   (packed / relaxed).\n2. Research current practicalities with web search or browser_use: visa\n   needs, weather for the dates, rough prices.\n3. Deliver: overview + cost estimate, then Day 1..N with morning / afternoon /\n   evening blocks, food picks, and one backup option per day for bad weather.\n\n## Rules\n\n- Prices are estimates — say so, and never state a fare as fact without a\n  source.\n- Flag visa / entry requirements early; they're the most-forgotten item.\n- Keep travel days realistic: no 6-attraction days.\n",
+      "source_url": ""
+    },
+    {
+      "id": "code-explainer",
+      "type": "skill",
+      "name": "Code Explainer",
+      "description": "Explains code in plain language: what it does, why, and where the traps are.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "coding",
+        "learning"
+      ],
+      "skill_body": "---\nname: code-explainer\ndescription: Explain what code does in plain language, with the traps highlighted.\n---\n\n# Code Explainer\n\nWhen the user pastes code (or points at a file) and asks what it does:\n\n1. Read the code first with file_read — never explain from memory of the\n   filename.\n2. Explain in layers: one-sentence summary, then what each important part\n   does, then the traps (edge cases, hidden assumptions, things that break).\n3. Match their level: if they say they're new, avoid jargon or define it\n   inline. If they're experienced, skip the basics.\n\n## Rules\n\n- If the code has a bug and they didn't ask for review, mention it briefly\n  once — don't turn an explanation into an unsolicited audit.\n- Use small snippets to illustrate, not walls of code.\n",
+      "source_url": ""
+    },
+    {
+      "id": "git-helper",
+      "type": "skill",
+      "name": "Git Helper",
+      "description": "Git workflows done right: commits, branches, rebases, and undoing mistakes.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "coding",
+        "productivity"
+      ],
+      "skill_body": "---\nname: git-helper\ndescription: Git workflows done right — commits, branches, rebases, undoing mistakes.\n---\n\n# Git Helper\n\nThe user has zero git knowledge; be the careful senior dev they don't have.\n\n## Rules\n\n- NEVER force-push, hard-reset, or rewrite history without spelling out\n  exactly what will be lost and getting explicit approval.\n- Commit messages: short imperative summary + what/why in the body.\n- Before any destructive command, show the command and what it does, then\n  wait for a yes.\n- Prefer safe undo paths: `git revert` over `reset --hard` for shared\n  branches; stash before switching branches with dirty work.\n\n## Useful flows\n\n- New work: branch from main, small commits, push, open PR.\n- Messed up a commit message: `git commit --amend` (unpushed only).\n- Find when a bug appeared: `git bisect`.\n",
+      "source_url": ""
+    },
+    {
+      "id": "data-analyst",
+      "type": "skill",
+      "name": "Data Analyst",
+      "description": "Analyzes CSVs and spreadsheets with Python: summaries, trends, charts.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "data",
+        "coding"
+      ],
+      "skill_body": "---\nname: data-analyst\ndescription: Analyze CSVs and spreadsheets with Python — summaries, trends, charts.\n---\n\n# Data Analyst\n\nWhen the user hands over a CSV/Excel file and wants answers:\n\n1. Inspect first: `python3 -c \"import pandas as pd; df=pd.read_csv('f'); print(df.shape); print(df.dtypes); print(df.head())\"`.\n2. Clean defensively: report missing values and odd types before analyzing;\n   never silently drop rows that change the answer.\n3. Answer their actual question, then add ONE interesting finding they\n   didn't ask about.\n\n## Rules\n\n- Show the code you ran (or save it as a .py file) so the analysis is\n  reproducible.\n- Charts: save as PNG and share the file; describe the takeaway in words.\n- Say \"the data doesn't support that conclusion\" when it doesn't — never\n  torture numbers into a story.\n",
+      "source_url": ""
+    },
+    {
+      "id": "sqlite-mcp",
+      "type": "mcp",
+      "name": "SQLite",
+      "description": "Lets the agent query local SQLite databases. Runs locally via uvx — no account, no key.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "data",
+        "local"
+      ],
+      "mcp": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-sqlite"
+        ],
+        "env": {}
+      },
+      "source_url": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "id": "github-mcp",
+      "type": "mcp",
+      "name": "GitHub",
+      "description": "Lets the agent work with GitHub repos: read code, list issues and PRs. Needs a GitHub personal access token.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "coding",
+        "community"
+      ],
+      "mcp": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-github"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+        }
+      },
+      "source_url": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "id": "brave-search-mcp",
+      "type": "mcp",
+      "name": "Brave Search",
+      "description": "Gives the agent real web search via the Brave API. Needs a free Brave Search API key.",
+      "version": "1.0.0",
+      "author": "community",
+      "tags": [
+        "web",
+        "search"
+      ],
+      "mcp": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-brave-search"
+        ],
+        "env": {
+          "BRAVE_API_KEY": ""
+        }
+      },
+      "source_url": "https://github.com/modelcontextprotocol/servers"
+    }
+  ],
+  "name": "unibot community catalog",
+  "version": 1
+}

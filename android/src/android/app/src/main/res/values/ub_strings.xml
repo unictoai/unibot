@@ -984,5 +984,10 @@
     <string name="ub_connectors_confirm_disconnect">Disconnect Gmail? The agent will lose access to your mailbox.</string>
     <string name="ub_connectors_disconnect_title">Disconnect</string>
     <string name="ub_connectors_cancel">Cancel</string>
+    <string name="ub_connectors_drive">Google Drive</string>
+    <string name="ub_connectors_drive_desc">Search and read your files</string>
+    <string name="ub_connectors_calendar">Google Calendar</string>
+    <string name="ub_connectors_calendar_desc">See and create events</string>
+    <string name="ub_connectors_confirm_disconnect_named">Disconnect %1$s? The agent will lose access to it.</string>
 </resources>
 
