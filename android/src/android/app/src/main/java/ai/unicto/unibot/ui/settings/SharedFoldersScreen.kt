@@ -125,7 +125,7 @@ private fun SharedFolderRow(
         Icon(
             imageVector = folder.icon,
             contentDescription = null,
-            tint = folder.iconColor,
+            tint = if (folder.themeViolet) ChatColors.thinking else folder.iconColor,
             modifier = Modifier.size(28.dp),
         )
         Spacer(Modifier.width(12.dp))
@@ -182,6 +182,8 @@ internal data class SharedFolderEntry(
     val writable: Boolean,
     val icon: ImageVector,
     val iconColor: Color,
+    /** When true, the theme accent violet is used instead of [iconColor]. */
+    val themeViolet: Boolean = false,
 )
 
 internal object SharedFolderRegistry {
@@ -192,7 +194,8 @@ internal object SharedFolderRegistry {
             linuxPath = "/var/minis/shared",
             writable = true,
             icon = Icons.Outlined.Folder,
-            iconColor = ChatColors.thinking,
+            iconColor = Color(0xFF6D28D9),
+            themeViolet = true,
         ),
         SharedFolderEntry(
             id = "skills",

@@ -12,7 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.material3.LocalIndication
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.ripple
 
 /**

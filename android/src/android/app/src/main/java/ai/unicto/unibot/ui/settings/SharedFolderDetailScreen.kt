@@ -131,7 +131,7 @@ private fun HeaderCard(folder: SharedFolderEntry) {
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(folder.iconColor),
+                    .background(if (folder.themeViolet) ChatColors.thinking else folder.iconColor),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
