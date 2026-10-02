@@ -198,6 +198,16 @@ object Routes {
     fun sessionStorageDetail(sessionId: String) = "session_storage/$sessionId"
     fun memoryFileEdit(fileName: String, isGlobal: Boolean) = "memory_file/$fileName/$isGlobal"
     fun chat(sessionId: String) = "chat/$sessionId"
+    // unibot P6: project workspaces.
+    const val PROJECTS = "projects"
+    const val PROJECT_DETAIL = "project/{projectId}"
+    fun projectDetail(projectId: String) = "project/$projectId"
+    /** unibot P6: visual context — ask about the camera. */
+    const val VISUAL_ASK = "visual_ask"
+    /** unibot P6: read-aloud (spoken replies) settings. */
+    const val READ_ALOUD = "read_aloud"
+    /** unibot P6: autofill from the on-device profile (opt-in). */
+    const val AUTOFILL = "autofill"
     fun providerDetail(instanceId: String) = "provider/$instanceId"
     fun shadowVoiceDetail(instanceId: String) = "voice_service/$instanceId"
     fun modelGroupDetail(groupId: String) = "model_group/$groupId"
@@ -781,6 +791,50 @@ fun AppNavigation(
                 onAboutClick = { navController.safeNavigate(Routes.ABOUT) },
                 onMountedFoldersClick = { navController.safeNavigate(Routes.MOUNTED_FOLDERS) },
                 onSharedFoldersClick = { navController.safeNavigate(Routes.SHARED_FOLDERS) },
+                onProjectsClick = { navController.safeNavigate(Routes.PROJECTS) }, // unibot P6
+                onVisualAskClick = { navController.safeNavigate(Routes.VISUAL_ASK) }, // unibot P6
+                onReadAloudClick = { navController.safeNavigate(Routes.READ_ALOUD) }, // unibot P6
+                onAutofillClick = { navController.safeNavigate(Routes.AUTOFILL) }, // unibot P6
+            )
+        }
+
+        // unibot P6: project workspaces — list + detail.
+        composable(Routes.PROJECTS) {
+            ai.unicto.unibot.ui.projects.ProjectsScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenProject = { projectId ->
+                    navController.safeNavigate(Routes.projectDetail(projectId))
+                },
+            )
+        }
+        composable(Routes.PROJECT_DETAIL) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId").orEmpty()
+            ai.unicto.unibot.ui.projects.ProjectDetailScreen(
+                projectId = projectId,
+                navController = navController,
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // unibot P6: visual context — ask about the camera / a photo.
+        composable(Routes.VISUAL_ASK) {
+            ai.unicto.unibot.ui.visual.VisualAskScreen(
+                navController = navController,
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // unibot P6: read-aloud settings (on-device TTS voices, engine status, speed).
+        composable(Routes.READ_ALOUD) {
+            ai.unicto.unibot.ui.settings.ReadAloudSettingsScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // unibot P6: autofill from the on-device profile (strictly opt-in).
+        composable(Routes.AUTOFILL) {
+            ai.unicto.unibot.ui.settings.AutofillSettingsScreen(
+                onBack = { navController.safePopBackStack() },
             )
         }
 

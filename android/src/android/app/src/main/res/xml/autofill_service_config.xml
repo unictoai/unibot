@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- unibot autofill service config. No settingsActivity: the service has no
+     extra per-app config beyond the in-app toggle in Settings → Autofill. -->
+<autofill-service xmlns:android="http://schemas.android.com/apk/res/android" />

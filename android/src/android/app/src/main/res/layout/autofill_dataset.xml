@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Presentation row for an autofill dataset (the suggestion chip Android shows above the keyboard). -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/autofill_dataset_text"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp"
+    android:textSize="15sp"
+    android:maxLines="1"
+    android:ellipsize="end" />

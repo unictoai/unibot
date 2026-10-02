@@ -832,4 +832,9 @@
     <string name="ub_devices_refused">Refused by the relay — sign in again</string>
     <string name="ub_devices_notifications_hint">Allow notifications so the phone can stay reachable in the background.</string>
     <string name="ub_library_share_failed">Could not share the file.</string>
+    <!-- P6: projects, visual context, read aloud, autofill settings rows -->
+    <string name="ub_projects_title">Projects</string>
+    <string name="ub_visual_ask_title">Ask about camera</string>
+    <string name="ub_read_aloud_title">Read aloud</string>
+    <string name="ub_autofill_title">Autofill</string>
 </resources>
