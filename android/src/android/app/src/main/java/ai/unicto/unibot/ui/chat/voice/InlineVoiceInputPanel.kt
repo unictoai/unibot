@@ -861,7 +861,6 @@ private fun WorkflowModeRow() {
                 ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setVoiceWorkflow(context, it)
             },
         )
->>>>>>> v02-p4
     }
 }
 
