@@ -239,8 +239,8 @@ fun SettingsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                // unibot: Muse's card — 16dp corners, white on the grey canvas.
-                .clip(RoundedCornerShape(16.dp))
+                // unibot: Muse's card — 24dp corners, matching MuseCard.
+                .clip(RoundedCornerShape(24.dp))
                 .background(ai.unicto.unibot.ui.home.MuseTones.surface),
             content = content,
         )
@@ -280,7 +280,7 @@ fun SettingsRow(
     // [T-android-settings-ui-md3] #8 single-line List Item is 56dp; a caller with
     // two-line content (e.g. the model list: name + id) passes 72dp for the MD3
     // double-line height. Default keeps every other row at the single-line 56dp.
-    minHeight: Dp = 56.dp,
+    minHeight: Dp = 64.dp,
 ) {
     Column {
         Row(
@@ -300,7 +300,7 @@ fun SettingsRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
-                // unibot: Muse draws the glyph bare, in ink, 22dp — no coloured
+                // unibot: Muse draws the glyph bare, in ink, 26dp — no coloured
                 // tile behind it. `iconColor` is kept for the callers but only
                 // the glyph remains.
                 @Suppress("UNUSED_EXPRESSION") iconColor
@@ -308,7 +308,7 @@ fun SettingsRow(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(26.dp),
                 )
                 Spacer(Modifier.width(14.dp))
             }

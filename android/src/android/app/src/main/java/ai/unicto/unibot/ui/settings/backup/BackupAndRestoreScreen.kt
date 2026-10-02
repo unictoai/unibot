@@ -575,13 +575,8 @@ private fun BackupHistoryRow(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(30.dp).background(tint, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
-            }
-            Spacer(Modifier.width(12.dp))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     formatTimestamp(record.startedAt),
@@ -687,15 +682,10 @@ private fun MaxFileSizeRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(30.dp).background(Color(0xFF8E8E93), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Outlined.FolderZip, contentDescription = null,
-                    tint = Color.White, modifier = Modifier.size(17.dp),
-                )
-            }
+            Icon(
+                Icons.Outlined.FolderZip, contentDescription = null,
+                tint = Color(0xFF8E8E93), modifier = Modifier.size(26.dp),
+            )
             Spacer(Modifier.width(14.dp))
             Text(
                 stringResource(R.string.backup_max_file_size),
@@ -1181,13 +1171,8 @@ private fun DestinationRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(30.dp).background(ChatColors.thinking, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
-            }
-            Spacer(Modifier.width(12.dp))
+            Icon(icon, contentDescription = null, tint = ChatColors.thinking, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     remote.name,
@@ -1319,12 +1304,7 @@ internal fun RestoreSourceRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(30.dp).background(iconColor, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
-            }
+            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(26.dp))
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -1450,17 +1430,12 @@ private fun CategorySwitchRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(30.dp).background(iconColor, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(17.dp),
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(26.dp),
+            )
             Spacer(Modifier.width(14.dp))
             Column(
                 modifier = Modifier.weight(1f),

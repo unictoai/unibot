@@ -17,14 +17,10 @@ import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.i18n.uppercaseForDisplay
 
 /**
- * iOS Settings-style "inset grouped" section. Renders an uppercase
- * teal header above a 16dp rounded surface card containing the
- * caller's [content] rows. Pair with [SettingsRowDivider] between
- * rows so the dividers stop short of the card's curved edges.
- *
- * Apply this to any settings detail screen that wants the
- * SF-Symbols Settings.app look — initially adopted by
- * RootfsManagementScreen (T168).
+ * Muse-style "inset grouped" section. Renders an uppercase violet header above
+ * a 24dp rounded surface card containing the caller's [content] rows. Pair
+ * with [SettingsRowDivider] between rows so the dividers stop short of the
+ * card's curved edges.
  */
 @Composable
 fun SettingsSection(
@@ -40,7 +36,7 @@ fun SettingsSection(
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
         )
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth(),

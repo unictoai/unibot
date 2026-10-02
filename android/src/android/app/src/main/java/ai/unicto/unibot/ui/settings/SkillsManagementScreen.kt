@@ -1056,21 +1056,14 @@ private val SettingsIconGreen = Color(0xFF34C759)
 @Composable
 private fun SettingsActionIcon(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color,
+    @Suppress("UNUSED_PARAMETER") iconColor: Color,
 ) {
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .background(color = iconColor, shape = CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(16.dp),
-        )
-    }
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(26.dp),
+    )
 }
 
 /**
