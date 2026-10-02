@@ -70,6 +70,15 @@ object LocalCapabilities {
         Regex("\\bweather\\b", RegexOption.IGNORE_CASE),
         Regex("\\bstock\\b", RegexOption.IGNORE_CASE),
         Regex("\\b(2024|2025|2026|2027)\\b"),
+        // -- status / elimination questions ("is X out of big boss house") --
+        Regex("\\bbig\\s?boss\\b", RegexOption.IGNORE_CASE),
+        Regex("\\b(eliminated|elimination|evicted|eviction)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bwho\\s+(got\\s+)?eliminated\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bis\\b.{0,40}\\bout of\\b", RegexOption.IGNORE_CASE),
+        Regex("\\b(still|currently)\\b.{0,20}\\bin\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bleft\\s+the\\s+(show|house)\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bwinner\\b", RegexOption.IGNORE_CASE),
+        Regex("\\bnominat", RegexOption.IGNORE_CASE),
     )
 
     /**

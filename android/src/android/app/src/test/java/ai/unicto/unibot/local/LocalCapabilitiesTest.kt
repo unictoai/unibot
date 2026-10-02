@@ -29,6 +29,16 @@ class LocalCapabilitiesTest {
     }
 
     @Test
+    fun `status and elimination questions trigger search`() {
+        // Abdullah's Bigg Boss question — previously missed entirely.
+        assertTrue(LocalCapabilities.needsWebSearch("is riti Tiwari is out of big boss house"))
+        assertTrue(LocalCapabilities.needsWebSearch("who got eliminated this week"))
+        assertTrue(LocalCapabilities.needsWebSearch("is she still in the house"))
+        assertTrue(LocalCapabilities.needsWebSearch("who is the winner of bigg boss"))
+        assertTrue(LocalCapabilities.needsWebSearch("he left the show yesterday"))
+    }
+
+    @Test
     fun `timeless questions do not trigger search`() {
         assertFalse(LocalCapabilities.needsWebSearch("write a poem about the sea"))
         assertFalse(LocalCapabilities.needsWebSearch("explain photosynthesis"))
