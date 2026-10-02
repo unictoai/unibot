@@ -864,7 +864,7 @@
     <string name="ub_compare_choose_right">Choose model B</string>
     <string name="ub_import_chat">Import chat</string>
     <string name="ub_import_failed">Could not import that file.</string>
-    <string name="ub_import_done">Chat imported.</string>
+    <string name="ub_import_chat_done">Chat imported.</string>
     <!-- v0.2.0 P3: home-screen widgets -->
     <string name="ub_widget_quick_ask_label">Quick ask</string>
     <string name="ub_widget_quick_ask_desc">Ask unibot from your home screen</string>

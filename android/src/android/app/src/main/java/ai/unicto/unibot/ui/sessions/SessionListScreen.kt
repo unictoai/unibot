@@ -619,7 +619,7 @@ fun SessionListScreen(
                 )
                 android.widget.Toast.makeText(
                     context,
-                    context.getString(R.string.ub_import_done),
+                    context.getString(R.string.ub_import_chat_done),
                     android.widget.Toast.LENGTH_SHORT,
                 ).show()
                 onSessionClick(result.sessionId)
