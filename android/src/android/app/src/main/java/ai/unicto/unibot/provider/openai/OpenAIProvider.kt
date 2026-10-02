@@ -445,6 +445,12 @@ class OpenAIProvider private constructor(
         // a local proxy got reused on every retry (silent infinite hang).
         .connectionPool(ai.unicto.unibot.network.NetworkMonitor.sharedLLMConnectionPool)
         .eventListenerFactory { OkHttpNetTraceListener() }
+        // [v1.0-wave5-privacy] Traffic log + Local-only mode gate.
+        .apply {
+            val (logging, gate) = ai.unicto.unibot.privacy.PrivacyNetworkGate.interceptors()
+            addInterceptor(logging)
+            addInterceptor(gate)
+        }
         .build()
 
     /** Detect OpenRouter base URL. */

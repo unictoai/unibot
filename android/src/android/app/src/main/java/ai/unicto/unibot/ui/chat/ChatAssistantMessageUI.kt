@@ -245,7 +245,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -463,7 +462,7 @@ internal fun BoundsTrackedBlock(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun InlineErrorBanner(error: String, onRetry: (() -> Unit)? = null) {
-    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -473,7 +472,13 @@ internal fun InlineErrorBanner(error: String, onRetry: (() -> Unit)? = null) {
             .combinedClickable(
                 onClick = {},
                 onLongClick = {
-                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(error))
+                    // [v1.0-wave5-privacy] Route through ClipboardGuard so the
+                    // "Auto-clear clipboard" toggle wipes the copy after 60s.
+                    ai.unicto.unibot.privacy.ClipboardGuard.copyWithAutoClear(
+                        context,
+                        "unibot error",
+                        error,
+                    )
                 },
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),

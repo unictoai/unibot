@@ -707,6 +707,26 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
             )
         }
+        // [v1.0-wave5-privacy] Privacy core screens.
+        composable(ai.unicto.unibot.ui.privacy.ROUTE_PRIVACY_DASHBOARD) {
+            ai.unicto.unibot.ui.privacy.PrivacyDashboardScreen(
+                onBack = { navController.safePopBackStack() },
+                onTrafficLogClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_TRAFFIC_LOG)
+                },
+                chatRepository = chatRepository,
+            )
+        }
+        composable(ai.unicto.unibot.ui.privacy.ROUTE_TRAFFIC_LOG) {
+            ai.unicto.unibot.ui.privacy.TrafficLogScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+        composable(ai.unicto.unibot.ui.privacy.ROUTE_PERMISSION_AUDIT) {
+            ai.unicto.unibot.ui.privacy.PermissionAuditScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
         // unibot: unibot Cloud — sign in with a phone/e-mail code for a starter allowance,
         // and the account page (balance, sign out) behind Settings.
         composable(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) {
@@ -865,6 +885,16 @@ fun AppNavigation(
                 onVisualAskClick = { navController.safeNavigate(Routes.VISUAL_ASK) }, // unibot P6
                 onReadAloudClick = { navController.safeNavigate(Routes.READ_ALOUD) }, // unibot P6
                 onAutofillClick = { navController.safeNavigate(Routes.AUTOFILL) }, // unibot P6
+                // [v1.0-wave5-privacy] Privacy screens.
+                onPrivacyDashboardClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_PRIVACY_DASHBOARD)
+                },
+                onTrafficLogClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_TRAFFIC_LOG)
+                },
+                onPermissionAuditClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_PERMISSION_AUDIT)
+                },
             )
         }
 

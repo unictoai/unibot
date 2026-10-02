@@ -9,6 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility // [v1.0-wave5-privacy]
+import androidx.compose.animation.expandVertically // [v1.0-wave5-privacy]
+import androidx.compose.animation.fadeIn // [v1.0-wave5-privacy]
+import androidx.compose.animation.fadeOut // [v1.0-wave5-privacy]
+import androidx.compose.animation.shrinkVertically // [v1.0-wave5-privacy]
+import androidx.compose.foundation.clickable // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.filled.KeyboardArrowDown // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.filled.KeyboardArrowUp // [v1.0-wave5-privacy]
+import ai.unicto.unibot.ui.util.rememberHaptic // [v1.0-wave5-privacy]
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -99,6 +108,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> GmailOAuth.disconnect(ctx) },
+                dataAccess = "Read, send, and search your emails",
             )
             ConnectorRow(
                 logoRes = R.drawable.ic_connector_drive,
@@ -115,6 +125,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> DriveConnector.disconnect(ctx) },
+                dataAccess = "List and read your files",
             )
             ConnectorRow(
                 logoRes = R.drawable.ic_connector_calendar,
@@ -131,6 +142,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> CalendarConnector.disconnect(ctx) },
+                dataAccess = "Read and create events",
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_github,
@@ -141,6 +153,7 @@ fun ConnectorsScreen(
                 label = { ctx -> GitHubConnector.store.label(ctx) },
                 onSave = { ctx, token -> GitHubConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> GitHubConnector.disconnect(ctx) },
+                dataAccess = "Read repos you grant, via your token",
             )
             ConnectorRow(
                 logoRes = R.drawable.ic_connector_youtube,
@@ -157,6 +170,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> YouTubeConnector.disconnect(ctx) },
+                dataAccess = "Read channel stats, list uploads",
             )
             // [v0.7.0-wave3] Google Photos (Google OAuth, readonly).
             ConnectorRow(
@@ -174,6 +188,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> PhotosConnector.disconnect(ctx) },
+                dataAccess = "Read your library (read-only)",
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_discord,
@@ -184,6 +199,7 @@ fun ConnectorsScreen(
                 label = { ctx -> DiscordConnector.store.label(ctx) },
                 onSave = { ctx, token -> DiscordConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> DiscordConnector.disconnect(ctx) },
+                dataAccess = "Post messages via your bot token",
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_slack,
@@ -194,6 +210,7 @@ fun ConnectorsScreen(
                 label = { ctx -> SlackConnector.store.label(ctx) },
                 onSave = { ctx, token -> SlackConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> SlackConnector.disconnect(ctx) },
+                dataAccess = "Post messages via your bot token",
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_telegram,
@@ -204,6 +221,7 @@ fun ConnectorsScreen(
                 label = { ctx -> TelegramConnector.store.label(ctx) },
                 onSave = { ctx, token -> TelegramConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> TelegramConnector.disconnect(ctx) },
+                dataAccess = "Send messages via your bot",
             )
             // [v0.6.0-wave2] Spotify (OAuth), Notion (token), Reddit + RSS (no-auth).
             ConnectorRow(
@@ -221,6 +239,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> SpotifyConnector.disconnect(ctx) },
+                dataAccess = "Playback state and control",
             )
             // [v0.7.0-wave3] Outlook (Microsoft Graph OAuth).
             ConnectorRow(
@@ -238,6 +257,7 @@ fun ConnectorsScreen(
                     }
                 },
                 onDisconnect = { ctx -> OutlookConnector.disconnect(ctx) },
+                dataAccess = "Read and send mail",
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_notion,
@@ -248,6 +268,7 @@ fun ConnectorsScreen(
                 label = { ctx -> NotionConnector.store.label(ctx) },
                 onSave = { ctx, token -> NotionConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> NotionConnector.disconnect(ctx) },
+                dataAccess = "Pages you share with the integration",
             )
             ToggleConnectorRow(
                 logoRes = R.drawable.ic_connector_reddit,
@@ -255,6 +276,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_reddit_desc),
                 isEnabled = { ctx -> RedditConnector.isEnabled(ctx) },
                 onToggle = { ctx, enabled -> RedditConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public posts only — no account",
             )
             // [v0.7.0-wave3] WhatsApp: share (no auth) + opt-in notification reader.
             WhatsAppConnectorRow()
@@ -270,6 +292,55 @@ sealed interface ConnectOutcome {
     data class Failed(val message: String) : ConnectOutcome
 }
 
+/**
+ * [v1.0-wave5-privacy] Expandable "What it can access" line under a
+ * connector row. The [dataAccess] string is a static, honest one-liner per
+ * connector describing what the agent can do with the connection — it is
+ * not derived from scopes at runtime, so keep it in sync with the
+ * connector's actual tools.
+ */
+@Composable
+private fun DataAccessDisclosure(dataAccess: String) {
+    var expanded by remember { mutableStateOf(false) }
+    val haptics = rememberHaptic()
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .clickable {
+                    haptics.tap()
+                    expanded = !expanded
+                }
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "What it can access",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp
+                else Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(animationSpec = tween(Motion.Standard)) + fadeIn(),
+            exit = shrinkVertically(animationSpec = tween(Motion.Quick)) + fadeOut(),
+        ) {
+            Text(
+                dataAccess,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ConnectorRow(
     logoRes: Int,
@@ -280,6 +351,8 @@ private fun ConnectorRow(
     isConfigured: () -> Boolean,
     onConnect: suspend (android.content.Context) -> ConnectOutcome,
     onDisconnect: suspend (android.content.Context) -> Unit,
+    // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
+    dataAccess: String,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -379,6 +452,8 @@ private fun ConnectorRow(
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
+        // [v1.0-wave5-privacy] Honest data-access disclosure.
+        DataAccessDisclosure(dataAccess)
     }
 
     if (showDisconnectConfirm) {
@@ -421,6 +496,8 @@ private fun TokenConnectorRow(
     label: (android.content.Context) -> String?,
     onSave: suspend (android.content.Context, String) -> String?,
     onDisconnect: suspend (android.content.Context) -> Unit,
+    // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
+    dataAccess: String,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -539,6 +616,8 @@ private fun TokenConnectorRow(
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
+        // [v1.0-wave5-privacy] Honest data-access disclosure.
+        DataAccessDisclosure(dataAccess)
     }
     if (showDisconnectConfirm) {
         AlertDialog(
@@ -585,6 +664,8 @@ private fun ToggleConnectorRow(
     description: String,
     isEnabled: (android.content.Context) -> Boolean,
     onToggle: (android.content.Context, Boolean) -> Unit,
+    // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
+    dataAccess: String,
 ) {
     val context = LocalContext.current
     var enabled by remember { mutableStateOf(isEnabled(context)) }
@@ -637,6 +718,8 @@ private fun ToggleConnectorRow(
                 },
             )
         }
+        // [v1.0-wave5-privacy] Honest data-access disclosure.
+        DataAccessDisclosure(dataAccess)
     }
 }
 
@@ -756,6 +839,8 @@ private fun WhatsAppConnectorRow() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        // [v1.0-wave5-privacy] Honest data-access disclosure.
+        DataAccessDisclosure("Share sheet + notifications you allow")
     }
 }
 
@@ -909,5 +994,7 @@ private fun RssConnectorRow() {
                 }
             }
         }
+        // [v1.0-wave5-privacy] Honest data-access disclosure.
+        DataAccessDisclosure("Fetches feed URLs you add")
     }
 }

@@ -80,6 +80,12 @@ class AnthropicProvider(
         // [T-android-stale-conn-retry-hang] Shared pool — see NetworkMonitor.
         // Network-transition eviction must reach provider connections.
         .connectionPool(ai.unicto.unibot.network.NetworkMonitor.sharedLLMConnectionPool)
+        // [v1.0-wave5-privacy] Traffic log + Local-only mode gate.
+        .apply {
+            val (logging, gate) = ai.unicto.unibot.privacy.PrivacyNetworkGate.interceptors()
+            addInterceptor(logging)
+            addInterceptor(gate)
+        }
         .build()
 
     override suspend fun sendMessageClamped(

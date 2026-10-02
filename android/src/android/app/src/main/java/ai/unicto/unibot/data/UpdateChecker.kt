@@ -86,6 +86,12 @@ object UpdateChecker {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
+        // [v1.0-wave5-privacy] Traffic log + Local-only mode gate.
+        .apply {
+            val (logging, gate) = ai.unicto.unibot.privacy.PrivacyNetworkGate.interceptors()
+            addInterceptor(logging)
+            addInterceptor(gate)
+        }
         .build()
 
     /**

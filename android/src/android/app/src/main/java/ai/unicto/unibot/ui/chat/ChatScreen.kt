@@ -126,6 +126,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock // [v1.0-wave5-privacy]
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.Info
@@ -135,6 +136,8 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Tune // unibot
+import androidx.compose.material.icons.outlined.Lock // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.outlined.Schedule // [v1.0-wave5-privacy]
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreHoriz // unibot
 import androidx.compose.material.icons.filled.MoreVert
@@ -564,6 +567,30 @@ fun ChatScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    // [v1.0-wave5-privacy] Per-chat lock gate. A locked chat shows the
+    // device-credential gate instead of its contents until the user
+    // confirms — auth is per-process (ChatLockAuth), so returning from the
+    // background does not re-gate but a fresh process does. Placed before
+    // the ViewModel so a locked chat never builds one.
+    val chatIsLocked = remember(sessionId) {
+        ai.unicto.unibot.privacy.PrivacyPrefs.isChatLocked(sessionId)
+    }
+    var chatLockAuthed by remember(sessionId) {
+        mutableStateOf(
+            !chatIsLocked ||
+                ai.unicto.unibot.ui.privacy.ChatLockAuth.isAuthed(sessionId) ||
+                !ai.unicto.unibot.guard.DeviceCredential.available(context),
+        )
+    }
+    if (chatIsLocked && !chatLockAuthed) {
+        ai.unicto.unibot.ui.privacy.LockedChatGate(
+            onUnlocked = {
+                ai.unicto.unibot.ui.privacy.ChatLockAuth.markAuthed(sessionId)
+                chatLockAuthed = true
+            },
+        )
+        return
+    }
     // Scoped to a process-level per-session ViewModelStore (ChatViewModelStore)
     // so the ViewModel and its viewModelScope survive:
     //   - configuration changes (rotation — NavBackStackEntry still alive)
@@ -3065,6 +3092,75 @@ fun ChatScreen(
                                         },
                                         leadingIcon = {
                                             Icon(Icons.Default.Edit, contentDescription = null)
+                                        },
+                                    )
+                                    // [v1.0-wave5-privacy] Per-chat privacy.
+                                    UnibotMenuDivider()
+                                    val chatMenuHaptics = ai.unicto.unibot.ui.util.rememberHaptic()
+                                    var chatMenuLocked by remember(sessionId) {
+                                        mutableStateOf(
+                                            ai.unicto.unibot.privacy.PrivacyPrefs.isChatLocked(sessionId),
+                                        )
+                                    }
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (chatMenuLocked) "Unlock chat"
+                                                else "Lock chat",
+                                            )
+                                        },
+                                        onClick = {
+                                            showChatMenu = false
+                                            chatMenuHaptics.toggle()
+                                            val next = !chatMenuLocked
+                                            ai.unicto.unibot.privacy.PrivacyPrefs.setChatLocked(
+                                                sessionId,
+                                                next,
+                                            )
+                                            chatMenuLocked = next
+                                            // No ChatLockAuth.markAuthed here: the current
+                                            // view stays open because chatLockAuthed was
+                                            // initialized before the toggle; a later open
+                                            // of this chat must still hit the gate.
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (chatMenuLocked) Icons.Filled.Lock
+                                                else Icons.Outlined.Lock,
+                                                contentDescription = null,
+                                            )
+                                        },
+                                    )
+                                    var chatMenuAutoDelete by remember(sessionId) {
+                                        mutableStateOf(
+                                            ai.unicto.unibot.privacy.PrivacyPrefs
+                                                .effectiveAutoDeleteHours(sessionId),
+                                        )
+                                    }
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Auto-delete: " + ai.unicto.unibot.ui.privacy.autoDeleteLabel(
+                                                    chatMenuAutoDelete,
+                                                ),
+                                            )
+                                        },
+                                        onClick = {
+                                            chatMenuHaptics.tap()
+                                            val next = ai.unicto.unibot.ui.privacy.nextAutoDeleteBucket(
+                                                chatMenuAutoDelete,
+                                            )
+                                            ai.unicto.unibot.privacy.PrivacyPrefs.setChatAutoDelete(
+                                                sessionId,
+                                                next,
+                                            )
+                                            chatMenuAutoDelete = next
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.Schedule,
+                                                contentDescription = null,
+                                            )
                                         },
                                     )
                                     // unibot: with the model rows off the header, the

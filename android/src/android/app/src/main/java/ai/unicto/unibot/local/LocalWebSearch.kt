@@ -60,6 +60,12 @@ object LocalWebSearch {
         withContext(Dispatchers.IO) {
             runCatching {
                 val url = URL(ENDPOINT + URLEncoder.encode(query, "UTF-8"))
+                // [v1.0-wave5-privacy] HttpURLConnection has no OkHttp
+                // interceptors — log + gate manually so the traffic log and
+                // Local-only mode cover web search too.
+                val privacyGate = ai.unicto.unibot.privacy.PrivacyNetworkGate
+                privacyGate.record(url.host)
+                privacyGate.checkAllowed(url.host)
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     connectTimeout = CONNECT_TIMEOUT_MS
                     readTimeout = READ_TIMEOUT_MS

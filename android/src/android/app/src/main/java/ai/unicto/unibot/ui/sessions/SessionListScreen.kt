@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Lock // [v1.0-wave5-privacy] locked-chat row icon
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
@@ -133,6 +134,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.blur // [v1.0-wave5-privacy] locked-chat preview blur
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Path
@@ -2894,24 +2896,41 @@ private fun SessionRow(
             verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
             val titleText = session.title ?: "New Chat"
-            if (searchQuery.isNotBlank()) {
-                Text(
-                    text = highlightedAnnotatedString(titleText, searchQuery),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else {
-                Text(
-                    text = titleText,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            // [v1.0-wave5-privacy] Locked chats: lock icon on the title and a
+            // blurred preview. Read live (not remembered) so toggling the lock
+            // in the chat menu reflects on the next recomposition.
+            val chatLocked = ai.unicto.unibot.privacy.PrivacyPrefs.isChatLocked(session.id)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (searchQuery.isNotBlank()) {
+                    Text(
+                        text = highlightedAnnotatedString(titleText, searchQuery),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Text(
+                        text = titleText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (chatLocked) {
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = "Locked chat",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
             // During an active search, prefer the matched message snippet
             // (content hit) over the generic lastMessage preview. Falls back
@@ -2923,6 +2942,9 @@ private fun SessionRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.then(
+                        if (chatLocked) Modifier.blur(8.dp) else Modifier,
+                    ),
                 )
             } else {
                 Text(
@@ -2931,6 +2953,9 @@ private fun SessionRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.then(
+                        if (chatLocked) Modifier.blur(8.dp) else Modifier,
+                    ),
                 )
             }
         }

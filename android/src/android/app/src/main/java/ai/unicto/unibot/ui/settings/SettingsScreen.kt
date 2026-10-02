@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check // [v1.0-wave5-privacy]
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CloudQueue // unibot: unibot Cloud row
 import androidx.compose.material.icons.outlined.PhoneAndroid // unibot: on-device models row
@@ -51,6 +52,12 @@ import androidx.compose.material.icons.outlined.Route // P4: smart routing row (
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.SwapHoriz // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.outlined.WifiOff // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.outlined.NoPhotography // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.outlined.ContentPasteOff // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.outlined.AutoDelete // [v1.0-wave5-privacy]
+import androidx.compose.material.icons.outlined.FactCheck // [v1.0-wave5-privacy]
 import androidx.compose.material.icons.outlined.Storefront // P8: marketplace row
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.CameraAlt // unibot P6: visual ask row
@@ -59,6 +66,8 @@ import androidx.compose.material.icons.outlined.LibraryBooks // unibot P2: promp
 import androidx.compose.material.icons.outlined.RecordVoiceOver // unibot P6: read aloud row
 import androidx.compose.material.icons.outlined.AutoFixHigh // unibot P6: autofill row
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog // [v1.0-wave5-privacy]
+import androidx.compose.material3.TextButton // [v1.0-wave5-privacy]
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -154,9 +163,27 @@ fun SettingsScreen(
     onPromptLibraryClick: () -> Unit = {},
     // [P2] Compare Models (side-by-side) entry. Default no-op, same reason.
     onCompareClick: () -> Unit = {},
+    // [v1.0-wave5-privacy] Privacy screens. Default no-op for callers that
+    // haven't wired the routes yet.
+    onPrivacyDashboardClick: () -> Unit = {},
+    onTrafficLogClick: () -> Unit = {},
+    onPermissionAuditClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var showFeedbackSheet by remember { mutableStateOf(false) }
+    // [v1.0-wave5-privacy] Privacy toggles. localOnly/screenshotBlock are
+    // hot StateFlows, so the rows flip the moment the setting changes
+    // anywhere; the rest re-read on composition.
+    val privacyLocalOnly by ai.unicto.unibot.privacy.PrivacyPrefs.localOnly.collectAsState()
+    val privacyScreenshotBlock by ai.unicto.unibot.privacy.PrivacyPrefs.screenshotBlock.collectAsState()
+    var privacyClipboardClear by remember {
+        mutableStateOf(ai.unicto.unibot.privacy.PrivacyPrefs.clipboardAutoClear)
+    }
+    var privacyAutoDeleteHours by remember {
+        mutableStateOf(ai.unicto.unibot.privacy.PrivacyPrefs.autoDeleteDefaultHours)
+    }
+    var showAutoDeletePicker by remember { mutableStateOf(false) }
+    val privacyHaptics = ai.unicto.unibot.ui.util.rememberHaptic()
     // unibot: Muse's settings page — the round back glyph, the title centred,
     // white cards of outlined-glyph rows on the grey canvas, no section headers
     // or subtitles. Every OpenMinis entry is kept; they are regrouped the way
@@ -397,8 +424,87 @@ fun SettingsScreen(
             }
             ai.unicto.unibot.ui.muse.MuseGap()
 
-            // -- The app --
+            // -- Privacy (v1.0 wave 5): dashboard, traffic log, local-only, guards --
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(3)) {
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Privacy dashboard", icon = Icons.Outlined.Shield, onClick = onPrivacyDashboardClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Network traffic log", icon = Icons.Outlined.SwapHoriz, onClick = onTrafficLogClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = "Local-only mode",
+                    icon = Icons.Outlined.WifiOff,
+                    chevron = false,
+                    value = if (privacyLocalOnly) "On" else "Off",
+                    trailing = {
+                        Switch(
+                            checked = privacyLocalOnly,
+                            onCheckedChange = {
+                                privacyHaptics.toggle()
+                                ai.unicto.unibot.privacy.PrivacyPrefs.setLocalOnly(it)
+                            },
+                        )
+                    },
+                    onClick = {
+                        privacyHaptics.toggle()
+                        ai.unicto.unibot.privacy.PrivacyPrefs.setLocalOnly(!privacyLocalOnly)
+                    },
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = "Block screenshots",
+                    icon = Icons.Outlined.NoPhotography,
+                    chevron = false,
+                    value = if (privacyScreenshotBlock) "On" else "Off",
+                    trailing = {
+                        Switch(
+                            checked = privacyScreenshotBlock,
+                            onCheckedChange = {
+                                privacyHaptics.toggle()
+                                ai.unicto.unibot.privacy.PrivacyPrefs.setScreenshotBlock(it)
+                            },
+                        )
+                    },
+                    onClick = {
+                        privacyHaptics.toggle()
+                        ai.unicto.unibot.privacy.PrivacyPrefs.setScreenshotBlock(!privacyScreenshotBlock)
+                    },
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = "Auto-clear clipboard",
+                    icon = Icons.Outlined.ContentPasteOff,
+                    chevron = false,
+                    value = if (privacyClipboardClear) "On" else "Off",
+                    trailing = {
+                        Switch(
+                            checked = privacyClipboardClear,
+                            onCheckedChange = {
+                                privacyHaptics.toggle()
+                                privacyClipboardClear = it
+                                ai.unicto.unibot.privacy.PrivacyPrefs.clipboardAutoClear = it
+                            },
+                        )
+                    },
+                    onClick = {
+                        privacyHaptics.toggle()
+                        privacyClipboardClear = !privacyClipboardClear
+                        ai.unicto.unibot.privacy.PrivacyPrefs.clipboardAutoClear = privacyClipboardClear
+                    },
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = "Auto-delete chats",
+                    icon = Icons.Outlined.AutoDelete,
+                    value = privacyAutoDeleteShortLabel(privacyAutoDeleteHours),
+                    onClick = { showAutoDeletePicker = true },
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Permission audit", icon = Icons.Outlined.FactCheck, onClick = onPermissionAuditClick)
+            }
+            ai.unicto.unibot.ui.muse.MuseGap()
+
+            // -- The app --
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(4)) {
                 // unibot P6: spoken replies — on-device TTS voices, engine status, speed.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_read_aloud_title), icon = Icons.Outlined.RecordVoiceOver, onClick = onReadAloudClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -412,7 +518,7 @@ fun SettingsScreen(
             ai.unicto.unibot.ui.muse.MuseGap()
 
             // -- About --
-            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(4)) {
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(5)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_about_unibot), icon = Icons.Outlined.Info, onClick = onAboutClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(
@@ -436,6 +542,61 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    // [v1.0-wave5-privacy] Default auto-delete window picker. The choice is
+    // the GLOBAL default; a per-chat override (chat "…" menu) wins for its
+    // chat. Deleting here is permanent — the sweep runs on app start.
+    if (showAutoDeletePicker) {
+        val options = listOf(0L to "Never", 1L to "1 hour", 24L to "1 day", 168L to "1 week")
+        AlertDialog(
+            onDismissRequest = { showAutoDeletePicker = false },
+            title = { Text("Auto-delete chats") },
+            text = {
+                Column {
+                    Text(
+                        text = "Chats older than this are deleted when the app starts. " +
+                            "A per-chat choice in the chat menu overrides this.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    options.forEach { (hours, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    privacyHaptics.tap()
+                                    privacyAutoDeleteHours = hours
+                                    ai.unicto.unibot.privacy.PrivacyPrefs.autoDeleteDefaultHours = hours
+                                    showAutoDeletePicker = false
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (privacyAutoDeleteHours == hours) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAutoDeletePicker = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 
     if (showFeedbackSheet) {
@@ -578,6 +739,18 @@ private fun buildBugReportUrl(): String {
         "&version=$version" +
         "&device=$device" +
         "&body=$encodedBody"
+}
+
+/**
+ * [v1.0-wave5-privacy] Short value label for the "Auto-delete chats" row:
+ * Never / 1h / 1d / 1w, falling back to "<n>h" for odd stored values.
+ */
+private fun privacyAutoDeleteShortLabel(hours: Long): String = when (hours) {
+    0L -> "Never"
+    1L -> "1h"
+    24L -> "1d"
+    168L -> "1w"
+    else -> "${hours}h"
 }
 
 /**

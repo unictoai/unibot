@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import ai.unicto.unibot.offload.OffloadPermissionManager
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first // [v1.0-wave5-privacy] auto-delete sweep
 import kotlinx.coroutines.launch
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -499,6 +500,24 @@ class MainActivity : ComponentActivity() {
         // Non-null and fully initialized — proven by the guard above.
         val app = requireNotNull(application as? UnibotApp)
 
+        // [v1.0-wave5-privacy] Privacy core cold-start.
+        ai.unicto.unibot.privacy.PrivacyPrefs.init(applicationContext)
+        // Mirror the persisted Local-only switch into the gate (so network
+        // behaviour is correct from the first request), then rebuild the
+        // provider allowlist from the configured providers.
+        ai.unicto.unibot.privacy.PrivacyNetworkGate.localOnlyEnabled =
+            ai.unicto.unibot.privacy.PrivacyPrefs.localOnly.value
+        ai.unicto.unibot.privacy.PrivacyNetworkGate.refreshAllowlist(applicationContext)
+        // FLAG_SECURE now; later flips arrive via the StateFlow collect below.
+        applyPrivacyScreenshotFlag()
+        lifecycleScope.launch {
+            ai.unicto.unibot.privacy.PrivacyPrefs.screenshotBlock.collect {
+                applyPrivacyScreenshotFlag()
+            }
+        }
+        // One-shot sweep for chats past their auto-delete window.
+        runPrivacyAutoDeleteSweep(app)
+
         // Parse deep link from launch intent. A real deep-link in the
         // launch intent always wins over a saved-state restore (the
         // user explicitly tapped a link). Otherwise, if we were killed
@@ -638,6 +657,17 @@ class MainActivity : ComponentActivity() {
                     initialDeepLink = if (deepLinkConsumed) null else launchDeepLink,
                 )
 
+                // [v1.0-wave5-privacy] Local-only banner, overlaid above the
+                // NavHost. Visible only while the mode is on; tapping opens
+                // the privacy dashboard — it never disables the mode itself.
+                ai.unicto.unibot.ui.privacy.PrivacyBanner(
+                    onOpenDashboard = {
+                        navController.safeNavigate(
+                            ai.unicto.unibot.ui.privacy.ROUTE_PRIVACY_DASHBOARD,
+                        )
+                    },
+                )
+
                 // T-config: root-level unibot-config confirm dialog.
                 // Bound to ConfigConfirmationGate.pending — the gate
                 // fires whenever a CLI write is awaiting user OK. The
@@ -726,6 +756,70 @@ class MainActivity : ComponentActivity() {
         currentChatSessionId?.let { SessionActivityTracker.setAbsent(it) }
         currentChatSessionId = null
         super.onDestroy()
+    }
+
+    /**
+     * [v1.0-wave5-privacy] Apply (or release) the activity window's
+     * `FLAG_SECURE` from the "Block screenshots" privacy toggle.
+     * Idempotent — called on cold start, on every toggle change (the
+     * [ai.unicto.unibot.privacy.PrivacyPrefs.screenshotBlock] StateFlow
+     * collect in onCreate), and on resume.
+     */
+    private fun applyPrivacyScreenshotFlag() {
+        if (ai.unicto.unibot.privacy.PrivacyPrefs.screenshotBlock.value) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            AppLogger.info("PrivacyScreenshot", "FLAG_SECURE applied (screenshots blocked)")
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            AppLogger.info("PrivacyScreenshot", "FLAG_SECURE cleared")
+        }
+    }
+
+    /**
+     * [v1.0-wave5-privacy] One-shot startup sweep: for each session whose
+     * effective auto-delete window (per-chat override, else the global
+     * default) has elapsed since `updatedAt`, delete it. Runs on IO and
+     * never fails the launch — errors are logged, not thrown.
+     */
+    private fun runPrivacyAutoDeleteSweep(app: UnibotApp) {
+        val repo = app.chatRepositoryOrNull ?: return
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val now = System.currentTimeMillis()
+                val sessions = repo.observeSessions().first()
+                var deleted = 0
+                for (session in sessions) {
+                    val hours = ai.unicto.unibot.privacy.PrivacyPrefs
+                        .effectiveAutoDeleteHours(session.id)
+                    if (hours > 0 && now - session.updatedAt > hours * 3_600_000L) {
+                        repo.deleteSession(session.id)
+                        ai.unicto.unibot.ui.privacy.ChatLockAuth.clear(session.id)
+                        deleted++
+                    }
+                }
+                if (deleted > 0) {
+                    AppLogger.info(
+                        "PrivacyAutoDelete",
+                        "swept $deleted expired session(s)",
+                    )
+                }
+            } catch (t: Throwable) {
+                android.util.Log.w(
+                    "MainActivity",
+                    "auto-delete sweep failed: ${t.message}",
+                )
+            }
+        }
+    }
+
+    /**
+     * [v1.0-wave5-privacy] Re-apply FLAG_SECURE on every foreground return
+     * so the "Block screenshots" toggle is honoured even if it changed
+     * while the activity was stopped.
+     */
+    override fun onResume() {
+        super.onResume()
+        runCatching { applyPrivacyScreenshotFlag() }
     }
 
     /**
