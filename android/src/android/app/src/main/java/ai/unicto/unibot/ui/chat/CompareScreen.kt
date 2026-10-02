@@ -71,7 +71,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Per-pane run state. */
-private data class ComparePaneState(
+internal data class ComparePaneState(
     val text: String = "",
     val streaming: Boolean = false,
     val error: String? = null,
@@ -84,9 +84,9 @@ class CompareViewModel(app: Application) : AndroidViewModel(app) {
     val entryB: StateFlow<ModelEntry?> = _entryB.asStateFlow()
 
     private val _paneA = MutableStateFlow(ComparePaneState())
-    private val paneA: StateFlow<ComparePaneState> = _paneA.asStateFlow()
+    internal val paneA: StateFlow<ComparePaneState> = _paneA.asStateFlow()
     private val _paneB = MutableStateFlow(ComparePaneState())
-    private val paneB: StateFlow<ComparePaneState> = _paneB.asStateFlow()
+    internal val paneB: StateFlow<ComparePaneState> = _paneB.asStateFlow()
 
     private var jobA: Job? = null
     private var jobB: Job? = null
