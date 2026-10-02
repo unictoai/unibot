@@ -289,7 +289,7 @@ internal fun ToolDetailSheet(
     val isLive = block.toolStatus == ToolBlockStatus.RUNNING ||
         block.toolStatus == ToolBlockStatus.STREAMING ||
         block.toolStatus == ToolBlockStatus.PENDING
-    val toolAccent = toolAccentColor(block.toolName)
+    val toolAccent = toolAccentColor(block.toolName, ChatColors.isDark)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -896,7 +896,7 @@ internal fun ToolDetailSheet(
                                             fontWeight = FontWeight.SemiBold,
                                             color = Color.White,
                                             modifier = Modifier
-                                                .background(Color(0xFF6D28D9), CircleShape)
+                                                .background(ChatColors.thinking, CircleShape)
                                                 .padding(horizontal = 10.dp, vertical = 2.dp),
                                         )
                                     }

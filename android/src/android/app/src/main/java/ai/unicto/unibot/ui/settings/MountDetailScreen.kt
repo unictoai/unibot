@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -190,7 +191,7 @@ fun MountDetailScreen(
             Spacer(Modifier.height(20.dp))
             ActionRow(
                 icon = Icons.Outlined.Folder,
-                tint = Color(0xFF6D28D9),
+                tint = ChatColors.thinking,
                 label = stringResource(R.string.mount_detail_browse_files),
                 onClick = onBrowseFiles,
             )

@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings.backup
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -281,7 +282,7 @@ private fun BackupTab(
             CategorySwitchRow(
                 title = stringResource(categoryNameRes(cat)),
                 icon = categoryIcon(cat),
-                iconColor = categoryTint(cat),
+                iconColor = categoryTint(cat, ChatColors.isDark),
                 checked = cat in selected,
                 onCheckedChange = { vm.toggleCategory(cat, it) },
                 enabled = !running,
@@ -821,7 +822,7 @@ private fun RestoreTab(
             // folder support is untouched — only this duplicate entry is gone.
             RestoreSourceRow(
                 icon = Icons.Outlined.Description,
-                iconColor = Color(0xFF6D28D9),
+                iconColor = ChatColors.thinking,
                 label = if (running) status ?: stringResource(R.string.backup_reading)
                 else stringResource(R.string.backup_choose_file),
                 enabled = !running,
@@ -912,7 +913,7 @@ private fun RestoreTab(
                 title = stringResource(categoryNameRes(cat)),
                 subtitle = stat?.let { categoryCountLabel(cat, it) },
                 icon = categoryIcon(cat),
-                iconColor = categoryTint(cat),
+                iconColor = categoryTint(cat, ChatColors.isDark),
                 checked = cat in restoreSelected,
                 onCheckedChange = { vm.toggleRestoreCategory(cat, it) },
                 enabled = !running,
@@ -1181,7 +1182,7 @@ private fun DestinationRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(30.dp).background(Color(0xFF6D28D9), CircleShape),
+                modifier = Modifier.size(30.dp).background(ChatColors.thinking, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
@@ -1535,8 +1536,8 @@ private fun categoryIcon(cat: BackupCategory): ImageVector = when (cat) {
 }
 
 /** Tint per category, mirroring iOS BackupCategoryIcon.tint(for:). */
-private fun categoryTint(cat: BackupCategory): Color = when (cat) {
-    BackupCategory.CHATS -> Color(0xFF6D28D9)                 // blue
+private fun categoryTint(cat: BackupCategory, isDark: Boolean): Color = when (cat) {
+    BackupCategory.CHATS -> if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9) // violet
     BackupCategory.SHARED_FILES -> Color(0xFF5856D6)         // indigo
     BackupCategory.SKILLS -> Color(0xFFFF9500)              // orange
     BackupCategory.MEMORY -> Color(0xFFFF2D55)             // pink

@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.settings
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import android.content.Context
 import android.text.format.Formatter
 import androidx.compose.foundation.background
@@ -116,7 +117,7 @@ fun StorageManagementScreen(
                 showDivider = true,
             )
             StorageOverviewRow(
-                color = Color(0xFF6D28D9),
+                color = ChatColors.thinking,
                 label = stringResource(R.string.storage_overview_database),
                 value = Formatter.formatFileSize(context, dbSize),
                 showDivider = true,

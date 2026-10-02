@@ -820,7 +820,7 @@ internal fun FloatingToolStatusBar(
     val isRunning = block.toolStatus == ToolBlockStatus.RUNNING ||
         block.toolStatus == ToolBlockStatus.STREAMING ||
         block.toolStatus == ToolBlockStatus.PENDING
-    val toolAccent = toolAccentColor(block.toolName)
+    val toolAccent = toolAccentColor(block.toolName, ChatColors.isDark)
     val previewEnabled = LocalToolPreviewEnabled.current
 
     // iOS layout: ZStack(alignment: .bottomLeading)

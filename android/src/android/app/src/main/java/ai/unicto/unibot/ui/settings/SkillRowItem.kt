@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -72,7 +73,7 @@ fun SkillRowItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    val (badgeIcon, badgeColor) = sourceIconAndColor(importSource)
+                    val (badgeIcon, badgeColor) = sourceIconAndColor(importSource, ChatColors.isDark)
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         imageVector = badgeIcon,
@@ -127,9 +128,12 @@ fun SkillRowItem(
  * Kept here (rather than duplicated in each screen) so badge colors and icons
  * stay consistent between Settings and the in-chat sheet.
  */
-fun sourceIconAndColor(source: SkillRepository.ImportSource): Pair<ImageVector, Color> = when (source) {
-    SkillRepository.ImportSource.URL -> Icons.Default.Link to Color(0xFF6D28D9)
+fun sourceIconAndColor(source: SkillRepository.ImportSource, isDark: Boolean): Pair<ImageVector, Color> {
+    val violet = if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
+    return when (source) {
+    SkillRepository.ImportSource.URL -> Icons.Default.Link to violet
     SkillRepository.ImportSource.FILE -> Icons.Outlined.Description to Color(0xFFFF9500)
     SkillRepository.ImportSource.BUNDLED -> Icons.Default.Inventory2 to Color(0xFF34C759)
     SkillRepository.ImportSource.SESSION -> Icons.Outlined.ChatBubble to Color(0xFFAF52DE)
+    }
 }

@@ -15,62 +15,53 @@ import androidx.compose.ui.text.font.FontWeight // unibot
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Accent: iOS blue, desaturated. [T-android-accent-blue-parity]
+// Brand accent: unibot violet.
+//   light  #6D28D9
+//   dark   #A78BFA (lifted for contrast on near-black surfaces)
 //
-// Was a teal (#2E8B8B / #4DD9D9) that predated iOS settling on blue. The hue
-// now comes from iOS Assets.xcassets/AccentColor.colorset (sRGB components
-// r0.212 g0.525 b0.933 -> #3686EE light, r0.329 g0.565 b0.894 -> #5490E4 dark),
-// but iOS's saturation (84% / 73%) read as glaring on Android's darker
-// surfaces, so SATURATION is dialled back ~30% with hue and lightness kept:
-//   light  #3686EE  S84% L57%  ->  #528AD2  S59% L57%
-//   dark   #5490E4  S73% L61%  ->  #6A94CE  S51% L61%
-//
-// Lightness is deliberately NOT raised, which is the other way to "lighten".
-// It would have softened dark mode further but pushed light-mode contrast on
-// white from 3.62 to 2.62 — below WCAG AA's 4.5 for text. Desaturating keeps
-// dark mode at 5.93 (passing) and leaves light mode where it was.
-//
-// Names keep the `Teal` prefix only to avoid churning 90+ call sites; the
-// value is the contract, not the name.
-private val TealPrimary = Color(0xFF6D28D9)
-private val TealOnPrimary = Color(0xFFFFFFFF)
-private val TealPrimaryContainer = Color(0xFFF0E6FF)
-private val TealOnPrimaryContainer = Color(0xFF3B0764)
-private val TealSecondary = Color(0xFF5B4F6E)
-private val TealOnSecondary = Color(0xFFFFFFFF)
-private val TealSecondaryContainer = Color(0xFFE9DEF8)
-private val TealOnSecondaryContainer = Color(0xFF1E1B2E)
-private val TealTertiary = Color(0xFF46617A)
-private val TealOnTertiary = Color(0xFFFFFFFF)
-private val TealTertiaryContainer = Color(0xFFCDE5FF)
-private val TealOnTertiaryContainer = Color(0xFF001D32)
-private val TealBackground = Color(0xFFF2F2F7)
-private val TealOnBackground = Color(0xFF1C1C1E)
-private val TealSurface = Color(0xFFF2F2F7)
-private val TealOnSurface = Color(0xFF1C1C1E)
-private val TealSurfaceVariant = Color(0xFFE5E5EA)
-private val TealOnSurfaceVariant = Color(0xFF3C3C43)
-private val TealOutline = Color(0xFF6E6E73)
+// The violet containers/neutrals below are iOS-grouped values (page #F2F2F7 /
+// card white on light; page #000 / card #1C1C1E on dark). The Material3
+// `surfaceContainer*` slots are overridden to the neutral card colors so cards
+// never pick up a violet tint from the primary color.
+private val VioletPrimary = Color(0xFF6D28D9)
+private val VioletOnPrimary = Color(0xFFFFFFFF)
+private val VioletPrimaryContainer = Color(0xFFF0E6FF)
+private val VioletOnPrimaryContainer = Color(0xFF3B0764)
+private val VioletSecondary = Color(0xFF5B4F6E)
+private val VioletOnSecondary = Color(0xFFFFFFFF)
+private val VioletSecondaryContainer = Color(0xFFE9DEF8)
+private val VioletOnSecondaryContainer = Color(0xFF1E1B2E)
+private val VioletTertiary = Color(0xFF46617A)
+private val VioletOnTertiary = Color(0xFFFFFFFF)
+private val VioletTertiaryContainer = Color(0xFFCDE5FF)
+private val VioletOnTertiaryContainer = Color(0xFF001D32)
+private val VioletBackground = Color(0xFFF2F2F7)
+private val VioletOnBackground = Color(0xFF1C1C1E)
+private val VioletSurface = Color(0xFFF2F2F7)
+private val VioletOnSurface = Color(0xFF1C1C1E)
+private val VioletSurfaceVariant = Color(0xFFE5E5EA)
+private val VioletOnSurfaceVariant = Color(0xFF3C3C43)
+private val VioletOutline = Color(0xFF6E6E73)
 
-private val TealDarkPrimary = Color(0xFFA78BFA)
-private val TealDarkOnPrimary = Color(0xFF2E1065)
-private val TealDarkPrimaryContainer = Color(0xFF2E1A4A)
-private val TealDarkOnPrimaryContainer = Color(0xFFF0E6FF)
-private val TealDarkSecondary = Color(0xFFC4B5DA)
-private val TealDarkOnSecondary = Color(0xFF2A2340)
-private val TealDarkSecondaryContainer = Color(0xFF3B3359)
-private val TealDarkOnSecondaryContainer = Color(0xFFE9DEF8)
-private val TealDarkBackground = Color(0xFF000000)
-private val TealDarkOnBackground = Color(0xFFE5E5EA)
-private val TealDarkSurface = Color(0xFF000000)
-private val TealDarkOnSurface = Color(0xFFE5E5EA)
-private val TealDarkSurfaceVariant = Color(0xFF3C3C43)
-private val TealDarkOnSurfaceVariant = Color(0xFFC7C7CC)
-private val TealDarkOutline = Color(0xFF8E8E93)
+private val VioletDarkPrimary = Color(0xFFA78BFA)
+private val VioletDarkOnPrimary = Color(0xFF2E1065)
+private val VioletDarkPrimaryContainer = Color(0xFF2E1A4A)
+private val VioletDarkOnPrimaryContainer = Color(0xFFF0E6FF)
+private val VioletDarkSecondary = Color(0xFFC4B5DA)
+private val VioletDarkOnSecondary = Color(0xFF2A2340)
+private val VioletDarkSecondaryContainer = Color(0xFF3B3359)
+private val VioletDarkOnSecondaryContainer = Color(0xFFE9DEF8)
+private val VioletDarkBackground = Color(0xFF000000)
+private val VioletDarkOnBackground = Color(0xFFE5E5EA)
+private val VioletDarkSurface = Color(0xFF000000)
+private val VioletDarkOnSurface = Color(0xFFE5E5EA)
+private val VioletDarkSurfaceVariant = Color(0xFF3C3C43)
+private val VioletDarkOnSurfaceVariant = Color(0xFFC7C7CC)
+private val VioletDarkOutline = Color(0xFF8E8E93)
 
 // Neutral grouped-card surfaces (iOS-style system-grouped background).
 // Override Material3's tonal `surfaceContainer*` so cards don't pick up the
-// teal primary tint.
+// violet primary tint.
 // Light: page = #F2F2F7 gray, card = white
 // Dark:  page = #000, card = #1C1C1E
 private val NeutralGroupedBg = Color(0xFFF2F2F7)
@@ -84,24 +75,24 @@ private val NeutralDarkGroupedCardElevated = Color(0xFF2C2C2E)
 private val NeutralDarkOutline = Color(0xFF38383A)
 
 private val LightColorScheme = lightColorScheme(
-    primary = TealPrimary,
-    onPrimary = TealOnPrimary,
-    primaryContainer = TealPrimaryContainer,
-    onPrimaryContainer = TealOnPrimaryContainer,
-    secondary = TealSecondary,
-    onSecondary = TealOnSecondary,
-    secondaryContainer = TealSecondaryContainer,
-    onSecondaryContainer = TealOnSecondaryContainer,
-    tertiary = TealTertiary,
-    onTertiary = TealOnTertiary,
-    tertiaryContainer = TealTertiaryContainer,
-    onTertiaryContainer = TealOnTertiaryContainer,
+    primary = VioletPrimary,
+    onPrimary = VioletOnPrimary,
+    primaryContainer = VioletPrimaryContainer,
+    onPrimaryContainer = VioletOnPrimaryContainer,
+    secondary = VioletSecondary,
+    onSecondary = VioletOnSecondary,
+    secondaryContainer = VioletSecondaryContainer,
+    onSecondaryContainer = VioletOnSecondaryContainer,
+    tertiary = VioletTertiary,
+    onTertiary = VioletOnTertiary,
+    tertiaryContainer = VioletTertiaryContainer,
+    onTertiaryContainer = VioletOnTertiaryContainer,
     background = NeutralGroupedBg,
-    onBackground = TealOnBackground,
+    onBackground = VioletOnBackground,
     surface = NeutralGroupedBg,
-    onSurface = TealOnSurface,
+    onSurface = VioletOnSurface,
     surfaceVariant = NeutralGroupedCard,
-    onSurfaceVariant = TealOnSurfaceVariant,
+    onSurfaceVariant = VioletOnSurfaceVariant,
     surfaceContainerLowest = NeutralGroupedBg,
     surfaceContainerLow = NeutralGroupedCard,
     surfaceContainer = NeutralGroupedCard,
@@ -112,20 +103,20 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = TealDarkPrimary,
-    onPrimary = TealDarkOnPrimary,
-    primaryContainer = TealDarkPrimaryContainer,
-    onPrimaryContainer = TealDarkOnPrimaryContainer,
-    secondary = TealDarkSecondary,
-    onSecondary = TealDarkOnSecondary,
-    secondaryContainer = TealDarkSecondaryContainer,
-    onSecondaryContainer = TealDarkOnSecondaryContainer,
+    primary = VioletDarkPrimary,
+    onPrimary = VioletDarkOnPrimary,
+    primaryContainer = VioletDarkPrimaryContainer,
+    onPrimaryContainer = VioletDarkOnPrimaryContainer,
+    secondary = VioletDarkSecondary,
+    onSecondary = VioletDarkOnSecondary,
+    secondaryContainer = VioletDarkSecondaryContainer,
+    onSecondaryContainer = VioletDarkOnSecondaryContainer,
     background = NeutralDarkGroupedBg,
-    onBackground = TealDarkOnBackground,
+    onBackground = VioletDarkOnBackground,
     surface = NeutralDarkGroupedBg,
-    onSurface = TealDarkOnSurface,
+    onSurface = VioletDarkOnSurface,
     surfaceVariant = NeutralDarkGroupedCard,
-    onSurfaceVariant = TealDarkOnSurfaceVariant,
+    onSurfaceVariant = VioletDarkOnSurfaceVariant,
     surfaceContainerLowest = NeutralDarkGroupedBg,
     surfaceContainerLow = NeutralDarkGroupedCard,
     surfaceContainer = NeutralDarkGroupedCard,

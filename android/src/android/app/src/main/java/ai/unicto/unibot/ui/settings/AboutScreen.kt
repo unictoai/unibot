@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,7 +38,7 @@ import ai.unicto.unibot.ui.components.openExternalUrl
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val tileBlue = Color(0xFF6D28D9)
+    val tileBlue = ChatColors.thinking
 
     SettingsScaffold(title = stringResource(R.string.about_title), onBack = onBack) {
         Column(

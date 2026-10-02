@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.sandbox
 import ai.unicto.unibot.ui.settings.SettingsSwitch
 import ai.unicto.unibot.R
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -95,12 +96,11 @@ enum class MirrorCategory(
             NPM -> Icons.Outlined.Javascript
         }
 
-    val iconColor: Color
-        get() = when (this) {
-            ALPINE -> Color(0xFF6D28D9)
-            PIP -> Color(0xFF34C759)
-            NPM -> Color(0xFFFF3B30)
-        }
+    fun iconColor(isDark: Boolean): Color = when (this) {
+        ALPINE -> if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
+        PIP -> Color(0xFF34C759)
+        NPM -> Color(0xFFFF3B30)
+    }
 }
 
 data class MirrorEntry(
@@ -536,7 +536,7 @@ private fun MirrorCategoryRow(category: MirrorCategory, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(category.displayName) },
         leadingContent = {
-            CircleIconBadge(icon = category.icon, tint = category.iconColor)
+            CircleIconBadge(icon = category.icon, tint = category.iconColor(ChatColors.isDark))
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {

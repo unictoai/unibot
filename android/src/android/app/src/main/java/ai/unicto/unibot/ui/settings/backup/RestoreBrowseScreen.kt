@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings.backup
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -270,7 +271,7 @@ private fun EntryRow(
         ) {
             Box(
                 Modifier.size(30.dp).background(
-                    if (entry.isDirectory) Color(0xFF8E8E93) else Color(0xFF6D28D9),
+                    if (entry.isDirectory) Color(0xFF8E8E93) else ChatColors.thinking,
                     CircleShape,
                 ),
                 contentAlignment = Alignment.Center,

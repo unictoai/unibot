@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.settings
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -232,7 +233,7 @@ fun UnibotSkillsBrowserScreen(
                             Text(hudMessage, color = Color.White, style = MaterialTheme.typography.labelLarge, maxLines = 2)
                         }
                         HudState.HINT -> {
-                            Icon(Icons.Filled.Info, contentDescription = null, tint = Color(0xFF6D28D9), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Filled.Info, contentDescription = null, tint = ChatColors.thinking, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(10.dp))
                             Text(hudMessage, color = Color.White, style = MaterialTheme.typography.labelLarge, maxLines = 2)
                         }

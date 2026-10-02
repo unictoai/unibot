@@ -4,6 +4,7 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.AppIconRepository
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import android.content.Context
 import android.content.SharedPreferences
 import android.app.LocaleManager
@@ -281,7 +282,7 @@ fun AppearanceScreen(
     val fontsModified = chatInputLevel != 0 || messageLevel != 0 || appBaseLevel != 0
 
     val tilePurple = Color(0xFF5856D6)
-    val tileBlue = Color(0xFF6D28D9)
+    val tileBlue = ChatColors.thinking
     val tileOrange = Color(0xFFFF9500)
     val tileGreen = Color(0xFF34C759)
     val tileTeal = Color(0xFF5AC8FA)

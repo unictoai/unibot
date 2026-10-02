@@ -115,14 +115,15 @@ fun MuseTopAppBar(
 }
 
 /**
- * The white disc Muse puts under a bar glyph. The slot is a Material `IconButton` on upstream
- * screens (48dp touch target); the disc clips its ripple to 40dp and stays tappable.
+ * The filled disc Muse puts under a bar glyph (48dp, matching the settings screen).
+ * The slot is a Material `IconButton` on upstream screens (48dp touch target);
+ * the disc clips its ripple and stays tappable.
  */
 @Composable
 fun MuseDisc(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
         modifier = modifier
-            .size(40.dp)
+            .size(48.dp)
             .shadow(2.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
             .clip(CircleShape)
             .background(MuseTones.surface),
@@ -134,12 +135,12 @@ fun MuseDisc(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     }
 }
 
-/** A white card of rows on Muse's grey canvas. */
+/** A dark/light card of rows on the page canvas. Radius ~24dp per the Muse settings look. */
 @Composable
 fun MuseCard(modifier: Modifier = Modifier, inset: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         color = MuseTones.surface,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = inset),
@@ -148,7 +149,7 @@ fun MuseCard(modifier: Modifier = Modifier, inset: Dp = 16.dp, content: @Composa
     }
 }
 
-/** Muse's settings row: an outlined glyph, the label, a chevron. */
+/** Muse's settings row: an outlined glyph (~26dp), the label, a dim chevron. ~64dp tall. */
 @Composable
 fun MuseRow(
     title: String,
@@ -163,7 +164,7 @@ fun MuseRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .heightIn(min = 54.dp)
+            .heightIn(min = 64.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -172,7 +173,7 @@ fun MuseRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(26.dp),
             )
             Spacer(Modifier.width(14.dp))
         }
@@ -201,8 +202,8 @@ fun MuseRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                modifier = Modifier.size(22.dp),
             )
         }
     }
@@ -210,7 +211,7 @@ fun MuseRow(
 
 /** The hairline between two [MuseRow]s, inset past the glyph. */
 @Composable
-fun MuseRowDivider(inset: Dp = 52.dp) {
+fun MuseRowDivider(inset: Dp = 56.dp) {
     HorizontalDivider(
         modifier = Modifier.padding(start = inset),
         thickness = 0.6.dp,
@@ -244,4 +245,4 @@ fun MuseSectionLabel(text: String, modifier: Modifier = Modifier) {
 
 /** Vertical rhythm between cards on a Muse page. */
 @Composable
-fun MuseGap(height: Dp = 12.dp) = Spacer(Modifier.height(height))
+fun MuseGap(height: Dp = 16.dp) = Spacer(Modifier.height(height))

@@ -50,16 +50,19 @@ internal fun formatStepDuration(seconds: Long, stillRunning: Boolean): String {
 }
 
 // Helper: tool accent color
-internal fun toolAccentColor(toolName: String): Color = when (toolName) {
-    "shell_execute" -> Color(0xFF34C759)
-    "file_read" -> Color(0xFF32ADE6)
-    "file_write" -> Color(0xFF6D28D9)
-    "file_edit" -> Color(0xFFFF9500)
-    "browser_use" -> Color(0xFF6D28D9)
-    "read_image" -> Color(0xFFAF52DE)
-    "memory_write", "memory_get" -> Color(0xFFFF2D55)
-    "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
-    else -> Color(0xFF8E8E93)
+internal fun toolAccentColor(toolName: String, isDark: Boolean): Color {
+    val violet = if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
+    return when (toolName) {
+        "shell_execute" -> Color(0xFF34C759)
+        "file_read" -> Color(0xFF32ADE6)
+        "file_write" -> violet
+        "file_edit" -> Color(0xFFFF9500)
+        "browser_use" -> violet
+        "read_image" -> Color(0xFFAF52DE)
+        "memory_write", "memory_get" -> Color(0xFFFF2D55)
+        "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
+        else -> Color(0xFF8E8E93)
+    }
 }
 
 // Helper: tool icon (iOS: distinct SF Symbols per tool type)

@@ -639,7 +639,7 @@ internal fun ToolCallPill(
         block.toolStatus == ToolBlockStatus.TIMEOUT
     val isCancelled = block.toolStatus == ToolBlockStatus.CANCELLED
 
-    val toolAccent = toolAccentColor(block.toolName)
+    val toolAccent = toolAccentColor(block.toolName, ChatColors.isDark)
     val toolIcon = toolIconFor(block.toolName)
 
     // Icon color: tool color when running/done, error/cancel colors on failure
@@ -868,7 +868,7 @@ internal fun ThinkingBlock(block: AssistantBlock, isStreaming: Boolean, isLast: 
         // if the user hasn't taken control of its state yet.
         if (!isStreaming && !userTouched) expanded = false
     }
-    val thinkingBlue = Color(0xFF6D28D9)
+    val thinkingBlue = ChatColors.thinking
     val charCount = block.content.length
     val charLabel = when {
         charCount >= 1000 -> "${charCount / 1000}K"
@@ -1098,7 +1098,7 @@ private fun ThinkingFullContentDialog(content: String, onDismiss: () -> Unit) {
                         text = "Deep Thinking",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF6D28D9),
+                        color = ChatColors.thinking,
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     UnibotTextButton(onClick = onDismiss) {

@@ -1,6 +1,7 @@
 package ai.unicto.unibot.ui.terminal
 
 import ai.unicto.unibot.R
+import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
@@ -74,7 +75,6 @@ private val TerminalFg = Color(0xFFD4D4D4)
 private val TerminalGreen = Color(0xFF34C759)
 private val AccessoryBg = Color(0xFF1F1F1F)
 private val AccButtonBg = Color(0xFF404040)
-private val AccButtonActive = Color(0xFF6D28D9)
 private val TopButtonBg = Color(0xFF2C2C2E)
 
 @Composable
@@ -436,7 +436,7 @@ private fun QuickCommandButton(
     isActive: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val bg = if (isActive) AccButtonActive else AccButtonBg
+    val bg = if (isActive) ChatColors.sendButton else AccButtonBg
     val fg = if (isActive) Color.White else TerminalGreen
     Row(
         modifier = Modifier

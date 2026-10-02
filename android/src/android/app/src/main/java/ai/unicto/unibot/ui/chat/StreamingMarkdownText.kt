@@ -625,7 +625,7 @@ private fun StreamingMarkdownTextBody(
  */
 @Composable
 private fun StreamingCaret() {
-    val violet = Color(0xFF6D28D9)
+    val violet = ChatColors.thinking
     val infiniteTransition = rememberInfiniteTransition(label = "stream_caret")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,

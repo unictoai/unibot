@@ -46,7 +46,7 @@ import ai.unicto.unibot.ui.theme.ChatColors
 
 /**
  * App-wide popup menu with a unified look: softer rounded corners, a lifted
- * shadow, and a clean tonal surface that matches the Teal theme.
+ * shadow, and a clean tonal surface that matches the Violet theme.
  *
  * Drop-in replacement for [androidx.compose.material3.DropdownMenu] — pass
  * [DropdownMenuItem] children as before.

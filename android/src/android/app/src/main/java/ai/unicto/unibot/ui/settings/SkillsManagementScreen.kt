@@ -4,6 +4,7 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.UnibotButton
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -282,7 +283,7 @@ fun SkillsManagementScreen(
                 )
             } else {
                 filteredSkills.forEachIndexed { index, skill ->
-                    val (badgeIcon, badgeColor) = sourceIconAndColor(skill.importSource)
+                    val (badgeIcon, badgeColor) = sourceIconAndColor(skill.importSource, ChatColors.isDark)
                     SettingsRow(
                         title = skill.name,
                         subtitle = skill.description.takeIf { it.isNotEmpty() }?.let { stripMarkdown(it) },
@@ -761,7 +762,7 @@ fun SkillDetailScreen(
                             }
                         }
                     }) {
-                        SettingsActionIcon(Icons.Default.Refresh, SettingsIconBlue)
+                        SettingsActionIcon(Icons.Default.Refresh, ChatColors.thinking)
                         Spacer(Modifier.width(14.dp))
                         Text(stringResource(R.string.skill_detail_update_url), color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
                         Text(relativeTime(skill.updatedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -773,7 +774,7 @@ fun SkillDetailScreen(
                     if (isBusy) return@DetailRow
                     fileUpdateLauncher.launch("*/*")
                 }) {
-                    SettingsActionIcon(Icons.Outlined.Description, SettingsIconBlue)
+                    SettingsActionIcon(Icons.Outlined.Description, ChatColors.thinking)
                     Spacer(Modifier.width(14.dp))
                     Text(stringResource(R.string.skill_detail_update_file), color = MaterialTheme.colorScheme.primary)
                 }
@@ -1036,7 +1037,6 @@ private fun shareSkillZip(context: android.content.Context, zip: java.io.File) {
 /** [T-android-skill-icon-circular] The same iOS-system-palette values the main
  *  Settings rows use (SettingsScreen): blue for navigational/remote actions,
  *  green for local filesystem operations. */
-private val SettingsIconBlue = Color(0xFF6D28D9)
 private val SettingsIconGreen = Color(0xFF34C759)
 
 /**

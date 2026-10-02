@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings
 
+import ai.unicto.unibot.ui.theme.ChatColors
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -528,7 +529,7 @@ private fun MountRow(
         Icon(
             imageVector = Icons.Outlined.Folder,
             contentDescription = null,
-            tint = Color(0xFF6D28D9),
+            tint = ChatColors.thinking,
             modifier = Modifier.size(28.dp),
         )
         Spacer(Modifier.width(12.dp))
