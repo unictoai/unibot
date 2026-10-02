@@ -13,6 +13,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  issues: write # failure diagnostics: publish pytest log tail as an issue
 
 jobs:
   # Which trees the push touched. Jobs below are skipped, not omitted, when theirs did not
@@ -118,8 +119,22 @@ jobs:
         run: uv run mypy
 
       - name: Tests (no live LLM calls)
+        id: pytest
         if: env.RUN == 'true'
-        run: uv run python -m pytest -q -m "not live"
+        run: |
+          set -o pipefail
+          uv run python -m pytest -q -m "not live" 2>&1 | tee "$RUNNER_TEMP/pytest.log"
+
+      - name: Report pytest failure
+        if: failure() && steps.pytest.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # CI job logs are not readable without auth; publish the failure tail
+          # as an issue so it can be diagnosed.
+          { echo 'pytest failed. Tail of the test log:'; echo '```'; tail -c 30000 "$RUNNER_TEMP/pytest.log"; echo '```'; } > /tmp/pytest-tail.txt || true
+          gh issue create --title "CI: pytest failed on ${{ github.sha }}" \
+            --body-file /tmp/pytest-tail.txt || true
 
       - name: Package builds and installs
         if: env.RUN == 'true' && (matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12')
