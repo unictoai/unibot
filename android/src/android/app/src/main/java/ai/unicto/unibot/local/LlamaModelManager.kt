@@ -110,6 +110,17 @@ object LlamaModelManager {
             defaultTemperature = 0.3f,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
         ),
+        LlamaModel(
+            id = "lfm2.5-230m",
+            title = "LFM2.5 230M",
+            hint = "Smallest · fastest on low-end phones, simplest answers",
+            fileName = "LFM2.5-230M-QAD-Q4_0.gguf",
+            sizeLabel = "~142 MB",
+            minBytes = 120_000_000L,
+            template = LlamaChatTemplate.LFM2_CHATML,
+            defaultTemperature = 0.3f,
+            systemPrompt = DEFAULT_SYSTEM_PROMPT,
+        ),
     )
 
     fun modelUrl(model: LlamaModel): String = "$RELEASE_BASE/${model.fileName}"
