@@ -1845,6 +1845,7 @@ private fun RenderBlock(block: MdBlock) {
                 }
             }
         }
+        }
 
         is MdBlock.BlockQuote -> {
             // T307: previous IntrinsicSize.Min approach crashes when inner

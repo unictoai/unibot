@@ -36,7 +36,7 @@ class TransportUnavailable(message: String) : Exception(message)
 /**
  * The relay connection as it actually exists (relay 0.5, surveyed 2026-10-02):
  *
- * - `POST /v1/auth/*` — sign-in, password, sign-out (auth only)
+ * - POST /v1/auth/{path} — sign-in, password, sign-out (auth only)
  * - `GET /v1/me`, `/v1/estimate` — allowance (chat billing)
  * - `GET/PUT /v1/me/profile` — the agent's name and look (see [ai.unicto.unibot.cloud.ProfileSync])
  * - `GET /v1/me/sessions`, `DELETE /v1/me/sessions/{prefix}` — sign-in *metadata*
