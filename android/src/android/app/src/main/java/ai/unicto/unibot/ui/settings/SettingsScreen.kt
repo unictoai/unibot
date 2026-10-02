@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.Route // P4: smart routing row (
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Storefront // P8: marketplace row
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.CameraAlt // unibot P6: visual ask row
 import androidx.compose.material.icons.outlined.RecordVoiceOver // unibot P6: read aloud row
@@ -98,6 +99,9 @@ fun SettingsScreen(
     // [T-mcp-integration-android] MCP Integrations page, listed directly below
     // Memory. Default no-op for callers that haven't wired the route yet.
     onMcpClick: () -> Unit = {},
+    // P8: the agent/skills marketplace directory. Default no-op for callers
+    // that haven't wired the route yet.
+    onMarketplaceClick: () -> Unit = {},
     // [T-soul-md] Soul settings page lives between Skills and Memory in the
     // Agent Runtime section; default no-op for callers that haven't wired
     // the route yet.
@@ -268,6 +272,9 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_compare_title), icon = Icons.Outlined.CompareArrows, onClick = onCompareClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // P8: marketplace — community skills and MCP servers.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_market_title), icon = Icons.Outlined.Storefront, onClick = onMarketplaceClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // unibot: the phone's screen as a hand — off by default.
                 ai.unicto.unibot.ui.muse.MuseRow(

@@ -633,6 +633,8 @@ fun SessionListScreen(
         }
     }
     var editSession by remember { mutableStateOf<ChatSessionEntity?>(null) }
+    // P8: the per-share consent sheet for "Share as HTML…" (one chat at a time).
+    var shareSheetSession by remember { mutableStateOf<ChatSessionEntity?>(null) }
     var showBrowserSheet by remember { mutableStateOf(false) }
     var showBrowserSettings by remember { mutableStateOf(false) }
     val browserTabPool = remember { ai.unicto.unibot.browser.BrowserTabPool(context) }
@@ -1080,6 +1082,7 @@ fun SessionListScreen(
                                     onExportRequest = { s, fmt ->
                                         exportSession(context, s, chatRepository, scope, fmt)
                                     },
+                                    onShareHtmlRequest = { shareSheetSession = it },
                                     onRegenerateTitle = { viewModel.regenerateTitle(it) },
                                     onDuplicate = { viewModel.duplicateSession(it) },
                                     onDeleteRequest = { id ->
@@ -1498,6 +1501,15 @@ fun SessionListScreen(
         )
     }
 
+    // P8: per-share consent sheet — self-contained HTML via the system share sheet.
+    shareSheetSession?.let { session ->
+        ai.unicto.unibot.ui.share.ShareChatSheet(
+            session = session,
+            chatRepository = chatRepository,
+            onDismiss = { shareSheetSession = null },
+        )
+    }
+
     // Browser Settings sheet
     if (showBrowserSettings) {
         ai.unicto.unibot.ui.browser.BrowserSettingsSheet(
@@ -1875,6 +1887,8 @@ private fun SessionItemContent(
     onPinToggle: (String) -> Unit,
     onEditRequest: (ChatSessionEntity) -> Unit,
     onExportRequest: (ChatSessionEntity, String) -> Unit,
+    /** P8: opens the per-share consent sheet for a self-contained HTML export. */
+    onShareHtmlRequest: (ChatSessionEntity) -> Unit = {},
     onRegenerateTitle: (String) -> Unit,
     onDuplicate: (String) -> Unit,
     onDeleteRequest: (String) -> Unit,
@@ -2038,6 +2052,14 @@ private fun SessionItemContent(
                         onClick = {
                             showContextMenu = false
                             onExportRequest(session, "text")
+                        },
+                    )
+                    // P8: per-share consent → self-contained HTML via the share sheet.
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ub_share_html), modifier = Modifier.padding(start = 24.dp)) },
+                        onClick = {
+                            showContextMenu = false
+                            onShareHtmlRequest(session)
                         },
                     )
                 }

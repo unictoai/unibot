@@ -913,4 +913,62 @@
     <string name="ub_visual_ask_title">Ask about camera</string>
     <string name="ub_read_aloud_title">Read aloud</string>
     <string name="ub_autofill_title">Autofill</string>
+    <!-- P8: cross-device session sync (opt-in, E2E, relay transport stubbed). -->
+    <string name="ub_sync_title">Device sync</string>
+    <string name="ub_sync_row_subtitle">Keep chats in sync across your devices</string>
+    <string name="ub_sync_toggle">Sync sessions</string>
+    <string name="ub_sync_toggle_on">On</string>
+    <string name="ub_sync_toggle_off">Off</string>
+    <string name="ub_sync_passphrase_label">Sync passphrase</string>
+    <string name="ub_sync_passphrase_hint">A phrase only you know</string>
+    <string name="ub_sync_passphrase_note">Derives the encryption key for sync snapshots (PBKDF2, 120,000 rounds). It is never stored and never leaves this phone — you will enter it again after the app restarts.</string>
+    <string name="ub_sync_key_ready">Passphrase set for this session.</string>
+    <string name="ub_sync_now">Sync now</string>
+    <string name="ub_sync_working">Preparing…</string>
+    <string name="ub_sync_status_title">Status</string>
+    <string name="ub_sync_last_sync">Last sync: %1$s</string>
+    <string name="ub_sync_never">Never</string>
+    <string name="ub_sync_sessions_on_device">%1$d sessions on this phone</string>
+    <string name="ub_sync_need_signin">Sign in to unibot Cloud first — sync rides on the cloud relay connection.</string>
+    <string name="ub_sync_relay_limitation">The cloud relay does not offer a session-sync endpoint yet (its API covers chat, the agent profile, sign-in sessions and the activity log). Snapshots are encrypted on this phone and held ready — nothing is uploaded. The payloads are already end-to-end encrypted, so when the relay grows a sync endpoint it will only ever see ciphertext.</string>
+    <string name="ub_sync_unavailable">Not available yet: %1$s</string>
+    <string name="ub_sync_done">Snapshot ready: %1$d sessions encrypted on this phone.</string>
+
+    <!-- P8: shareable chat export (per-share consent, local HTML file). -->
+    <string name="ub_share_title">Share chat</string>
+    <string name="ub_share_html">Share as HTML…</string>
+    <string name="ub_share_messages">%1$d messages</string>
+    <string name="ub_share_what">What gets shared</string>
+    <string name="ub_share_bullet_file">A single self-contained .html file — opens in any browser, works offline.</string>
+    <string name="ub_share_bullet_text">Includes the message text; image and video attachments are listed, not embedded.</string>
+    <string name="ub_share_bullet_local">Nothing is uploaded. The file is made on this phone and handed to the Android share sheet — you choose where it goes, every single time.</string>
+    <string name="ub_share_action">Share via…</string>
+    <string name="ub_share_cancel">Cancel</string>
+    <string name="ub_share_exporting">Preparing…</string>
+    <string name="ub_share_failed">Could not prepare the file: %1$s</string>
+
+    <!-- P8: agent/skills marketplace. -->
+    <string name="ub_market_title">Marketplace</string>
+    <string name="ub_market_row_subtitle">Community skills and MCP servers</string>
+    <string name="ub_market_search_hint">Search skills and servers…</string>
+    <string name="ub_market_skill">Skill</string>
+    <string name="ub_market_mcp">MCP server</string>
+    <string name="ub_market_install">Install</string>
+    <string name="ub_market_installing">Installing…</string>
+    <string name="ub_market_installed">Installed</string>
+    <string name="ub_market_builtin">Built in</string>
+    <string name="ub_market_enable_toggle">Enable for chats</string>
+    <string name="ub_market_by">by %1$s · v%2$s</string>
+    <string name="ub_market_catalog_title">Catalog</string>
+    <string name="ub_market_bundled">Bundled catalog · %1$d entries (works offline)</string>
+    <string name="ub_market_custom_url">Custom catalog URL (optional)</string>
+    <string name="ub_market_load">Load catalog</string>
+    <string name="ub_market_custom_note">A catalog is only fetched when you tap Load — never automatically. It must be a JSON file in the bundled catalog\'s format.</string>
+    <string name="ub_market_loaded">Custom catalog: %1$d entries</string>
+    <string name="ub_market_load_failed">Could not load the catalog: %1$s</string>
+    <string name="ub_market_empty">No entries match “%1$s”.</string>
+    <string name="ub_market_install_failed">Install failed: %1$s</string>
+    <string name="ub_market_what_skill">Installs into this phone\'s skill library. It appears under Settings → Skills, where you can read its instructions and turn it on or off.</string>
+    <string name="ub_market_what_mcp">Adds an MCP server to this phone. It appears under Settings → MCP, where you can enable it per chat.</string>
 </resources>
+
