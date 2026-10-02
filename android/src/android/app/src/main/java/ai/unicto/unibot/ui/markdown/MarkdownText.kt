@@ -113,7 +113,10 @@ private fun BlockContent(
         // unibot: `unibot-*` fences are app protocol (goal created / goal
         // update) and render as cards, never as code.
         is MarkdownParser.Block.CodeBlock ->
-            if (block.language.startsWith("unibot-")) ai.unicto.unibot.ui.chat.UnibotBlock(block.language, block.code)
+            // P5 artifacts render live inside the chat instead of as code.
+            if (ai.unicto.unibot.ui.chat.artifacts.ArtifactRender.isArtifactLanguage(block.language))
+                ai.unicto.unibot.ui.chat.artifacts.ArtifactBlock(block.language, block.code)
+            else if (block.language.startsWith("unibot-")) ai.unicto.unibot.ui.chat.UnibotBlock(block.language, block.code)
             else CodeBlockView(block)
         is MarkdownParser.Block.Blockquote -> BlockquoteView(block, color, baseStyle, mathSpans)
         is MarkdownParser.Block.BulletList -> BulletListView(block, color, baseStyle)

@@ -1739,9 +1739,14 @@ private fun RenderBlock(block: MdBlock) {
             )
         }
 
-        is MdBlock.CodeBlock -> if (block.language.startsWith("unibot-")) { // unibot: goal cards etc.
-            ai.unicto.unibot.ui.chat.UnibotBlock(block.language, block.code)
-        } else {
+        is MdBlock.CodeBlock -> when {
+            // P5 artifacts: mermaid/svg/html/chart + unibot-canvas/deck/site
+            // render live inside the chat instead of as code.
+            ai.unicto.unibot.ui.chat.artifacts.ArtifactRender.isArtifactLanguage(block.language) ->
+                ai.unicto.unibot.ui.chat.artifacts.ArtifactBlock(block.language, block.code)
+            block.language.startsWith("unibot-") -> // unibot: goal cards etc.
+                ai.unicto.unibot.ui.chat.UnibotBlock(block.language, block.code)
+            else -> {
             val clipboardManager = LocalClipboardManager.current
             var copied by remember { mutableStateOf(false) }
             if (copied) {
@@ -1770,6 +1775,21 @@ private fun RenderBlock(block: MdBlock) {
                         color = MdCodeLangColor,
                         modifier = Modifier.weight(1f),
                     )
+                    // P5 canvas: long text/code responses get an "Open in Canvas"
+                    // affordance next to copy — opens the side-by-side editor.
+                    if (block.code.length >= CANVAS_MIN_CHARS) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Open in Canvas",
+                            tint = Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(16.dp)
+                                .clickable {
+                                    CanvasStore.open(block.language.ifEmpty { "code" }, block.code)
+                                },
+                        )
+                    }
                     Icon(
                         imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
                         contentDescription = if (copied) "Copied" else "Copy code",
