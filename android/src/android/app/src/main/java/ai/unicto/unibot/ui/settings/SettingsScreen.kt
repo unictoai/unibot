@@ -117,6 +117,7 @@ fun SettingsScreen(
     onMediaModelsClick: () -> Unit = {}, // unibot: Settings → Image & video models
     onOnDeviceModelsClick: () -> Unit = {}, // unibot: Settings → On-device models (offline LLM)
     onFactMemoriesClick: () -> Unit = {}, // unibot: Settings → Saved memories (v0.5.0 "remember that …")
+    onYouTubeDashboardClick: () -> Unit = {}, // unibot: Settings → YouTube dashboard (v1.0 creator tools)
     onCloudClick: () -> Unit = {}, // unibot: Settings → unibot Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // unibot: Settings → Hands (the screen as a hand)
     onComputersClick: () -> Unit = {}, // unibot: Settings → Computers (the phone drives a PC)
@@ -294,6 +295,9 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [unibot-connectors] Connectors — Gmail etc.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_connectors_title), icon = Icons.Outlined.Email, onClick = onConnectorsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.0-wave4] Creator dashboard — channel stats + latest uploads.
+                ai.unicto.unibot.ui.muse.MuseRow(title = "YouTube dashboard", icon = Icons.Outlined.PlayCircleOutline, onClick = onYouTubeDashboardClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // P8: marketplace — community skills and MCP servers.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_market_title), icon = Icons.Outlined.Storefront, onClick = onMarketplaceClick)

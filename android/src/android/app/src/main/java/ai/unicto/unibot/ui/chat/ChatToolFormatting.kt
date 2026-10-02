@@ -91,6 +91,13 @@ internal fun toolDisplayName(toolName: String): String = when (toolName) {
     "memory_write" -> "memory"
     "memory_get" -> "memory"
     "web_search" -> "search"
+    // [v1.0-wave4] Creator tools.
+    "clip_captions" -> "captions"
+    "clip_hooks" -> "hooks"
+    "draft_reply" -> "reply drafts"
+    "optimize_title" -> "title score"
+    "hashtags" -> "hashtags"
+    "write_script" -> "script"
     else -> toolName
 }
 
@@ -107,6 +114,13 @@ internal fun toolTitleLabel(toolName: String): String = when (toolName) {
     "read_image" -> "unibot is reading Image"
     "memory_write", "memory_get" -> "unibot is using Memory"
     "web_search" -> "unibot is using Search"
+    // [v1.0-wave4] Creator tools.
+    "clip_captions" -> "unibot is writing Captions"
+    "clip_hooks" -> "unibot is writing Hooks"
+    "draft_reply" -> "unibot is drafting Replies"
+    "optimize_title" -> "unibot is scoring Title"
+    "hashtags" -> "unibot is picking Hashtags"
+    "write_script" -> "unibot is writing Script"
     else -> "unibot is using ${toolDisplayName(toolName)}"
 }
 

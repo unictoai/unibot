@@ -4411,6 +4411,12 @@ fun ChatScreen(
                                 ai.unicto.unibot.ui.chat.WebSearchSourcesCard(
                                     block = item.block,
                                 )
+                            } else if (ai.unicto.unibot.ui.chat.isCreatorToolName(item.block.toolName)) {
+                                // [v1.0-wave4] Creator tools render as
+                                // animated result cards, not tool pills.
+                                ai.unicto.unibot.ui.chat.CreatorCard(
+                                    block = item.block,
+                                )
                             } else ToolCallPill(
                                 block = item.block,
                                 allToolBlocks = item.allToolBlocks,

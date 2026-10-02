@@ -701,6 +701,12 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
             )
         }
+        // [v1.0-wave4] Creator dashboard — YouTube channel stats + uploads.
+        composable(ai.unicto.unibot.ui.creator.ROUTE_YOUTUBE_DASHBOARD) {
+            ai.unicto.unibot.ui.creator.YouTubeDashboardScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
         // unibot: unibot Cloud — sign in with a phone/e-mail code for a starter allowance,
         // and the account page (balance, sign out) behind Settings.
         composable(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) {
@@ -837,6 +843,7 @@ fun AppNavigation(
                 onMediaModelsClick = { navController.safeNavigate(ai.unicto.unibot.ui.media.ROUTE_MEDIA_MODELS) }, // unibot
                 onOnDeviceModelsClick = { navController.safeNavigate(ai.unicto.unibot.ui.local.ROUTE_ON_DEVICE_MODELS) }, // unibot: offline LLM
                 onFactMemoriesClick = { navController.safeNavigate(ai.unicto.unibot.ui.settings.ROUTE_FACT_MEMORIES) }, // unibot v0.5.0: saved memories
+                onYouTubeDashboardClick = { navController.safeNavigate(ai.unicto.unibot.ui.creator.ROUTE_YOUTUBE_DASHBOARD) }, // unibot v1.0: creator dashboard
                 onCloudClick = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // unibot
                 onHandsClick = { navController.safeNavigate(ai.unicto.unibot.ui.hands.ROUTE_HANDS) }, // unibot
                 onComputersClick = { navController.safeNavigate(ai.unicto.unibot.ui.reach.ROUTE_COMPUTERS) }, // unibot

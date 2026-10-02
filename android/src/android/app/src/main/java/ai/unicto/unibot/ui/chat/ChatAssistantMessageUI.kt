@@ -394,8 +394,11 @@ internal fun AssistantMessageView(message: ChatMessage, onRetry: (() -> Unit)? =
                 else -> {
                     // tool_use — [v0.5.0-agentic-core] web_search renders as
                     // a Sources card on the legacy path too.
+                    // [v1.0-wave4] creator tools render as result cards too.
                     if (block.toolName == "web_search") {
                         WebSearchSourcesCard(block)
+                    } else if (isCreatorToolName(block.toolName)) {
+                        CreatorCard(block)
                     } else {
                         ToolCallPill(block, allToolBlocks = toolPillBlocks)
                     }

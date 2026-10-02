@@ -72,6 +72,10 @@ object AgentTools {
         if (webSearchEnabled) {
             add(WebSearchTool.definition())
         }
+        // [v1.0-wave4] Creator tools — pure on-device generators for the
+        // creator businesses (captions, hooks, replies, titles, hashtags,
+        // scripts). No accounts, no network: always available.
+        addAll(CreatorTools.definitions())
         if (memoryEnabled) {
             add(memoryWriteDefinition())
             add(memoryGetDefinition())

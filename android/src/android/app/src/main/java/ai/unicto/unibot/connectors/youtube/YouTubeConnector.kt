@@ -169,4 +169,49 @@ object YouTubeConnector {
             ApiResult.Error("YouTube video lookup failed: ${e.message}")
         }
     }
+
+    /** The connected channel's most recent uploads (for the creator dashboard). */
+    suspend fun recentVideos(
+        context: Context,
+        maxResults: Int = 5,
+    ): ApiResult<List<Video>> = withContext(Dispatchers.IO) {
+        val t = token(context) ?: return@withContext ApiResult.NotConnected()
+        val n = maxResults.coerceIn(1, 10)
+        val url = "$BASE/search?part=snippet&forMine=true&type=video&order=date&maxResults=$n"
+        runCatching {
+            http.newCall(authed(url, t).get().build()).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                val items = JSONObject(text).optJSONArray("items") ?: JSONArray()
+                val ids = (0 until items.length()).mapNotNull { i ->
+                    items.optJSONObject(i)?.optJSONObject("id")?.optString("videoId", "")
+                        ?.takeIf { it.isNotBlank() }
+                }
+                if (ids.isEmpty()) return@withContext ApiResult.Ok(emptyList())
+                // Enrich with statistics in one batched call.
+                val vurl = "$BASE/videos?part=snippet,statistics&id=${ids.joinToString(",")}"
+                http.newCall(authed(vurl, t).get().build()).execute().use { vresp ->
+                    val vtext = vresp.body?.string().orEmpty()
+                    if (!vresp.isSuccessful) return@withContext apiError(vresp.code, vtext)
+                    val vitems = JSONObject(vtext).optJSONArray("items") ?: JSONArray()
+                    ApiResult.Ok((0 until vitems.length()).mapNotNull { i ->
+                        val o = vitems.optJSONObject(i) ?: return@mapNotNull null
+                        val sn = o.optJSONObject("snippet") ?: return@mapNotNull null
+                        val stats = o.optJSONObject("statistics") ?: JSONObject()
+                        Video(
+                            id = o.optString("id", ""),
+                            title = sn.optString("title", ""),
+                            channel = sn.optString("channelTitle", ""),
+                            publishedAt = sn.optString("publishedAt", "").take(10),
+                            views = stats.optString("viewCount", "0"),
+                            likes = stats.optString("likeCount", "0"),
+                        )
+                    })
+                }
+            }
+        }.getOrElse { e ->
+            AppLogger.warning(TAG, "[recent] ${e.message}")
+            ApiResult.Error("YouTube recent videos failed: ${e.message}")
+        }
+    }
 }

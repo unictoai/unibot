@@ -73,6 +73,7 @@ import ai.unicto.unibot.tools.GmailTool
 import ai.unicto.unibot.tools.GitHubTool
 import ai.unicto.unibot.tools.TelegramTool
 import ai.unicto.unibot.tools.YouTubeTool
+import ai.unicto.unibot.tools.CreatorTools
 import ai.unicto.unibot.tools.DiscordTool
 import ai.unicto.unibot.tools.SlackTool
 import ai.unicto.unibot.tools.DriveTool
@@ -10196,6 +10197,13 @@ class ChatViewModel(
             YouTubeTool.SEARCH_NAME -> YouTubeTool.executeSearch(argsJson, context)
             YouTubeTool.CHANNEL_NAME -> YouTubeTool.executeChannel(argsJson, context)
             YouTubeTool.VIDEO_NAME -> YouTubeTool.executeVideo(argsJson, context)
+            // [v1.0-wave4] Creator tools — on-device generators, no connection needed.
+            CreatorTools.CAPTIONS_NAME -> CreatorTools.executeCaptions(argsJson)
+            CreatorTools.HOOKS_NAME -> CreatorTools.executeHooks(argsJson)
+            CreatorTools.REPLY_NAME -> CreatorTools.executeReply(argsJson)
+            CreatorTools.TITLE_NAME -> CreatorTools.executeTitle(argsJson)
+            CreatorTools.HASHTAGS_NAME -> CreatorTools.executeHashtags(argsJson)
+            CreatorTools.SCRIPT_NAME -> CreatorTools.executeScript(argsJson)
             DiscordTool.READ_NAME -> DiscordTool.executeRead(argsJson, context)
             DiscordTool.SEND_NAME -> DiscordTool.executeSend(argsJson, context)
             SlackTool.READ_NAME -> SlackTool.executeRead(argsJson, context)
