@@ -371,12 +371,10 @@ private fun EmptyState(generating: Boolean, onWriteNow: () -> Unit) {
 
 @Composable
 private fun GeneratingCard() {
-    FeedCard {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MuseTones.action)
-            Spacer(Modifier.width(10.dp))
-            Text(stringResource(R.string.ub_feed_generating), fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
-        }
+    Column {
+        ai.unicto.unibot.ui.muse.SkeletonCard(lines = 3)
+        Spacer(Modifier.height(12.dp))
+        ai.unicto.unibot.ui.muse.SkeletonCard(lines = 2)
     }
 }
 

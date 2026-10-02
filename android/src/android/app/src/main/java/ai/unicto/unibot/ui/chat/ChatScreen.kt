@@ -4061,6 +4061,7 @@ fun ChatScreen(
                         Box(
                             modifier = Modifier
                                 .alpha(rowAlpha)
+                                .messageEntrance(item.key, isNewestItem)
                                 .then(
                                     if (isNewestItem) {
                                         Modifier.onPlaced {

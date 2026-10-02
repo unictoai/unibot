@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.settings
 
+import ai.unicto.unibot.ui.muse.pressableRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -293,7 +294,7 @@ fun SettingsRow(
                 // effectively asymmetric once the 0.5dp divider was added/removed)
                 // is what made a no-subtitle last row read ~50px shorter.
                 .heightIn(min = minHeight)
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .then(if (onClick != null) Modifier.pressableRow(onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 12.dp), // unibot: 16dp like Muse
             // #10 keep the trailing control (Switch/value) vertically centered
             // against the title — already centered, kept explicit.

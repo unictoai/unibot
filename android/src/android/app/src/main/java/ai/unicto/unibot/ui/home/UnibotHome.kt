@@ -450,7 +450,7 @@ fun UnibotHome(
         label = "ubHomePhase",
     ) { current ->
         when (current) {
-            HomePhase.LOADING -> Surface(color = MuseTones.surface, modifier = Modifier.fillMaxSize()) {}
+            HomePhase.LOADING -> ColdStartBrand()
             HomePhase.SETUP -> FirstRunSetupScreen(
                 agentName = agentName,
                 signedIn = signedIn == true,
