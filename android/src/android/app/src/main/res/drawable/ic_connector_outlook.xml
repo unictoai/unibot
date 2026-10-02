@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Brand violet disc -->
+    <path
+        android:fillColor="#6D28D9"
+        android:pathData="M24,0 C37.3,0 48,10.7 48,24 C48,37.3 37.3,48 24,48 C10.7,48 0,37.3 0,24 C0,10.7 10.7,0 24,0 Z" />
+    <!-- Envelope body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,15.5 L37,15.5 C38.4,15.5 39.5,16.6 39.5,18 L39.5,31 C39.5,32.4 38.4,33.5 37,33.5 L11,33.5 C9.6,33.5 8.5,32.4 8.5,31 L8.5,18 C8.5,16.6 9.6,15.5 11,15.5 Z" />
+    <!-- Envelope flap -->
+    <path
+        android:fillColor="#6D28D9"
+        android:strokeColor="#6D28D9"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M10.5,17.5 L24,27 L37.5,17.5" />
+</vector>
