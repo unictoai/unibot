@@ -32,6 +32,9 @@ object AgentTools {
         // same list with delegate (and memory_write) removed — no nested
         // delegation, no worker writes to long-term memory.
         includeDelegate: Boolean = true,
+        // [unibot-connectors] Gmail connector tools, only when the user has
+        // connected their Google account in Settings → Connectors.
+        gmailConnected: Boolean = false,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -47,6 +50,9 @@ object AgentTools {
         }
         if (includeDelegate) {
             DelegateTool.definition()?.let { add(it) }
+        }
+        if (gmailConnected) {
+            addAll(GmailTool.definitions())
         }
     }
 

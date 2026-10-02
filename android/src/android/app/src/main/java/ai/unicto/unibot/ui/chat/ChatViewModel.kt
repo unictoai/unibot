@@ -69,6 +69,7 @@ import ai.unicto.unibot.tools.DelegateTool
 import ai.unicto.unibot.tools.FileEditTool
 import ai.unicto.unibot.tools.FileReadTool
 import ai.unicto.unibot.tools.FileWriteTool
+import ai.unicto.unibot.tools.GmailTool
 import ai.unicto.unibot.tools.MemoryTools
 import ai.unicto.unibot.tools.ReadImageTool
 import ai.unicto.unibot.tools.ToolExecutionResult
@@ -1254,8 +1255,11 @@ class ChatViewModel(
                 providerRepository, context,
             ),
             memoryEnabled = _memoryEnabled.value,
+            // [unibot-connectors] Recomputed on each read like the memory
+            // toggle above, so connecting/disconnecting Gmail in Settings
+            // takes effect immediately.
+            gmailConnected = GmailTool.isConnected(context),
         )
-
     /**
      * Per-session loop detector. Reset alongside [agentHistory] whenever the
      * conversation is rewound (edit/regenerate) so a stale tool-call window
@@ -9963,6 +9967,10 @@ class ChatViewModel(
             "memory_write" -> executeMemoryWriteTool(argsJson)
             "memory_get" -> executeMemoryGetTool(argsJson)
             DelegateTool.NAME -> executeDelegateTool(argsJson, toolId, toolBlocks, assistantId, currentText)
+            // [unibot-connectors] Gmail connector tools.
+            GmailTool.SEARCH_NAME -> GmailTool.executeSearch(argsJson, context)
+            GmailTool.READ_NAME -> GmailTool.executeRead(argsJson, context)
+            GmailTool.SEND_NAME -> GmailTool.executeSend(argsJson, context)
             else -> ToolExecutionResult("Unknown tool: $name", false)
         }
     }
@@ -10017,6 +10025,7 @@ class ChatViewModel(
             ),
             memoryEnabled = false, // worker must not write long-term memory
             includeDelegate = false, // no nested delegation
+            gmailConnected = GmailTool.isConnected(context),
         )
         val workerMessages = mutableListOf(
             LLMMessage(

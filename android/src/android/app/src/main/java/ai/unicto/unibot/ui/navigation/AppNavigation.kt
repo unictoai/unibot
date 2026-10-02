@@ -164,6 +164,8 @@ object Routes {
     const val MEMORY = "memory"
     /** [T-mcp-integration-android] MCP Integrations management screen. */
     const val MCP = "mcp"
+    /** [unibot-connectors] Connectors (Gmail etc.) management screen. */
+    const val CONNECTORS = "connectors"
     /** [T-soul-md] SOUL.md editor. */
     const val SOUL = "soul"
     const val MEMORY_FILE_EDIT = "memory_file/{fileName}/{isGlobal}"
@@ -818,6 +820,7 @@ fun AppNavigation(
                 onTerminalClick = { navController.safeNavigate(Routes.terminal()) },
                 onMemoryClick = { navController.safeNavigate(Routes.MEMORY) },
                 onMcpClick = { navController.safeNavigate(Routes.MCP) },
+                onConnectorsClick = { navController.safeNavigate(Routes.CONNECTORS) }, // [unibot-connectors]
                 onMarketplaceClick = { navController.safeNavigate(Routes.MARKETPLACE) }, // P8
                 onSoulClick = { navController.safeNavigate(Routes.SOUL) },
                 onSystemFilesClick = { navController.safeNavigate(ai.unicto.unibot.ui.sysfiles.ROUTE_SYSTEM_FILES) }, // unibot
@@ -1618,6 +1621,13 @@ fun AppNavigation(
                     envVarRepository = envVarRepository,
                 )
             }
+        }
+
+        // [unibot-connectors] Connectors (Gmail etc.) management screen.
+        composable(Routes.CONNECTORS) {
+            ai.unicto.unibot.ui.settings.ConnectorsScreen(
+                onBack = { navController.safePopBackStack() },
+            )
         }
 
         // [T-soul-md] SOUL.md editor.

@@ -102,6 +102,9 @@ fun SettingsScreen(
     // [T-mcp-integration-android] MCP Integrations page, listed directly below
     // Memory. Default no-op for callers that haven't wired the route yet.
     onMcpClick: () -> Unit = {},
+    // [unibot-connectors] Connectors page (Gmail etc.). Default no-op for
+    // callers that haven't wired the route yet.
+    onConnectorsClick: () -> Unit = {},
     // P8: the agent/skills marketplace directory. Default no-op for callers
     // that haven't wired the route yet.
     onMarketplaceClick: () -> Unit = {},
@@ -283,6 +286,9 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_compare_title), icon = Icons.Outlined.CompareArrows, onClick = onCompareClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [unibot-connectors] Connectors — Gmail etc.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_connectors_title), icon = Icons.Outlined.Link, onClick = onConnectorsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // P8: marketplace — community skills and MCP servers.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_market_title), icon = Icons.Outlined.Storefront, onClick = onMarketplaceClick)

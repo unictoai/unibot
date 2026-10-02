@@ -970,5 +970,19 @@
     <string name="ub_market_install_failed">Install failed: %1$s</string>
     <string name="ub_market_what_skill">Installs into this phone\'s skill library. It appears under Settings → Skills, where you can read its instructions and turn it on or off.</string>
     <string name="ub_market_what_mcp">Adds an MCP server to this phone. It appears under Settings → MCP, where you can enable it per chat.</string>
+    <string name="ub_connectors_title">Connectors</string>
+    <string name="ub_connectors_section">Connected services</string>
+    <string name="ub_connectors_footer">Connectors let the agent work with your online services. Each user connects their own account — the app never sees your password.</string>
+    <string name="ub_connectors_gmail">Gmail</string>
+    <string name="ub_connectors_gmail_desc">Search, read and send email</string>
+    <string name="ub_connectors_connect">Connect</string>
+    <string name="ub_connectors_disconnect">Disconnect</string>
+    <string name="ub_connectors_connected_as">Connected as %1$s</string>
+    <string name="ub_connectors_not_configured">The Gmail connector is not set up in this build yet.</string>
+    <string name="ub_connectors_connect_failed">Could not connect: %1$s</string>
+    <string name="ub_connectors_cancelled">Sign-in cancelled.</string>
+    <string name="ub_connectors_confirm_disconnect">Disconnect Gmail? The agent will lose access to your mailbox.</string>
+    <string name="ub_connectors_disconnect_title">Disconnect</string>
+    <string name="ub_connectors_cancel">Cancel</string>
 </resources>
 
