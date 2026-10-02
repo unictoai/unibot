@@ -202,6 +202,10 @@ object Routes {
     fun shadowVoiceDetail(instanceId: String) = "voice_service/$instanceId"
     fun modelGroupDetail(groupId: String) = "model_group/$groupId"
     fun addModelsToGroup(groupId: String) = "add_models_to_group/$groupId"
+    // [P2-prompt-library] Preset library + composer modes screen.
+    const val PROMPT_LIBRARY = "prompt_library"
+    // [P2-compare] Side-by-side two-model comparison screen.
+    const val COMPARE = "compare"
     // [T-android-model-entry-route-slash-crash] entryId is a composite key
     // "<instanceId>/<modelId>" (compositeEntryKey) — it CONTAINS a '/'. Left
     // raw, that slash splits the route into an extra path segment, so the
@@ -781,6 +785,23 @@ fun AppNavigation(
                 onAboutClick = { navController.safeNavigate(Routes.ABOUT) },
                 onMountedFoldersClick = { navController.safeNavigate(Routes.MOUNTED_FOLDERS) },
                 onSharedFoldersClick = { navController.safeNavigate(Routes.SHARED_FOLDERS) },
+                // [P2] Prompt Library + Compare Models entries.
+                onPromptLibraryClick = { navController.safeNavigate(Routes.PROMPT_LIBRARY) },
+                onCompareClick = { navController.safeNavigate(Routes.COMPARE) },
+            )
+        }
+
+        // [P2-prompt-library] Preset library + composer modes.
+        composable(Routes.PROMPT_LIBRARY) {
+            ai.unicto.unibot.ui.chat.PromptLibraryScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // [P2-compare] Side-by-side two-model comparison.
+        composable(Routes.COMPARE) {
+            ai.unicto.unibot.ui.chat.CompareScreen(
+                onBack = { navController.safePopBackStack() },
             )
         }
 

@@ -248,6 +248,13 @@ data class SlashCommand(
      * actual discovery/call happens model-side via unibot-mcp-cli.
      */
     val isMcp: Boolean = false,
+    /**
+     * [P2-modes] True when this row was synthesized from a prompt-library
+     * MODE preset (vs. a built-in command, skill, or MCP server). Tapping
+     * activates the mode immediately (like an action command) instead of
+     * filling the composer.
+     */
+    val isMode: Boolean = false,
 )
 
 data class AssistantBlock(

@@ -334,6 +334,31 @@ interface ChatDao {
     """)
     suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?)
 
+    // ─── Message variants (P2 branching) ────────────────────────────────
+    // Archived sibling responses, anchored to the USER message that prompted
+    // the turn. See MessageVariantEntity for the anchoring rationale.
+
+    @Query("SELECT * FROM messages WHERE id = :id")
+    suspend fun getMessageById(id: String): MessageEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessageVariant(variant: MessageVariantEntity)
+
+    @Query("SELECT * FROM message_variants WHERE session_id = :sessionId ORDER BY anchor_user_message_id ASC, variant_index ASC")
+    suspend fun listMessageVariants(sessionId: String): List<MessageVariantEntity>
+
+    @Query("SELECT * FROM message_variants WHERE session_id = :sessionId AND anchor_user_message_id = :anchorId ORDER BY variant_index ASC")
+    suspend fun listMessageVariantsForAnchor(sessionId: String, anchorId: String): List<MessageVariantEntity>
+
+    @Query("SELECT COALESCE(MAX(variant_index), -1) FROM message_variants WHERE session_id = :sessionId AND anchor_user_message_id = :anchorId")
+    suspend fun maxVariantIndexForAnchor(sessionId: String, anchorId: String): Int
+
+    @Query("DELETE FROM message_variants WHERE session_id = :sessionId AND anchor_user_message_id = :anchorId")
+    suspend fun deleteMessageVariantsForAnchor(sessionId: String, anchorId: String)
+
+    @Query("DELETE FROM message_variants WHERE session_id = :sessionId")
+    suspend fun deleteMessageVariantsForSession(sessionId: String)
+
     // Pinned sessions first, then by updated_at
     @Query("SELECT * FROM sessions ORDER BY CASE WHEN pinned_at IS NOT NULL THEN 0 ELSE 1 END, pinned_at DESC, updated_at DESC")
     fun observeSessionsSorted(): Flow<List<ChatSessionEntity>>

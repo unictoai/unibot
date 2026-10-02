@@ -126,6 +126,11 @@ internal fun ChatViewModel.filteredSlashCommands(): List<SlashCommand> {
             "clear" -> cmd.copy(
                 subtitle = context.getString(R.string.slash_clear_subtitle),
             )
+            // [P2-modes] Study Mode row reflects the live toggle state.
+            "study" -> cmd.copy(
+                subtitle = if (PromptLibraryStore.activeModeNow()?.id == STUDY_MODE_PRESET_ID) "On — tap to turn off"
+                else "Socratic tutor — tap to turn on",
+            )
             else -> cmd
         }
     }
@@ -163,7 +168,27 @@ internal fun ChatViewModel.filteredSlashCommands(): List<SlashCommand> {
                 isMcp = true,
             )
         } ?: emptyList()
-    val all = base + skillRows + mcpRows
+    // [P2-modes] Prompt-library MODE presets (Study Mode + user customs)
+    // appear in the `/` picker after MCP rows. Tapping one toggles it as
+    // the active composer mode (see executeSlashCommand's "mode:" branch).
+    val activeModeId = PromptLibraryStore.activeModeNow()?.id
+    val modeRows: List<SlashCommand> = PromptLibraryStore.modes.map { preset ->
+        val sub = buildString {
+            if (preset.description.isNotBlank()) append(preset.description)
+            if (preset.id == activeModeId) {
+                if (isNotEmpty()) append(" · ")
+                append("Active")
+            }
+        }
+        SlashCommand(
+            id = "mode:${preset.id}",
+            icon = androidx.compose.material.icons.Icons.Filled.School,
+            title = preset.name,
+            subtitle = sub,
+            isMode = true,
+        )
+    }
+    val all = base + skillRows + mcpRows + modeRows
     return if (filter.isEmpty()) all else all.filter { it.title.lowercase().contains(filter) }
 }
 

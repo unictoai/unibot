@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.CallSplit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.conflate
@@ -293,6 +294,10 @@ internal fun UserMessageBubble(
     // it. Null hides the action (streaming, or a host with no truncation
     // capability).
     onDeleteFromHere: (() -> Unit)? = null,
+    // [P2-fork] Fork the chat from this message (copies history up to and
+    // including it into a new session). Null hides the action (streaming,
+    // or a host with no fork capability).
+    onForkFromHere: (() -> Unit)? = null,
     onWithdraw: (() -> Unit)? = null,
     onPreviewFile: (Uri, String) -> Unit = { _, _ -> },
 ) {
@@ -507,6 +512,17 @@ internal fun UserMessageBubble(
                         text = { Text(stringResource(R.string.chat_longpress_edit)) },
                         onClick = { showMenu = false; onEdit() },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    )
+                }
+                // [P2-fork] Fork from here: a new independent chat carrying
+                // the history up to and including this message. Sits above
+                // the destructive Delete-from-here, gated while streaming
+                // like Retry/Edit (the caller passes null).
+                if (onForkFromHere != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ub_fork_from_here)) },
+                        onClick = { showMenu = false; onForkFromHere() },
+                        leadingIcon = { Icon(Icons.Filled.CallSplit, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     )
                 }
                 // [T-android-delete-from-here] Removes this message and every

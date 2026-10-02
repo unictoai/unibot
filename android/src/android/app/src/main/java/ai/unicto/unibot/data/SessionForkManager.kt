@@ -58,8 +58,54 @@ class SessionForkManager(
             AppLogger.warning(TAG, "duplicateSession: $sessionId not found")
             return null
         }
-        val messages = chatRepository.loadMessages(sessionId)
-        val dupTitle = "${source.title ?: "Chat"} (Copy)"
+        return copySession(
+            source = source,
+            titleSuffix = " (Copy)",
+            messageFilter = { true },
+            copyCompactMarkers = true,
+        )
+    }
+
+    /**
+     * [P2-fork] "Fork from here": clone [sessionId] into a fresh session
+     * carrying only the history up to AND INCLUDING the message
+     * [upToMessageId]. The fork is an independent session (new ids, "(Fork)"
+     * title suffix) the user can continue down a different path.
+     *
+     * Returns the new session's id, or null when the session / message is
+     * not found. Compact markers are NOT copied — a fork is a new branch of
+     * the conversation, not a clone of its compaction history.
+     */
+    suspend fun forkSessionFrom(sessionId: String, upToMessageId: String): String? {
+        val source = chatRepository.getSession(sessionId) ?: run {
+            AppLogger.warning(TAG, "forkSessionFrom: $sessionId not found")
+            return null
+        }
+        val anchor = chatRepository.getMessageById(upToMessageId)?.takeIf { it.sessionId == sessionId } ?: run {
+            AppLogger.warning(TAG, "forkSessionFrom: message $upToMessageId not found in $sessionId")
+            return null
+        }
+        val cutoff = anchor.sortOrder
+        return copySession(
+            source = source,
+            titleSuffix = " (Fork)",
+            messageFilter = { it.sortOrder <= cutoff },
+            copyCompactMarkers = false,
+        )
+    }
+
+    /**
+     * Shared copy core for [duplicateSession] and [forkSessionFrom].
+     * [messageFilter] selects which source messages to carry over.
+     */
+    private suspend fun copySession(
+        source: ai.unicto.unibot.data.db.ChatSessionEntity,
+        titleSuffix: String,
+        messageFilter: (ai.unicto.unibot.data.db.MessageEntity) -> Boolean,
+        copyCompactMarkers: Boolean,
+    ): String? {
+        val messages = chatRepository.loadMessages(source.id).filter(messageFilter)
+        val dupTitle = "${source.title ?: "Chat"}$titleSuffix"
         val new = chatRepository.createSession(
             modelId = source.modelId,
             title = dupTitle,
@@ -112,7 +158,14 @@ class SessionForkManager(
         // duplicate path is untouched. Each marker is remapped independently so
         // multi-compact sessions copy all dividers, in created_at order
         // (listCompactMarkers returns ASC by created_at).
-        val markers = chatRepository.dao.listCompactMarkers(sessionId)
+        //
+        // [P2-fork] Forks deliberately skip markers: a fork starts a new
+        // branch of the conversation, not a clone of its compaction history.
+        val markers = if (copyCompactMarkers) {
+            chatRepository.dao.listCompactMarkers(source.id)
+        } else {
+            emptyList()
+        }
         if (markers.isNotEmpty()) {
             // Remap a referenced message id through the copy map. null → null.
             fun remapId(id: String?): String? = id?.let { oldToNewId[it] }
@@ -159,7 +212,7 @@ class SessionForkManager(
 
         AppLogger.info(
             TAG,
-            "duplicated session $sessionId → ${new.id} (${messages.size} msgs, " +
+            "copySession: ${source.id} → ${new.id} (${messages.size} msgs, " +
                 "category=${source.category}, modelBinding=${source.modelBinding}, " +
                 "memoryEnabled=${source.memoryEnabled})",
         )

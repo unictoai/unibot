@@ -832,4 +832,37 @@
     <string name="ub_devices_refused">Refused by the relay — sign in again</string>
     <string name="ub_devices_notifications_hint">Allow notifications so the phone can stay reachable in the background.</string>
     <string name="ub_library_share_failed">Could not share the file.</string>
+
+    <!-- P2: chat power upgrades (branching, fork, prompt library, compare, modes) -->
+    <string name="ub_fork_from_here">Fork from here</string>
+    <string name="ub_branch_regenerate">Regenerate</string>
+    <string name="ub_branch_fork">Fork chat from here</string>
+    <string name="ub_branch_prev_variant">Previous variant</string>
+    <string name="ub_branch_next_variant">Next variant</string>
+    <string name="ub_prompt_library_title">Prompt Library</string>
+    <string name="ub_prompt_library_modes">Modes</string>
+    <string name="ub_prompt_library_texts">Text prompts</string>
+    <string name="ub_prompt_library_active">Active</string>
+    <string name="ub_prompt_library_empty">No presets yet. Tap + to save one.</string>
+    <string name="ub_prompt_library_new">New preset</string>
+    <string name="ub_prompt_library_name">Name</string>
+    <string name="ub_prompt_library_description">Description (optional)</string>
+    <string name="ub_prompt_library_content">Prompt text</string>
+    <string name="ub_prompt_library_kind_text">Text snippet</string>
+    <string name="ub_prompt_library_kind_mode">Composer mode</string>
+    <string name="ub_prompt_library_save">Save</string>
+    <string name="ub_prompt_library_delete">Delete</string>
+    <string name="ub_prompt_library_use_in_chat">Use in chat</string>
+    <string name="ub_prompt_library_hint_text">Type @ in the composer to insert a text snippet.</string>
+    <string name="ub_prompt_library_hint_mode">Type / in the composer to switch a mode on or off.</string>
+    <string name="ub_compare_title">Compare Models</string>
+    <string name="ub_compare_prompt_hint">Ask anything…</string>
+    <string name="ub_compare_send">Compare</string>
+    <string name="ub_compare_stop">Stop</string>
+    <string name="ub_compare_pick_model">Pick a model</string>
+    <string name="ub_compare_choose_left">Choose model A</string>
+    <string name="ub_compare_choose_right">Choose model B</string>
+    <string name="ub_import_chat">Import chat</string>
+    <string name="ub_import_failed">Could not import that file.</string>
+    <string name="ub_import_done">Chat imported.</string>
 </resources>

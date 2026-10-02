@@ -121,6 +121,11 @@ fun SettingsScreen(
     // About row below still has a TODO onClick in HEAD; future settings-bucket
     // work will wire this through.
     onAboutClick: () -> Unit = {},
+    // [P2] Prompt Library (presets + composer modes) entry. Default no-op
+    // for back-compat with callers wired before P2.
+    onPromptLibraryClick: () -> Unit = {},
+    // [P2] Compare Models (side-by-side) entry. Default no-op, same reason.
+    onCompareClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var showFeedbackSheet by remember { mutableStateOf(false) }
@@ -238,6 +243,12 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_sysfiles_title), icon = Icons.Outlined.Description, onClick = onSystemFilesClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_skills), icon = Icons.Outlined.Extension, onClick = onSkillsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [P2] Prompt Library: text presets + composer modes (Study Mode…).
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_prompt_library_title), icon = Icons.Outlined.LibraryBooks, onClick = onPromptLibraryClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [P2] Compare Models: same prompt, two models, side by side.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_compare_title), icon = Icons.Outlined.CompareArrows, onClick = onCompareClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
