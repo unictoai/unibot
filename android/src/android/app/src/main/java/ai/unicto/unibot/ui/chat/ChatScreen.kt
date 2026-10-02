@@ -3810,6 +3810,8 @@ fun ChatScreen(
                     is FlatChatItem.AssistantLegacyContent -> grayedMap[originalMessageId(messageId)] == true
                     // [P2-branching] Action rows never grayed.
                     is FlatChatItem.BranchActions -> false
+                    // [v0.5.0-agentic-core] Chips row never grayed.
+                    is FlatChatItem.FollowUpChips -> false
                 }
                 // SelectionContainer must wrap the WHOLE LazyColumn — placing
                 // it per-item breaks long-press because items get disposed

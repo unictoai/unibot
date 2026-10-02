@@ -78,6 +78,8 @@ import ai.unicto.unibot.tools.SlackTool
 import ai.unicto.unibot.tools.DriveTool
 import ai.unicto.unibot.tools.CalendarTool
 import ai.unicto.unibot.tools.MemoryTools
+import ai.unicto.unibot.tools.WebSearchTool
+import ai.unicto.unibot.local.FactMemoryStore
 import ai.unicto.unibot.tools.ReadImageTool
 import ai.unicto.unibot.tools.ToolExecutionResult
 import ai.unicto.unibot.offload.OffloadPermissionManager
@@ -7466,6 +7468,10 @@ class ChatViewModel(
         // [v0.4.1-visible-premium] Flip the thinking stage to WRITING on the
         // first local token (mirrors the cloud Text-chunk hook).
         val localFirstTokenSeen = java.util.concurrent.atomic.AtomicBoolean(false)
+        // [v0.5.0-agentic-core] Hoisted for the finally-drain: the Sources
+        // card blocks must survive to the canonical message even if the
+        // turn throws mid-stream (a `val` inside try is invisible to finally).
+        var localSearchBlocks: List<AssistantBlock> = emptyList()
         streamJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val turns = ai.unicto.unibot.local.LocalChatRouter.buildTurns(
@@ -7495,8 +7501,10 @@ class ChatViewModel(
                 val finalPrompt = if (localRecalledFacts.isNotEmpty()) {
                     "${memoryContextBlock(localRecalledFacts)}\n\n$augPrompt"
                 } else augPrompt
-                val localSearchBlocks = ai.unicto.unibot.local.LocalCapabilities.lastSearchResults
-                    .takeIf { it.isNotEmpty() }
+                val localSearchResults =
+                    ai.unicto.unibot.local.LocalCapabilities.lastSearchResults
+                        .takeIf { it.isNotEmpty() }
+                localSearchBlocks = localSearchResults
                     ?.let { results ->
                         listOf(
                             AssistantBlock(

@@ -3,22 +3,26 @@ package ai.unicto.unibot.ui.chat
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,25 +126,36 @@ internal fun FollowUpChipsRow(
                 animationSpec = Motion.SpringSpec,
                 label = "chip_press_$index",
             )
-            AssistChip(
-                onClick = {
-                    haptics.tap()
-                    onChipClick(chip)
-                },
-                label = { Text(chip, fontSize = 13.sp) },
+            // Hand-rolled chip (the BOM's AssistChip API shifted) — pill
+            // with violet border, staggered entrance, springy press.
+            Box(
                 modifier = Modifier
                     .staggeredEntrance(index)
-                    .graphicsLayer { scaleX = scale; scaleY = scale },
-                shape = RoundedCornerShape(18.dp),
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    labelColor = MaterialTheme.colorScheme.primary,
-                ),
-                border = AssistChipDefaults.assistChipBorder(
-                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                ),
-                interactionSource = interactionSource,
-            )
+                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        RoundedCornerShape(18.dp),
+                    )
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = {
+                            haptics.tap()
+                            onChipClick(chip)
+                        },
+                    )
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = chip,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

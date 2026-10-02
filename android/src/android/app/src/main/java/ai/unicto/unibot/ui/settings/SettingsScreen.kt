@@ -275,7 +275,7 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_memory), icon = Icons.Outlined.Psychology, onClick = onMemoryClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // unibot v0.5.0: "remember that …" facts — encrypted on-device.
-                ai.unicto.unibot.ui.muse.MuseRow(title = "Saved memories", icon = Icons.Outlined.FavoriteBorder, onClick = onFactMemoriesClick)
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Saved memories", icon = Icons.Outlined.LibraryBooks, onClick = onFactMemoriesClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // unibot P6: project workspaces — chats + files + custom instructions bundles.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_projects_title), icon = Icons.Outlined.Folder, onClick = onProjectsClick)
