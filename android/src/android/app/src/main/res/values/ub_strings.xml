@@ -999,5 +999,13 @@
     <string name="ub_connectors_save">Save</string>
     <string name="ub_connectors_token_invalid">That token didn't work. Check it and try again.</string>
     <string name="ub_connectors_token_saved">Connected.</string>
+    <string name="ub_connectors_youtube">YouTube</string>
+    <string name="ub_connectors_youtube_desc">Search videos, see your channel stats</string>
+    <string name="ub_connectors_discord">Discord</string>
+    <string name="ub_connectors_discord_desc">Read and send channel messages via your bot</string>
+    <string name="ub_connectors_discord_hint">Create a bot in the Discord Developer Portal, paste its token, and invite the bot to your server.</string>
+    <string name="ub_connectors_slack">Slack</string>
+    <string name="ub_connectors_slack_desc">Read and send channel messages via your bot</string>
+    <string name="ub_connectors_slack_hint">Create a Slack app, install it to your workspace (chat:write, channels:history), and paste the Bot User OAuth Token (xoxb-…).</string>
 </resources>
 

@@ -41,6 +41,10 @@ object AgentTools {
         // [unibot-connectors] Token-based: GitHub PAT + Telegram bot token.
         githubConnected: Boolean = false,
         telegramConnected: Boolean = false,
+        // [unibot-connectors] YouTube (Google OAuth) + Discord/Slack (bot tokens).
+        youtubeConnected: Boolean = false,
+        discordConnected: Boolean = false,
+        slackConnected: Boolean = false,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -71,6 +75,15 @@ object AgentTools {
         }
         if (telegramConnected) {
             addAll(TelegramTool.definitions())
+        }
+        if (youtubeConnected) {
+            addAll(YouTubeTool.definitions())
+        }
+        if (discordConnected) {
+            addAll(DiscordTool.definitions())
+        }
+        if (slackConnected) {
+            addAll(SlackTool.definitions())
         }
     }
 

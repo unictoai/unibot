@@ -72,6 +72,9 @@ import ai.unicto.unibot.tools.FileWriteTool
 import ai.unicto.unibot.tools.GmailTool
 import ai.unicto.unibot.tools.GitHubTool
 import ai.unicto.unibot.tools.TelegramTool
+import ai.unicto.unibot.tools.YouTubeTool
+import ai.unicto.unibot.tools.DiscordTool
+import ai.unicto.unibot.tools.SlackTool
 import ai.unicto.unibot.tools.DriveTool
 import ai.unicto.unibot.tools.CalendarTool
 import ai.unicto.unibot.tools.MemoryTools
@@ -1267,6 +1270,9 @@ class ChatViewModel(
             calendarConnected = CalendarTool.isConnected(context),
             githubConnected = GitHubTool.isConnected(context),
             telegramConnected = TelegramTool.isConnected(context),
+            youtubeConnected = YouTubeTool.isConnected(context),
+            discordConnected = DiscordTool.isConnected(context),
+            slackConnected = SlackTool.isConnected(context),
         )
     /**
      * Per-session loop detector. Reset alongside [agentHistory] whenever the
@@ -9992,6 +9998,14 @@ class ChatViewModel(
             TelegramTool.RESOLVE_NAME -> TelegramTool.executeResolve(argsJson, context)
             TelegramTool.SEND_NAME -> TelegramTool.executeSend(argsJson, context)
             TelegramTool.READ_NAME -> TelegramTool.executeRead(argsJson, context)
+            // [unibot-connectors] YouTube + Discord + Slack tools.
+            YouTubeTool.SEARCH_NAME -> YouTubeTool.executeSearch(argsJson, context)
+            YouTubeTool.CHANNEL_NAME -> YouTubeTool.executeChannel(argsJson, context)
+            YouTubeTool.VIDEO_NAME -> YouTubeTool.executeVideo(argsJson, context)
+            DiscordTool.READ_NAME -> DiscordTool.executeRead(argsJson, context)
+            DiscordTool.SEND_NAME -> DiscordTool.executeSend(argsJson, context)
+            SlackTool.READ_NAME -> SlackTool.executeRead(argsJson, context)
+            SlackTool.SEND_NAME -> SlackTool.executeSend(argsJson, context)
             else -> ToolExecutionResult("Unknown tool: $name", false)
         }
     }
@@ -10051,6 +10065,9 @@ class ChatViewModel(
             calendarConnected = CalendarTool.isConnected(context),
             githubConnected = GitHubTool.isConnected(context),
             telegramConnected = TelegramTool.isConnected(context),
+            youtubeConnected = YouTubeTool.isConnected(context),
+            discordConnected = DiscordTool.isConnected(context),
+            slackConnected = SlackTool.isConnected(context),
         )
         val workerMessages = mutableListOf(
             LLMMessage(

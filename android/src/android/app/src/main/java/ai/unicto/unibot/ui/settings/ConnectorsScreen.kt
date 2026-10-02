@@ -35,6 +35,9 @@ import ai.unicto.unibot.connectors.gmail.GmailOAuth
 import ai.unicto.unibot.connectors.gmail.GmailStore
 import ai.unicto.unibot.connectors.google.GoogleOAuth
 import ai.unicto.unibot.connectors.telegram.TelegramConnector
+import ai.unicto.unibot.connectors.youtube.YouTubeConnector
+import ai.unicto.unibot.connectors.discord.DiscordConnector
+import ai.unicto.unibot.connectors.slack.SlackConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
 import kotlinx.coroutines.launch
 
@@ -115,6 +118,42 @@ fun ConnectorsScreen(
                 label = { ctx -> GitHubConnector.store.label(ctx) },
                 onSave = { ctx, token -> GitHubConnector.connect(ctx, token) },
                 onDisconnect = { ctx -> GitHubConnector.disconnect(ctx) },
+            )
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_youtube,
+                name = stringResource(R.string.ub_connectors_youtube),
+                description = stringResource(R.string.ub_connectors_youtube_desc),
+                isConnected = { ctx -> YouTubeConnector.isConnected(ctx) },
+                accountEmail = { ctx -> YouTubeConnector.store.accountEmail(ctx) },
+                isConfigured = { true },
+                onConnect = { ctx ->
+                    when (val r = YouTubeConnector.authorize(ctx)) {
+                        is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
+                        is GoogleOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is GoogleOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> YouTubeConnector.disconnect(ctx) },
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_discord,
+                name = stringResource(R.string.ub_connectors_discord),
+                description = stringResource(R.string.ub_connectors_discord_desc),
+                hint = stringResource(R.string.ub_connectors_discord_hint),
+                isConnected = { ctx -> DiscordConnector.isConnected(ctx) },
+                label = { ctx -> DiscordConnector.store.label(ctx) },
+                onSave = { ctx, token -> DiscordConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> DiscordConnector.disconnect(ctx) },
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_slack,
+                name = stringResource(R.string.ub_connectors_slack),
+                description = stringResource(R.string.ub_connectors_slack_desc),
+                hint = stringResource(R.string.ub_connectors_slack_hint),
+                isConnected = { ctx -> SlackConnector.isConnected(ctx) },
+                label = { ctx -> SlackConnector.store.label(ctx) },
+                onSave = { ctx, token -> SlackConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> SlackConnector.disconnect(ctx) },
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_telegram,
