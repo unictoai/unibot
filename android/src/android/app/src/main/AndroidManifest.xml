@@ -589,6 +589,21 @@
             </intent-filter>
         </service>
 
+        <!-- [v0.7.0-whatsapp] Opt-in WhatsApp notification reader. Bound by
+             the system only when the user grants Notification Access for
+             THIS component in system settings (toggled from Settings →
+             Connectors → WhatsApp). On-device only: captures go straight to
+             an in-memory ring buffer — never logged, never persisted. -->
+        <service
+            android:name=".service.WhatsAppListenerService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- T322: Shizuku in-process content provider. Required by Shizuku
              SDK >=12 to host the binder receiver inside our process. Marked
              multiprocess=false so :acra reporter process doesn't try to host
