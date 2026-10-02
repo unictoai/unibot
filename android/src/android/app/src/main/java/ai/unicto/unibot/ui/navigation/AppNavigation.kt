@@ -132,6 +132,10 @@ object Routes {
     const val SKILL_DETAIL = "skill/{skillId}"
     const val SKILL_FILE = "skill_file/{skillId}/{relativePath}"
     const val UNIBOT_SKILLS_BROWSER = "unibot_skills_browser"
+    /** P8: the agent/skills marketplace directory (Settings → Marketplace). */
+    const val MARKETPLACE = "marketplace"
+    /** P8: opt-in cross-device session sync (Cloud account → Device sync). */
+    const val SESSION_SYNC = "session_sync"
 
     fun skillDetail(skillId: String) = "skill/$skillId"
     fun skillFile(skillId: String, relativePath: String = "SKILL.md"): String {
@@ -666,6 +670,15 @@ fun AppNavigation(
                 onSignIn = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onOpenProvider = { id -> navController.safeNavigate(Routes.providerDetail(id)) },
                 onOpenModelGroups = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+                // P8: opt-in cross-device session sync.
+                onDeviceSyncClick = { navController.safeNavigate(Routes.SESSION_SYNC) },
+            )
+        }
+        // P8: device sync — opt-in, E2E-encrypted snapshots, relay transport stubbed.
+        composable(Routes.SESSION_SYNC) {
+            ai.unicto.unibot.ui.cloud.SessionSyncScreen(
+                chatRepository = chatRepository,
+                onBack = { navController.safePopBackStack() },
             )
         }
         // unibot: the phone's screen as a hand — the switch, what it needs, the screen model.
@@ -765,6 +778,7 @@ fun AppNavigation(
                 onTerminalClick = { navController.safeNavigate(Routes.terminal()) },
                 onMemoryClick = { navController.safeNavigate(Routes.MEMORY) },
                 onMcpClick = { navController.safeNavigate(Routes.MCP) },
+                onMarketplaceClick = { navController.safeNavigate(Routes.MARKETPLACE) }, // P8
                 onSoulClick = { navController.safeNavigate(Routes.SOUL) },
                 onSystemFilesClick = { navController.safeNavigate(ai.unicto.unibot.ui.sysfiles.ROUTE_SYSTEM_FILES) }, // unibot
                 onAvatarClick = { navController.safeNavigate(ai.unicto.unibot.ui.avatar.ROUTE_AVATAR_STUDIO) }, // unibot
@@ -1410,6 +1424,18 @@ fun AppNavigation(
             if (skillRepository != null) {
                 UnibotSkillsBrowserScreen(
                     skillRepository = skillRepository,
+                    onBack = { navController.safePopBackStack() },
+                )
+            }
+        }
+
+        // P8: the agent/skills marketplace — community skills and MCP servers,
+        // installed into the existing skills/MCP storage.
+        composable(Routes.MARKETPLACE) {
+            if (skillRepository != null && mcpRepository != null) {
+                ai.unicto.unibot.ui.marketplace.MarketplaceScreen(
+                    skillRepository = skillRepository,
+                    mcpRepository = mcpRepository,
                     onBack = { navController.safePopBackStack() },
                 )
             }

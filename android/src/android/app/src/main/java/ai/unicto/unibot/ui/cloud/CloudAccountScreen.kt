@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.BugReport
@@ -80,6 +81,7 @@ import ai.unicto.unibot.cloud.AllowanceSignal
 import ai.unicto.unibot.cloud.UnibotCloud
 import ai.unicto.unibot.sysfiles.SystemFiles
 import ai.unicto.unibot.ui.home.MuseTones
+import ai.unicto.unibot.ui.muse.MuseCaption
 import ai.unicto.unibot.ui.muse.MuseCard
 import ai.unicto.unibot.ui.muse.MuseGap
 import ai.unicto.unibot.ui.muse.MuseRow
@@ -104,6 +106,9 @@ fun CloudAccountScreen(
     onSignIn: () -> Unit,
     onOpenProvider: (instanceId: String) -> Unit,
     onOpenModelGroups: () -> Unit,
+    // P8: opens the opt-in device-sync screen. Default no-op for callers that
+    // haven't wired the route yet.
+    onDeviceSyncClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -581,6 +586,23 @@ fun CloudAccountScreen(
                             }
                         }
                     }
+                }
+
+                // -- device sync (P8) ----------------------------------------------------------
+                if (signedIn) {
+                    MuseSectionLabel(stringResource(R.string.ub_sync_title))
+                    MuseCard {
+                        MuseRow(
+                            title = stringResource(R.string.ub_sync_title),
+                            value = stringResource(
+                                if (ai.unicto.unibot.sync.SessionSyncEngine.isEnabled(context)) R.string.ub_sync_toggle_on
+                                else R.string.ub_sync_toggle_off,
+                            ),
+                            icon = Icons.Outlined.Sync,
+                            onClick = onDeviceSyncClick,
+                        )
+                    }
+                    MuseCaption(stringResource(R.string.ub_sync_row_subtitle))
                 }
 
                 // -- history ----------------------------------------------------------------
