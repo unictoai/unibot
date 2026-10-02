@@ -34,6 +34,7 @@ target_link_libraries(jieba_jni ${log-lib})
 # from the llm-model-v1 GitHub release (see .github/workflows/llm-model.yml),
 # and chat templates are applied in Kotlin (LocalLlamaBackend), so
 # LLAMA_BUILD_COMMON stays off.
+include(FetchContent)
 set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
@@ -54,7 +55,6 @@ target_link_libraries(unibot_llama PRIVATE llama ${log-lib})
 # ggml-tiny.en-q5_1.bin (~31 MB) from the voice-model-v1 GitHub release.
 # whisper.cpp itself is built here from a pinned tag via FetchContent.
 # NOTE: declared AFTER llama.cpp (see above) so it reuses llama's newer ggml.
-include(FetchContent)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)
