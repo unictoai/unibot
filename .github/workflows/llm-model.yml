@@ -24,7 +24,7 @@ permissions:
 env:
   # file|upstream-url|min-bytes — one per line.
   MODEL_SPECS: |
-    Qwen3-1.7B-Q4_K_M.gguf|https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf|1000000000
+    Qwen_Qwen3-1.7B-Q4_K_M.gguf|https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/main/Qwen_Qwen3-1.7B-Q4_K_M.gguf|1000000000
     LFM2-1.2B-Q4_K_M.gguf|https://huggingface.co/LiquidAI/LFM2-1.2B-GGUF/resolve/main/LFM2-1.2B-Q4_K_M.gguf|650000000
 
 jobs:
