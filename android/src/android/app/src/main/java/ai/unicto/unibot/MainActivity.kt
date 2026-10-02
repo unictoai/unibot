@@ -531,8 +531,10 @@ class MainActivity : ComponentActivity() {
             val darkTheme = when (themeMode) {
                 1 -> false
                 2 -> true
+                3 -> true // Fluid Black is always dark (pure #000000)
                 else -> isSystemInDarkTheme()
             }
+            val fluidBlack = themeMode == 3
             val fontScale = fontScaleForLevel(appBaseLevel)
 
             SideEffect {
@@ -555,7 +557,7 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
 
-            UnibotTheme(darkTheme = darkTheme, fontScale = fontScale) {
+            UnibotTheme(darkTheme = darkTheme, fluidBlack = fluidBlack, fontScale = fontScale) {
                 val navController = rememberNavController().also { this.navController = it }
 
                 // T166: drive `SessionActivityTracker.setPresent` /

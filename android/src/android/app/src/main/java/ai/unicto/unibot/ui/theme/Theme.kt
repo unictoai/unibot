@@ -9,6 +9,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight // unibot
@@ -58,6 +60,26 @@ private val VioletDarkOnSurface = Color(0xFFE5E5EA)
 private val VioletDarkSurfaceVariant = Color(0xFF3C3C43)
 private val VioletDarkOnSurfaceVariant = Color(0xFFC7C7CC)
 private val VioletDarkOutline = Color(0xFF8E8E93)
+
+// -- Fluid Black (theme_mode = 3): unibot's signature look. Pure #000000
+// everywhere, lifted violet accents tuned to glow on true black, and the
+// animated aurora background (see FluidBlackBackground.kt). Cards stay
+// near-black so the aurora reads through the gaps.
+private val FluidBlackPrimary = Color(0xFFB79CFF)
+private val FluidBlackOnPrimary = Color(0xFF1E1040)
+private val FluidBlackPrimaryContainer = Color(0xFF2A1650)
+private val FluidBlackOnPrimaryContainer = Color(0xFFEFE6FF)
+private val FluidBlackSecondary = Color(0xFF9D8BD8)
+private val FluidBlackOnSecondary = Color(0xFF17122B)
+private val FluidBlackSecondaryContainer = Color(0xFF241B45)
+private val FluidBlackOnSecondaryContainer = Color(0xFFE4D9FF)
+private val FluidBlackBackground = Color(0xFF000000)
+private val FluidBlackOnBackground = Color(0xFFF2F2F7)
+private val FluidBlackSurface = Color(0xFF000000)
+private val FluidBlackOnSurface = Color(0xFFF2F2F7)
+private val FluidBlackCard = Color(0xFF0D0D12)
+private val FluidBlackCardElevated = Color(0xFF14141B)
+private val FluidBlackOutline = Color(0xFF2A2A35)
 
 // Neutral grouped-card surfaces (iOS-style system-grouped background).
 // Override Material3's tonal `surfaceContainer*` so cards don't pick up the
@@ -126,6 +148,36 @@ private val DarkColorScheme = darkColorScheme(
     outlineVariant = NeutralDarkOutline,
 )
 
+// Fluid Black: pure-black signature theme (theme_mode = 3). Same violet
+// family as dark, lifted a touch so accents glow on #000000.
+private val FluidBlackColorScheme = darkColorScheme(
+    primary = FluidBlackPrimary,
+    onPrimary = FluidBlackOnPrimary,
+    primaryContainer = FluidBlackPrimaryContainer,
+    onPrimaryContainer = FluidBlackOnPrimaryContainer,
+    secondary = FluidBlackSecondary,
+    onSecondary = FluidBlackOnSecondary,
+    secondaryContainer = FluidBlackSecondaryContainer,
+    onSecondaryContainer = FluidBlackOnSecondaryContainer,
+    tertiary = FluidBlackSecondary,
+    onTertiary = FluidBlackOnSecondary,
+    tertiaryContainer = FluidBlackSecondaryContainer,
+    onTertiaryContainer = FluidBlackOnSecondaryContainer,
+    background = FluidBlackBackground,
+    onBackground = FluidBlackOnBackground,
+    surface = FluidBlackSurface,
+    onSurface = FluidBlackOnSurface,
+    surfaceVariant = FluidBlackCard,
+    onSurfaceVariant = FluidBlackOnBackground,
+    surfaceContainerLowest = FluidBlackBackground,
+    surfaceContainerLow = FluidBlackCard,
+    surfaceContainer = FluidBlackCard,
+    surfaceContainerHigh = FluidBlackCardElevated,
+    surfaceContainerHighest = FluidBlackCardElevated,
+    outline = FluidBlackOutline,
+    outlineVariant = FluidBlackOutline,
+)
+
 // App-wide FAB accent color (warm beige, matching iOS New Chat button).
 // Reads from ChatPalette so it follows the in-app theme override (theme_mode pref),
 // not android.isSystemInDarkTheme(), which only tracks the system setting.
@@ -145,21 +197,37 @@ private val UnibotShapes = Shapes(
 @Composable
 fun UnibotTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    fluidBlack: Boolean = false,
     fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = when {
+        fluidBlack -> FluidBlackColorScheme
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
     val typography = scaledTypography(fontScale)
-    val chatPalette = if (darkTheme) DarkChatPalette else LightChatPalette
+    val chatPalette = if (darkTheme || fluidBlack) DarkChatPalette else LightChatPalette
 
     MaterialTheme(
         colorScheme = colorScheme,
         shapes = UnibotShapes,
         typography = typography,
     ) {
-        CompositionLocalProvider(LocalChatPalette provides chatPalette, content = content)
+        CompositionLocalProvider(
+            LocalChatPalette provides chatPalette,
+            LocalFluidBlack provides fluidBlack,
+            content = content,
+        )
     }
 }
+
+/**
+ * True when the Fluid Black signature theme (theme_mode = 3) is active.
+ * UI reads this to enable the animated aurora background and glowing
+ * animated icons.
+ */
+val LocalFluidBlack = staticCompositionLocalOf { false }
 
 private fun TextStyle.scale(factor: Float): TextStyle =
     if (factor == 1f) this else copy(fontSize = fontSize * factor)

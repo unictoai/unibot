@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Launch
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.ScreenLockPortrait
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Face // unibot
@@ -79,7 +80,7 @@ import kotlin.math.roundToInt
 
 // -- Preference Keys --
 const val PREF_APPEARANCE = "appearance_prefs"
-const val KEY_THEME_MODE = "theme_mode"            // 0=System, 1=Light, 2=Dark
+const val KEY_THEME_MODE = "theme_mode"            // 0=System, 1=Light, 2=Dark, 3=Fluid Black
 const val KEY_LAUNCH_SESSION = "launch_session"    // 0=Auto, 1=LastSession, 2=NewChat, 3=Home
 // iOS-aligned key names — match `@AppStorage("returnKeyBehavior")` and
 // `@AppStorage("keepScreenAwakeDuringTasks")` in ContentView.swift so
@@ -347,6 +348,7 @@ fun AppearanceScreen(
                 ThemeRow(stringResource(R.string.appearance_theme_system), Icons.Outlined.BrightnessAuto, tilePurple),
                 ThemeRow(stringResource(R.string.appearance_theme_light), Icons.Outlined.LightMode, tileOrange),
                 ThemeRow(stringResource(R.string.appearance_theme_dark), Icons.Outlined.DarkMode, tilePurple),
+                ThemeRow(stringResource(R.string.appearance_theme_fluid_black), Icons.Outlined.WaterDrop, tilePurple),
             )
             themeRows.forEachIndexed { idx, row ->
                 SettingsChoiceRow(

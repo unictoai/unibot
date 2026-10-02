@@ -289,6 +289,10 @@ import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
+import ai.unicto.unibot.ui.theme.BreathingGlowAvatar
+import ai.unicto.unibot.ui.theme.FluidAuroraBackground
+import ai.unicto.unibot.ui.theme.GlowingSendButton
+import ai.unicto.unibot.ui.theme.LocalFluidBlack
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
 // iOS ChatColors equivalent
@@ -2695,12 +2699,21 @@ fun ChatScreen(
                                     // agent's profile page, as before.
                                     if (ubMainChat) {
                                         if (ubAvatarSize.disc != null) {
-                                            ai.unicto.unibot.ui.avatar.AgentAvatarDisc(
-                                                mood = ubMood,
-                                                discSize = 40.dp,
-                                                contentDescription = stringResource(R.string.ub_avatar_content_description),
-                                                onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
-                                            )
+                                            // [unibot-fluid-black] Breathing glow ring around the
+                                            // dragon avatar in the Fluid Black theme.
+                                            val avatarDisc: @Composable () -> Unit = {
+                                                ai.unicto.unibot.ui.avatar.AgentAvatarDisc(
+                                                    mood = ubMood,
+                                                    discSize = 40.dp,
+                                                    contentDescription = stringResource(R.string.ub_avatar_content_description),
+                                                    onClick = { ai.unicto.unibot.ui.header.openAgentProfile(context) },
+                                                )
+                                            }
+                                            if (LocalFluidBlack.current) {
+                                                BreathingGlowAvatar(avatar = avatarDisc)
+                                            } else {
+                                                avatarDisc()
+                                            }
                                         }
                                     } else {
                                         ai.unicto.unibot.ui.avatar.AgentAvatar(
@@ -3306,6 +3319,11 @@ fun ChatScreen(
                 .imePadding()
                 .onGloballyPositioned { chatPaneWidthPx = it.size.width },
         ) {
+            // [unibot-fluid-black] Animated aurora behind the chat, only in
+            // the Fluid Black theme. The Column below is transparent.
+            if (LocalFluidBlack.current) {
+                FluidAuroraBackground()
+            }
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -6893,38 +6911,20 @@ fun ChatScreen(
                             // Streaming with content → Send-into-queue; Idle with content → Send.
                             // Idle without text or attachments → disabled.
                             val canActivate = hasContent
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(
-                                        if (canActivate) ChatColors.sendButton
-                                        else ChatColors.sendButtonDisabled,
-                                        CircleShape,
-                                    )
-                                    .clip(CircleShape)
-                                    .clickable(enabled = canActivate) {
-                                        // T-drag-send-queue: route through the
-                                        // shared send-or-enqueue handler. Same
-                                        // semantics as before: slash short-
-                                        // circuit, snapshot text, clear input
-                                        // + focus, then sendMessage (which
-                                        // routes to enqueuePrompt when
-                                        // _isStreaming is true), then re-pin
-                                        // the list to index 0 with a 100ms
-                                        // re-pin to catch the late-mounting
-                                        // "thinking" indicator.
-                                        performSendOrEnqueue(inputText)
-                                    },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowUpward,
-                                    contentDescription = "Send",
-                                    tint = if (canActivate) ChatColors.background
-                                    else ChatColors.primaryText.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
+                            // [unibot-fluid-black] Animated glowing send button.
+                            GlowingSendButton(
+                                canActivate = canActivate,
+                                onSend = {
+                                    // T-drag-send-queue: route through the
+                                    // shared send-or-enqueue handler (same
+                                    // semantics as before).
+                                    performSendOrEnqueue(inputText)
+                                },
+                                icon = Icons.Default.ArrowUpward,
+                                contentDescription = "Send",
+                                activeColor = ChatColors.sendButton,
+                                onActiveColor = ChatColors.background,
+                            )
                         }
                         } // unibot: send/stop
                     }
