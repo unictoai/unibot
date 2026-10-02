@@ -99,17 +99,24 @@ object LocalCapabilities {
         return "Phone state: battery $pct%${if (charging) " (charging)" else " (not charging)"}."
     }
 
-    /** Pure formatter for the injected search block (unit-testable). */
+    /**
+     * Pure formatter for the injected search block (unit-testable).
+     *
+     * Written bluntly on purpose: tiny models (230M) hedge and ramble
+     * ("I don't have real-time data...") unless the instruction is short,
+     * direct, and forbids the hedge explicitly.
+     */
     fun buildSearchBlock(results: List<WebResult>): String = buildString {
-        appendLine("Live web search results (fetched just now):")
+        appendLine("Live web search results (fetched just now — this IS current information):")
         results.forEachIndexed { i, r ->
             appendLine("${i + 1}. ${r.title}")
             if (r.snippet.isNotBlank()) appendLine("   ${r.snippet}")
             appendLine("   Source: ${r.url}")
         }
         append(
-            "Answer using these results. If they don't contain the answer, " +
-                "say so honestly instead of guessing.",
+            "Answer the user's question in 1-3 short sentences using ONLY these results. " +
+                "Give names, dates and facts directly. " +
+                "Never say you lack real-time data — these results are current.",
         )
     }
 

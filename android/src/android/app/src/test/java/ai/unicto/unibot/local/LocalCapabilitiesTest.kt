@@ -82,14 +82,15 @@ class LocalCapabilitiesTest {
     // ── buildSearchBlock / currentDateTimeLine ──
 
     @Test
-    fun `search block is labeled and honest`() {
+    fun `search block is labeled and blunt`() {
         val block = LocalCapabilities.buildSearchBlock(
             listOf(WebResult("T", "S", "https://x.example")),
         )
         assertTrue(block.contains("Live web search results"))
         assertTrue(block.contains("1. T"))
         assertTrue(block.contains("https://x.example"))
-        assertTrue(block.contains("say so honestly"))
+        assertTrue(block.contains("using ONLY these results"))
+        assertTrue(block.contains("Never say you lack real-time data"))
     }
 
     @Test
