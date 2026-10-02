@@ -297,7 +297,7 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_connectors_title), icon = Icons.Outlined.Email, onClick = onConnectorsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [v1.0-wave4] Creator dashboard — channel stats + latest uploads.
-                ai.unicto.unibot.ui.muse.MuseRow(title = "YouTube dashboard", icon = Icons.Outlined.PlayCircleOutline, onClick = onYouTubeDashboardClick)
+                ai.unicto.unibot.ui.muse.MuseRow(title = "YouTube dashboard", icon = Icons.Outlined.PlayArrow, onClick = onYouTubeDashboardClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // P8: marketplace — community skills and MCP servers.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_market_title), icon = Icons.Outlined.Storefront, onClick = onMarketplaceClick)
