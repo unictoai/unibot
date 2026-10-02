@@ -205,7 +205,7 @@ object MarkdownParser {
             }
 
             // Standalone image / video / audio on its own line:
-            //   ![alt](minis://workspace/clip.mp4)
+            //   ![alt](unibot://workspace/clip.mp4)
             // Routed by extension so the media renderer can pick the right preview.
             val mediaMatch = standaloneImageRegex.find(line)
             if (mediaMatch != null) {
@@ -297,12 +297,12 @@ object MarkdownParser {
 
     private fun splitTableRow(line: String): List<String> {
         val trimmed = line.trim().removePrefix("|").removeSuffix("|")
-        // [T-minis-url-fullwidth-pipe-android] Fast path: the only reason to
+        // [T-unibot-url-fullwidth-pipe-android] Fast path: the only reason to
         // protect a `|` from the cell split is a markdown link whose URL
-        // contains a raw ASCII pipe, e.g. `[f](minis://ns/a|b.png)` — the model
+        // contains a raw ASCII pipe, e.g. `[f](unibot://ns/a|b.png)` — the model
         // (or a hand-authored row) can emit an un-encoded `|` inside the URL,
         // and a naive `split('|')` would chop the link in two. App-generated
-        // minis:// URLs already percent-encode `|` to `%7C`, so this is purely
+        // unibot:// URLs already percent-encode `|` to `%7C`, so this is purely
         // defence-in-depth. Rows WITHOUT a `](` link keep the original exact
         // `split('|')` behaviour verbatim — important because the paren-aware
         // walk below would otherwise swallow a `|` after an unbalanced `(` in a

@@ -147,7 +147,7 @@
     <string name="mcp_add">MCP Sunucusu Ekle</string>
     <string name="mcp_edit">MCP Sunucusunu Düzenle</string>
     <string name="mcp_section_servers">Sunucular</string>
-    <string name="mcp_section_footer">MCP sunucuları, Agent\'ın minis-mcp-cli aracılığıyla dış araçları çağırmasını sağlar. Yapılandırmalar /var/minis/mcp-servers/servers.json içinde saklanır (Claude Desktop ile uyumlu).</string>
+    <string name="mcp_section_footer">MCP sunucuları, Agent\'ın unibot-mcp-cli aracılığıyla dış araçları çağırmasını sağlar. Yapılandırmalar /var/minis/mcp-servers/servers.json içinde saklanır (Claude Desktop ile uyumlu).</string>
     <string name="mcp_empty_title">MCP sunucusu yok</string>
     <string name="mcp_empty_action">+ düğmesiyle bir sunucu ekleyin.</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -282,7 +282,7 @@
     <string name="settings_section_logs">Günlükler</string>
     <string name="settings_logs_subtitle">Uygulama günlüklerini görüntüleyin ve dışa aktarın</string>
     <string name="settings_section_about">Hakkında</string>
-    <string name="settings_about_minis">unibot Hakkında</string>
+    <string name="settings_about_unibot">unibot Hakkında</string>
     <string name="settings_about_subtitle">Sürüm ve proje bilgileri</string>
     <string name="settings_privacy_policy">Gizlilik Politikası</string>
     <string name="settings_feedback">Geri Bildirim</string>
@@ -290,7 +290,7 @@
     <string name="settings_feedback_telegram">Geri Bildirim (Telegram)</string>
     <string name="settings_feedback_email">Geri Bildirim (E-posta)</string>
     <string name="about_title">Hakkında</string>
-    <string name="about_minis_tagline">unibot, cihazınızda çalışan tamamen yerel ve tamamen gizli Agent\'ınızdır.</string>
+    <string name="about_unibot_tagline">unibot, cihazınızda çalışan tamamen yerel ve tamamen gizli Agent\'ınızdır.</string>
     <string name="about_links">Bağlantılar</string>
     <string name="about_github_repository">GitHub Deposu</string>
     <string name="about_version_format">Sürüm %1$s (%2$s)</string>
@@ -507,7 +507,7 @@
     <string name="browser_nav_forward">İleri</string>
     <string name="browser_stop">Durdur</string>
     <string name="browser_reload">Yeniden yükle</string>
-    <string name="browser_minis_browsing">%1$s geziniyor</string>
+    <string name="browser_unibot_browsing">%1$s geziniyor</string>
     <string name="chat_typing_indicator">%1$s düşünüyor</string>
     <string name="read_aloud_unavailable">Sesli okuma başarısız: kullanılabilir ses motoru yok. Ses Çıkışı ayarlarını denetleyin ya da bir sistem konuşma motoru kurun.</string>
     <string name="chat_error_stream_dropped_partial">Bağlantı koptu — bu yanıt eksik olabilir. Devam etmek için Yeniden Dene\'ye dokunun.</string>
@@ -718,8 +718,8 @@
     <string name="perm_agent_policy">Agent izni</string>
     <string name="perm_a11y_system_ready">Hizmet etkin</string>
     <string name="perm_a11y_system_disabled">Hizmet etkin değil</string>
-    <string name="perm_allow_minis_config">minis-config\'e izin ver</string>
-    <string name="perm_minis_config_desc">Devre dışı bırakıldığında Agent, minis-config aracılığıyla hiçbir ayarı okuyamaz ya da değiştiremez. Günlükler → Yapılandırma Değişiklikleri bölümündeki değişiklik geçmişine erişim sürer. Agent bir permission_denied hatası alır ve bunun yerine sizi derin bağlantılarla yönlendirebilir.</string>
+    <string name="perm_allow_unibot_config">unibot-config\'e izin ver</string>
+    <string name="perm_unibot_config_desc">Devre dışı bırakıldığında Agent, unibot-config aracılığıyla hiçbir ayarı okuyamaz ya da değiştiremez. Günlükler → Yapılandırma Değişiklikleri bölümündeki değişiklik geçmişine erişim sürer. Agent bir permission_denied hatası alır ve bunun yerine sizi derin bağlantılarla yönlendirebilir.</string>
     <string name="perm_section_privacy">Gizlilik</string>
     <string name="perm_section_media">Medya</string>
     <string name="perm_section_system">Sistem</string>
@@ -797,7 +797,7 @@
     <string name="skill_empty_title">Kurulu Beceri Yok</string>
     <string name="skill_empty_action">SKILL.md, .zip ya da .skill dosyası içe aktarmak için + düğmesine dokunun ya da unibot Skills\'e göz atın.</string>
     <string name="skill_import_modal_title">Beceri İçe Aktar</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">Silinsin mi: %1$s</string>
     <string name="skill_delete_confirm_text">Bu işlem, beceriyi ve dosyalarını kalıcı olarak kaldırır.</string>
     <string name="skill_import_sheet_title">Beceri İçe Aktar</string>
@@ -861,8 +861,8 @@
     <string name="storage_overview_sessions">Oturum Dosyaları</string>
     <string name="storage_section_sessions">Oturumlar</string>
     <string name="storage_no_sessions">Oturum yok</string>
-    <string name="storage_section_minis_files">unibot Dosyaları</string>
-    <string name="storage_no_minis_files">unibot dosyası yok</string>
+    <string name="storage_section_unibot_files">unibot Dosyaları</string>
+    <string name="storage_no_unibot_files">unibot dosyası yok</string>
     <string name="storage_section_media">Medya Dosyaları</string>
     <string name="storage_no_media_files">Medya dosyası yok</string>
     <string name="storage_clear_session_footer">Bu oturumun oluşturduğu tüm dosyaları kaldırır. Sohbetin kendisi korunur.</string>
@@ -1163,7 +1163,7 @@
     <string name="settings_dynamic_island_footer">Agent durumunu Android 16 durum çipinde canlı gösterir. Açıkken yüzen yer paylaşımının yerini alır, böylece aynı anda iki durum göstergesi görmezsiniz.</string>
     <string name="settings_dynamic_island_unsupported">Geçerli sistem sürümünüz Live Updates özelliğini henüz desteklemiyor (Android 16+ ve özelliğin etkin olması gerekir).</string>
     <string name="agent_loop_section_title">unibot\'in Çalışırken Çağırabileceği Modeller</string>
-    <string name="agent_loop_section_footer">Bir görev sırasında unibot, kendi modelinin yapamadığı görsel üretme ya da metin özetleme gibi alt görevler için bu modelleri çağırır. Ayrıca terminalden minis-model-use ile de çağrılabilirler. Agent yalnızca bunları görür.</string>
+    <string name="agent_loop_section_footer">Bir görev sırasında unibot, kendi modelinin yapamadığı görsel üretme ya da metin özetleme gibi alt görevler için bu modelleri çağırır. Ayrıca terminalden unibot-model-use ile de çağrılabilirler. Agent yalnızca bunları görür.</string>
     <string name="agent_loop_section_empty_hint">Eklenmiş model ya da grup yok</string>
     <string name="agent_loop_section_add_models">Model Ekle</string>
     <string name="agent_loop_section_add_groups">Grup Ekle</string>
@@ -1597,7 +1597,7 @@
     <string name="webapp_pin_success">Ana ekrana eklendi</string>
     <string name="webapp_source_missing_title">Kaynak dosya artık yok</string>
     <string name="webapp_source_missing_body">Bu kısayolun dayandığı dosya taşınmış ya da silinmiş.</string>
-    <string name="webapp_open_in_minis">unibot\'te aç</string>
+    <string name="webapp_open_in_unibot">unibot\'te aç</string>
     <string name="webapp_action_close">Kapat</string>
     <string name="webapp_action_fullscreen">Tam ekrana geç</string>
     <string name="webapp_action_exit_fullscreen">Tam ekrandan çık</string>

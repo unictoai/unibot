@@ -147,7 +147,7 @@
     <string name="mcp_add">MCP 서버 추가</string>
     <string name="mcp_edit">MCP 서버 편집</string>
     <string name="mcp_section_servers">서버</string>
-    <string name="mcp_section_footer">MCP 서버를 사용하면 Agent가 minis-mcp-cli를 통해 외부 도구를 호출할 수 있습니다. 구성은 /var/minis/mcp-servers/servers.json에 저장됩니다(Claude Desktop 호환).</string>
+    <string name="mcp_section_footer">MCP 서버를 사용하면 Agent가 unibot-mcp-cli를 통해 외부 도구를 호출할 수 있습니다. 구성은 /var/minis/mcp-servers/servers.json에 저장됩니다(Claude Desktop 호환).</string>
     <string name="mcp_empty_title">MCP 서버 없음</string>
     <string name="mcp_empty_action">+ 버튼으로 서버를 추가하세요.</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -282,7 +282,7 @@
     <string name="settings_section_logs">로그</string>
     <string name="settings_logs_subtitle">앱 로그 보기 및 내보내기</string>
     <string name="settings_section_about">정보</string>
-    <string name="settings_about_minis">unibot 정보</string>
+    <string name="settings_about_unibot">unibot 정보</string>
     <string name="settings_about_subtitle">버전 및 프로젝트 정보</string>
     <string name="settings_privacy_policy">개인정보 처리방침</string>
     <string name="settings_feedback">피드백</string>
@@ -290,7 +290,7 @@
     <string name="settings_feedback_telegram">피드백 (Telegram)</string>
     <string name="settings_feedback_email">피드백 (이메일)</string>
     <string name="about_title">정보</string>
-    <string name="about_minis_tagline">unibot는 완전히 로컬에서 동작하며 완전히 프라이빗한 온디바이스 Agent 입니다.</string>
+    <string name="about_unibot_tagline">unibot는 완전히 로컬에서 동작하며 완전히 프라이빗한 온디바이스 Agent 입니다.</string>
     <string name="about_links">링크</string>
     <string name="about_github_repository">GitHub 저장소</string>
     <string name="about_version_format">버전 %1$s (%2$s)</string>
@@ -507,7 +507,7 @@
     <string name="browser_nav_forward">앞으로</string>
     <string name="browser_stop">정지</string>
     <string name="browser_reload">새로 고침</string>
-    <string name="browser_minis_browsing">%1$s가 브라우징 중</string>
+    <string name="browser_unibot_browsing">%1$s가 브라우징 중</string>
     <string name="chat_typing_indicator">%1$s가 생각하는 중</string>
     <string name="read_aloud_unavailable">읽어주기 실패: 사용 가능한 음성 엔진이 없습니다. 음성 출력 설정을 확인하거나 시스템 음성 엔진을 설치하세요.</string>
     <string name="chat_error_stream_dropped_partial">연결이 끊겼습니다. 이 답변은 불완전할 수 있습니다. 다시 시도해 주세요.</string>
@@ -718,8 +718,8 @@
     <string name="perm_agent_policy">Agent 권한</string>
     <string name="perm_a11y_system_ready">서비스 활성화됨</string>
     <string name="perm_a11y_system_disabled">서비스 비활성화됨</string>
-    <string name="perm_allow_minis_config">minis-config 허용</string>
-    <string name="perm_minis_config_desc">비활성화하면 Agent는 minis-config로 설정을 읽거나 수정할 수 없습니다. 로그 → 설정 변경에서 변경 이력은 계속 확인할 수 있습니다. Agent는 permission_denied 오류를 받고 딥 링크로 안내합니다.</string>
+    <string name="perm_allow_unibot_config">unibot-config 허용</string>
+    <string name="perm_unibot_config_desc">비활성화하면 Agent는 unibot-config로 설정을 읽거나 수정할 수 없습니다. 로그 → 설정 변경에서 변경 이력은 계속 확인할 수 있습니다. Agent는 permission_denied 오류를 받고 딥 링크로 안내합니다.</string>
     <string name="perm_section_privacy">개인정보</string>
     <string name="perm_section_media">미디어</string>
     <string name="perm_section_system">시스템</string>
@@ -797,7 +797,7 @@
     <string name="skill_empty_title">설치된 Skill 없음</string>
     <string name="skill_empty_action">+ 를 눌러 SKILL.md 를 가져오거나 unibot Skills 를 탐색하세요.</string>
     <string name="skill_import_modal_title">스킬 가져오기</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">%1$s 을(를) 삭제하시겠습니까?</string>
     <string name="skill_delete_confirm_text">이 skill 과 파일이 영구적으로 제거됩니다.</string>
     <string name="skill_import_sheet_title">스킬 가져오기</string>
@@ -861,8 +861,8 @@
     <string name="storage_overview_sessions">세션 파일</string>
     <string name="storage_section_sessions">세션</string>
     <string name="storage_no_sessions">세션 없음</string>
-    <string name="storage_section_minis_files">unibot 파일</string>
-    <string name="storage_no_minis_files">unibot 파일 없음</string>
+    <string name="storage_section_unibot_files">unibot 파일</string>
+    <string name="storage_no_unibot_files">unibot 파일 없음</string>
     <string name="storage_section_media">미디어 파일</string>
     <string name="storage_no_media_files">미디어 파일 없음</string>
     <string name="storage_clear_session_footer">이 세션에서 생성된 모든 파일을 삭제합니다. 대화 자체는 보존됩니다.</string>
@@ -1163,7 +1163,7 @@
     <string name="settings_dynamic_island_footer">Android 16의 상태 칩에 Agent 상태를 실시간으로 표시합니다. 켜면 상태 표시가 두 개 겹치지 않도록 떠 있는 오버레이 대신 이 방식이 사용됩니다.</string>
     <string name="settings_dynamic_island_unsupported">현재 시스템 버전은 아직 실시간 업데이트를 지원하지 않습니다(Android 16 이상에서 해당 기능이 켜져 있어야 합니다).</string>
     <string name="agent_loop_section_title">unibot가 런타임에 호출할 수 있는 모델</string>
-    <string name="agent_loop_section_footer">unibot 작업 중 Agent는 이미지 생성이나 요약처럼 자체 모델로는 할 수 없는 하위 작업을 위해 이 모델들을 호출합니다. 터미널에서 minis-model-use 로도 호출할 수 있습니다. Agent는 이것들만 볼 수 있습니다.</string>
+    <string name="agent_loop_section_footer">unibot 작업 중 Agent는 이미지 생성이나 요약처럼 자체 모델로는 할 수 없는 하위 작업을 위해 이 모델들을 호출합니다. 터미널에서 unibot-model-use 로도 호출할 수 있습니다. Agent는 이것들만 볼 수 있습니다.</string>
     <string name="agent_loop_section_empty_hint">추가된 모델이나 그룹이 없습니다</string>
     <string name="agent_loop_section_add_models">모델 추가</string>
     <string name="agent_loop_section_add_groups">그룹 추가</string>
@@ -1594,7 +1594,7 @@
     <string name="webapp_pin_success">홈 화면에 추가했습니다</string>
     <string name="webapp_source_missing_title">원본 파일이 더 이상 없습니다</string>
     <string name="webapp_source_missing_body">이 바로가기의 원본 파일이 옮겨졌거나 삭제되었습니다.</string>
-    <string name="webapp_open_in_minis">unibot에서 열기</string>
+    <string name="webapp_open_in_unibot">unibot에서 열기</string>
     <string name="webapp_action_close">닫기</string>
     <string name="webapp_action_fullscreen">전체 화면으로 보기</string>
     <string name="webapp_action_exit_fullscreen">전체 화면 종료</string>

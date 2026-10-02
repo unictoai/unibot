@@ -48,7 +48,7 @@
 #include <android/log.h>
 #include <unwind.h>
 
-#define LOG_TAG "MinisCrashHandler"
+#define LOG_TAG "UnibotCrashHandler"
 
 // Plenty of headroom for "<logs_dir>/native-crash-YYYY-MM-DD_HH-MM-SS.log".
 static char g_log_dir[512] = {0};
@@ -221,7 +221,7 @@ static void crash_signal_handler(int sig, siginfo_t* info, void* ctx) {
     int n;
     if (addr_is_fault) {
         n = snprintf(buf, sizeof(buf),
-            "=== Minis Native Crash ===\n"
+            "=== Unibot Native Crash ===\n"
             "Time: %04d-%02d-%02d %02d:%02d:%02d\n"
             "Signal: %d (%s)\n"
             "si_code: %d\n"
@@ -237,7 +237,7 @@ static void crash_signal_handler(int sig, siginfo_t* info, void* ctx) {
             getpid(), tid, comm);
     } else {
         n = snprintf(buf, sizeof(buf),
-            "=== Minis Native Crash ===\n"
+            "=== Unibot Native Crash ===\n"
             "Time: %04d-%02d-%02d %02d:%02d:%02d\n"
             "Signal: %d (%s)\n"
             "si_code: %d (%s)\n"

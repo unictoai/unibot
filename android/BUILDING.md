@@ -1,6 +1,6 @@
-# Building Minis
+# Building Unibot
 
-Minis ships a full Linux sandbox inside the app, so a first build is not just
+Unibot ships a full Linux sandbox inside the app, so a first build is not just
 "open the project and press Run": the native dependencies (iSH on iOS, PRoot on
 Android, FFmpeg, LAME) and the Alpine rootfs are **built from source by the
 scripts in `deps/`**, not committed as binaries. Budget ~30–60 minutes for the
@@ -113,17 +113,17 @@ by hand.
 ### 2. Build the app
 
 ```sh
-open src/ios/Minis.xcodeproj
+open src/ios/Unibot.xcodeproj
 ```
 
-Select the **Minis** scheme and build. For a device build, set your own team
+Select the **Unibot** scheme and build. For a device build, set your own team
 under *Signing & Capabilities* — the project ships with an empty
 `DEVELOPMENT_TEAM`.
 
 From the command line:
 
 ```sh
-xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
+xcodebuild -project src/ios/Unibot.xcodeproj -scheme Unibot \
            -configuration Debug -destination 'generic/platform=iOS' \
            CODE_SIGNING_ALLOWED=NO build
 ```
@@ -136,8 +136,8 @@ xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
 
 ### Targets
 
-`Minis` (app), `MinisShare` (share extension), `AgentWidgetExtension`,
-`MinisFileProvider`, plus `MinisTests` / `MinisUITests`.
+`Unibot` (app), `UnibotShare` (share extension), `AgentWidgetExtension`,
+`UnibotFileProvider`, plus `UnibotTests` / `UnibotUITests`.
 
 ---
 
@@ -260,7 +260,7 @@ from the customization file; see [Build-time customization](#build-time-customiz
 
 ## Licensing note
 
-Minis is **GPLv3** because it links iSH (GPLv3) and PRoot (GPLv2). If you
+Unibot is **GPLv3** because it links iSH (GPLv3) and PRoot (GPLv2). If you
 change how the native dependencies are built, keep FFmpeg on its LGPL
 configuration and preserve the vendored `LICENSE` files. See
 [LICENSE](LICENSE) and [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

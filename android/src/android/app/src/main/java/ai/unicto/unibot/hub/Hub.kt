@@ -21,7 +21,7 @@ import java.util.UUID
  */
 object Hub {
     const val VERSION = BuildConfig.VERSION_NAME
-    const val DEEP_LINK = "minis://settings/devices"
+    const val DEEP_LINK = "unibot://settings/devices"
 
     private const val PREFS = "unibot"
     private const val KEY_ENABLED = "hub.enabled"

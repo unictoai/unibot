@@ -169,7 +169,7 @@ final class VoiceInputViewModel: ObservableObject {
         lastFailure = failure
         VoiceLog.log("[voice-failure] \(failure.logTag): \(failure.message)")
         guard !silent else { return }
-        MinisToast.show(failure.message, duration: 2.2, systemImage: failure.systemImage)
+        UnibotToast.show(failure.message, duration: 2.2, systemImage: failure.systemImage)
     }
     private var retryAudioData: Data?
     private var retryTimer: Timer?

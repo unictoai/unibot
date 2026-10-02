@@ -22,7 +22,7 @@ enum BackupDelivery {
     /// The registered UTI for `.minisbak` (Info.plist `UTExportedTypeDeclarations`).
     ///
     /// Registering it matters for two reasons beyond tidiness:
-    ///   1. `MinisShareSheet.sanitizedShareURL` copies the file to a `.bin`
+    ///   1. `UnibotShareSheet.sanitizedShareURL` copies the file to a `.bin`
     ///      neighbour whenever `UTType(filenameExtension:)` can't resolve the
     ///      extension. For a multi-GB backup that would silently double disk
     ///      use and hand the user a file named `backup-….bin`. With the type
@@ -44,9 +44,9 @@ enum BackupDelivery {
     /// `BackupFileTreeExporter`.
     static let backupsDirectoryName = "Backups"
 
-    /// Where delivered packages live: `<AppGroup>/MinisFileProvider/Backups/`.
+    /// Where delivered packages live: `<AppGroup>/UnibotFileProvider/Backups/`.
     static var backupsDirectory: URL {
-        AIChatViewModel.minisAppGroupRoot
+        AIChatViewModel.unibotAppGroupRoot
             .appendingPathComponent(backupsDirectoryName, isDirectory: true)
     }
 
@@ -95,7 +95,7 @@ enum BackupDelivery {
     /// are sitting in the agent-visible workspace and would be swept into the
     /// next Shared Files export. Called on app start.
     static func migrateLegacySharedBackups() {
-        let legacy = AIChatViewModel.minisSharedPersistentDir
+        let legacy = AIChatViewModel.unibotSharedPersistentDir
             .appendingPathComponent(backupsDirectoryName, isDirectory: true)
         let fm = FileManager.default
         guard fm.fileExists(atPath: legacy.path) else { return }
@@ -122,7 +122,7 @@ enum BackupDelivery {
     /// Copy a package into a user-authorised mounted folder (§6.2 path 2).
     ///
     /// This is the unattended path: once the user has mounted a WebDAV / SMB /
-    /// cloud folder in Files and authorised it in Minis, a backup can be
+    /// cloud folder in Files and authorised it in Unibot, a backup can be
     /// written straight into it with no share sheet and no network code. Uses
     /// the existing coordinated-write helper so a third-party FileProvider
     /// actually sees the write and uploads it.

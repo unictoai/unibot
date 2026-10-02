@@ -44,7 +44,7 @@ import ai.unicto.unibot.config.audit.ConfigAuditEntry
 import ai.unicto.unibot.config.audit.ConfigAuditLog
 import ai.unicto.unibot.config.audit.ConfigAuditStatus
 import ai.unicto.unibot.config.ConfigBridge
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
@@ -164,7 +164,7 @@ fun ConfigAuditScreen(modifier: Modifier = Modifier) {
                 val successBody = stringResource(R.string.logs_config_revert_success_body)
                 val failedTitle = stringResource(R.string.logs_config_revert_failed_title)
                 val unknownErr = stringResource(R.string.logs_config_revert_unknown_error)
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     val target = entry
                     revertCandidate = null
                     scope.launch {
@@ -187,7 +187,7 @@ fun ConfigAuditScreen(modifier: Modifier = Modifier) {
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { revertCandidate = null }) {
+                UnibotTextButton(onClick = { revertCandidate = null }) {
                     Text(stringResource(R.string.logs_config_dialog_cancel))
                 }
             },
@@ -201,7 +201,7 @@ fun ConfigAuditScreen(modifier: Modifier = Modifier) {
             title = { Text(msg.title) },
             text = { Text(msg.body) },
             confirmButton = {
-                MinisTextButton(onClick = { revertResult = null }) {
+                UnibotTextButton(onClick = { revertResult = null }) {
                     Text(stringResource(R.string.logs_config_dialog_ok))
                 }
             },

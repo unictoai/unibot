@@ -1,6 +1,6 @@
 //
 //  ISHTerminalView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Terminal view for iSH shell interaction
 //
@@ -24,8 +24,8 @@ struct ISHTerminalView: View {
     /// software keyboard can be hidden while the input view remains first
     /// responder and continues to receive hardware key events.
     @State private var softwareKeyboardVisible = false
-    /// URL captured from an OSC `MinisOpenURL` marker emitted by
-    /// /usr/local/bin/minis-open — presented in an in-app WKWebView sheet.
+    /// URL captured from an OSC `UnibotOpenURL` marker emitted by
+    /// /usr/local/bin/unibot-open — presented in an in-app WKWebView sheet.
     @State private var linkPreviewURL: URL?
     /// Track whether a sheet is presented so we can resign first responder
     /// and stop fighting with text fields inside the sheet.
@@ -119,10 +119,10 @@ struct ISHTerminalView: View {
             // fullScreenCover is up, SwiftUI dismisses the terminal to make
             // room for the sheet, and the user sees "terminal closes,
             // browser opens, loading forever". Cleared in .onDisappear.
-            MinisOpenURLBroker.shared.terminalVisible = true
+            UnibotOpenURLBroker.shared.terminalVisible = true
         }
         .onDisappear {
-            MinisOpenURLBroker.shared.terminalVisible = false
+            UnibotOpenURLBroker.shared.terminalVisible = false
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { note in
             let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .zero
@@ -157,32 +157,32 @@ struct ISHTerminalView: View {
                 RootfsManagementView()
             }
         }
-        // In-app WKWebView preview for URLs emitted by `minis-open` via
-        // the OSC 1337 MinisOpenURL marker. `TerminalEmulator` parses the
-        // marker and forwards the URL through `MinisOpenURLBroker`.
+        // In-app WKWebView preview for URLs emitted by `unibot-open` via
+        // the OSC 1337 UnibotOpenURL marker. `TerminalEmulator` parses the
+        // marker and forwards the URL through `UnibotOpenURLBroker`.
         // `.dropFirst()` skips the broker's current value on first attach
         // so a stale URL from an earlier session isn't re-presented.
-        .onReceive(MinisOpenURLBroker.shared.$pendingURL.dropFirst().compactMap { $0 }) { url in
-            // Only web schemes are routed here — minis:// resource
-            // previews need AIChatView's `handleMinisURLTap` and aren't
+        .onReceive(UnibotOpenURLBroker.shared.$pendingURL.dropFirst().compactMap { $0 }) { url in
+            // Only web schemes are routed here — unibot:// resource
+            // previews need AIChatView's `handleUnibotURLTap` and aren't
             // reachable from the standalone terminal. Consume either way
             // so the broker doesn't leak a stale pendingURL back to chat
             // on next attach.
-            if MinisOpenURLBroker.isWebScheme(url.scheme),
+            if UnibotOpenURLBroker.isWebScheme(url.scheme),
                linkPreviewURL?.absoluteString != url.absoluteString {
                 linkPreviewURL = url
             }
-            MinisOpenURLBroker.shared.consume()
+            UnibotOpenURLBroker.shared.consume()
         }
         .sheet(item: $linkPreviewURL) { url in
             // Reuse the exact same preview the AIChat markdown-link tap
-            // uses — `MinisLinkPreviewView` with its toolbar (reload /
+            // uses — `UnibotLinkPreviewView` with its toolbar (reload /
             // stop / Safari / share / expand to fullscreen). The underlying
             // `WebViewHolder` reads the user's Browser Settings UA and
             // shares the global process pool, so cookies / HSTS state /
             // user agent match the rest of the app. `browserPool: nil`
             // is fine — the preview view doesn't actually use it.
-            MinisLinkPreviewView(url: url, browserPool: nil)
+            UnibotLinkPreviewView(url: url, browserPool: nil)
         }
     }
 }

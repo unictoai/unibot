@@ -31,7 +31,7 @@ protocol CorrectionStrategy: Sendable {
 final class PromptDiagnosticsSink: @unchecked Sendable {
     /// Typed-vocabulary terms that fit the 400-char block, in the order presented.
     var vocabTerms: [String] = []
-    /// Confusion lines ("Linux→minis（用户已手动纠正2次）") that fit the 800-char block.
+    /// Confusion lines ("Linux→unibot（用户已手动纠正2次）") that fit the 800-char block.
     var confusionLines: [String] = []
     /// Per-block character spend, keyed vocab/confusion/digest/context/transcript/total.
     var blockChars: [String: Int] = [:]
@@ -158,7 +158,7 @@ struct LLMCorrectionStrategy: CorrectionStrategy {
         //
         // [T-correction-low-freq-evidence] Terms whose phonetic key is already
         // answered by a confusion record are dropped here. Listing "Linux" as a
-        // high-frequency typed term (56×) alongside "Linux→minis（用户已手动纠正1次）"
+        // high-frequency typed term (56×) alongside "Linux→unibot（用户已手动纠正1次）"
         // put the two signals in direct competition and the model kept Linux —
         // frequency read as authority. The confusion record is strictly
         // higher-quality evidence (explicit user correction vs. a typing count),

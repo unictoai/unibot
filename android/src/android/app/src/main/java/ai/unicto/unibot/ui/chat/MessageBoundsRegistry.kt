@@ -50,7 +50,7 @@ class MessageBoundsRegistry {
     }
 
     /**
-     * Direct messageId → markdown lookup, used by the MinisTextKit selection
+     * Direct messageId → markdown lookup, used by the UnibotTextKit selection
      * toolbar so it can resolve the parent message's source even when both
      * selection endpoints' shards have scrolled out of the viewport. Falls
      * back to any registered slot for that message (any slot's markdown ==

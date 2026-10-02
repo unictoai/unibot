@@ -4,42 +4,42 @@ import android.net.Uri
 import ai.unicto.unibot.ui.navigation.Routes
 
 /**
- * Parses minis:// deep link URIs into navigation actions.
+ * Parses unibot:// deep link URIs into navigation actions.
  *
  * Supported routes (matching iOS):
- *   minis://share                              → open share flow
- *   minis://views/alarm                        → open alarm list
- *   minis://open_terminal?init_command=...      → open terminal with command
- *   minis://session/<id>                        → open specific session
- *   minis://settings                            → Settings home
- *   minis://settings/providers                  → Provider list
- *   minis://settings/providers/<instanceId>     → Provider detail
- *   minis://settings/providers/add[?preset=bailian] → Add a provider (unibot: pre-filled)
- *   minis://settings/model-groups               → Model Groups (incl. Agent Loop section)
- *   minis://settings/model-groups/<groupId>     → Model Group detail
- *   minis://settings/usage                      → Token usage
- *   minis://settings/skills                     → Skills management
- *   minis://settings/memory                     → Memory management
- *   minis://settings/storage                    → Storage management
- *   minis://settings/mount-external             → Mount External Folders list
- *   minis://settings/mounts                     → alias for mount-external
- *   minis://settings/shared-folders             → Shared Folders list (T235)
- *   minis://settings/shared_folders             → alias for shared-folders
- *   minis://settings/logs                       → Log management
- *   minis://settings/appearance                 → Appearance
- *   minis://settings/background                 → Background settings
- *   minis://settings/about                      → About
- *   minis://settings/permissions                → Permissions
- *   minis://settings/environments[?create_key=...&create_value=...&create_note=...]
+ *   unibot://share                              → open share flow
+ *   unibot://views/alarm                        → open alarm list
+ *   unibot://open_terminal?init_command=...      → open terminal with command
+ *   unibot://session/<id>                        → open specific session
+ *   unibot://settings                            → Settings home
+ *   unibot://settings/providers                  → Provider list
+ *   unibot://settings/providers/<instanceId>     → Provider detail
+ *   unibot://settings/providers/add[?preset=bailian] → Add a provider (unibot: pre-filled)
+ *   unibot://settings/model-groups               → Model Groups (incl. Agent Loop section)
+ *   unibot://settings/model-groups/<groupId>     → Model Group detail
+ *   unibot://settings/usage                      → Token usage
+ *   unibot://settings/skills                     → Skills management
+ *   unibot://settings/memory                     → Memory management
+ *   unibot://settings/storage                    → Storage management
+ *   unibot://settings/mount-external             → Mount External Folders list
+ *   unibot://settings/mounts                     → alias for mount-external
+ *   unibot://settings/shared-folders             → Shared Folders list (T235)
+ *   unibot://settings/shared_folders             → alias for shared-folders
+ *   unibot://settings/logs                       → Log management
+ *   unibot://settings/appearance                 → Appearance
+ *   unibot://settings/background                 → Background settings
+ *   unibot://settings/about                      → About
+ *   unibot://settings/permissions                → Permissions
+ *   unibot://settings/environments[?create_key=...&create_value=...&create_note=...]
  *                                               → Environment variables
- *   minis://settings/rootfs                     → Rootfs management (mirror config lives here)
- *   minis://settings/mirrors                    → alias for rootfs (mirrors live inside Rootfs UI)
+ *   unibot://settings/rootfs                     → Rootfs management (mirror config lives here)
+ *   unibot://settings/mirrors                    → alias for rootfs (mirrors live inside Rootfs UI)
  *
  * Unknown settings paths fall back to Settings home rather than
  * Unknown — matches iOS's "best-effort land somewhere reasonable"
  * behavior so an LLM-generated link can never strand the user.
  *
- * Resource-class URIs (`minis://workspace/...`, `minis://skills/...`,
+ * Resource-class URIs (`unibot://workspace/...`, `unibot://skills/...`,
  * etc.) are intentionally NOT handled here — they resolve to on-disk
  * files and go through `ChatLinkResolver` at the chat-view layer. This
  * parser only handles *navigation* targets that change the app's top-
@@ -60,9 +60,9 @@ sealed class DeepLinkAction {
      *  - [NewVoiceChat] — new chat + auto-trigger voice input mic on first compose
      *  - [NewCameraChat] — new chat + auto-launch camera attachment on first compose
      *
-     * Encoded as `minis://action/<name>` so the static shortcuts XML can
+     * Encoded as `unibot://action/<name>` so the static shortcuts XML can
      * point to them via plain Intent.data without any custom extras —
-     * matches the existing minis:// deep-link conventions.
+     * matches the existing unibot:// deep-link conventions.
      */
     data object NewChat : DeepLinkAction()
     data object NewVoiceChat : DeepLinkAction()
@@ -82,7 +82,7 @@ sealed class DeepLinkAction {
      * Launch the in-chat HTML preview, fullscreen, for a pinned home-screen
      * shortcut.
      *
-     * Encoded as `minis://session/<sessionId>/<resource-path>` —
+     * Encoded as `unibot://session/<sessionId>/<resource-path>` —
      * [sessionId] selects which chat to land in; [resourcePath] is the
      * resource path under `/var/minis/` (e.g. `/browser/snake.html`).
      * [title] is the cached page title at pin time, used as the fallback
@@ -99,7 +99,11 @@ sealed class DeepLinkAction {
 
 object DeepLinkHandler {
     fun parse(uri: Uri?): DeepLinkAction {
-        if (uri == null || uri.scheme != "minis") return DeepLinkAction.Unknown
+        // Accept the legacy minis:// scheme too: old chats may still contain
+        // minis:// links. Everything generated is unibot://.
+        if (uri == null || (uri.scheme != "unibot" && uri.scheme != "minis")) {
+            return DeepLinkAction.Unknown
+        }
         val host = uri.host ?: return DeepLinkAction.Unknown
         val path = uri.path.orEmpty()
 
@@ -123,8 +127,8 @@ object DeepLinkHandler {
             }
             "settings" -> parseSettingsPath(uri)
             "session" -> {
-                // minis://session/<sessionId>                → OpenSession
-                // minis://session/<sessionId>/<resource-path> → OpenHtmlPreview
+                // unibot://session/<sessionId>                → OpenSession
+                // unibot://session/<sessionId>/<resource-path> → OpenHtmlPreview
                 val segments = path.removePrefix("/")
                     .split('/')
                     .filter { it.isNotEmpty() }
@@ -144,7 +148,7 @@ object DeepLinkHandler {
     }
 
     /**
-     * T183: walk a `minis://settings/<path>` URI to the right NavHost
+     * T183: walk a `unibot://settings/<path>` URI to the right NavHost
      * route. Two cases stay distinct:
      *
      *  - `environments?create_key=…` — keeps the dedicated
@@ -214,7 +218,7 @@ object DeepLinkHandler {
                 // iOS parity (AIChatView.swift L1407-1411): only `create_key`
                 // is required. Missing `create_value`/`create_note` default
                 // to empty string so a link like
-                //   minis://settings/environments?create_key=GH_TOKEN&create_value=
+                //   unibot://settings/environments?create_key=GH_TOKEN&create_value=
                 // (where `create_value=` is present-but-blank) still opens
                 // the prefilled form. Without create_key, plain navigation
                 // to the Env Vars list.

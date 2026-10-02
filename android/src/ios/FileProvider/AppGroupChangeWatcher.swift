@@ -2,7 +2,7 @@ import Foundation
 import FileProvider
 import UIKit
 
-/// Watches the App Group `MinisFileProvider/{shared,skills,memory}/` subtrees and
+/// Watches the App Group `UnibotFileProvider/{shared,skills,memory}/` subtrees and
 /// signals the FileProvider extension whenever directory contents change.
 ///
 /// Why this exists: iSH shell commands and the in-app FileBrowserView both write
@@ -49,9 +49,9 @@ final class AppGroupChangeWatcher {
 
         let fm = FileManager.default
         let roots: [(URL, String)] = [
-            (AIChatViewModel.minisSharedPersistentDir, "shared"),
-            (AIChatViewModel.minisSkillsPersistentDir, "skills"),
-            (AIChatViewModel.minisMemoryPersistentDir, "memory"),
+            (AIChatViewModel.unibotSharedPersistentDir, "shared"),
+            (AIChatViewModel.unibotSkillsPersistentDir, "skills"),
+            (AIChatViewModel.unibotMemoryPersistentDir, "memory"),
         ]
 
         for (rootURL, rootKey) in roots {

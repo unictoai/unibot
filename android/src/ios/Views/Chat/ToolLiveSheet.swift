@@ -1,6 +1,6 @@
 //
 //  ToolLiveSheet.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Expandable live tool preview — the floating toolbar above the input
 //  bar plus the full-screen sheet that shows tool arguments, streaming
@@ -17,7 +17,7 @@ import WebKit
 /// Detects http(s) URLs in a line of shell output and returns an
 /// AttributedString with each URL marked as a `.link` plus single
 /// underline. Tapping one routes through the SwiftUI `\.openURL`
-/// environment — callers override that to present MinisLinkPreviewView.
+/// environment — callers override that to present UnibotLinkPreviewView.
 ///
 /// Uses NSDataDetector (the same engine UITextView uses for its built-in
 /// link detection) so it handles URLs with or without surrounding
@@ -415,7 +415,7 @@ struct ToolLiveSheet: View {
             secs = max(0, Date().timeIntervalSince(started))
             stillRunning = isLive
         }
-        return MinisStepTimestampFormatter.duration(seconds: secs, stillRunning: stillRunning)
+        return UnibotStepTimestampFormatter.duration(seconds: secs, stillRunning: stillRunning)
     }
 
     var body: some View {
@@ -445,17 +445,17 @@ struct ToolLiveSheet: View {
         .onAppear {
             startBrowserTimer()
             if isLive && isCurrentShell { resourceMonitor.start() }
-            MinisOpenURLBroker.shared.toolSheetVisible = true
+            UnibotOpenURLBroker.shared.toolSheetVisible = true
         }
         .onDisappear {
             stopBrowserTimer()
             resourceMonitor.stop()
-            MinisOpenURLBroker.shared.toolSheetVisible = false
+            UnibotOpenURLBroker.shared.toolSheetVisible = false
         }
         // Auto-present an in-app browser preview when a shell tool emits an
-        // OSC MinisOpenURL marker while this sheet is visible.
+        // OSC UnibotOpenURL marker while this sheet is visible.
         //
-        // Only intercepts http/https/about: URLs — `minis://` chat-resource
+        // Only intercepts http/https/about: URLs — `unibot://` chat-resource
         // previews (images, markdown, QuickLook, ...) are left for
         // AIChatView to handle since this sheet cannot host file previews.
         //
@@ -463,10 +463,10 @@ struct ToolLiveSheet: View {
         // to new subscribers on first attach — without it, opening the
         // sheet after a previous OSC capture would immediately re-present
         // a stale URL.
-        .onReceive(MinisOpenURLBroker.shared.$pendingURL.dropFirst().compactMap { $0 }) { url in
-            guard MinisOpenURLBroker.isWebScheme(url.scheme) else { return }
+        .onReceive(UnibotOpenURLBroker.shared.$pendingURL.dropFirst().compactMap { $0 }) { url in
+            guard UnibotOpenURLBroker.isWebScheme(url.scheme) else { return }
             activeSheet = .linkPreview(url)
-            MinisOpenURLBroker.shared.consume()
+            UnibotOpenURLBroker.shared.consume()
         }
         .onChange(of: isLive) { live in
             if live && isCurrentShell { resourceMonitor.start() } else { resourceMonitor.stop() }
@@ -501,7 +501,7 @@ struct ToolLiveSheet: View {
                     BrowserSheetView(pool: pool, isAgentBusy: false)
                 }
             case .linkPreview(let url):
-                MinisLinkPreviewView(url: url, browserPool: browserPool)
+                UnibotLinkPreviewView(url: url, browserPool: browserPool)
             }
         }
     }
@@ -1078,7 +1078,7 @@ struct ToolLiveSheet: View {
 
     /// Editor-style preview for file_read / file_write tool results.
     /// - Parameter fileContent: The actual file content to display in the editor.
-    /// - Parameter toolResult: Optional tool result info (minis_url etc.) shown below the editor.
+    /// - Parameter toolResult: Optional tool result info (unibot_url etc.) shown below the editor.
     // MARK: - File Edit Diff Helpers
 
     /// Extracts `old_string` and `new_string` from the tool input args JSON for file_edit.
@@ -1894,7 +1894,7 @@ struct ToolLiveSheet: View {
                                 .foregroundStyle(ChatColors.tertiaryText)
                         }
                         if let started = block.toolStartTime {
-                            Text(MinisStepTimestampFormatter.string(from: started))
+                            Text(UnibotStepTimestampFormatter.string(from: started))
                                 .font(.system(size: 9, design: .monospaced))
                                 .foregroundStyle(ChatColors.tertiaryText.opacity(0.75))
                         }
@@ -2514,7 +2514,7 @@ private struct ToolStatusBar: View {
 /// pay the DateFormatter alloc on every recompose. Locale-independent
 /// numeric format ("posix" + HH:mm:ss) so a CJK locale renders the same
 /// glyphs as an English locale.
-enum MinisStepTimestampFormatter {
+enum UnibotStepTimestampFormatter {
     private static let formatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")

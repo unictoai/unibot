@@ -120,7 +120,7 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import java.io.File
 
-// ─── MinisTextKit hook ────────────────────────────────────────────────────────
+// ─── UnibotTextKit hook ────────────────────────────────────────────────────────
 // Each markdown fragment renders inside a [MarkdownBlock] / [RenderBlock]
 // scope that provides a [TextShardId] via [LocalShardId]. [MdText] reads it,
 // registers a [TextShard] with the ambient [SelectionController] (if any),
@@ -283,9 +283,9 @@ private fun MdText(
     isAtomicSelectionUnit: Boolean = false,
 ) {
     var layoutResult by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
-    // MinisTextKit registration: when this MdText is inside a markdown
+    // UnibotTextKit registration: when this MdText is inside a markdown
     // fragment that supplied a shard id (LocalShardId) AND a controller
-    // (LocalMinisSelectionController), publish a TextShard so the controller
+    // (LocalUnibotSelectionController), publish a TextShard so the controller
     // can hit-test, highlight, and copy through this text node.
     // Use a single-cell array (no snapshot state) — coordinatesProvider's
     // closure reads the current value lazily, so this doesn't need to
@@ -311,7 +311,7 @@ private fun MdText(
             else it.copy(shardId = "${it.shardId}#$subIndex")
         }
     }
-    val selectionController = LocalMinisSelectionController.current
+    val selectionController = LocalUnibotSelectionController.current
     val currentShard = remember(shardId, layoutResult, text, isAtomicSelectionUnit) {
         val sid = shardId
         val result = layoutResult
@@ -403,7 +403,7 @@ private fun MdText(
             .then(tapModifier)
             .onGloballyPositioned { layoutCoordinatesHolder[0] = it }
             .drawBehind {
-                // MinisTextKit selection highlight (drawn UNDER the glyphs).
+                // UnibotTextKit selection highlight (drawn UNDER the glyphs).
                 val result0 = layoutResult
                 val shardId0 = shardId
                 val sel = selectionState?.value
@@ -454,7 +454,7 @@ private fun MdText(
                     // was correct for bidi-pure runs but regressed when an
                     // inline code span itself contains an internal space and
                     // sits inside CJK prose (e.g. prose like "put it next to
-                    // `Hermes Agent notes.md` and `Minis tutorial.md`"). The
+                    // `Hermes Agent notes.md` and `Unibot tutorial.md`"). The
                     // path returned for that range can include zero-width
                     // sub-paths at run boundaries; getBounds()'s union then
                     // expands left to a coordinate from a sibling run, which
@@ -543,7 +543,7 @@ fun StreamingMarkdownText(
     content: String,
     isStreaming: Boolean,
     modifier: Modifier = Modifier,
-    /** MinisTextKit shard id (see [MarkdownBlock]). */
+    /** UnibotTextKit shard id (see [MarkdownBlock]). */
     shardId: TextShardId? = null,
 ) {
     if (shardId != null) {
@@ -867,7 +867,7 @@ fun MarkdownBlock(
     isStreaming: Boolean,
     modifier: Modifier = Modifier,
     /**
-     * MinisTextKit shard id — when supplied, every MdText composed beneath
+     * UnibotTextKit shard id — when supplied, every MdText composed beneath
      * this fragment will register with the ambient [SelectionController].
      * The id should be stable across recompositions so the controller's
      * registry doesn't churn (e.g. "msg:abc:block:7"). Null = participate
@@ -919,7 +919,7 @@ private fun MarkdownBlockBody(
         // the first screen holds ~20 messages split into dozens of small fragments;
         // when the parallel viewport prewarm (ChatScreen) loses the race, every one
         // of those misses parsed synchronously in the same frame and the aggregate
-        // froze the main thread for 30s+ → ANR (minis-2026-07-09-anr.log: all hang
+        // froze the main thread for 30s+ → ANR (unibot-2026-07-09-anr.log: all hang
         // stacks in Matcher/Pattern via the inline parser, right after first compose).
         // A cold MISS now always goes off-main with a plain-text preview, bounding
         // the first-frame main-thread cost to cheap Text layouts regardless of how
@@ -1203,7 +1203,7 @@ private fun isBlockquoteLine(trimmed: String): Boolean {
  * references stay inline (Compose doesn't render inline bitmap attachments in
  * text here, but the `[alt]` link fallback is acceptable for images).
  *
- * Why: LLMs very commonly emit `"Here's the video: ![robot](minis://attachments/x.mp4)"`
+ * Why: LLMs very commonly emit `"Here's the video: ![robot](unibot://attachments/x.mp4)"`
  * on a single line alongside explanatory text. Without this split, the line
  * becomes one Paragraph and the video markdown is rendered as just a blue
  * `[alt]` link — no preview card, no tap-to-play.
@@ -1937,8 +1937,8 @@ private fun RenderBlock(block: MdBlock) {
             val context = LocalContext.current
             val sessionId = LocalMarkdownSessionId.current
             // Resolve to a host File via the session-scoped resolver before
-            // handing off to Coil. AsyncImage(model = "minis://...") routes
-            // through MinisImageFetcher → PRootKernel.resolveHostPath, which
+            // handing off to Coil. AsyncImage(model = "unibot://...") routes
+            // through UnibotImageFetcher → PRootKernel.resolveHostPath, which
             // reads the *global* bindMounts map — last-writer-wins across
             // sessions. When another session booted its shell more recently,
             // that global lookup answers with the wrong session's path (or
@@ -2290,10 +2290,10 @@ private fun BrokenImagePlaceholder(alt: String?) {
 // ─── Media helpers ──────────────────────────────────────────────────────────
 
 /**
- * Resolve a markdown media URL (`minis://attachments/foo.mp4`, file://, or
+ * Resolve a markdown media URL (`unibot://attachments/foo.mp4`, file://, or
  * plain absolute path) to a host File.
  *
- * First tries `PRootKernel.resolveHostPath` (same as MinisImageFetcher). If
+ * First tries `PRootKernel.resolveHostPath` (same as UnibotImageFetcher). If
  * that fails — e.g. bind mounts are pointing at a different session, or the
  * file was written under a `__new__...` draft id that predates
  * `ensureSession()` rename — we fall back to scanning all per-session
@@ -2304,13 +2304,13 @@ private fun BrokenImagePlaceholder(alt: String?) {
 internal fun resolveMdMediaFile(context: Context, url: String, sessionId: String? = null): File? {
     if (url.isBlank()) return null
     // Strip a real query (`?`), but NOT `#` — attachment filenames legitimately
-    // contain '#' (hashtags). `minis://` URLs don't carry fragments anyway,
+    // contain '#' (hashtags). `unibot://` URLs don't carry fragments anyway,
     // and truncating here would hide the '.mp4' extension and the file's real
     // name from the resolver.
     val stripped = url.substringBefore('?')
     val primary: File? = when {
-        stripped.startsWith("minis://") -> {
-            val decoded = java.net.URLDecoder.decode(stripped.removePrefix("minis://"), "UTF-8")
+        stripped.startsWith("unibot://") -> {
+            val decoded = java.net.URLDecoder.decode(stripped.removePrefix("unibot://"), "UTF-8")
             val linuxPath = "/var/minis/$decoded"
             // Prefer the session-scoped resolver when the caller supplied a
             // sessionId: the global `bindMounts` map is overwritten every time
@@ -2334,11 +2334,11 @@ internal fun resolveMdMediaFile(context: Context, url: String, sessionId: String
     // draft session whose bind mount has already switched over, and the case
     // where `resolveHostPath`'s global bindMounts map points at a different
     // session than the one owning this message.
-    if (!stripped.startsWith("minis://")) {
-        android.util.Log.d("MdStream", "resolveMdMediaFile primary miss url=$url (non-minis scheme, no fallback)")
+    if (!stripped.startsWith("unibot://")) {
+        android.util.Log.d("MdStream", "resolveMdMediaFile primary miss url=$url (non-unibot scheme, no fallback)")
         return null
     }
-    val decoded = java.net.URLDecoder.decode(stripped.removePrefix("minis://"), "UTF-8")
+    val decoded = java.net.URLDecoder.decode(stripped.removePrefix("unibot://"), "UTF-8")
     val basename = decoded.substringAfterLast('/')
     val subdir = decoded.substringBefore('/', missingDelimiterValue = "").takeIf { it.isNotEmpty() } ?: "attachments"
     val root = File(context.filesDir, "minis-sessions")
@@ -2424,7 +2424,7 @@ private fun RenderMdVideo(block: MdBlock.Video) {
     }
 
     if (showPlayer && file != null) {
-        ai.unicto.unibot.ui.media.MinisFullscreenVideoPlayer(
+        ai.unicto.unibot.ui.media.UnibotFullscreenVideoPlayer(
             file = file,
             onDismiss = { showPlayer = false },
         )
@@ -2651,7 +2651,7 @@ private fun RenderTable(block: MdBlock.Table) {
     val tableImageCopiedToast = stringResource(R.string.markdown_table_image_copied_toast)
     val tableImageCopyFailedToast = stringResource(R.string.markdown_table_image_copy_failed_toast)
 
-    val selectionController = LocalMinisSelectionController.current
+    val selectionController = LocalUnibotSelectionController.current
     val shardIdForTable = LocalShardId.current
     val messageId = shardIdForTable?.messageId
 
@@ -2884,7 +2884,7 @@ private fun RenderTable(block: MdBlock.Table) {
 // composition — on the main thread, un-remembered, so every recomposition of a
 // visible block re-ran the inline scan, and the LIVE block re-ran it on every
 // streaming publish. That is the main-thread regex/ICU load in the
-// minis-2026-06-10 ANR stack. All call sites now go through these process-wide
+// unibot-2026-06-10 ANR stack. All call sites now go through these process-wide
 // LRUs; the streaming parse paths PREWARM them on Dispatchers.Default before
 // publishing blocks, so the subsequent main-thread composition is a pure cache
 // hit. Inputs are pure functions of (text [, colors]) and the outputs
@@ -3059,7 +3059,7 @@ private object MarkdownParseCaches {
     // `raw` changes every throttle tick, so `inline()` / `mathLatex()` MISS the
     // cache every tick and re-scan the WHOLE accumulated paragraph char-by-char
     // — the confirmed 81%-of-hang-stacks inline/math regex hotspot + Matcher
-    // allocation GC storm (see minis-2026-07-06.log analysis).
+    // allocation GC storm (see unibot-2026-07-06.log analysis).
     //
     // Incremental fix: find a SAFE closed boundary (a newline where every inline
     // construct — bold/italic/strike/code/math/link — is balanced), parse the
@@ -3689,7 +3689,7 @@ private fun findInlineMathClose(text: String, from: Int): Int {
  * turning prose dollar signs into KaTeX renders. Real LaTeX math nearly
  * always carries a backslash command, a brace, a math operator, or a
  * superscript/subscript marker. iOS uses the same idea
- * (MinisMarkdownParser.looksLikeMath).
+ * (UnibotMarkdownParser.looksLikeMath).
  */
 private fun looksLikeMath(latex: String): Boolean {
     if (latex.isBlank()) return false
@@ -3699,7 +3699,7 @@ private fun looksLikeMath(latex: String): Boolean {
     val mathChars = "=+-*/<>≤≥≠∑∫∏√∞αβγθπφλμωΔΩ"
     if (latex.any { it in mathChars }) return true
     // [T-latex-inline] Bare short spans like `$x$`, `$pi$`, `$abc$` carry no
-    // LaTeX glyph but ARE math. Mirror iOS MinisMarkdownParser.looksLikeMath,
+    // LaTeX glyph but ARE math. Mirror iOS UnibotMarkdownParser.looksLikeMath,
     // which accepts `count > 2`, and additionally accept a single alphanumeric
     // token (`$x$`, `$n$`) — the strict "needs a math char" rule was the drift
     // that made single-variable inline math leak as literal `$…$`. Currency
@@ -3714,7 +3714,7 @@ private fun looksLikeMath(latex: String): Boolean {
 /**
  * [T-latex-inline] True when a candidate inline-math span is really a markdown
  * table-cell artifact (a `$` that paired across `|` column separators) rather
- * than a formula. Mirrors iOS MinisMarkdownParser.isTablePipeArtifact so a row
+ * than a formula. Mirrors iOS UnibotMarkdownParser.isTablePipeArtifact so a row
  * like `| 月付 | $20|$ **3** |` doesn't capture `20|` as fake math (which would
  * eat the bold `**3**`). Two signals a real formula avoids: an unescaped pipe
  * with whitespace on a side (the ` | ` column separator), or an ODD number of

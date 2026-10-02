@@ -1,6 +1,6 @@
 //
 //  WebLoadError.swift
-//  Minis
+//  Unibot
 //
 //  [T-ios-webview-error-ui] Shared Safari-style error model + overlay for the
 //  built-in WKWebViews. When a page fails to load (DNS not found, host

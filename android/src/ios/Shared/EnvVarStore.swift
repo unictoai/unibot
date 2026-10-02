@@ -44,7 +44,7 @@ final class EnvVarStore: ObservableObject {
 
     init() {
         let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let baseURL = libraryURL.appendingPathComponent("MinisChat", isDirectory: true)
+        let baseURL = libraryURL.appendingPathComponent("UnibotChat", isDirectory: true)
         try? FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
         self.fileURL = baseURL.appendingPathComponent("env-vars.json")
         self.entries = Self.loadEntries(from: fileURL)
@@ -336,7 +336,7 @@ final class EnvVarStore: ObservableObject {
     }
 
     /// Update only the human-readable note without touching the
-    /// Keychain-stored value. Used by minis-config so the agent can
+    /// Keychain-stored value. Used by unibot-config so the agent can
     /// annotate variables without ever seeing or overwriting the
     /// secret.
     func updateNote(id: String, note: String) {
@@ -445,7 +445,7 @@ final class EnvVarStore: ObservableObject {
         var dict: [String: String] = [:]
         // Read entries from the JSON file directly (avoid MainActor requirement)
         let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let fileURL = libraryURL.appendingPathComponent("MinisChat/env-vars.json")
+        let fileURL = libraryURL.appendingPathComponent("UnibotChat/env-vars.json")
         guard let data = try? Data(contentsOf: fileURL),
               let entries = try? JSONDecoder().decode([EnvVarEntry].self, from: data) else {
             return dict

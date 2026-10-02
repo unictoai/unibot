@@ -57,7 +57,7 @@ actor SessionFileChangeTracker {
     /// for where the sid is captured.
     func recordBatch(
         _ events: [(sid: String, rawPath: String, op: Int, tsNs: Int64)],
-        minisBaseURL: URL
+        unibotBaseURL: URL
     ) {
         var accepted = 0, ignored = 0, upserts = 0, deletes = 0
         var firstSid: String? = nil
@@ -66,7 +66,7 @@ actor SessionFileChangeTracker {
         for (sid, rawPath, opCode, _) in events {
             totalRecorded &+= 1
             guard let rel = Self.resolveSessionRelative(
-                rawPath: rawPath, sessionId: sid, minisBaseURL: minisBaseURL
+                rawPath: rawPath, sessionId: sid, unibotBaseURL: unibotBaseURL
             ) else {
                 totalIgnored &+= 1
                 ignored += 1
@@ -128,7 +128,7 @@ actor SessionFileChangeTracker {
     /// host-FS mtime resolution. Also covers cases where the kernel
     /// flushes mtime slightly *before* we record the open (very tight
     /// schedule races).
-    func drainAllWithMtimeFilter(minisBaseURL: URL) -> [String: [String: Change]] {
+    func drainAllWithMtimeFilter(unibotBaseURL: URL) -> [String: [String: Change]] {
         guard !pending.isEmpty else { return [:] }
         var drained: [String: [String: Change]] = [:]
         var keptCount = 0
@@ -145,7 +145,7 @@ actor SessionFileChangeTracker {
                     totalDelete += 1
                     continue
                 }
-                let hostURL = minisBaseURL
+                let hostURL = unibotBaseURL
                     .appendingPathComponent(sid, isDirectory: true)
                     .appendingPathComponent(rel)
                 let attrs = try? FileManager.default.attributesOfItem(atPath: hostURL.path)
@@ -213,7 +213,7 @@ actor SessionFileChangeTracker {
     ///
     ///   • Guest path:  `/var/minis/<subdir>/<rel>` (fakefs path-normalize
     ///     left the bind-mount symlink alone, e.g. unlink/rename)
-    ///   • Host path:   `<minisBaseURL>/<sid>/<subdir>/<rel>` (path-normalize
+    ///   • Host path:   `<unibotBaseURL>/<sid>/<subdir>/<rel>` (path-normalize
     ///     dereferenced the symlink — common for open() of a regular file
     ///     under a bind mount)
     ///
@@ -222,7 +222,7 @@ actor SessionFileChangeTracker {
     /// is passed in from the producer (captured at event-receive time
     /// from ISHExecutionCoordinator's mount snapshot).
     nonisolated static func resolveSessionRelative(
-        rawPath: String, sessionId: String, minisBaseURL: URL
+        rawPath: String, sessionId: String, unibotBaseURL: URL
     ) -> String? {
         // Guest-shape: trivial prefix strip.
         let guestPrefix = "/var/minis/"
@@ -231,7 +231,7 @@ actor SessionFileChangeTracker {
             return validateAndReturnSubpath(after)
         }
 
-        // Host-shape: must live under this session's per-session minis dir.
+        // Host-shape: must live under this session's per-session unibot dir.
         // We use the *current* sessionId (capture happens at producer
         // time), so a path like ".../<sid>/workspace/foo.txt" matches.
         // /var/folders symlink resolution and similar host quirks: we
@@ -239,7 +239,7 @@ actor SessionFileChangeTracker {
         // resolvingSymlinksInPath because that would block the consumer
         // queue on disk syscalls. iOS sandbox paths are stable enough
         // that string matching is sufficient.
-        let hostBase = minisBaseURL.path
+        let hostBase = unibotBaseURL.path
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         // Match "<hostBase>/<sid>/" — accept both leading-slash and
         // /private-prefixed variants (iOS resolves /var → /private/var).
@@ -273,20 +273,20 @@ actor SessionFileChangeTracker {
 /// Install the iSH fakefs change handler that pumps events into the
 /// tracker actor. Call once at app launch after ISHKernel has booted.
 ///
-/// iSH stays agnostic about Minis sessions — this Swift bridge knows the
-/// per-session host directory layout (`<minisBaseURL>/<sid>/<subdir>/...`)
+/// iSH stays agnostic about Unibot sessions — this Swift bridge knows the
+/// per-session host directory layout (`<unibotBaseURL>/<sid>/<subdir>/...`)
 /// and the bind-mount guest layout (`/var/minis/<subdir>/...`), and resolves
 /// either shape to a SessionFile recordId on the consumer (actor) side.
 func installSessionFileChangeTracker(kernel: ISHKernel) {
     let installLogger = AppLogger(category: "SessionFileTracker")
     installLogger.info("[SessionFileTracker] installing fakefs change handler — iSH realfs writes/unlinks/renames under /var/minis/{workspace,attachments,browser,offloads} (or the equivalent host APFS path) will be queued for iCloud SessionFile sync")
-    // Captured at install time; minisBaseURL doesn't change for the
+    // Captured at install time; unibotBaseURL doesn't change for the
     // lifetime of the app process.
-    let minisBaseURL = ChatStore.shared.minisBaseURL
+    let unibotBaseURL = ChatStore.shared.unibotBaseURL
     kernel.installFakefsChangeHandler { events in
         // Block runs on ISHKernel's private serial queue. Each event carries
         // the fs_context u64 that was stamped on the task group that issued
-        // the write/delete; MinisFsRouter maps that back to the sid that
+        // the write/delete; UnibotFsRouter maps that back to the sid that
         // owns the per-session bucket. Events from skills/shared/memory
         // (no per-session routing → fs_context = 0) fall back to the most
         // recently active session — those buckets are global so the SessionFile
@@ -298,7 +298,7 @@ func installSessionFileChangeTracker(kernel: ISHKernel) {
         for event in events {
             let resolvedSid: String?
             if event.fsContext != 0 {
-                resolvedSid = MinisFsRouter.shared.sid(for: event.fsContext) ?? fallbackSid
+                resolvedSid = UnibotFsRouter.shared.sid(for: event.fsContext) ?? fallbackSid
             } else {
                 resolvedSid = fallbackSid
             }
@@ -307,7 +307,7 @@ func installSessionFileChangeTracker(kernel: ISHKernel) {
         }
         if !tuples.isEmpty {
             Task.detached(priority: .utility) {
-                await SessionFileChangeTracker.shared.recordBatch(tuples, minisBaseURL: minisBaseURL)
+                await SessionFileChangeTracker.shared.recordBatch(tuples, unibotBaseURL: unibotBaseURL)
             }
         }
 
@@ -318,7 +318,7 @@ func installSessionFileChangeTracker(kernel: ISHKernel) {
         // newly-discovered / modified / deleted skills it spots.
         // Done synchronously here (cheap path check) so we don't lose
         // the signal if the consumer queue is backed up.
-        if FakefsSkillPathCheck.batchTouchesSkills(events: events, minisBaseURL: minisBaseURL) {
+        if FakefsSkillPathCheck.batchTouchesSkills(events: events, unibotBaseURL: unibotBaseURL) {
             SkillFilesystemNotifier.shared.notifyChanged()
         }
     }
@@ -327,12 +327,12 @@ func installSessionFileChangeTracker(kernel: ISHKernel) {
 /// Helper sitting outside the actor so it can be called from the
 /// non-isolated installFakefsChangeHandler block.
 fileprivate enum FakefsSkillPathCheck {
-    static func batchTouchesSkills(events: [ISHFakefsChangeEvent], minisBaseURL: URL) -> Bool {
+    static func batchTouchesSkills(events: [ISHFakefsChangeEvent], unibotBaseURL: URL) -> Bool {
         let guestPrefix = "/var/minis/skills"
-        // host APFS path looks like ".../MinisChat/minis/skills/..."
-        // — minisBaseURL = "<lib>/MinisChat/minis", so the host prefix
-        //   to check is "<minisBaseURL>/skills".
-        let hostPrefix = minisBaseURL.standardizedFileURL.path + "/skills"
+        // host APFS path looks like ".../UnibotChat/unibot/skills/..."
+        // — unibotBaseURL = "<lib>/UnibotChat/unibot", so the host prefix
+        //   to check is "<unibotBaseURL>/skills".
+        let hostPrefix = unibotBaseURL.standardizedFileURL.path + "/skills"
         for evt in events {
             let p = evt.linuxPath
             if p.hasPrefix(guestPrefix) { return true }

@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [T-android-voice-correction] Mirrors iOS MinisTests/VoiceCorrectionTests
+ * [T-android-voice-correction] Mirrors iOS UnibotTests/VoiceCorrectionTests
  * (L116-162). The tokenizer is injected so these run on the JVM without jieba.
  */
 class VoiceCorrectionDiffTest {

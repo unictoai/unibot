@@ -127,7 +127,7 @@ object HubActions {
         val linux = when {
             path.isBlank() || path == "~" -> "/root"
             path.startsWith("~/") -> "/root/" + path.removePrefix("~/")
-            path.startsWith("minis://attachments/") -> "/var/minis/attachments/" + path.removePrefix("minis://attachments/")
+            path.startsWith("unibot://attachments/") -> "/var/minis/attachments/" + path.removePrefix("unibot://attachments/")
             !path.startsWith("/") -> "/root/$path"
             else -> path
         }

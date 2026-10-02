@@ -12,7 +12,7 @@ private let logger = AppLogger(category: "CookieBackup")
 /// established in the takeover sheet kept vanishing (observations.db showed
 /// 5 wipes for x.com on the reporting device).
 ///
-/// Mitigation: before every browser_use / minis-browser-use action (throttled
+/// Mitigation: before every browser_use / unibot-browser-use action (throttled
 /// to once per 60s) we
 ///   1. snapshot every cookie in `WKWebsiteDataStore.default()` with its FULL
 ///      metadata (domain / path / expires / secure / HttpOnly), rendered as a

@@ -1,6 +1,6 @@
 //
 //  MountedFoldersManager.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Manages user-picked external folders (e.g. Obsidian vaults in iCloud Drive)
 //  mounted into /var/minis/mounts/<name> via security-scoped bookmarks.
@@ -10,7 +10,7 @@
 //  - We create a persistent bookmark and remember (id, name, bookmark, sourceDisplay)
 //  - On app launch, activateAll() resolves bookmarks and holds security scopes
 //    for the entire app lifetime
-//  - ensureMinisSymlinks() creates /var/minis/mounts/<name> symlinks in fakefs
+//  - ensureUnibotSymlinks() creates /var/minis/mounts/<name> symlinks in fakefs
 //
 //  Note: iSH shell cannot follow these symlinks (no scope in kernel thread).
 //  Only FileBrowserView and the Swift app process can read/write through them.
@@ -42,7 +42,7 @@ struct MountedFolderEntry: Codable, Identifiable, Equatable {
     /// decoding defaults to `true` so existing entries keep working.
     var isWritable: Bool = true
 
-    /// User intent: does the user *want* Minis (shell + AI + Browse Files) to
+    /// User intent: does the user *want* Unibot (shell + AI + Browse Files) to
     /// be allowed to modify this folder? This is a soft lock layered on top
     /// of `isWritable` — it lets users mount a writable folder and still keep
     /// AI from deleting or editing its contents.
@@ -158,21 +158,21 @@ final class MountedFoldersManager {
 
     // MARK: - Persistence
 
-    /// Mounts metadata lives in the App Group's private MinisConfig subdir
+    /// Mounts metadata lives in the App Group's private UnibotConfig subdir
     /// so it does NOT leak into iOS Files' "On My iPhone → unibot" view.
-    /// Historically stored in `minisAppGroupRoot/mounted-folders.json`, but
+    /// Historically stored in `unibotAppGroupRoot/mounted-folders.json`, but
     /// that path sits inside the FileProvider's exposed root.
     private static var storeURL: URL {
-        return AIChatViewModel.minisConfigRoot.appendingPathComponent("mounted-folders.json")
+        return AIChatViewModel.unibotConfigRoot.appendingPathComponent("mounted-folders.json")
     }
 
     /// Old pre-migration path — kept as a fallback source so existing mounts
     /// aren't lost after upgrading.
     private static var legacyStoreURL: URL {
-        AIChatViewModel.minisAppGroupRoot.appendingPathComponent("mounted-folders.json")
+        AIChatViewModel.unibotAppGroupRoot.appendingPathComponent("mounted-folders.json")
     }
 
-    /// Move `mounted-folders.json` out of providerRoot into MinisConfig the
+    /// Move `mounted-folders.json` out of providerRoot into UnibotConfig the
     /// first time this runs after the fix. Safe to call on every launch.
     private func migrateStoreFileIfNeeded() {
         let fm = FileManager.default
@@ -187,13 +187,13 @@ final class MountedFoldersManager {
         }
         do {
             try fm.moveItem(at: legacy, to: current)
-            mountLog.info("migrateStoreFile: moved \(legacy.lastPathComponent) to MinisConfig/")
+            mountLog.info("migrateStoreFile: moved \(legacy.lastPathComponent) to UnibotConfig/")
         } catch {
             // Fallback: copy + delete, in case move-across-bind fails.
             do {
                 try fm.copyItem(at: legacy, to: current)
                 try fm.removeItem(at: legacy)
-                mountLog.info("migrateStoreFile: copied \(legacy.lastPathComponent) to MinisConfig/ (move failed, copy+delete succeeded)")
+                mountLog.info("migrateStoreFile: copied \(legacy.lastPathComponent) to UnibotConfig/ (move failed, copy+delete succeeded)")
             } catch {
                 mountLog.warning("migrateStoreFile failed: \(error.localizedDescription)")
             }
@@ -326,7 +326,7 @@ final class MountedFoldersManager {
     }
 
     /// Toggle the user's allow-write intent for a mount. This is the
-    /// Minis-internal soft lock on top of the OS-level `isWritable`. Calling
+    /// Unibot-internal soft lock on top of the OS-level `isWritable`. Calling
     /// with `true` when the source is read-only at the OS level has no effect.
     func setUserAllowWrite(id: UUID, to allow: Bool) {
         guard let idx = entries.firstIndex(where: { $0.id == id }) else { return }
@@ -733,7 +733,7 @@ final class MountedFoldersManager {
                 droppedNames.append("\(entry.name)[\(String(entry.id.uuidString.prefix(8)))]:state=\(state)")
                 return nil
             }
-            let linuxDir = "\(AIChatViewModel.minisMountsLinuxDir)/\(entry.name)"
+            let linuxDir = "\(AIChatViewModel.unibotMountsLinuxDir)/\(entry.name)"
             // Effective writable = source is actually writable AND user allows it.
             return ISHExecutionCoordinator.ExternalMountSpec(
                 linuxDir: linuxDir,
@@ -881,7 +881,7 @@ final class MountedFoldersManager {
     /// Returns the entry matching a fakefs symlink path (`/var/minis/mounts/<name>/...`).
     /// Useful for FileBrowserView to decide whether to use NSFileCoordinator.
     func entryForLinuxPath(_ linuxPath: String) -> MountedFolderEntry? {
-        let prefix = AIChatViewModel.minisMountsLinuxDir + "/"
+        let prefix = AIChatViewModel.unibotMountsLinuxDir + "/"
         guard linuxPath.hasPrefix(prefix) else { return nil }
         let rest = String(linuxPath.dropFirst(prefix.count))
         let name = rest.split(separator: "/", maxSplits: 1).first.map(String.init) ?? rest
@@ -925,7 +925,7 @@ final class MountedFoldersManager {
     /// delete it and report writable. Uses NSFileCoordinator so providers
     /// (iCloud Drive, Dropbox, Working Copy, etc.) see a coordinated write.
     nonisolated static func probeWritable(at url: URL) -> Bool {
-        let probe = url.appendingPathComponent(".minis-probe-\(UUID().uuidString)")
+        let probe = url.appendingPathComponent(".unibot-probe-\(UUID().uuidString)")
         var coordError: NSError?
         var succeeded = false
         NSFileCoordinator().coordinate(

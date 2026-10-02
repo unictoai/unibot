@@ -10,7 +10,7 @@ plugins {
 
 // Build-time customization values that must NOT ship in the public
 // open-source mirror. `provider-customization.properties` is tracked in the PRIVATE
-// MinisApp repo (with real values) and listed under `private:` in
+// UnibotApp repo (with real values) and listed under `private:` in
 // PUBLISH_MANIFEST.yml so it is never synced; the public repo ships only
 // `provider-customization.properties.example` (empty values). A build without a
 // configured value compiles fine but fails at runtime the first time the

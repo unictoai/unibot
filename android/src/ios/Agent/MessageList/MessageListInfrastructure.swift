@@ -1,6 +1,6 @@
 //
 //  MessageListInfrastructure.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Shared types for the V3 collection-view-based chat message list.
 //  These types were originally defined in the now-removed V1 and V2
@@ -644,7 +644,7 @@ class SelfSizingCell: UICollectionViewCell {
         // Optional" inside UIKit's own
         // UIKitLiquidMorphAnimationContext.configureMorphAnimationHierarchyIfNeeded,
         // reached from _UIContextMenuLiquidMorphPresentationAnimation
-        // .performTransition(). No Minis frames on the stack: iOS 26/27's Liquid
+        // .performTransition(). No Unibot frames on the stack: iOS 26/27's Liquid
         // Glass morph resolves the source view's hierarchy as the animation
         // configures itself, and traps if that view is no longer in a window.
         //
@@ -1121,7 +1121,7 @@ final class MessageListViewController: UIViewController {
                 if let table = value as? TableAttachment {
                     table.invalidateCachedLayoutForWidthChange()
                     count += 1
-                    if let lm = tv.layoutManager as? MinisLayoutManager {
+                    if let lm = tv.layoutManager as? UnibotLayoutManager {
                         lm.invalidateLayout(forCharacterRange: range, actualCharacterRange: nil)
                     }
                 }
@@ -1158,8 +1158,8 @@ final class CellStateBridgeV2: ObservableObject {
     @Published var onCopyScreenshot: (() -> Void)?
     /// Read this whole reply aloud from the start (clears in-progress TTS).
     @Published var onReadAloud: (() -> Void)?
-    /// [T-selection-menu-minis-tts] Speak an arbitrary text snippet (the
-    /// selection-menu "Read Selection" action) via the Minis TTS stack.
+    /// [T-selection-menu-unibot-tts] Speak an arbitrary text snippet (the
+    /// selection-menu "Read Selection" action) via the Unibot TTS stack.
     @Published var onSpeakText: ((String) -> Void)?
     /// True while this reply is still streaming — disables "Read from Start".
     @Published var isStreaming: Bool = false

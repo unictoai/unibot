@@ -140,9 +140,9 @@ import ai.unicto.unibot.BuildConfig
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.FileMentionIndex
 import ai.unicto.unibot.logging.AppLogger
-import ai.unicto.unibot.ui.components.MinisAlertDialog
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisMenuDivider
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -271,7 +271,7 @@ import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -541,7 +541,7 @@ internal fun ToolDetailSheet(
                                         if (block.content.isNotEmpty()) {
                                             // T38: linkify http/https URLs in shell output so the user can
                                             // tap them to open the in-app web preview (matches iOS
-                                            // TerminalCanvasView.addURLLinks → MinisOpenURLBroker).
+                                            // TerminalCanvasView.addURLLinks → UnibotOpenURLBroker).
                                             val urlClick = LocalMarkdownUrlClickHandler.current
                                             val linkified = remember(block.content, urlClick) {
                                                 if (urlClick != null) {
@@ -647,14 +647,14 @@ internal fun ToolDetailSheet(
                                     .fillMaxWidth()
                                     // T260: bound the Column to the parent
                                     // BoxWithConstraints' maxHeight so the inner
-                                    // verticalScroll ribbon (Minis Computer sheet
+                                    // verticalScroll ribbon (Unibot Computer sheet
                                     // edit-card body) actually scrolls. Without
                                     // fillMaxHeight the Column's vertical constraint
                                     // is unbounded, the inner Column.verticalScroll
                                     // degenerates (each row laid out at full height
                                     // instead of scrolling), and the overflow
                                     // bleeds past the parent Box(weight=1f) onto
-                                    // the footer ("Minis is editing File / 2/3 /
+                                    // the footer ("Unibot is editing File / 2/3 /
                                     // prev-next" at L5094). Mirrors the shell
                                     // branch (L4489) which already does this.
                                     .fillMaxHeight()
@@ -1390,7 +1390,7 @@ internal fun extractPartialJsonString(key: String, json: String): String? {
 // "Load more" / "Load all". Only the revealed Texts are composed, so open is
 // cheap regardless of total size. Still scrollable and still selectable —
 // rendered inside the caller's SelectionContainer; the reveal window's Texts
-// register with the same plain-Compose SelectionRegistrar (NOT MinisTextKit,
+// register with the same plain-Compose SelectionRegistrar (NOT UnibotTextKit,
 // which is the chat-list markdown layer and isn't involved here).
 
 private const val LAZY_TOOL_CHUNK_LINES = 40

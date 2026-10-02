@@ -378,7 +378,7 @@ final class GeminiProvider: LLMProvider {
             config["responseModalities"] = ["TEXT", "IMAGE"]
         }
 
-        // Merge extra generation config (e.g. aspect ratio from minis-model-use)
+        // Merge extra generation config (e.g. aspect ratio from unibot-model-use)
         if let extra = extraGenerationConfig {
             for (key, value) in extra {
                 config[key] = value
@@ -430,8 +430,8 @@ final class GeminiProvider: LLMProvider {
         } else {
             // Direct REST (api-key / manual-token) path sets no UA otherwise, so
             // URLSession would send its build-number default. Use the app default
-            // (Minis/<marketing>) instead. Never overrides the Cloud Code UA above.
-            request.setValue(MinisUserAgent.default, forHTTPHeaderField: "User-Agent")
+            // (Unibot/<marketing>) instead. Never overrides the Cloud Code UA above.
+            request.setValue(UnibotUserAgent.default, forHTTPHeaderField: "User-Agent")
         }
 
         // sortedKeys: stable byte-level prefix so server-side prompt caches

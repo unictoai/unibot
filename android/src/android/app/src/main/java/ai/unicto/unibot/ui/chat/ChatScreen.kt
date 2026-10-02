@@ -147,9 +147,9 @@ import ai.unicto.unibot.BuildConfig
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.FileMentionIndex
 import ai.unicto.unibot.logging.AppLogger
-import ai.unicto.unibot.ui.components.MinisAlertDialog
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisMenuDivider
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -287,7 +287,7 @@ import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 // iOS ChatColors equivalent
 internal val ToolCheckColor = Color(0xFF34C759) // iOS .green
@@ -712,7 +712,7 @@ fun ChatScreen(
     }
 
     // T311: publish "this is the active chat" while ChatScreen is composed,
-    // so `minis-config session.*` reads/writes target it. Mirrors iOS
+    // so `unibot-config session.*` reads/writes target it. Mirrors iOS
     // `AIChatViewModel.activeSessionId` which is updated on appear / disappear.
     // [T-HANG-DIAG] capture the application context so we can read the
     // current hang count from non-composable scopes below. LocalContext is
@@ -1057,7 +1057,7 @@ fun ChatScreen(
     }
 
     // App-icon quick action: when the user launched via
-    // `minis://action/camera_chat`, auto-open the camera on first compose.
+    // `unibot://action/camera_chat`, auto-open the camera on first compose.
     // Consumed exactly once so re-entering the chat later does NOT re-trigger.
     // Voice variant lives next to the MicButton because it needs sttAvailable
     // — camera is always available so it can fire from the top-level scope.
@@ -1809,7 +1809,7 @@ fun ChatScreen(
     // [T-android-tool-autoscroll] Start-of-turn edge from ViewModel: resume() /
     // retryLast() / retryFromMessage() / rerunFromToolBlock() emit Unit on
     // forceScrollToBottom because they don't append a new user-message row, so
-    // LE(messages.size) below skips them. Without this collector the "Minis is
+    // LE(messages.size) below skips them. Without this collector the "Unibot is
     // thinking…" placeholder stays parked behind the input bar until the first
     // streamed token finally bumps the auto-follow tuple.
     LaunchedEffect(listState, viewModel) {
@@ -2320,7 +2320,7 @@ fun ChatScreen(
     var chatInputLevel by remember { mutableStateOf(appearancePrefs.getInt(ai.unicto.unibot.ui.settings.KEY_FONT_CHAT_INPUT, 0)) }
     var toolPreviewEnabled by remember { mutableStateOf(appearancePrefs.getBoolean(ai.unicto.unibot.ui.settings.KEY_TOOL_PREVIEW, true)) }
     // T-chat-title-pill: live-toggled by Settings → Appearance and by
-    // `minis-config set appearance.show_chat_title …`. Default ON.
+    // `unibot-config set appearance.show_chat_title …`. Default ON.
     var showChatTitlePill by remember { mutableStateOf(appearancePrefs.getBoolean(ai.unicto.unibot.ui.settings.KEY_SHOW_CHAT_TITLE, true)) }
     // T-chat-title-pill-edit: state for the in-chat edit-title sheet (the
     // exact same SessionEditSheet hosted by the session list home screen,
@@ -2368,7 +2368,7 @@ fun ChatScreen(
             htmlPreviewFullscreen = false
         }
     }
-    // Pinned-shortcut deep link: minis://session/<id>/<resource-path>
+    // Pinned-shortcut deep link: unibot://session/<id>/<resource-path>
     // consumes here on first composition iff this screen is showing the
     // matching session; opens fullscreen HTML preview backed by a fresh
     // holder. Pending state is left untouched when a different chat is on
@@ -2400,7 +2400,7 @@ fun ChatScreen(
     var previewImageGallery by remember {
         mutableStateOf<Pair<List<ai.unicto.unibot.ui.components.ImageGalleryItem>, Int>?>(null)
     }
-    // Video links from chat go through MinisFullscreenVideoPlayer rather than
+    // Video links from chat go through UnibotFullscreenVideoPlayer rather than
     // FilePreviewScreen → InlineVideoPlayer. The inline player wraps a bare
     // VideoView with an anchored MediaController and never starts playback,
     // so a tap on an mp4 link rendered as a black surface until the user
@@ -2413,7 +2413,7 @@ fun ChatScreen(
     var webAppSheetTarget by remember { mutableStateOf<InputAttachment?>(null) }
     val urlClickHandler = remember<(String) -> Unit>(viewModel) {
         { url ->
-            // Pass the current session id so `minis://attachments/...` resolves
+            // Pass the current session id so `unibot://attachments/...` resolves
             // against this chat's session directory rather than whichever
             // session booted its PRoot shell most recently (which is what
             // the global bindMounts map would answer).
@@ -2466,23 +2466,23 @@ fun ChatScreen(
     }
 
     // Auto-present the in-app preview when a shell tool's stdout emits an
-    // OSC MinisOpenURL marker (via /usr/local/bin/minis-open). The broker is
+    // OSC UnibotOpenURL marker (via /usr/local/bin/unibot-open). The broker is
     // populated by ChatViewModel's shell lineCallback; forwarding the URL
     // into `urlClickHandler` routes it exactly like a chat-link tap —
-    // http(s)/about → UrlPreviewSheet, minis:// deep links → DeepLinkHandler,
-    // minis://<host>/<path> → in-app file preview by extension.
-    val pendingMinisOpenUrl by ai.unicto.unibot.terminal.MinisOpenUrlBroker.pendingUrl
+    // http(s)/about → UrlPreviewSheet, unibot:// deep links → DeepLinkHandler,
+    // unibot://<host>/<path> → in-app file preview by extension.
+    val pendingUnibotOpenUrl by ai.unicto.unibot.terminal.UnibotOpenUrlBroker.pendingUrl
         .collectAsState()
-    val minisOpenTerminalVisible by ai.unicto.unibot.terminal.MinisOpenUrlBroker.terminalVisible
+    val unibotOpenTerminalVisible by ai.unicto.unibot.terminal.UnibotOpenUrlBroker.terminalVisible
         .collectAsState()
-    LaunchedEffect(pendingMinisOpenUrl, minisOpenTerminalVisible) {
-        val url = pendingMinisOpenUrl ?: return@LaunchedEffect
+    LaunchedEffect(pendingUnibotOpenUrl, unibotOpenTerminalVisible) {
+        val url = pendingUnibotOpenUrl ?: return@LaunchedEffect
         // The fullscreen TerminalScreen owns the broker while it's up —
         // let it present its own web preview (mirrors iOS ISHTerminalView)
         // so we don't try to open a sheet on a covered ChatScreen.
-        if (minisOpenTerminalVisible) return@LaunchedEffect
+        if (unibotOpenTerminalVisible) return@LaunchedEffect
         urlClickHandler(url.toString())
-        ai.unicto.unibot.terminal.MinisOpenUrlBroker.consume()
+        ai.unicto.unibot.terminal.UnibotOpenUrlBroker.consume()
     }
 
     // [T-android-markdown-image-gallery-cross-message] Collect every
@@ -2493,8 +2493,8 @@ fun ChatScreen(
     // matches the standard inline image form; tool-block content stays
     // untouched (toolBlocks live in a separate AssistantBlock list, not
     // in `content`). Video/audio extensions are filtered out so the gallery
-    // only contains still images. Resolution of `minis://` → host File is
-    // deferred to the gallery's Coil model — Coil's MinisImageFetcher walks
+    // only contains still images. Resolution of `unibot://` → host File is
+    // deferred to the gallery's Coil model — Coil's UnibotImageFetcher walks
     // the same session-aware resolver we use for inline rendering.
     val markdownImageTapHandler = remember<(String, String) -> Unit>(messages, sessionId) {
         handler@{ tappedMessageId, tappedUrl ->
@@ -2512,7 +2512,7 @@ fun ChatScreen(
                     val pathPart = src.substringBefore('?').substringBefore('#')
                     val ext = pathPart.substringAfterLast('.', "").lowercase()
                     // Skip non-image media so the gallery stays still-image only,
-                    // matching iOS minisVideoExtensions / minisAudioExtensions.
+                    // matching iOS unibotVideoExtensions / unibotAudioExtensions.
                     if (ext in setOf("mp4", "mov", "avi", "mkv", "webm",
                                      "mp3", "wav", "aac", "flac", "ogg", "m4a")) continue
                     val title = alt.ifEmpty { pathPart.substringAfterLast('/').ifEmpty { src } }
@@ -2532,10 +2532,10 @@ fun ChatScreen(
                 ?: refs.indexOfFirst { it.source == tappedUrl }.takeIf { it >= 0 }
                 ?: 0
             val items = refs.map { ref ->
-                // Resolve minis://... / file:// / /abs → host File so Coil
+                // Resolve unibot://... / file:// / /abs → host File so Coil
                 // doesn't have to re-walk PRootKernel for every page swipe.
                 // Falls back to the raw URL string when resolution misses —
-                // AsyncImage will route it through MinisImageFetcher anyway.
+                // AsyncImage will route it through UnibotImageFetcher anyway.
                 val resolved = resolveMdMediaFile(context, ref.source, sessionId)
                 ai.unicto.unibot.ui.components.ImageGalleryItem(
                     model = resolved ?: ref.source,
@@ -2553,7 +2553,7 @@ fun ChatScreen(
         LocalMarkdownUrlClickHandler provides urlClickHandler,
         LocalMarkdownImageTapHandler provides markdownImageTapHandler,
         // Route markdown media resolution through this chat's session so
-        // minis://attachments/* lookups don't rely on the global bindMounts
+        // unibot://attachments/* lookups don't rely on the global bindMounts
         // map (which is last-writer-wins across sessions).
         LocalMarkdownSessionId provides sessionId,
     ) {
@@ -2940,7 +2940,7 @@ fun ChatScreen(
                                 IconButton(onClick = { showChatMenu = true }) {
                                     Icon(Icons.Default.MoreVert, contentDescription = "More")
                                 }
-                                MinisMenu(
+                                UnibotMenu(
                                     expanded = showChatMenu,
                                     onDismissRequest = { showChatMenu = false },
                                 ) {
@@ -2997,7 +2997,7 @@ fun ChatScreen(
                                             },
                                         )
                                     }
-                                    MinisMenuDivider()
+                                    UnibotMenuDivider()
                                     // Clear Chat (iOS parity, red)
                                     DropdownMenuItem(
                                         text = { Text(stringResource(R.string.chat_menu_clear_chat), color = MaterialTheme.colorScheme.error) },
@@ -3009,7 +3009,7 @@ fun ChatScreen(
                                             Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                                         },
                                     )
-                                    MinisMenuDivider()
+                                    UnibotMenuDivider()
                                     // Open Terminal (iOS parity) — session-bound, starts in /var/minis
                                     DropdownMenuItem(
                                         text = { Text(stringResource(R.string.chat_menu_open_terminal)) },
@@ -3043,7 +3043,7 @@ fun ChatScreen(
                                             Icon(Icons.Default.Description, contentDescription = null)
                                         },
                                     )
-                                    MinisMenuDivider()
+                                    UnibotMenuDivider()
                                     // Session Skills (iOS parity)
                                     if (skillRepository != null) {
                                         DropdownMenuItem(
@@ -3083,7 +3083,7 @@ fun ChatScreen(
                                             },
                                         )
                                     }
-                                    MinisMenuDivider()
+                                    UnibotMenuDivider()
                                     // Token Usage (iOS parity)
                                     DropdownMenuItem(
                                         text = { Text(stringResource(R.string.settings_token_usage)) },
@@ -3189,7 +3189,7 @@ fun ChatScreen(
                                     // uncaught-exception handler catches it and writes
                                     // a crash-<stamp>.log under filesDir/logs/.
                                     if (BuildConfig.DEBUG) {
-                                        MinisMenuDivider()
+                                        UnibotMenuDivider()
                                         DropdownMenuItem(
                                             text = {
                                                 Text(
@@ -3445,7 +3445,7 @@ fun ChatScreen(
                     // ALL messages (1146 rows on the ANR-loop session), re-ran
                     // splitMarkdownIntoBlockTexts over every frozen message,
                     // and allocated the whole row set fresh — the 130–180MB/s
-                    // GC storm and the 100s builds in minis-2026-06-10.log.
+                    // GC storm and the 100s builds in unibot-2026-06-10.log.
                     //
                     // Row-for-row equivalence with the old full build holds by
                     // construction: buildFlatChatItems' neighbor lookbacks
@@ -3745,7 +3745,7 @@ fun ChatScreen(
                 // (controller may be null pre-attach); focus is guarded against
                 // FocusRequester-not-attached the same way the auto-focus path
                 // elsewhere in this file is.
-                // MinisTextKit selection controller — declared BEFORE the
+                // UnibotTextKit selection controller — declared BEFORE the
                 // markdown toolbar so the toolbar can read table actions off it
                 // ([T-android-markdown-table-copy-actions]). Hoisted ABOVE the
                 // LazyColumn so item dispose can't kill the selection: when a
@@ -3774,7 +3774,7 @@ fun ChatScreen(
                     viewModel.stopStaleReadAloud.collect { selectionReader.stop() }
                 }
                 val markdownToolbar = remember(context, messageBounds, viewModel, inputFocusRequester, keyboardController, selectionController, selectionReader) {
-                    MinisMarkdownTextToolbar(
+                    UnibotMarkdownTextToolbar(
                         context = context,
                         registry = messageBounds,
                         onAddToInput = { snippet ->
@@ -3831,7 +3831,7 @@ fun ChatScreen(
                 androidx.compose.runtime.CompositionLocalProvider(
                     LocalMessageBoundsRegistry provides messageBounds,
                     androidx.compose.ui.platform.LocalTextToolbar provides markdownToolbar,
-                    LocalMinisSelectionController provides selectionController,
+                    LocalUnibotSelectionController provides selectionController,
                 ) {
                 // Hoisted out of AlwaysStretchOverscrollBox lambda so
                 // SelectionDragTracker (which lives outside the lambda) can
@@ -3897,7 +3897,7 @@ fun ChatScreen(
                                 )
                             }
                         }
-                        .minisTextKitSelectionGesture(
+                        .unibotTextKitSelectionGesture(
                             controller = selectionController,
                             listState = listState,
                             rootCoordinates = { listRootCoords },
@@ -4104,7 +4104,7 @@ fun ChatScreen(
                         when (item) {
                             is FlatChatItem.UserBubble -> {
                                 // User bubbles intentionally don't register
-                                // MinisTextKit shards — long-press on a user
+                                // UnibotTextKit shards — long-press on a user
                                 // bubble shows its own action menu (Copy /
                                 // Retry / Edit) instead of starting text
                                 // selection, matching iOS UX.
@@ -4440,9 +4440,9 @@ fun ChatScreen(
                     listRootCoordinates = { listRootCoords },
                     reverseLayout = true,
                 )
-                MinisMarkdownTextToolbarHost(markdownToolbar)
-                // MinisTextKit floating toolbar — driven by selectionController.
-                MinisSelectionToolbarHost(
+                UnibotMarkdownTextToolbarHost(markdownToolbar)
+                // UnibotTextKit floating toolbar — driven by selectionController.
+                UnibotSelectionToolbarHost(
                     controller = selectionController,
                     // Clamp the menu's vertical position inside the
                     // LazyColumn's viewport in window coords, so it can't
@@ -4503,7 +4503,7 @@ fun ChatScreen(
                     ),
                 )
                 // iOS-style selection handle dots, one at each endpoint.
-                MinisSelectionHandlesHost(
+                UnibotSelectionHandlesHost(
                     controller = selectionController,
                     listState = listState,
                     reverseLayout = true,
@@ -5677,7 +5677,7 @@ fun ChatScreen(
                                 // feature not yet validated/complete. Re-enable
                                 // by removing `false &&` from the guard below.
                                 if (false && isHtmlAttachment) {
-                                    ai.unicto.unibot.ui.components.MinisMenu(
+                                    ai.unicto.unibot.ui.components.UnibotMenu(
                                         expanded = webAppMenuExpanded,
                                         onDismissRequest = { webAppMenuExpanded = false },
                                     ) {
@@ -6245,7 +6245,7 @@ fun ChatScreen(
                                     modifier = Modifier.size(if (ubPill) 24.dp else 20.dp),
                                 )
                             }
-                            MinisMenu(
+                            UnibotMenu(
                                 expanded = showAttachMenu,
                                 onDismissRequest = { showAttachMenu = false },
                             ) {
@@ -6429,7 +6429,7 @@ fun ChatScreen(
                         }
 
                         // App-icon quick action: when the user launched via
-                        // `minis://action/voice_chat`, auto-fire the mic on
+                        // `unibot://action/voice_chat`, auto-fire the mic on
                         // first compose. Consumed exactly once so re-entering
                         // the chat later does NOT re-trigger.
                         //
@@ -6612,7 +6612,7 @@ fun ChatScreen(
                             //     alreadySeen=true, whole message suppressed.
                             // Net effect: TTS engines bound and initialized on
                             // every panel entry and speak() was never called
-                            // once — minis-2026-08-16.log has 5 "suppressed"
+                            // once — unibot-2026-08-16.log has 5 "suppressed"
                             // lines, 0 "feeding" lines, which is exactly the
                             // reported "朗读回复开了但没有任何声音". The
                             // self-poisoning also explains the paradoxical
@@ -6899,7 +6899,7 @@ fun ChatScreen(
             //                                  now on (iOS T-chat-auto-compact-opt-in)
             val showCompactBeforeSend by viewModel.showCompactBeforeSendPrompt.collectAsState()
             if (showCompactBeforeSend) {
-                MinisAlertDialog(
+                UnibotAlertDialog(
                     // Back-gesture / scrim dismissal must NOT silently drop the
                     // user's text — cancelCompactBeforeSend puts it back in the
                     // composer.
@@ -6921,7 +6921,7 @@ fun ChatScreen(
             // compact markers; the session row, workspace files, attachments,
             // and offload payloads are intentionally preserved (iOS parity).
             if (showClearChatDialog) {
-                MinisAlertDialog(
+                UnibotAlertDialog(
                     onDismissRequest = { showClearChatDialog = false },
                     title = stringResource(R.string.chat_menu_clear_chat),
                     text = stringResource(R.string.chat_clear_dialog_body),
@@ -6945,7 +6945,7 @@ fun ChatScreen(
                     val idx = messages.indexOfFirst { it.id == targetId }
                     if (idx < 0) 0 else messages.size - idx
                 }
-                MinisAlertDialog(
+                UnibotAlertDialog(
                     onDismissRequest = { deleteFromHereTargetId = null },
                     title = stringResource(R.string.chat_longpress_delete_from_here),
                     text = pluralStringResource(
@@ -6965,7 +6965,7 @@ fun ChatScreen(
             // confirm → stop the running task, then navigate to a fresh draft;
             // dismiss → stay in the current chat.
             if (showNewChatStopDialog) {
-                MinisAlertDialog(
+                UnibotAlertDialog(
                     onDismissRequest = { showNewChatStopDialog = false },
                     title = stringResource(R.string.chat_menu_new_chat),
                     text = stringResource(R.string.chat_new_chat_stop_dialog_body),
@@ -6982,7 +6982,7 @@ fun ChatScreen(
             // before the first enable. Accepting records the durable ack and
             // turns the toggle on; subsequent enables skip the dialog.
             if (showEnhancedCacheDialog) {
-                MinisAlertDialog(
+                UnibotAlertDialog(
                     onDismissRequest = { showEnhancedCacheDialog = false },
                     title = stringResource(R.string.chat_menu_enhanced_cache),
                     text = stringResource(R.string.enhanced_cache_dialog_body),
@@ -7163,7 +7163,7 @@ fun ChatScreen(
         )
 
         pendingNonTextSelection?.let { pending ->
-            MinisAlertDialog(
+            UnibotAlertDialog(
                 onDismissRequest = { pendingNonTextSelection = null },
                 title = stringResource(R.string.model_picker_non_text_warning_title),
                 text = stringResource(
@@ -7255,10 +7255,10 @@ fun ChatScreen(
 
     // Fullscreen video player — tapped video link (mp4/mov/m4v/…) from chat
     // markdown. Reuses the same dialog player as the markdown-rendered
-    // ![](minis://...) syntax so behaviour is consistent regardless of how
+    // ![](unibot://...) syntax so behaviour is consistent regardless of how
     // the LLM emitted the reference.
     previewVideoFile?.let { file ->
-        ai.unicto.unibot.ui.media.MinisFullscreenVideoPlayer(
+        ai.unicto.unibot.ui.media.UnibotFullscreenVideoPlayer(
             file = file,
             onDismiss = { previewVideoFile = null },
         )

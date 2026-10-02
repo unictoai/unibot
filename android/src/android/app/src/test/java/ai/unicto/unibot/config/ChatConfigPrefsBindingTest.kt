@@ -10,9 +10,9 @@ import org.junit.Test
  * Settings-UI toggle must bind to the SAME SharedPreferences store and the
  * SAME key the UI reads.
  *
- * The bug this pins: `minis-config set chat.returnKey '"send"'` reported
+ * The bug this pins: `unibot-config set chat.returnKey '"send"'` reported
  * `ok: true` with `old: "newline", new: "send"` — and nothing changed. The
- * field wrote `minis_settings/return_key_behavior` while
+ * field wrote `unibot_settings/return_key_behavior` while
  * `AppearanceScreen.returnKeySendsMessage` reads
  * `appearance_prefs/returnKeyBehavior`. Two independent values: the Settings
  * screen still showed Newline and Enter still inserted a newline. Confirmed on
@@ -52,8 +52,8 @@ class ChatConfigPrefsBindingTest {
     fun `chat_returnKey binds to the appearance prefs the UI reads`() {
         val reg = registrationFor("chat.returnKey")
         assertTrue(
-            "chat.returnKey must use appearancePrefs — writing minis_settings " +
-                "makes `minis-config set` a silent no-op:\n$reg",
+            "chat.returnKey must use appearancePrefs — writing unibot_settings " +
+                "makes `unibot-config set` a silent no-op:\n$reg",
             reg.contains("prefs = appearancePrefs"),
         )
         assertTrue(
@@ -87,7 +87,7 @@ class ChatConfigPrefsBindingTest {
         // to a DIFFERENT store than the UI reads. `appearance.theme` types
         // "theme_mode" literally but binds a prefs handle already opened on
         // appearance_prefs, so it works; chat.returnKey typed its key AND
-        // pointed at minis_settings, so it silently diverged.
+        // pointed at unibot_settings, so it silently diverged.
         //
         // Rule: if a registration names a key AppearanceScreen also defines,
         // its `prefs =` must resolve to the appearance store.
@@ -129,7 +129,7 @@ class ChatConfigPrefsBindingTest {
         }
         assertEquals(
             "these builtins write a UI-owned key into a store the UI never " +
-                "reads, so `minis-config set` silently no-ops: $offenders",
+                "reads, so `unibot-config set` silently no-ops: $offenders",
             emptyList<String>(),
             offenders,
         )

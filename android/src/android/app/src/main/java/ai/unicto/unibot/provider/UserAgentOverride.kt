@@ -14,9 +14,9 @@ import okhttp3.Request
  * non-blank override wins over the provider default.
  *
  * **Fallback policy (T-android-default-ua):** when `customUserAgent` is
- * null/blank, we now apply [MinisUserAgent.DEFAULT] instead of leaving
+ * null/blank, we now apply [UnibotUserAgent.DEFAULT] instead of leaving
  * the builder UA-less (which lets OkHttp insert its own `okhttp/4.12.0`).
- * The default carries the Minis version so request logs upstream can be
+ * The default carries the Unibot version so request logs upstream can be
  * traced back to the app build that issued them — matching the
  * "branded UA except where a specific client identity is required"
  * intent of the feature.
@@ -28,7 +28,7 @@ import okhttp3.Request
  */
 fun Request.Builder.applyUserAgentOverride(
     customUserAgent: String?,
-    defaultUserAgent: String? = MinisUserAgent.DEFAULT,
+    defaultUserAgent: String? = UnibotUserAgent.DEFAULT,
 ): Request.Builder {
     val ua = customUserAgent?.trim()
     when {
@@ -41,14 +41,14 @@ fun Request.Builder.applyUserAgentOverride(
 }
 
 /**
- * [T-android-default-ua] Branded User-Agent used by every Minis-originated
+ * [T-android-default-ua] Branded User-Agent used by every Unibot-originated
  * outbound request that doesn't have a SDK-specific UA requirement.
  *
  * Format mirrors iOS exactly:
- *   `Minis/<version> (Android <release>; <model>)`
+ *   `Unibot/<version> (Android <release>; <model>)`
  *
- * e.g. `Minis/0.14-preview (Android 13; Pixel 4a)` — same shape as iOS's
- * `Minis/1.10 (iOS 26.5; iPhone)`.
+ * e.g. `Unibot/0.14-preview (Android 13; Pixel 4a)` — same shape as iOS's
+ * `Unibot/1.10 (iOS 26.5; iPhone)`.
  *
  * Version comes from BuildConfig (auto-tracks every release). OS release
  * from `Build.VERSION.RELEASE` (the marketing version a user recognises;
@@ -60,7 +60,7 @@ fun Request.Builder.applyUserAgentOverride(
  * Built lazily — only the first request constructs the string, so the
  * `Build.*` reads (cheap but JNI-bound) don't cost startup time.
  */
-object MinisUserAgent {
+object UnibotUserAgent {
     val DEFAULT: String by lazy {
         val release = android.os.Build.VERSION.RELEASE ?: "unknown"
         val model = (android.os.Build.MODEL ?: "unknown").trim().ifEmpty { "unknown" }

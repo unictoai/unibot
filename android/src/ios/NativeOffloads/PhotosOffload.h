@@ -1,6 +1,6 @@
 //
 //  PhotosOffload.h
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-photos` — PhotoKit framework.
 //

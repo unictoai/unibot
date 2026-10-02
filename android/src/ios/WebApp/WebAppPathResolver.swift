@@ -47,12 +47,12 @@ enum WebAppPathResolver {
         switch shortcut.pathScope {
         case .sessionAttachment:
             guard let sid = shortcut.scopeContext else { throw ResolveError.missingContext }
-            base = AIChatViewModel.minisAttachmentsPersistentDir(for: sid)
+            base = AIChatViewModel.unibotAttachmentsPersistentDir(for: sid)
         case .sessionWorkspace:
             guard let sid = shortcut.scopeContext else { throw ResolveError.missingContext }
-            base = AIChatViewModel.minisWorkspacePersistentDir(for: sid)
+            base = AIChatViewModel.unibotWorkspacePersistentDir(for: sid)
         case .shared:
-            base = AIChatViewModel.minisSharedPersistentDir
+            base = AIChatViewModel.unibotSharedPersistentDir
         case .mount:
             guard let raw = shortcut.scopeContext, let mountId = UUID(uuidString: raw) else {
                 throw ResolveError.missingContext
@@ -83,7 +83,7 @@ enum WebAppPathResolver {
         //      outside the sandbox"
         // which the user sees as a black screen with only the floating menu.
         // `workspace`/`attachments` escaped this because their base
-        // (Library/MinisChat/…) has no symlinked segment, so the two shapes
+        // (Library/UnibotChat/…) has no symlinked segment, so the two shapes
         // happened to agree.
         //
         // Resolving BEFORE the escape check below also closes a real hole:
@@ -119,7 +119,7 @@ enum WebAppPathResolver {
         let readAccessRoot: URL
         switch shortcut.pathScope {
         case .sessionAttachment, .sessionWorkspace:
-            // <minisPersistentBase>/<sid>/   ← parent of attachments/ and workspace/
+            // <unibotPersistentBase>/<sid>/   ← parent of attachments/ and workspace/
             readAccessRoot = base.deletingLastPathComponent()
                 .standardizedFileURL
                 .resolvingSymlinksInPath()

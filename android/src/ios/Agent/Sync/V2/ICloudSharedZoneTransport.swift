@@ -10,9 +10,9 @@ private let logger = AppLogger(category: "SyncTransport")
 /// conflicts / transient errors back to SyncCore.
 ///
 /// Zones:
-///   - minis-shared   : Session/Message/CompactMarker/SessionFile/Skill records
-///   - minis-devices  : SyncDevice heartbeat records
-///   - minis-secrets  : ProviderConfig + EnvVar (separate so users can
+///   - unibot-shared   : Session/Message/CompactMarker/SessionFile/Skill records
+///   - unibot-devices  : SyncDevice heartbeat records
+///   - unibot-secrets  : ProviderConfig + EnvVar (separate so users can
 ///                      toggle this category off without losing chat sync)
 @available(iOS 17.0, *)
 @MainActor
@@ -30,9 +30,9 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     static let containerIdentifier = "iCloud.ai.unicto.unibot.app"
 
     /// Fixed zone names. Never include device id.
-    static let sharedZoneName  = "minis-shared"
-    static let devicesZoneName = "minis-devices"
-    static let secretsZoneName = "minis-secrets"
+    static let sharedZoneName  = "unibot-shared"
+    static let devicesZoneName = "unibot-devices"
+    static let secretsZoneName = "unibot-secrets"
 
     /// recordType → zone name. Drives where each type's records live.
     /// Stays consistent with §3.1 of the design.
@@ -118,7 +118,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     }
     private var etagCacheURL: URL {
         FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MinisChat/cloud-sync-v2/etag-cache.plist")
+            .appendingPathComponent("UnibotChat/cloud-sync-v2/etag-cache.plist")
     }
     /// Set to true whenever serverRecordCache mutates; cleared after
     /// flush. Avoids writing on every tiny change.
@@ -354,7 +354,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
         self.container = CKContainer(identifier: Self.containerIdentifier)
         let dir = FileManager.default
             .urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MinisChat/cloud-sync-v2", isDirectory: true)
+            .appendingPathComponent("UnibotChat/cloud-sync-v2", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         self.stateURL = dir.appendingPathComponent("state-v2.bin")
         super.init()
@@ -676,8 +676,8 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
         // [T-icloud-fetchrecent-secrets-zone] Each type is queried against
         // ITS OWN zone via zoneByRecordType, not a single hardcoded shared
         // zone. Secrets-zone types (ProviderConfigV2, EnvVarItem, the three
-        // Provider*V3 records, MCPServersV2) live in minis-secrets; the old
-        // code hardcoded minis-shared for every query, so those types always
+        // Provider*V3 records, MCPServersV2) live in unibot-secrets; the old
+        // code hardcoded unibot-shared for every query, so those types always
         // came back count=0 inbound — provider/model-entry/MCP changes from a
         // peer device never arrived (the CKSyncEngine token path did not cover
         // them either). ProviderModelEntryV3 / ProviderModelGroupV3 carry only
@@ -1558,7 +1558,7 @@ extension ICloudSharedZoneTransport: CKSyncEngineDelegate {
             for modification in zoneChanges.modifications {
                 let rec = modification.record
                 // Skip v1 device-* zones — CKSyncEngine fetches across the
-                // entire private database; minis-* zones belong to v2 only.
+                // entire private database; unibot-* zones belong to v2 only.
                 guard v2Zones.contains(rec.recordID.zoneID.zoneName) else {
                     skippedV1 += 1
                     continue

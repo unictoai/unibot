@@ -1,6 +1,6 @@
 //
 //  ISHCommandExecutionExample.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Examples of how to execute shell commands with proper completion detection
 //

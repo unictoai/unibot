@@ -42,7 +42,7 @@ import kotlin.coroutines.resume
  * [generateHexPKCE] on the base class produces exactly that form.
  *
  * Authorization URL additionally carries `nonce` (OIDC required), `plan=generic`,
- * and `referrer=minis` (xAI consumer attribution).
+ * and `referrer=unibot` (xAI consumer attribution).
  *
  * Redirect URI uses a fixed loopback port `56121/callback` — xAI's
  * server-side allowlist rejects any other port, per the spec.
@@ -214,7 +214,7 @@ class XAIOAuthManager(context: Context, instanceId: String) : OAuthManager(conte
             "code_challenge=$challenge",
             "code_challenge_method=S256",
             "plan=generic",
-            "referrer=minis",
+            "referrer=unibot",
         ).joinToString("&")
     }
 

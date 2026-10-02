@@ -1,6 +1,6 @@
 //
 //  PerfTrace.swift
-//  MinisApp (Debug only)
+//  UnibotApp (Debug only)
 //
 //  Threshold-tripped main-thread span timer for pinpointing scroll jank.
 //

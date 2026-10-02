@@ -604,7 +604,7 @@ class AgentForegroundService : Service() {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
-                "minis:inference",
+                "unibot:inference",
             ).apply {
                 setReferenceCounted(false)
                 // No timeout — release happens deterministically in onDestroy
@@ -808,9 +808,9 @@ class AgentForegroundService : Service() {
         // onCreate early-returned under safe-mode. Gate on subsystemsReady()
         // first; a notification built without the dynamic-island style is a
         // cosmetic downgrade, a crash here kills the FGS mid-task.
-        val minisApp = (applicationContext as? UnibotApp)?.takeIf { it.subsystemsReady() }
+        val unibotApp = (applicationContext as? UnibotApp)?.takeIf { it.subsystemsReady() }
         val dynamicIslandUserEnabled =
-            minisApp?.backgroundSettingsRepository?.dynamicIslandEnabled?.value == true
+            unibotApp?.backgroundSettingsRepository?.dynamicIslandEnabled?.value == true
         val dynamicIslandOn = DynamicIslandSupport.isDynamicIslandActive(
             this,
             dynamicIslandUserEnabled,

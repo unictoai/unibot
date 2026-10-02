@@ -1,6 +1,6 @@
 //
 //  SessionLockStore.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Per-session biometric lock state. Lock metadata lives in a side-channel
 //  (UserDefaults) rather than on `ChatSession`, so the in-DB session model

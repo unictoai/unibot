@@ -147,7 +147,7 @@
     <string name="mcp_add">MCP サーバーを追加</string>
     <string name="mcp_edit">MCP サーバーを編集</string>
     <string name="mcp_section_servers">サーバー</string>
-    <string name="mcp_section_footer">MCP サーバーを使うと、Agent が minis-mcp-cli を介して外部ツールを呼び出せます。設定は /var/minis/mcp-servers/servers.json に保存されます（Claude Desktop 互換）。</string>
+    <string name="mcp_section_footer">MCP サーバーを使うと、Agent が unibot-mcp-cli を介して外部ツールを呼び出せます。設定は /var/minis/mcp-servers/servers.json に保存されます（Claude Desktop 互換）。</string>
     <string name="mcp_empty_title">MCP サーバーがありません</string>
     <string name="mcp_empty_action">+ ボタンでサーバーを追加します。</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -282,7 +282,7 @@
     <string name="settings_section_logs">ログ</string>
     <string name="settings_logs_subtitle">アプリのログを表示・エクスポート</string>
     <string name="settings_section_about">情報</string>
-    <string name="settings_about_minis">unibot について</string>
+    <string name="settings_about_unibot">unibot について</string>
     <string name="settings_about_subtitle">バージョンとプロジェクト情報</string>
     <string name="settings_privacy_policy">プライバシーポリシー</string>
     <string name="settings_feedback">フィードバック</string>
@@ -290,7 +290,7 @@
     <string name="settings_feedback_telegram">フィードバック (Telegram)</string>
     <string name="settings_feedback_email">フィードバック (メール)</string>
     <string name="about_title">情報</string>
-    <string name="about_minis_tagline">unibot は完全にローカルで完全にプライベートなオンデバイス Agent です。</string>
+    <string name="about_unibot_tagline">unibot は完全にローカルで完全にプライベートなオンデバイス Agent です。</string>
     <string name="about_links">リンク</string>
     <string name="about_github_repository">GitHub リポジトリ</string>
     <string name="about_version_format">バージョン %1$s (%2$s)</string>
@@ -507,7 +507,7 @@
     <string name="browser_nav_forward">進む</string>
     <string name="browser_stop">停止</string>
     <string name="browser_reload">再読み込み</string>
-    <string name="browser_minis_browsing">%1$s がブラウジング中</string>
+    <string name="browser_unibot_browsing">%1$s がブラウジング中</string>
     <string name="chat_typing_indicator">%1$s が考えています</string>
     <string name="read_aloud_unavailable">読み上げに失敗しました：利用可能な音声エンジンがありません。音声出力設定を確認するか、システムの音声合成エンジンをインストールしてください。</string>
     <string name="chat_error_stream_dropped_partial">接続が切断されました。この返信は不完全な可能性があります。再試行してください。</string>
@@ -718,8 +718,8 @@
     <string name="perm_agent_policy">Agent 権限</string>
     <string name="perm_a11y_system_ready">サービス有効</string>
     <string name="perm_a11y_system_disabled">サービス無効</string>
-    <string name="perm_allow_minis_config">minis-config を許可</string>
-    <string name="perm_minis_config_desc">無効にすると、Agent は minis-config 経由で設定を読み取ったり変更したりできなくなります。ログ → 設定変更 の履歴は引き続き閲覧できます。Agent は permission_denied エラーを受け取り、ディープリンクで操作を案内します。</string>
+    <string name="perm_allow_unibot_config">unibot-config を許可</string>
+    <string name="perm_unibot_config_desc">無効にすると、Agent は unibot-config 経由で設定を読み取ったり変更したりできなくなります。ログ → 設定変更 の履歴は引き続き閲覧できます。Agent は permission_denied エラーを受け取り、ディープリンクで操作を案内します。</string>
     <string name="perm_section_privacy">プライバシー</string>
     <string name="perm_section_media">メディア</string>
     <string name="perm_section_system">システム</string>
@@ -797,7 +797,7 @@
     <string name="skill_empty_title">Skill が未インストール</string>
     <string name="skill_empty_action">+ をタップして SKILL.md をインポートするか、unibot Skills を閲覧してください。</string>
     <string name="skill_import_modal_title">スキルをインポート</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">%1$s を削除しますか？</string>
     <string name="skill_delete_confirm_text">この skill とファイルを完全に削除します。</string>
     <string name="skill_import_sheet_title">スキルをインポート</string>
@@ -861,8 +861,8 @@
     <string name="storage_overview_sessions">セッションファイル</string>
     <string name="storage_section_sessions">セッション</string>
     <string name="storage_no_sessions">セッションなし</string>
-    <string name="storage_section_minis_files">unibot ファイル</string>
-    <string name="storage_no_minis_files">unibot ファイルなし</string>
+    <string name="storage_section_unibot_files">unibot ファイル</string>
+    <string name="storage_no_unibot_files">unibot ファイルなし</string>
     <string name="storage_section_media">メディアファイル</string>
     <string name="storage_no_media_files">メディアファイルなし</string>
     <string name="storage_clear_session_footer">このセッションで生成されたすべてのファイルを削除します。会話自体は保持されます。</string>
@@ -1163,7 +1163,7 @@
     <string name="settings_dynamic_island_footer">Android 16 のステータスチップにエージェントの状態をリアルタイムで表示します。オンにすると、状態表示が 2 つ同時に出ないよう、フローティングのオーバーレイに代わって表示されます。</string>
     <string name="settings_dynamic_island_unsupported">お使いのシステムバージョンはまだライブアップデートに対応していません（Android 16 以降で、この機能が有効になっている必要があります）。</string>
     <string name="agent_loop_section_title">unibot が実行時に呼び出せるモデル</string>
-    <string name="agent_loop_section_footer">unibot のタスク中、Agent は画像生成や要約など、自身のモデルでは行えないサブタスクのためにこれらのモデルを呼び出します。ターミナルから minis-model-use でも呼び出せます。Agent が認識するのはこれらだけです。</string>
+    <string name="agent_loop_section_footer">unibot のタスク中、Agent は画像生成や要約など、自身のモデルでは行えないサブタスクのためにこれらのモデルを呼び出します。ターミナルから unibot-model-use でも呼び出せます。Agent が認識するのはこれらだけです。</string>
     <string name="agent_loop_section_empty_hint">追加されたモデルやグループはありません</string>
     <string name="agent_loop_section_add_models">モデルを追加</string>
     <string name="agent_loop_section_add_groups">グループを追加</string>
@@ -1594,7 +1594,7 @@
     <string name="webapp_pin_success">ホーム画面に追加しました</string>
     <string name="webapp_source_missing_title">ソースファイルは存在しません</string>
     <string name="webapp_source_missing_body">このショートカットの元になっていたファイルは移動または削除されています。</string>
-    <string name="webapp_open_in_minis">unibot で開く</string>
+    <string name="webapp_open_in_unibot">unibot で開く</string>
     <string name="webapp_action_close">閉じる</string>
     <string name="webapp_action_fullscreen">全画面表示にする</string>
     <string name="webapp_action_exit_fullscreen">全画面表示を終了</string>

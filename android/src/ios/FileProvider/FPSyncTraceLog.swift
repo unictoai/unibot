@@ -3,7 +3,7 @@ import os.log
 
 /// Small, capped trace log written from the FileProvider extension into the
 /// App Group container so the main app and the user can read FP-side traces
-/// via `debug.readFile path:"AppGroup/MinisConfig/fp-sync-trace.log"`.
+/// via `debug.readFile path:"AppGroup/UnibotConfig/fp-sync-trace.log"`.
 ///
 /// Why this exists: NSLog/AppLogger output from the extension does NOT reach
 /// the main app's LoggingManager (separate process, separate stderr pipe).
@@ -24,7 +24,7 @@ enum FPSyncTraceLog {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: "group.ai.unicto.unibot.app"
         ) else { return nil }
-        let dir = container.appendingPathComponent("MinisConfig", isDirectory: true)
+        let dir = container.appendingPathComponent("UnibotConfig", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent(logFileName)
     }

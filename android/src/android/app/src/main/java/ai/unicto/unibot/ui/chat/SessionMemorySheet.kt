@@ -46,7 +46,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * Bottom sheet showing memory state for the current session.
@@ -279,7 +279,7 @@ private fun DetailToolbar(
             }
         }
         if (showSave) {
-            MinisTextButton(onClick = onSave) {
+            UnibotTextButton(onClick = onSave) {
                 Text(stringResource(R.string.memory_action_save))
             }
         }

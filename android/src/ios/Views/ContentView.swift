@@ -1773,7 +1773,7 @@ struct ContentView: View {
             // the outgoing vm (any @Published delta, scroll signal, etc.)
             // races with `AG::Subgraph::NodeCache::~NodeCache` on the same
             // AsyncRenderer thread → EXC_BAD_ACCESS (build-48 crash
-            // Minis-2026-06-01-134710.ips). Suspend the outgoing vm here,
+            // Unibot-2026-06-01-134710.ips). Suspend the outgoing vm here,
             // then schedule a resume on a short delay so when the user comes
             // back to that session everything catches up. Run before the
             // redirect/tracking-clear logic so we always pin the right id.
@@ -1851,7 +1851,7 @@ struct ContentView: View {
             // mitigation added for the 2026-06-01 build-48 crash simply did not
             // exist on the compact path.
             //
-            // Crash 2026-08-10 19:23 (Minis 1.12(1), iOS 26.5.2, iPhone18,1 —
+            // Crash 2026-08-10 19:23 (Unibot 1.12(1), iOS 26.5.2, iPhone18,1 —
             // a STACK-layout device): EXC_BAD_ACCESS at 0xffffffff00000000 in
             // AG::Subgraph::~Subgraph → NodeCache::~NodeCache, reached from
             // `NavigationStackCoordinator.navigationController(_:willShow:)` →
@@ -5101,8 +5101,8 @@ struct ContentView: View {
     private nonisolated static func computeDeleteInfo(for ids: Set<String>, totalSessions: Int) -> DeleteInfo {
         let fm = FileManager.default
         let libBase = fm.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let minisBase = libBase.appendingPathComponent("MinisChat/minis", isDirectory: true)
-        let dbPath = libBase.appendingPathComponent("MinisChat/minis.db")
+        let unibotBase = libBase.appendingPathComponent("UnibotChat/unibot", isDirectory: true)
+        let dbPath = libBase.appendingPathComponent("UnibotChat/minis.db")
 
         var totalSize: Int64 = 0
         var allFileNames: [String] = []
@@ -5116,7 +5116,7 @@ struct ContentView: View {
         }
 
         for id in ids {
-            let sessionDir = minisBase.appendingPathComponent(id, isDirectory: true)
+            let sessionDir = unibotBase.appendingPathComponent(id, isDirectory: true)
             if let enumerator = fm.enumerator(at: sessionDir, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) {
                 for case let fileURL as URL in enumerator {
                     let vals = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
@@ -5199,11 +5199,11 @@ struct ContentView: View {
         }
     }
 
-    /// Remove persistent minis files for a session (Library/MinisChat/minis/<sessionId>/).
+    /// Remove persistent unibot files for a session (Library/UnibotChat/unibot/<sessionId>/).
     private func deleteSessionFiles(_ sessionId: String) {
         let fm = FileManager.default
         let base = fm.urls(for: .libraryDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("MinisChat/minis", isDirectory: true)
+            .appendingPathComponent("UnibotChat/unibot", isDirectory: true)
             .appendingPathComponent(sessionId, isDirectory: true)
         try? fm.removeItem(at: base)
         BrowserTabPool.deletePersistedData(for: sessionId)
@@ -5251,7 +5251,7 @@ struct ContentView: View {
 
             // Per-export workspace under tmp
             let tmpRoot = FileManager.default.temporaryDirectory
-                .appendingPathComponent("minis-export-\(UUID().uuidString)", isDirectory: true)
+                .appendingPathComponent("unibot-export-\(UUID().uuidString)", isDirectory: true)
             let workDir = tmpRoot.appendingPathComponent("payload", isDirectory: true)
             do {
                 try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
@@ -5266,7 +5266,7 @@ struct ContentView: View {
                     .replacingOccurrences(of: "/", with: "-")
                     .replacingOccurrences(of: ":", with: "-")
             } else {
-                baseName = "minis-sessions-\(ids.count)"
+                baseName = "unibot-sessions-\(ids.count)"
             }
             let payloadURL = workDir.appendingPathComponent("\(baseName).\(ext)")
 
@@ -5958,8 +5958,8 @@ private struct ShareSheet: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIActivityViewController {
         // [T-share-sheet-uti] Defense against ShareKit's
         // UTTypeGetForIdentifier assert on Mac Catalyst — see
-        // MinisShareSheet.sanitizedShareURL for context.
-        let safeURL = MinisShareSheet.sanitizedShareURL(url) ?? url
+        // UnibotShareSheet.sanitizedShareURL for context.
+        let safeURL = UnibotShareSheet.sanitizedShareURL(url) ?? url
         return UIActivityViewController(activityItems: [safeURL], applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
@@ -7291,7 +7291,7 @@ private struct AppearanceSettingsView: View {
                     Button {
                         // Persist a reopen-hint BEFORE flipping appLanguage —
                         // the @AppStorage write triggers the root
-                        // `.id(appLanguage)` rebuild in MinisApp.swift, which
+                        // `.id(appLanguage)` rebuild in UnibotApp.swift, which
                         // drops the entire view tree including the Settings
                         // sheet. ContentView/SettingsSheet read this flag on
                         // re-mount and reopen the sheet + push back to the

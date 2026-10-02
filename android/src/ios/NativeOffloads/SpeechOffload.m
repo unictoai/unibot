@@ -1,6 +1,6 @@
 //
 //  SpeechOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-speech`.
 //  Subcommands: transcribe, languages, status
@@ -165,7 +165,7 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
                                              NOFF_ERR_AUTHORIZATION_DENIED,
                                              [NSString stringWithFormat:@"Speech recognition not authorized (status: %@). "
                                               "To grant access, open Settings > Privacy & Security > Speech Recognition "
-                                              "and enable Minis.",
+                                              "and enable Unibot.",
                                               auth_status_string(authStatus)]);
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_AUTH_DENIED;
@@ -370,7 +370,7 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
             // and the uncaught exception killed the process (TestFlight 1.11
             // build 13, background task). Fail the tool instead.
             if (recordingFormat.channelCount == 0 || recordingFormat.sampleRate <= 0) {
-                recognitionError = [NSError errorWithDomain:@"MinisSpeech" code:-3 userInfo:@{
+                recognitionError = [NSError errorWithDomain:@"UnibotSpeech" code:-3 userInfo:@{
                     NSLocalizedDescriptionKey: @"Microphone input unavailable (0 channels / 0 Hz). "
                                                 @"The app may be in the background or another app holds the mic."
                 }];
@@ -389,7 +389,7 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
                 }];
             });
             if (!tapInstalled) {
-                recognitionError = [NSError errorWithDomain:@"MinisSpeech" code:-4 userInfo:@{
+                recognitionError = [NSError errorWithDomain:@"UnibotSpeech" code:-4 userInfo:@{
                     NSLocalizedDescriptionKey: @"Failed to attach the microphone tap "
                                                 @"(audio engine rejected the input format)."
                 }];

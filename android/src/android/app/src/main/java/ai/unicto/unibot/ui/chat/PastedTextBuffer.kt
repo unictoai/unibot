@@ -216,7 +216,7 @@ fun splitPastePlaceholders(
  * The discriminator is [PASTED_FILENAME_PREFIX] on `originalFileName`, paired
  * with `text/plain`. Filename was chosen over a bespoke MIME subtype because
  * every existing consumer already reads `originalFileName` and treats it as an
- * opaque label — a `text/x-minis-pasted` MIME would instead have to be taught to
+ * opaque label — a `text/x-unibot-pasted` MIME would instead have to be taught to
  * the file-icon mapper, the preview router and the share sheet, any one of which
  * would show something wrong if missed.
  */
@@ -454,8 +454,8 @@ fun PastedTextChip(
  * referenced twice. Viewing is the need users actually have ("what did I
  * paste?"); editing is a separate feature with its own design.
  *
- * A plain Dialog rather than MinisAlertDialog because the body must SCROLL —
- * these are thousand-character blocks by definition, and MinisAlertDialog
+ * A plain Dialog rather than UnibotAlertDialog because the body must SCROLL —
+ * these are thousand-character blocks by definition, and UnibotAlertDialog
  * renders `text` as a fixed Text that would overflow the screen.
  */
 @Composable

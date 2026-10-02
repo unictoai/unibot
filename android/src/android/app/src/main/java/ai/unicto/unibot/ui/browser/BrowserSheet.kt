@@ -602,7 +602,7 @@ private fun AgentBrowsingOverlay(accent: Color, onTakeover: () -> Unit) {
             // unibot: "<name> is browsing" — the Soul name, like the composer placeholder.
             val browsingSoul by ai.unicto.unibot.agent.SoulStore.cachedMetadata.collectAsState()
             Text(
-                stringResource(R.string.browser_minis_browsing, browsingSoul.name.trim().ifEmpty { "unibot" }),
+                stringResource(R.string.browser_unibot_browsing, browsingSoul.name.trim().ifEmpty { "unibot" }),
                 color = Color.White.copy(alpha = 0.9f),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,

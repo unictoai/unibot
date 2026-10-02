@@ -1,6 +1,6 @@
 //
 //  NativeOffloadUtils.m
-//  MinisApp
+//  UnibotApp
 //
 //  Shared utilities for native offload CLI tools.
 //

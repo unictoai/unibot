@@ -101,7 +101,7 @@ object ShellGuard {
             program in setOf("aws", "gcloud", "az", "oss", "ossutil", "coscli", "qshell", "rclone") -> cloudCli(program, args)
             program in setOf("twine", "npm", "pnpm", "yarn", "cargo", "gem", "docker", "podman", "flyctl", "vercel", "netlify", "wrangler", "heroku") -> publishOrInstall(program, args)
             program in setOf("apk", "apt", "apt-get", "dnf", "yum", "pacman", "zypper", "pip", "pip3", "pipx", "uv", "brew", "conda", "mamba", "go", "npx", "bunx", "pnpx", "gem", "cpan", "cpanm", "luarocks", "opam", "nix-env") -> installer(program, args)
-            program == "minis-config" -> RiskAssessment.SAFE // has its own confirmation sheet
+            program == "unibot-config" -> RiskAssessment.SAFE // has its own confirmation sheet
             Regex("(send|notify|sms|push|mailer|telegram|whatsapp|wechat|weixin|dingtalk|wecom|slack|discord|twilio|pushover|bark|ntfy)", RegexOption.IGNORE_CASE).containsMatchIn(program) &&
                 program !in setOf("notify-send") -> RiskAssessment(RiskClass.OUTBOUND, "$program sends a message", program)
             else -> RiskAssessment.SAFE

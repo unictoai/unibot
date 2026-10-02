@@ -1,6 +1,6 @@
 //
 //  NLPOffload.h
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-nlp` — NaturalLanguage framework.
 //

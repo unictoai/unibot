@@ -247,7 +247,7 @@ private fun ScheduledTaskRow(
 
         // [T-android-scheduled-tasks-run-records] Long-press menu: Edit / Run
         // records / Delete (delete is confirmed by the caller's dialog).
-        ai.unicto.unibot.ui.components.MinisMenu(
+        ai.unicto.unibot.ui.components.UnibotMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
         ) {

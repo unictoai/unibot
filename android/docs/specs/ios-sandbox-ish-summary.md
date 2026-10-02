@@ -2,7 +2,7 @@
 
 ## Overview
 
-MinisApp uses a customized fork of [iSH](https://github.com/OpenMinis/ish-arm64) (OpenMinis/ish-arm64) to provide a full Linux sandbox execution environment on iOS. The iSH kernel runs an Alpine Linux (aarch64) guest inside the app process, giving the AI agent a real shell with networking, filesystem, and process management — while native offloads bridge guest commands to iOS frameworks for hardware and system access.
+UnibotApp uses a customized fork of [iSH](https://github.com/OpenMinis/ish-arm64) (OpenMinis/ish-arm64) to provide a full Linux sandbox execution environment on iOS. The iSH kernel runs an Alpine Linux (aarch64) guest inside the app process, giving the AI agent a real shell with networking, filesystem, and process management — while native offloads bridge guest commands to iOS frameworks for hardware and system access.
 
 ---
 
@@ -102,23 +102,23 @@ Each agent session mounts its own persistent directories:
 
 | Guest Path | Host Path | Purpose |
 |---|---|---|
-| `/var/minis/attachments/` | `Library/MinisChat/minis/{sessionId}/attachments/` | Input files for commands |
-| `/var/minis/offloads/` | `Library/MinisChat/minis/{sessionId}/offloads/` | Output from native offloads |
-| `/var/minis/workspace/` | `Library/MinisChat/minis/{sessionId}/workspace/` | Session working directory |
-| `/var/minis/browser/` | `Library/MinisChat/minis/{sessionId}/browser/` | Web browsing files |
+| `/var/minis/attachments/` | `Library/UnibotChat/unibot/{sessionId}/attachments/` | Input files for commands |
+| `/var/minis/offloads/` | `Library/UnibotChat/unibot/{sessionId}/offloads/` | Output from native offloads |
+| `/var/minis/workspace/` | `Library/UnibotChat/unibot/{sessionId}/workspace/` | Session working directory |
+| `/var/minis/browser/` | `Library/UnibotChat/unibot/{sessionId}/browser/` | Web browsing files |
 
 ### 3.3 Global Mounts
 
 | Guest Path | Host Path | Purpose |
 |---|---|---|
-| `/var/minis/memory/` | `Library/MinisChat/minis/memory/` | Shared memory across sessions |
-| `/var/minis/skills/` | `Library/MinisChat/minis/skills/` | Stored skill definitions |
+| `/var/minis/memory/` | `Library/UnibotChat/unibot/memory/` | Shared memory across sessions |
+| `/var/minis/skills/` | `Library/UnibotChat/unibot/skills/` | Stored skill definitions |
 
 ### 3.4 DNS Mount
 
 | Guest Path | Host Path |
 |---|---|
-| `/etc/resolv.conf` | `Library/MinisChat/dns/resolv.conf` |
+| `/etc/resolv.conf` | `Library/UnibotChat/dns/resolv.conf` |
 
 Updated in real-time from iOS system resolver (falls back to `8.8.8.8`, `8.8.4.4`).
 
@@ -126,7 +126,7 @@ Updated in real-time from iOS system resolver (falls back to `8.8.8.8`, `8.8.4.4
 
 - **Guest → Host**: Linux path `/foo/bar` → `~/Documents/alpine-rootfs/data/foo/bar`
 - **Host → Guest**: Bind mounts make host files appear at `/var/minis/...`
-- **minis:// URL scheme**: Resolved by `MinisImageProvider` to local images
+- **unibot:// URL scheme**: Resolved by `UnibotImageProvider` to local images
 
 ---
 

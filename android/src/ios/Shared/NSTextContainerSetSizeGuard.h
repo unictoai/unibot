@@ -1,6 +1,6 @@
 //
 //  NSTextContainerSetSizeGuard.h
-//  Minis
+//  Unibot
 //
 //  Reentrancy guard for -[NSTextContainer setSize:].
 //

@@ -33,7 +33,7 @@ Usage:
     iproxy 8321 8321 &
     python3 scripts/test_ish_jit_fault_recovery.py [--host localhost:8321]
 
-Requires minis_rpc.py from the device: curl -o minis_rpc.py <host>/skill/examples/python
+Requires unibot_rpc.py from the device: curl -o unibot_rpc.py <host>/skill/examples/python
 """
 
 import argparse
@@ -83,7 +83,7 @@ BINARIES = {
 
 def rpc(host, method, params):
     out = subprocess.run(
-        [sys.executable, "minis_rpc.py", "--host", host, method, json.dumps(params)],
+        [sys.executable, "unibot_rpc.py", "--host", host, method, json.dumps(params)],
         capture_output=True, text=True, timeout=400)
     if not out.stdout.strip():
         raise RuntimeError(f"{method}: no response ({out.stderr.strip()[:200]})")
@@ -104,9 +104,9 @@ def main():
                     help="iterations for the crosspage stress phase")
     args = ap.parse_args()
 
-    if not os.path.exists("minis_rpc.py"):
-        print("❌ minis_rpc.py not found in cwd.\n"
-              f"   curl -o minis_rpc.py http://{args.host}/skill/examples/python")
+    if not os.path.exists("unibot_rpc.py"):
+        print("❌ unibot_rpc.py not found in cwd.\n"
+              f"   curl -o unibot_rpc.py http://{args.host}/skill/examples/python")
         return 1
 
     failures = 0

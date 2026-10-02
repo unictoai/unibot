@@ -1,6 +1,6 @@
 //
 //  DeviceOffload.h
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-device` — UIDevice + ProcessInfo.
 //

@@ -69,7 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,7 +204,7 @@ fun FileBrowserScreen(
             title = { Text(stringResource(R.string.filebrowser_delete_title, item.name)) },
             text = { Text(stringResource(R.string.filebrowser_delete_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     viewModel.deleteItem(item)
                     deleteTarget = null
                 }) {
@@ -212,7 +212,7 @@ fun FileBrowserScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { deleteTarget = null }) {
+                UnibotTextButton(onClick = { deleteTarget = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -236,7 +236,7 @@ fun FileBrowserScreen(
             title = { Text(stringResource(R.string.filebrowser_error_title)) },
             text = { Text(msg) },
             confirmButton = {
-                MinisTextButton(onClick = { viewModel.dismissError() }) {
+                UnibotTextButton(onClick = { viewModel.dismissError() }) {
                     Text("OK")  // OK is locale-neutral
                 }
             },
@@ -391,7 +391,7 @@ private fun FileItemRow(
     // WebApp entry point (TODO webapp-hidden).
     run {
         val context = LocalContext.current
-        ai.unicto.unibot.ui.components.MinisMenu(
+        ai.unicto.unibot.ui.components.UnibotMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
         ) {
@@ -467,7 +467,7 @@ private fun MoreMenu(
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.filebrowser_more_action))
         }
-        ai.unicto.unibot.ui.components.MinisMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        ai.unicto.unibot.ui.components.UnibotMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             // Display options — sort key choices first so the most
             // frequent toggle (sort) is the closest tap.
             for (key in FileSortKey.entries) {

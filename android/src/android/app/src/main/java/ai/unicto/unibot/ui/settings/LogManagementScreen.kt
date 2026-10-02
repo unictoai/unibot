@@ -1,7 +1,7 @@
 package ai.unicto.unibot.ui.settings
 
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import android.content.Context
 import android.content.Intent
@@ -98,13 +98,13 @@ fun LogManagementScreen(
     val refreshTrigger = remember { mutableStateOf(0) }
     LaunchedEffect(refreshTrigger.value) {
         loading = true
-        // Daily logs are named `minis-YYYY-MM-DD.log`. Crash files are
+        // Daily logs are named `unibot-YYYY-MM-DD.log`. Crash files are
         // `crash-…` (Java/Kotlin) and `native-crash-…` (NDK signal handler);
         // grouped together as one "crash" list so the user sees one
         // chronological stream regardless of which side trapped the fault.
         // 100 of each is far past any reasonable inspection horizon.
         val (daily, crash, total) = withContext(Dispatchers.IO) {
-            val d = AppLogger.listLogFileMetas(prefix = "minis-", limit = 100)
+            val d = AppLogger.listLogFileMetas(prefix = "unibot-", limit = 100)
             val cJ = AppLogger.listLogFileMetas(prefix = "crash-", limit = 100)
             val cN = AppLogger.listLogFileMetas(prefix = "native-crash-", limit = 100)
             // Merge Java + native crashes, sort newest-first by name (both
@@ -178,7 +178,7 @@ fun LogManagementScreen(
                 Text(stringResource(R.string.log_delete_confirm_text, Formatter.formatFileSize(context, totalSize)))
             },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     AppLogger.clearLogs()
                     refresh()
                     showDeleteAllConfirm = false
@@ -187,7 +187,7 @@ fun LogManagementScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showDeleteAllConfirm = false }) {
+                UnibotTextButton(onClick = { showDeleteAllConfirm = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },

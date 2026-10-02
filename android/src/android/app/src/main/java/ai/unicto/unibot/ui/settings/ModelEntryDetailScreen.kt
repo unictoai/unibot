@@ -28,8 +28,8 @@ import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.components.RowLabel
 import ai.unicto.unibot.ui.components.SectionTextField
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * Detail / edit screen for a single ModelEntry. T210: brought to iOS
@@ -101,7 +101,7 @@ fun ModelEntryDetailScreen(
         onBack = null,
         centerTitle = true,
         navigation = {
-            MinisTextButton(
+            UnibotTextButton(
                 onClick = onBack,
                 modifier = Modifier.padding(start = 8.dp),
                 colors = ButtonDefaults.textButtonColors(
@@ -110,7 +110,7 @@ fun ModelEntryDetailScreen(
             ) { Text(stringResource(R.string.common_cancel)) }
         },
         actions = {
-            MinisButton(
+            UnibotButton(
                 onClick = {
                     val baseInputs = baseModel.inputModalities ?: emptyList()
                     val baseOutputs = baseModel.outputModalities ?: emptyList()

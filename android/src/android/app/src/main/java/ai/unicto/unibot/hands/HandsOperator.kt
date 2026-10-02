@@ -70,7 +70,7 @@ class HandsOperator(private val context: Context) {
         val outcome: Outcome,
         val steps: Int,
         val runId: String,
-        /** `minis://attachments/hands/<run>/step-N.jpg` of the last screen, if any. */
+        /** `unibot://attachments/hands/<run>/step-N.jpg` of the last screen, if any. */
         val lastScreen: String?,
         val tracePath: String?,
         /** One line per step, for the tool result. */
@@ -522,7 +522,7 @@ class HandsOperator(private val context: Context) {
         dir ?: return null
         return runCatching {
             File(dir, "step-$step.jpg").writeBytes(jpeg.bytes)
-            "minis://attachments/hands/$runId/step-$step.jpg"
+            "unibot://attachments/hands/$runId/step-$step.jpg"
         }.getOrNull()
     }
 

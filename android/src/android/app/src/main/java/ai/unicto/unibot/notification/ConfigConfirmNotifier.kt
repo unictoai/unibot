@@ -17,7 +17,7 @@ import ai.unicto.unibot.logging.AppLogger
 
 /**
  * [T-android-config-confirm-timeout] Posts a local notification when a
- * minis-config change is waiting for user approval AND the app is backgrounded,
+ * unibot-config change is waiting for user approval AND the app is backgrounded,
  * so the user knows to return before the (now 120s) timeout. Android port of
  * iOS `ConfigConfirmationGate.notifyIfBackgrounded` (T-config-confirm-timeout-bg).
  *
@@ -129,7 +129,7 @@ class ConfigConfirmNotifier(
 
     companion object {
         private const val TAG = "ConfigConfirmNotifier"
-        const val CHANNEL_ID = "minis_config_confirm"
+        const val CHANNEL_ID = "unibot_config_confirm"
         private const val NOTIFICATION_TAG = "config-confirm"
     }
 }

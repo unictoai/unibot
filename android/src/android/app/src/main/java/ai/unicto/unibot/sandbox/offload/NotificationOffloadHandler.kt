@@ -16,7 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import ai.unicto.unibot.R
 import ai.unicto.unibot.logging.AppLogger
-import ai.unicto.unibot.offload.MinisNotificationListenerService
+import ai.unicto.unibot.offload.UnibotNotificationListenerService
 import ai.unicto.unibot.offload.OffloadPermissionManager
 import ai.unicto.unibot.offload.ScheduledNotificationReceiver
 import ai.unicto.unibot.offload.ScheduledNotificationStore
@@ -212,10 +212,10 @@ class NotificationOffloadHandler(private val context: Context) : NativeOffloadHa
         // an immediate follow-up `list` may miss this notification. Block
         // until our listener observes it (best-effort: 2s, only when the
         // listener is connected — otherwise `list` would have failed anyway).
-        if (MinisNotificationListenerService.isEnabled(context) &&
-            MinisNotificationListenerService.isConnected()
+        if (UnibotNotificationListenerService.isEnabled(context) &&
+            UnibotNotificationListenerService.isConnected()
         ) {
-            val seen = MinisNotificationListenerService.awaitPosted(context.packageName, notifId)
+            val seen = UnibotNotificationListenerService.awaitPosted(context.packageName, notifId)
             if (!seen) {
                 AppLogger.warning(TAG, "listener did not observe posted id=$notifId within timeout — list may not see it immediately")
             }
@@ -409,8 +409,8 @@ class NotificationOffloadHandler(private val context: Context) : NativeOffloadHa
             val canSchedule = try { am?.canScheduleExactAlarms() == true } catch (_: Throwable) { false }
             data.put("schedule_exact_allowed", canSchedule)
         }
-        data.put("listener_access", MinisNotificationListenerService.isEnabled(context))
-        AppLogger.info(TAG, "settings: can_post=$canPost listener=${MinisNotificationListenerService.isEnabled(context)}")
+        data.put("listener_access", UnibotNotificationListenerService.isEnabled(context))
+        AppLogger.info(TAG, "settings: can_post=$canPost listener=${UnibotNotificationListenerService.isEnabled(context)}")
         return NativeOffloadResult(0, OffloadOutput.formatBody(data.toString(2), args) + "\n")
     }
 
@@ -445,7 +445,7 @@ class NotificationOffloadHandler(private val context: Context) : NativeOffloadHa
     // ── list ────────────────────────────────────────────────────────────────
 
     private fun handleList(args: OffloadArgs): NativeOffloadResult {
-        if (!MinisNotificationListenerService.isEnabled(context)) {
+        if (!UnibotNotificationListenerService.isEnabled(context)) {
             // Notification Access can only be granted from the system settings
             // page — requestPermissions is not an option. Use the in-app
             // "settings gate" which shows a dialog, opens the settings page,
@@ -456,11 +456,11 @@ class NotificationOffloadHandler(private val context: Context) : NativeOffloadHa
                         id = "notification_access",
                         title = "Notification access needed",
                         message = "unibot needs Notification access to read the status-bar notifications. Open Settings and enable \"unibot\" under Notification access.",
-                        settingsAction = MinisNotificationListenerService.SETTINGS_ACTION,
+                        settingsAction = UnibotNotificationListenerService.SETTINGS_ACTION,
                         requiresPackageUri = false,
                         positiveLabel = "Open Settings",
                     ),
-                    check = { MinisNotificationListenerService.isEnabled(context) },
+                    check = { UnibotNotificationListenerService.isEnabled(context) },
                 )
             }
             when (result) {
@@ -496,7 +496,7 @@ class NotificationOffloadHandler(private val context: Context) : NativeOffloadHa
         // own notifications. The cross-app list comes from our bound
         // `NotificationListenerService`.
         val active: Array<StatusBarNotification> =
-            MinisNotificationListenerService.getActiveNotifications()
+            UnibotNotificationListenerService.getActiveNotifications()
                 ?: return NativeOffloadResult(
                     77,
                     OffloadOutput.formatBody(
@@ -550,7 +550,7 @@ class NotificationOffloadHandler(private val context: Context) : NativeOffloadHa
 
     companion object {
         private const val TAG = "NotificationOffload"
-        private const val CHANNEL_ID = "minis_agent_notifications"
+        private const val CHANNEL_ID = "unibot_agent_notifications"
         private const val CHANNEL_NAME = "Agent Notifications"
         private var channelCreated = false
 

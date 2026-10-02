@@ -43,7 +43,7 @@ import ai.unicto.unibot.browser.BrowserHistoryStore
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,13 +84,13 @@ fun BrowserHistorySheet(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = { showClearConfirm = true },
                     enabled = historyStore.getEntries().isNotEmpty(),
                 ) {
                     Text(stringResource(R.string.browser_history_clear), color = MaterialTheme.colorScheme.error)
                 }
-                MinisTextButton(onClick = onDismiss) {
+                UnibotTextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.browser_history_done))
                 }
             }
@@ -196,7 +196,7 @@ fun BrowserHistorySheet(
             title = { Text(stringResource(R.string.browser_history_clear_dialog_title)) },
             text = { Text(stringResource(R.string.browser_history_clear_dialog_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     historyStore.clear()
                     showClearConfirm = false
                 }) {
@@ -204,7 +204,7 @@ fun BrowserHistorySheet(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showClearConfirm = false }) {
+                UnibotTextButton(onClick = { showClearConfirm = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

@@ -1,7 +1,7 @@
 package ai.unicto.unibot.ui.settings
 
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -145,7 +145,7 @@ fun MemoryManagementScreen(
             title = { Text(stringResource(R.string.memory_delete_confirm_title, deleteFileName ?: "")) },
             text = { Text(stringResource(R.string.memory_delete_confirm_text)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     deleteFileName?.let {
                         memoryRepository.deleteFile(it)
                         files = memoryRepository.listAllFiles()
@@ -156,7 +156,7 @@ fun MemoryManagementScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { deleteFileName = null }) {
+                UnibotTextButton(onClick = { deleteFileName = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -317,7 +317,7 @@ fun MemoryFileEditScreen(
                 actions = {
                     // [T-global-memory-save-always-visible] Always render Save —
                     // no hasChanges gate (see KDoc above).
-                    MinisTextButton(onClick = {
+                    UnibotTextButton(onClick = {
                         try {
                             memoryRepository.saveFile(fileName, content)
                             saveError = null

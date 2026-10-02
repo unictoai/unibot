@@ -1,6 +1,6 @@
 # Debug Server API
 
-MinisApp includes a built-in JSON-RPC 2.0 debug server (DEBUG builds only) for runtime view inspection.
+UnibotApp includes a built-in JSON-RPC 2.0 debug server (DEBUG builds only) for runtime view inspection.
 
 ## Connection
 
@@ -296,7 +296,7 @@ Get app paths and disk usage information.
   "libraryPath": "/path/to/Library",
   "dataPath": "/path/to/alpine-rootfs/data",
   "rootfsPath": "/path/to/Documents/alpine-rootfs",
-  "bundlePath": "/path/to/Minis.app",
+  "bundlePath": "/path/to/Unibot.app",
   "diskUsage": {
     "documents": 12345678,
     "rootfsData": 87654321,
@@ -808,7 +808,7 @@ Trigger a model-list refresh for an instance (re-queries `/v1/models` or the equ
 
 ### `provider.models.setAgentLoop`
 
-Toggle whether a specific model entry is exposed to the in-shell `minis-model-use` agent. Equivalent to the "Available in Agent Loop" toggle in the model entry detail screen — agent-loop visibility is what determines if the in-shell tool can list and invoke a model.
+Toggle whether a specific model entry is exposed to the in-shell `unibot-model-use` agent. Equivalent to the "Available in Agent Loop" toggle in the model entry detail screen — agent-loop visibility is what determines if the in-shell tool can list and invoke a model.
 
 **Params:**
 
@@ -964,7 +964,7 @@ Returns `-32602` if `groupId` is non-null but doesn't exist.
 
 ### `provider.groups.setAgentLoop`
 
-Toggle whether a model group is exposed to the in-shell `minis-model-use` agent (parallel to `provider.models.setAgentLoop` but for groups).
+Toggle whether a model group is exposed to the in-shell `unibot-model-use` agent (parallel to `provider.models.setAgentLoop` but for groups).
 
 **Params:**
 
@@ -1430,7 +1430,7 @@ Permanently delete a session and its messages. Irreversible — intended for tes
 
 ## Log Methods
 
-These methods provide remote access to the app's file-based logging system (`LoggingManager`). Logs are daily-rotated files stored in `Library/Logs/` with the naming pattern `minis-YYYY-MM-dd.log`.
+These methods provide remote access to the app's file-based logging system (`LoggingManager`). Logs are daily-rotated files stored in `Library/Logs/` with the naming pattern `unibot-YYYY-MM-dd.log`.
 
 ### `debug.logs.list`
 
@@ -1446,8 +1446,8 @@ List all log files and current logging status.
   "logDirectory": "/path/to/Library/Logs",
   "totalSize": 524288,
   "files": [
-    { "name": "minis-2026-03-07.log", "size": 102400, "modified": "2026-03-07T14:30:00Z" },
-    { "name": "minis-2026-03-06.log", "size": 421888, "modified": "2026-03-06T23:59:59Z" }
+    { "name": "unibot-2026-03-07.log", "size": 102400, "modified": "2026-03-07T14:30:00Z" },
+    { "name": "unibot-2026-03-06.log", "size": 421888, "modified": "2026-03-06T23:59:59Z" }
   ]
 }
 ```
@@ -1472,7 +1472,7 @@ Read the contents of a specific log file.
 
 | Name     | Type     | Default  | Description                                    |
 |----------|----------|----------|------------------------------------------------|
-| `name`   | `string` | —        | **Required.** Log filename (e.g. `"minis-2026-03-07.log"`) |
+| `name`   | `string` | —        | **Required.** Log filename (e.g. `"unibot-2026-03-07.log"`) |
 | `offset` | `int`    | —        | Byte offset to start reading from              |
 | `limit`  | `int`    | `524288` | Maximum bytes to read (default 512KB)          |
 
@@ -1480,7 +1480,7 @@ Read the contents of a specific log file.
 
 ```json
 {
-  "name": "minis-2026-03-07.log",
+  "name": "unibot-2026-03-07.log",
   "size": 102400,
   "content": "[14:30:05] App started...\n[14:30:06] ...",
   "bytesRead": 102400
@@ -1496,14 +1496,14 @@ If the file is larger than `limit`, the response includes `"truncated": true`. U
 curl -s http://localhost:8321 -d '{
   "jsonrpc": "2.0", "id": 2,
   "method": "debug.logs.read",
-  "params": { "name": "minis-2026-03-07.log" }
+  "params": { "name": "unibot-2026-03-07.log" }
 }' | python3 -m json.tool
 
 # Read last 10KB of a log file
 curl -s http://localhost:8321 -d '{
   "jsonrpc": "2.0", "id": 3,
   "method": "debug.logs.read",
-  "params": { "name": "minis-2026-03-06.log", "offset": 92400, "limit": 10240 }
+  "params": { "name": "unibot-2026-03-06.log", "offset": 92400, "limit": 10240 }
 }' | python3 -m json.tool
 ```
 
@@ -1799,7 +1799,7 @@ curl -s localhost:8321 -d '{"jsonrpc":"2.0","id":8,"method":"debug.llmRequests",
 curl -s localhost:8321 -d '{"jsonrpc":"2.0","id":9,"method":"debug.logs.list","params":{}}' | python3 -m json.tool
 
 # 10. Read a log file
-curl -s localhost:8321 -d '{"jsonrpc":"2.0","id":10,"method":"debug.logs.read","params":{"name":"minis-2026-03-07.log"}}' | python3 -m json.tool
+curl -s localhost:8321 -d '{"jsonrpc":"2.0","id":10,"method":"debug.logs.read","params":{"name":"unibot-2026-03-07.log"}}' | python3 -m json.tool
 
 # 11. Enable/disable log collection
 curl -s localhost:8321 -d '{"jsonrpc":"2.0","id":11,"method":"debug.logs.setEnabled","params":{"enabled":true}}' | python3 -m json.tool

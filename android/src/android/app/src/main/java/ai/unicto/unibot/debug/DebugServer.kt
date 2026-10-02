@@ -95,7 +95,7 @@ class DebugServer(
                 val ss = ServerSocket(port, 10)
                 serverSocket = ss
                 Log.i(TAG, "Debug server listening on port $port (all interfaces)")
-                Log.i(TAG, "Remote (non-loopback) clients must send X-Minis-Token: $authToken")
+                Log.i(TAG, "Remote (non-loopback) clients must send X-Unibot-Token: $authToken")
 
                 while (!stopped) {
                     try {
@@ -162,9 +162,9 @@ class DebugServer(
                     if (lower.startsWith("accept:")) {
                         accept = lower.substringAfter(":").trim()
                     }
-                    // [T-android-debugserver-auth] Token via X-Minis-Token or
+                    // [T-android-debugserver-auth] Token via X-Unibot-Token or
                     // Authorization: Bearer — either spelling accepted.
-                    if (lower.startsWith("x-minis-token:")) {
+                    if (lower.startsWith("x-unibot-token:")) {
                         providedToken = headerLine.substringAfter(":").trim()
                     }
                     if (lower.startsWith("authorization:")) {
@@ -180,7 +180,7 @@ class DebugServer(
                 val isLoopback = s.inetAddress?.isLoopbackAddress == true
                 if (!isAuthorized(isLoopback, providedToken, authToken)) {
                     Log.w(TAG, "401 unauthorized ${if (isLoopback) "loopback" else s.inetAddress?.hostAddress ?: "?"} (missing/wrong token)")
-                    sendResponse(writer, 401, rpcHandler.errorJSON(-32000, "Unauthorized — send X-Minis-Token (see `adb shell run-as ai.unicto.unibot cat files/debug_server_token`)"))
+                    sendResponse(writer, 401, rpcHandler.errorJSON(-32000, "Unauthorized — send X-Unibot-Token (see `adb shell run-as ai.unicto.unibot cat files/debug_server_token`)"))
                     return
                 }
 
@@ -213,8 +213,8 @@ class DebugServer(
                             }
                             return
                         }
-                        "/skill/examples/python", "/skill/examples/minis_rpc_android.py" -> {
-                            sendSkillAsset(writer, "examples/minis_rpc_android.py", "text/x-python; charset=utf-8")
+                        "/skill/examples/python", "/skill/examples/unibot_rpc_android.py" -> {
+                            sendSkillAsset(writer, "examples/unibot_rpc_android.py", "text/x-python; charset=utf-8")
                             return
                         }
                         "/skill/examples/curl", "/skill/examples/curl.md" -> {
@@ -290,7 +290,7 @@ class DebugServer(
             sendResponse(writer, 200, skill, "text/markdown; charset=utf-8")
             return
         }
-        val py = readSkillAsset("examples/minis_rpc_android.py") ?: ""
+        val py = readSkillAsset("examples/unibot_rpc_android.py") ?: ""
         val curl = readSkillAsset("examples/curl.md") ?: ""
         val payload = org.json.JSONObject().apply {
             put("skill", skill)
@@ -345,7 +345,7 @@ class DebugServer(
         writer.print("Connection: close\r\n")
         writer.print("Access-Control-Allow-Origin: *\r\n")
         writer.print("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-        writer.print("Access-Control-Allow-Headers: Content-Type, X-Minis-Token, Authorization\r\n")
+        writer.print("Access-Control-Allow-Headers: Content-Type, X-Unibot-Token, Authorization\r\n")
         writer.print("\r\n")
         writer.print(body)
         writer.flush()
@@ -386,7 +386,7 @@ class DebugServer(
         writer.print("HTTP/1.1 204 No Content\r\n")
         writer.print("Access-Control-Allow-Origin: *\r\n")
         writer.print("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-        writer.print("Access-Control-Allow-Headers: Content-Type, X-Minis-Token, Authorization\r\n")
+        writer.print("Access-Control-Allow-Headers: Content-Type, X-Unibot-Token, Authorization\r\n")
         writer.print("Access-Control-Max-Age: 86400\r\n")
         writer.print("Connection: close\r\n")
         writer.print("\r\n")

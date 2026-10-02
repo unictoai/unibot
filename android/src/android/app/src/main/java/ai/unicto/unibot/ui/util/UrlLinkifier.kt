@@ -13,7 +13,7 @@ import androidx.compose.ui.text.withLink
  * Convert a plain-text string into an [AnnotatedString] where any http(s) URL
  * is wrapped in a [LinkAnnotation.Url] span — clicking it routes through
  * [onClick] (so the chat screen's in-app web-preview handler can intercept,
- * matching iOS MinisOpenURLBroker behaviour).
+ * matching iOS UnibotOpenURLBroker behaviour).
  *
  * Used by tool-result renderers (`shell_execute` output, generic text-mode
  * tool outputs, etc.) where the upstream content is not Markdown so the

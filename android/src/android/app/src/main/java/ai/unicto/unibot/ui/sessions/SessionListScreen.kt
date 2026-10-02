@@ -100,10 +100,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
-import ai.unicto.unibot.ui.components.MinisAlertDialog
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisMenuDivider
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotMenuDivider
 import ai.unicto.unibot.ui.components.SectionDesign
 import ai.unicto.unibot.ui.components.SectionTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -175,7 +175,7 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.data.db.ChatSessionEntity
 import ai.unicto.unibot.data.db.FolderEntity
 import ai.unicto.unibot.ui.theme.ChatColors
-import ai.unicto.unibot.ui.theme.minisFabColor
+import ai.unicto.unibot.ui.theme.unibotFabColor
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import kotlin.math.roundToInt
@@ -185,7 +185,7 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 import java.util.concurrent.TimeUnit
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 // FAB color — use shared theme values
 
@@ -783,7 +783,7 @@ fun SessionListScreen(
                 },
                 navigationIcon = {
                     if (isSelecting) {
-                        MinisTextButton(onClick = { viewModel.clearSelection() }) {
+                        UnibotTextButton(onClick = { viewModel.clearSelection() }) {
                             Text(stringResource(R.string.cancel))
                         }
                     } else {
@@ -794,7 +794,7 @@ fun SessionListScreen(
                 },
                 actions = {
                     if (isSelecting) {
-                        MinisTextButton(onClick = { viewModel.selectAll() }) {
+                        UnibotTextButton(onClick = { viewModel.selectAll() }) {
                             Text(
                                 stringResource(
                                     if (selectedIds.size == sessions.size) R.string.sessionlist_deselect_all
@@ -828,7 +828,7 @@ fun SessionListScreen(
                             IconButton(onClick = { showOverflowMenu = true }) {
                                 Icon(Icons.Outlined.Terminal, contentDescription = stringResource(R.string.sessionlist_shell))
                             }
-                            MinisMenu(
+                            UnibotMenu(
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false },
                                 offset = DpOffset(0.dp, 0.dp),
@@ -844,7 +844,7 @@ fun SessionListScreen(
                                             Icon(Icons.Outlined.ChecklistRtl, contentDescription = null)
                                         },
                                     )
-                                    MinisMenuDivider()
+                                    UnibotMenuDivider()
                                 }
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.sessionlist_shell_terminal)) },
@@ -866,7 +866,7 @@ fun SessionListScreen(
                                         Icon(Icons.Outlined.Settings, contentDescription = null)
                                     },
                                 )
-                                MinisMenuDivider()
+                                UnibotMenuDivider()
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.sessionlist_open_browser)) },
                                     onClick = {
@@ -1291,7 +1291,7 @@ fun SessionListScreen(
 
     // Single delete confirmation
     if (showDeleteDialog && deleteTargetId != null) {
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = {
                 showDeleteDialog = false
                 deleteTargetId = null
@@ -1310,7 +1310,7 @@ fun SessionListScreen(
 
     // Bulk delete confirmation
     if (showBulkDeleteDialog) {
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = { showBulkDeleteDialog = false },
             title = stringResource(R.string.sessionlist_delete_n_title, selectedIds.size),
             confirmText = stringResource(R.string.delete),
@@ -1352,8 +1352,8 @@ fun SessionListScreen(
         // wipe a description the user never touched.
         var name by remember(folder.id) { mutableStateOf(folder.name) }
         var desc by remember(folder.id) { mutableStateOf(folder.description.orEmpty()) }
-        // A plain AlertDialog rather than MinisAlertDialog: this one needs two
-        // text fields, and MinisAlertDialog is a title/text/buttons component.
+        // A plain AlertDialog rather than UnibotAlertDialog: this one needs two
+        // text fields, and UnibotAlertDialog is a title/text/buttons component.
         // Widening it for a single caller would push layout complexity into
         // every other dialog in the app.
         androidx.compose.material3.AlertDialog(
@@ -1387,13 +1387,13 @@ fun SessionListScreen(
                 }
             },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     viewModel.renameFolder(folder.id, name, desc)
                     folderToRename = null
                 }) { Text(stringResource(R.string.common_save)) }
             },
             dismissButton = {
-                MinisTextButton(onClick = { folderToRename = null }) {
+                UnibotTextButton(onClick = { folderToRename = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -1402,7 +1402,7 @@ fun SessionListScreen(
 
     folderToDissolve?.let { folder ->
         val count = folderMemberCounts[folder.id] ?: 0
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = { folderToDissolve = null },
             title = stringResource(R.string.group_dissolve_confirm_title),
             // Spells out that nothing is deleted — dissolve is deliberately NOT
@@ -1419,7 +1419,7 @@ fun SessionListScreen(
     // iOS "Delete Group & N Sessions" confirmation — the one destructive
     // folder action, so isDestructive here where dissolve deliberately isn't.
     folderToDelete?.let { (folder, count) ->
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = { folderToDelete = null },
             title = stringResource(R.string.group_delete_confirm_title),
             text = stringResource(R.string.group_delete_confirm_message, count),
@@ -1544,7 +1544,7 @@ private fun DualFabRow(
             FloatingActionButton(
                 onClick = onNewChat,
                 shape = CircleShape,
-                containerColor = minisFabColor(),
+                containerColor = unibotFabColor(),
                 modifier = Modifier
                     .size(56.dp)
                     // [T-android-fab-square-ripple] Clip BEFORE combinedClickable.
@@ -1731,7 +1731,7 @@ private fun SelectionToolbar(
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         // Export button (matching iOS)
-        MinisTextButton(
+        UnibotTextButton(
             onClick = onExport,
             enabled = selectedCount > 0,
         ) {
@@ -1747,7 +1747,7 @@ private fun SelectionToolbar(
         }
 
         // Move to Group button
-        MinisTextButton(
+        UnibotTextButton(
             onClick = onMove,
             enabled = selectedCount > 0,
         ) {
@@ -1763,7 +1763,7 @@ private fun SelectionToolbar(
         }
 
         // Delete button (matching iOS)
-        MinisTextButton(
+        UnibotTextButton(
             onClick = onDelete,
             enabled = selectedCount > 0,
         ) {
@@ -1953,7 +1953,7 @@ private fun SessionItemContent(
                     .offset(x = pressOffset.x, y = pressOffset.y)
                     .size(1.dp),
             ) {
-                MinisMenu(
+                UnibotMenu(
                     expanded = showContextMenu,
                     onDismissRequest = { showContextMenu = false },
                     alignEnd = menuAlignEnd,
@@ -2080,7 +2080,7 @@ private fun SessionItemContent(
                         Icon(Icons.Outlined.ChecklistRtl, contentDescription = null)
                     },
                 )
-                MinisMenuDivider()
+                UnibotMenuDivider()
                 // Delete
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
@@ -2477,7 +2477,7 @@ private fun FolderCard(
                 .offset(x = pressOffset.x, y = pressOffset.y)
                 .size(1.dp),
         ) {
-            MinisMenu(
+            UnibotMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
                 alignEnd = menuAlignEnd,
@@ -2519,7 +2519,7 @@ private fun FolderCard(
                     onClick = { menuOpen = false; onNewChatInGroup() },
                     leadingIcon = { menuIcon(Icons.Outlined.AddComment) },
                 )
-                MinisMenuDivider()
+                UnibotMenuDivider()
                 // Dissolve is deliberately NOT destructive-tinted (iOS note):
                 // it touches no user data — sessions move back to the main
                 // list. Tinting it red would train the eye to read it as the
@@ -2529,7 +2529,7 @@ private fun FolderCard(
                     onClick = { menuOpen = false; onDissolve() },
                     leadingIcon = { menuIcon(Icons.Outlined.FolderOff) },
                 )
-                MinisMenuDivider()
+                UnibotMenuDivider()
                 // The one destructive item, last, with the count in the title
                 // so the consequence is visible in the menu itself, not only
                 // in the confirmation dialog (iOS parity).
@@ -3224,7 +3224,7 @@ internal fun SessionEditSheet(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MinisTextButton(onClick = onDismiss) { Text("Cancel") }
+                UnibotTextButton(onClick = onDismiss) { Text("Cancel") }
                 Spacer(Modifier.weight(1f))
                 Text(
                     "Edit Session",
@@ -3232,7 +3232,7 @@ internal fun SessionEditSheet(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.weight(1f))
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = { onSave(title.ifBlank { "New Chat" }, selectedCategory) },
                 ) { Text("Save") }
             }
@@ -3305,7 +3305,7 @@ internal fun SessionEditSheet(
             // matches iOS SessionEditSheet's dedicated section below Category.
             // Reuses SessionListViewModel.regenerateTitle; shows a spinner and
             // disables while running (regeneratingIds) to prevent double taps.
-            MinisOutlinedButton(
+            UnibotOutlinedButton(
                 onClick = onRegenerate,
                 enabled = !isRegenerating,
                 modifier = Modifier.fillMaxWidth(),

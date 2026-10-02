@@ -1,6 +1,6 @@
 //
 //  ClipboardOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-clipboard`.
 //  Subcommands: get, set, clear, status

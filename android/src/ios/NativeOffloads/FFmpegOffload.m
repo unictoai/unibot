@@ -1,6 +1,6 @@
 //
 //  FFmpegOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler that routes iSH `ffmpeg` commands to
 //  FFmpeg.framework's ffmpeg_main(). Stdin/stdout/stderr are redirected

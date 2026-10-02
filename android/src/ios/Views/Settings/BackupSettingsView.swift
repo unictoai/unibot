@@ -531,7 +531,7 @@ struct BackupSettingsView: View {
             }
         }
         // [review S14] The `pendingPackage` sheet used to live here. It is now
-        // mounted at the WindowGroup root (MinisApp.swift) so opening a
+        // mounted at the WindowGroup root (UnibotApp.swift) so opening a
         // .minisbak from Files works from ANY screen — this view is the one
         // place the user is least likely to already be standing when they
         // migrate to a new device.
@@ -781,7 +781,7 @@ struct BackupSettingsView: View {
     /// Lets the user send every backup to one or more mounted folders.
     ///
     /// No networking lives behind this: an SMB / AFP / WebDAV / cloud folder
-    /// mounted in Files and authorised in Minis is just a directory, and
+    /// mounted in Files and authorised in Unibot is just a directory, and
     /// iOS's FileProvider does the protocol work. That is why the same list
     /// covers a NAS and iCloud Drive without either being special-cased.
     @ViewBuilder

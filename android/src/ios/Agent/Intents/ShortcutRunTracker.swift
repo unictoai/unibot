@@ -135,7 +135,7 @@ enum ShortcutRunTracker {
 
     // MARK: - Foreground scan (concern #3 payoff)
 
-    /// Called from MinisApp's scenePhase → .active handler. Any pending record
+    /// Called from UnibotApp's scenePhase → .active handler. Any pending record
     /// still present is by definition orphaned: the Intent handed off to the
     /// agent loop and neither the loop's completion path nor a previous
     /// foreground scan reached `markCompleted`. Records older than

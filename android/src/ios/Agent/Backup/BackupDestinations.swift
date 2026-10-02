@@ -13,7 +13,7 @@ private let logger = AppLogger(category: "Backup")
 ///
 /// This is also why network destinations need no networking code: the user
 /// mounts an SMB / AFP / WebDAV / cloud folder in Files, authorises it once in
-/// Minis, and iOS's FileProvider handles the protocol. From here it is an
+/// Unibot, and iOS's FileProvider handles the protocol. From here it is an
 /// ordinary directory.
 @MainActor
 enum BackupDestinations {
@@ -181,7 +181,7 @@ enum BackupDestinations {
     /// steady state for a laptop that is asleep, not an error worth aborting
     /// the whole delivery over.
     ///
-    /// The local copy in Minis ▸ Backups is written before this runs and is
+    /// The local copy in Unibot ▸ Backups is written before this runs and is
     /// never affected by what happens here.
     /// [review I1] Async, and the copy itself runs OFF the main actor.
     ///

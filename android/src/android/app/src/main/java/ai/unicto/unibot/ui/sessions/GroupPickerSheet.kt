@@ -38,7 +38,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.db.FolderEntity
-import ai.unicto.unibot.ui.components.MinisSmallButton
+import ai.unicto.unibot.ui.components.UnibotSmallButton
 import ai.unicto.unibot.ui.components.SectionDesign
 import ai.unicto.unibot.ui.components.SectionTextField
 
@@ -249,7 +249,7 @@ fun GroupPickerSheet(
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                MinisSmallButton(
+                UnibotSmallButton(
                     onClick = {
                         onChoose(
                             GroupChoice.Create(

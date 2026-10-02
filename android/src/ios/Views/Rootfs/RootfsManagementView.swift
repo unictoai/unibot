@@ -1,6 +1,6 @@
 //
 //  RootfsManagementView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  UI for managing rootfs (reset, backup, restore)
 //

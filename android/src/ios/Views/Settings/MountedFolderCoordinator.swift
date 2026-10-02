@@ -1,6 +1,6 @@
 //
 //  MountedFolderCoordinator.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Thin wrapper around NSFileCoordinator + FileManager for user-mounted
 //  external folders (see MountedFoldersManager). When a path descends into
@@ -90,7 +90,7 @@ enum MountedFolderCoordinator {
     /// firmlink / symlink / case-sensitivity edge cases that `isUnderReadOnlyMount`
     /// (which operates on resolved host URLs) has to worry about.
     static func isLinuxPathUnderReadOnlyMount(_ linuxPath: String) -> Bool {
-        let prefix = AIChatViewModel.minisMountsLinuxDir + "/"
+        let prefix = AIChatViewModel.unibotMountsLinuxDir + "/"
         guard linuxPath.hasPrefix(prefix) else { return false }
         let rest = linuxPath.dropFirst(prefix.count)
         let name = rest.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: true)

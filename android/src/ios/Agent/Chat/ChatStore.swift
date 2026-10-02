@@ -180,7 +180,7 @@ enum MessageRole: String, Codable {
     case assistant
 }
 
-/// Reference to a media file stored in Library/MinisChat/minis/<sessionId>/
+/// Reference to a media file stored in Library/UnibotChat/unibot/<sessionId>/
 struct MediaRef: Codable, Hashable {
     let id: String
     let relativePath: String
@@ -449,8 +449,8 @@ actor ChatStore {
     static let shared = ChatStore()
 
     private var db: OpaquePointer?
-    /// Base URL for per-session media storage: Library/MinisChat/minis/
-    let minisBaseURL: URL
+    /// Base URL for per-session media storage: Library/UnibotChat/unibot/
+    let unibotBaseURL: URL
 
     private let dbURL: URL
 
@@ -481,12 +481,12 @@ actor ChatStore {
 
     init() {
         let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let baseURL = libraryURL.appendingPathComponent("MinisChat", isDirectory: true)
+        let baseURL = libraryURL.appendingPathComponent("UnibotChat", isDirectory: true)
         self.dbURL = baseURL.appendingPathComponent("minis.db")
-        self.minisBaseURL = baseURL.appendingPathComponent("minis", isDirectory: true)
+        self.unibotBaseURL = baseURL.appendingPathComponent("unibot", isDirectory: true)
 
         try? FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: minisBaseURL, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: unibotBaseURL, withIntermediateDirectories: true)
 
         openDatabase()
         createTables()
@@ -542,10 +542,10 @@ actor ChatStore {
     /// Initialize with a custom base URL (for testing).
     init(baseURL: URL) {
         self.dbURL = baseURL.appendingPathComponent("minis.db")
-        self.minisBaseURL = baseURL.appendingPathComponent("minis", isDirectory: true)
+        self.unibotBaseURL = baseURL.appendingPathComponent("unibot", isDirectory: true)
 
         try? FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: minisBaseURL, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: unibotBaseURL, withIntermediateDirectories: true)
 
         openDatabase()
         createTables()
@@ -1425,7 +1425,7 @@ actor ChatStore {
     /// `NSString substringWithRange` / `_xzm_xzone_malloc`.
     ///
     /// Extract plain text preview from a parts_json string.
-    /// [T-sessions-cli-truncate] Full-text extraction for minis-sessions-cli
+    /// [T-sessions-cli-truncate] Full-text extraction for unibot-sessions-cli
     /// `messages` (loadMessagePage). Unlike extractTextFromPartsJSON (the
     /// 100-char single-part plain-text PREVIEW helper for the session list),
     /// this joins EVERY text part, keeps markdown intact, and applies no
@@ -1636,7 +1636,7 @@ actor ChatStore {
 
     // MARK: - Sessions Get Tool
 
-    /// Lightweight session metadata for the minis-sessions-cli offload.
+    /// Lightweight session metadata for the unibot-sessions-cli offload.
     struct SessionMeta {
         let id: String
         let title: String?
@@ -1779,7 +1779,7 @@ actor ChatStore {
 
         let whereClause = conditions.joined(separator: " AND ")
         // [T-search-cli-title] LEFT JOIN sessions so each hit can report its
-        // owning session's title to minis-sessions-cli — otherwise the CLI
+        // owning session's title to unibot-sessions-cli — otherwise the CLI
         // user sees only session_id values and can't tell which conversation
         // a hit belongs to. LEFT JOIN (not INNER) so a stray message whose
         // session row is missing still surfaces with sessionTitle=nil rather
@@ -2586,7 +2586,7 @@ actor ChatStore {
         // deleteSessionMedia removes the local files. recordIds are
         // "<sessionId>:<rel>" matching appendMediaFile +
         // scanAndMarkSessionFilesForResurrect.
-        let sessionDir = minisBaseURL.appendingPathComponent(sessionId, isDirectory: true)
+        let sessionDir = unibotBaseURL.appendingPathComponent(sessionId, isDirectory: true)
         var fileDeleteCount = 0
         if let enumerator = FileManager.default.enumerator(
             at: sessionDir,
@@ -2606,7 +2606,7 @@ actor ChatStore {
 
     /// Public entry: queue a SessionFile cloud delete for one file under
     /// a session's workspace. Used by FileBrowserView.deleteItem when the
-    /// user removes a file inside `Library/MinisChat/minis/<sid>/...`.
+    /// user removes a file inside `Library/UnibotChat/unibot/<sid>/...`.
     /// `relPath` must be "<subdir>/<rest>" matching the recordId scheme.
     func markSessionFileForCloudDeletion(sessionId: String, relPath: String) {
         guard !syncZoneName.isEmpty, !sessionId.isEmpty, !relPath.isEmpty else { return }
@@ -3197,7 +3197,7 @@ actor ChatStore {
     // MARK: - Media File Management
 
     /// Save media data to disk, return a MediaRef.
-    /// Files are saved to `Library/MinisChat/minis/<sessionId>/<subdir>/<fileId>.<ext>`.
+    /// Files are saved to `Library/UnibotChat/unibot/<sessionId>/<subdir>/<fileId>.<ext>`.
     func saveMedia(
         data: Data, mimeType: String, sessionId: String,
         originalFileName: String? = nil, subdir: String = "attachments",
@@ -3207,7 +3207,7 @@ actor ChatStore {
         let ext = Self.fileExtension(for: mimeType)
 
         let relativePath = "\(sessionId)/\(subdir)/\(fileId).\(ext)"
-        let fileURL = minisBaseURL.appendingPathComponent(relativePath)
+        let fileURL = unibotBaseURL.appendingPathComponent(relativePath)
 
         let dirURL = fileURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
@@ -3234,7 +3234,7 @@ actor ChatStore {
 
     /// Resolve the on-disk URL for a MediaRef.
     func mediaFileURL(for ref: MediaRef) -> URL {
-        minisBaseURL.appendingPathComponent(ref.relativePath)
+        unibotBaseURL.appendingPathComponent(ref.relativePath)
     }
 
     /// Load media data from a MediaRef.
@@ -3248,7 +3248,7 @@ actor ChatStore {
         let fm = FileManager.default
 
         for subdir in ["browser", "attachments", "images"] {
-            let dirURL = minisBaseURL.appendingPathComponent("\(sessionId)/\(subdir)")
+            let dirURL = unibotBaseURL.appendingPathComponent("\(sessionId)/\(subdir)")
             if fm.fileExists(atPath: dirURL.path) {
                 try? fm.removeItem(at: dirURL)
             }
@@ -3257,9 +3257,9 @@ actor ChatStore {
 
     /// Returns a closure that resolves a MediaRef to a file URL.
     func mediaFileURLResolver() -> (MediaRef) -> URL {
-        let minis = minisBaseURL
+        let unibot = unibotBaseURL
         return { ref in
-            minis.appendingPathComponent(ref.relativePath)
+            unibot.appendingPathComponent(ref.relativePath)
         }
     }
 
@@ -3640,7 +3640,7 @@ actor ChatStore {
     /// = "sessionId:relativePath"). Returns the count.
     private func scanAndMarkSessionFilesForResurrect(sessionId: String) -> Int {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let sessionDir = library.appendingPathComponent("MinisChat/minis/\(sessionId)")
+        let sessionDir = library.appendingPathComponent("UnibotChat/unibot/\(sessionId)")
         guard let enumerator = FileManager.default.enumerator(
             at: sessionDir, includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
@@ -4446,7 +4446,7 @@ actor ChatStore {
     private func scanAndMarkSessionFiles(sessionId: String, priority: Int = 0) -> Int {
         let fm = FileManager.default
         let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let sessionDir = library.appendingPathComponent("MinisChat/minis/\(sessionId)")
+        let sessionDir = library.appendingPathComponent("UnibotChat/unibot/\(sessionId)")
         guard fm.fileExists(atPath: sessionDir.path) else { return 0 }
         // Standardize to resolve /private/var vs /var symlink differences
         let sessionDirStd = sessionDir.standardizedFileURL.path
@@ -7124,31 +7124,31 @@ extension ChatStore {
     /// Estimated size of all session files (attachments, offloads, workspace, browser).
     func estimateFilesSize() -> Int64 {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let minisBase = library.appendingPathComponent("MinisChat/minis")
-        return directorySize(minisBase)
+        let unibotBase = library.appendingPathComponent("UnibotChat/unibot")
+        return directorySize(unibotBase)
     }
 
     /// Estimated size of memory files.
     func estimateMemoriesSize() -> Int64 {
-        return directorySize(AIChatViewModel.minisMemoryPersistentDir)
+        return directorySize(AIChatViewModel.unibotMemoryPersistentDir)
     }
 
     /// Estimated size of skills (db entries + skill files).
     func estimateSkillsSize() -> Int64 {
-        return directorySize(AIChatViewModel.minisSkillsPersistentDir)
+        return directorySize(AIChatViewModel.unibotSkillsPersistentDir)
     }
 
     /// Estimated size of provider config JSON.
     func estimateProvidersSize() -> Int64 {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let configURL = library.appendingPathComponent("MinisChat/provider-config.json")
+        let configURL = library.appendingPathComponent("UnibotChat/provider-config.json")
         return (try? configURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map { Int64($0) } ?? 0
     }
 
     /// Estimated size of env vars JSON.
     func estimateEnvVarsSize() -> Int64 {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let envURL = library.appendingPathComponent("MinisChat/env-vars.json")
+        let envURL = library.appendingPathComponent("UnibotChat/env-vars.json")
         return (try? envURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map { Int64($0) } ?? 0
     }
 

@@ -215,7 +215,7 @@ class PersistentShell(
         val processBuilder = ProcessBuilder(cmd)
         // In debug builds we want proot's native_offload stderr logs in
         // logcat, not merged into shell stdout (which would break the
-        // __MINIS_DONE__ marker detection). Release keeps the original
+        // __UNIBOT_DONE__ marker detection). Release keeps the original
         // merged behavior so no stderr output is lost silently.
         processBuilder.redirectErrorStream(!debugOffload)
 
@@ -236,12 +236,12 @@ class PersistentShell(
         // but refresh it here in case the system timezone changed between boot
         // and now.
         env["TZ"] = PRootKernel.posixTz()
-        if (debugOffload) env["MINIS_NOFF_DEBUG"] = "1"
+        if (debugOffload) env["UNIBOT_NOFF_DEBUG"] = "1"
         // T340: forward the chat session id to native_offload handlers via
         // proot env. NativeOffloadServer reads this off `request.env` and
         // hands it to OffloadPermissionManager so ASK_ONCE grants/denials
         // are scoped per chat session, not globally.
-        env["MINIS_CHAT_SESSION_ID"] = sessionId
+        env["UNIBOT_CHAT_SESSION_ID"] = sessionId
 
         for ((key, value) in PRootKernel.customEnvironment) {
             env[key] = value
@@ -371,7 +371,7 @@ class PersistentShell(
                 val cb = pendingCallback
                 if (cb != null) {
                     // Check if this chunk contains the end marker
-                    val markerExitPattern = "__MINIS_DONE_${cb.marker}_EXIT_"
+                    val markerExitPattern = "__UNIBOT_DONE_${cb.marker}_EXIT_"
                     val markerIdx = text.indexOf(markerExitPattern)
 
                     if (markerIdx >= 0) {
@@ -443,8 +443,8 @@ class PersistentShell(
     }
 
     private fun parseExitCode(text: String, marker: String): Int {
-        // Pattern: __MINIS_DONE_{marker}_EXIT_{code}__
-        val regex = Regex("__MINIS_DONE_${Regex.escape(marker)}_EXIT_(\\d+)__")
+        // Pattern: __UNIBOT_DONE_{marker}_EXIT_{code}__
+        val regex = Regex("__UNIBOT_DONE_${Regex.escape(marker)}_EXIT_(\\d+)__")
         val match = regex.find(text)
         return match?.groupValues?.get(1)?.toIntOrNull() ?: -1
     }
@@ -453,7 +453,7 @@ class PersistentShell(
      * Execute a command in the persistent shell and wait for completion.
      *
      * Wraps the command with a unique marker to detect output boundaries:
-     *   {command}; echo "__MINIS_DONE_{marker}_EXIT_$?__"
+     *   {command}; echo "__UNIBOT_DONE_{marker}_EXIT_$?__"
      *
      * @return Pair of (output, exitCode)
      */
@@ -483,7 +483,7 @@ class PersistentShell(
         }
 
         val marker = UUID.randomUUID().toString().take(8)
-        val wrappedCommand = "$command\necho \"__MINIS_DONE_${marker}_EXIT_\$?__\"\n"
+        val wrappedCommand = "$command\necho \"__UNIBOT_DONE_${marker}_EXIT_\$?__\"\n"
 
         return withContext(Dispatchers.IO) {
             val result = withTimeoutOrNull(timeout) {

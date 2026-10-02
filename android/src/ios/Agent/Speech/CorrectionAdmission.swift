@@ -34,7 +34,7 @@ enum CorrectionAdmission {
         static let maxAcronymLengthFraction = 0.9
         /// Signal 4: Levenshtein similarity of the two consonant skeletons at or
         /// above which a same-syllable-count Latin pair counts as a near-sound.
-        /// 0.30 is the loosest value that still admits linux↔minis (skeletons
+        /// 0.30 is the loosest value that still admits linux↔unibot (skeletons
         /// lnx/mns, sim 0.33) while rejecting cursor↔claude (crsr/cld, 0.25) —
         /// the latter already passes Signal 1 anyway.
         static let latinSkeletonSimilarity = 0.30
@@ -117,7 +117,7 @@ enum CorrectionAdmission {
             return .acronym
         }
 
-        // Signal 4 — Latin near-sound (linux→minis). Levenshtein over the full
+        // Signal 4 — Latin near-sound (linux→unibot). Levenshtein over the full
         // key scores these ~0.40 because the consonants differ outright, but the
         // words share syllable rhythm and a consonant landmark, which is what an
         // ASR actually confuses. Gated on the ORIGINAL text being Latin-script:
@@ -185,7 +185,7 @@ enum CorrectionAdmission {
     /// Levenshtein-similar AND share a consonant at the same skeleton index.
     ///
     /// Why the skeleton rather than a consonant multiset: a bag of consonants
-    /// throws away order, and linux/minis (l,n,x vs m,n,s) then scores exactly
+    /// throws away order, and linux/unibot (l,n,x vs m,n,s) then scores exactly
     /// the same as linux/ninja (l,n,x vs n,n,j) — 0.20 either way — so no
     /// threshold can separate the real confusion from the spurious one. The
     /// skeleton keeps position, and the same-index anchor requires the shared
@@ -196,7 +196,7 @@ enum CorrectionAdmission {
     /// confused these?", not "should this correction apply". The locality guard
     /// here and the vocabulary evidence downstream are the real gatekeepers.
     /// Known accepted false positive: linux↔ninja (indistinguishable from
-    /// linux↔minis on every feature available here).
+    /// linux↔unibot on every feature available here).
     static func isLatinPhoneticSimilar(_ keyA: String, _ keyB: String) -> Bool {
         let vowels: Set<Character> = ["a", "e", "i", "o", "u"]
 

@@ -1,6 +1,6 @@
 //
 //  VisionOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-vision`.
 //  Subcommands: ocr, barcode, classify, detect, faces, analyze, similarity, overlap

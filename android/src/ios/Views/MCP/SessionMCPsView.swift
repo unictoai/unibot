@@ -1,6 +1,6 @@
 //
 //  SessionMCPsView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Per-session MCP-server toggle sheet: override which MCP servers are active
 //  in a chat. Mirrors SessionSkillsView.

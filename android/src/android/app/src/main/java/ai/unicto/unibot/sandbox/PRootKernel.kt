@@ -94,10 +94,10 @@ object PRootKernel {
         customEnvironment.putIfAbsent("HOME", "/root")
 
         // URL interception: seed $BROWSER directly into every process envp
-        // so non-login shells (which never source /etc/profile.d/minis.sh)
+        // so non-login shells (which never source /etc/profile.d/unibot.sh)
         // still route webbrowser.open()/etc into the host OpenOffloadHandler.
         // Mirrors iOS ISHShellExecutor.m:333.
-        customEnvironment["BROWSER"] = "/usr/local/bin/minis-open"   // T195: force override; user dotfile BROWSER= would otherwise win
+        customEnvironment["BROWSER"] = "/usr/local/bin/unibot-open"   // T195: force override; user dotfile BROWSER= would otherwise win
 
         // ash-specific: ENV points at a file the shell sources on startup.
         // Our /etc/profile sources /etc/profile.d/*.sh, so non-login shells
@@ -130,7 +130,7 @@ object PRootKernel {
         // and PRoot rejects the second link with EPERM. Force uv to symlink
         // package files instead so the sentinels are never used as link
         // sources. Reported as openminis/openminis#7.
-        // Mirrored in default_mount/etc/profile.d/minis.sh for login shells.
+        // Mirrored in default_mount/etc/profile.d/unibot.sh for login shells.
         customEnvironment.putIfAbsent("UV_LINK_MODE", "symlink")
 
         // Inject device timezone so Alpine userspace sees local time.
@@ -183,7 +183,7 @@ object PRootKernel {
     }
 
     /**
-     * Register the global (session-independent) Minis bind mounts so direct
+     * Register the global (session-independent) Unibot bind mounts so direct
      * file I/O tools (file_read, file_edit) can resolve
      * `/var/minis/{memory,skills,shared}/...` without needing PRoot to be
      * booted or any shell to have started. Safe to call repeatedly.
@@ -191,7 +191,7 @@ object PRootKernel {
     fun registerGlobalBindMounts(context: Context) {
         val globalBase = File(context.filesDir, "minis-global")
         // [T-mcp-integration-android] mcp-servers is global (like memory/skills):
-        // binding it here makes the in-PRoot minis-mcp-cli read/write the SAME
+        // binding it here makes the in-PRoot unibot-mcp-cli read/write the SAME
         // servers.json the Android Settings UI does (host: minis-global/mcp-servers).
         listOf("memory", "skills", "shared", "mcp-servers").forEach { subdir ->
             val hostDir = File(globalBase, subdir).also { it.mkdirs() }
@@ -217,7 +217,7 @@ object PRootKernel {
 
     // Sentinel in the read-only write-guard wrapper scripts so we can recognize
     // and remove our own wrappers (vs a user/busybox binary of the same name).
-    private const val GUARD_MARKER = "minis-mount-readonly-guard"
+    private const val GUARD_MARKER = "unibot-mount-readonly-guard"
 
     /**
      * Reference to the user-mounted folders store, set by [UnibotApp] at

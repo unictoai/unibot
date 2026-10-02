@@ -433,7 +433,7 @@ struct InlineVoiceInputView: View {
         // buttons, so on-device e2e voice tests (play audio at the phone, then
         // inspect debug.voiceInputs) drive the mic via this notification from
         // the debug server's `debug.voice.panel {action:"mic"}` instead.
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("MinisDebugVoiceMicTap"))) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("UnibotDebugVoiceMicTap"))) { _ in
             VoiceLog.log("[debug-bridge] mic tap via debug.voice.panel")
             if showCancelIcon {
                 viewModel.cancelTranscription()
@@ -680,7 +680,7 @@ struct InlineVoiceInputView: View {
             }
             // [voice-correction] Non-error one-off status ("No corrections
             // needed" / "Correction failed…") now shows as a window-level
-            // MinisToast instead of an inline pill here — the pill inserted a
+            // UnibotToast instead of an inline pill here — the pill inserted a
             // row into this VStack and shifted the mic button every time it
             // appeared (user feedback: don't consume panel space).
 
@@ -1040,13 +1040,13 @@ struct InlineVoiceInputView: View {
                         // needed". Saying "No corrections needed" here disguises
                         // an outage as a semantic verdict (exactly how the
                         // adaptive-thinking token-burn bug stayed hidden).
-                        MinisToast.show(AppLocalized("Correction failed, original kept",
+                        UnibotToast.show(AppLocalized("Correction failed, original kept",
                                                comment: "Voice: AI correction call failed (timeout/error); transcript left unchanged"),
                                         systemImage: "exclamationmark.triangle.fill")
                     } else {
                         // Model genuinely found nothing to fix — tell the user so
                         // the tap doesn't read as "nothing happened".
-                        MinisToast.show(AppLocalized("No corrections needed",
+                        UnibotToast.show(AppLocalized("No corrections needed",
                                                comment: "Voice: AI found nothing to fix"),
                                         systemImage: "sparkles")
                     }

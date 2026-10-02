@@ -1,6 +1,6 @@
 //
 //  ChatAccessibilityAnnouncer.swift
-//  MinisApp
+//  UnibotApp
 //
 //  [T-ios-voiceover-announce] Speaks a short VoiceOver announcement when an
 //  agent turn ends.

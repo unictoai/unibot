@@ -1,6 +1,6 @@
 //
 //  MediaOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-media`.
 //  Subcommands: now-playing, play, pause, toggle, next, prev, volume, search, play-search
@@ -86,7 +86,7 @@ static BOOL requestMediaAccess(NSString **outError) {
         if (outError) {
             *outError = @"Media library access not granted. "
                          "To grant access, open Settings > Privacy & Security > Media & Apple Music "
-                         "and enable Minis.";
+                         "and enable Unibot.";
         }
         return NO;
     }

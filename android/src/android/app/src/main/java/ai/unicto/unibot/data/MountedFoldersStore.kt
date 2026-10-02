@@ -38,7 +38,7 @@ import java.util.UUID
  *     tradeoffs; we ship MVP scaffolding (persistence + CRUD + StateFlow)
  *     and leave the shell mount as a follow-up.
  *
- * Persistence: `filesDir/minis-config/mounted-folders.json`. The path is
+ * Persistence: `filesDir/unibot-config/mounted-folders.json`. The path is
  * intentionally outside `minis-global/` so it can't leak into the
  * DocumentsProvider-exposed tree.
  */
@@ -66,7 +66,7 @@ class MountedFoldersStore(private val context: Context) {
     }
 
     private val storeFile: File by lazy {
-        File(context.filesDir, "minis-config/mounted-folders.json").apply {
+        File(context.filesDir, "unibot-config/mounted-folders.json").apply {
             parentFile?.mkdirs()
         }
     }
@@ -302,7 +302,7 @@ class MountedFoldersStore(private val context: Context) {
     fun probeWritable(hostPath: String): Boolean {
         val dir = File(hostPath)
         if (!dir.isDirectory) return false
-        val probe = File(dir, ".minis-probe-${UUID.randomUUID()}")
+        val probe = File(dir, ".unibot-probe-${UUID.randomUUID()}")
         return runCatching {
             probe.outputStream().use { it.write(0) }
             true

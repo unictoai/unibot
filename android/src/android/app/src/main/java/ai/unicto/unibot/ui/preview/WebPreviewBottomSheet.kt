@@ -69,7 +69,7 @@ import ai.unicto.unibot.ui.theme.ChatColors
 /**
  * Immersive 90%-tall bottom sheet that hosts a [WebViewHolder] for a
  * Markdown link preview. Mirrors iOS [WebPreviewSheet.swift]
- * `MinisLinkPreviewView` (L243-312):
+ * `UnibotLinkPreviewView` (L243-312):
  *
  *  - Sheet height is `.fillMaxHeight(0.9f)` (iOS uses `.large` detent).
  *  - Top row carries four floating-style icons: Close, Reload/Stop,
@@ -354,7 +354,7 @@ internal fun WebPreviewToolbar(
                 description = stringResource(R.string.webpreview_more),
                 onClick = { menuOpen = true },
             )
-            ai.unicto.unibot.ui.components.MinisMenu(
+            ai.unicto.unibot.ui.components.UnibotMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
             ) {

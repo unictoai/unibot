@@ -183,7 +183,7 @@ class SessionForkManager(
      * Persist a memory note (plain Markdown / text) under
      * `<filesDir>/minis-global/memory/<fileName>`. Mirrors iOS
      * `SessionForkManager.copyRemoteMemory` which writes under
-     * `minisMemoryPersistentDir`. Overwrites if the file already exists.
+     * `unibotMemoryPersistentDir`. Overwrites if the file already exists.
      */
     fun copyMemory(fileName: String, content: String): Boolean {
         if (fileName.contains("/") || fileName.contains("..")) {

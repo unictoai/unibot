@@ -15,7 +15,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * T188 — `minis-sessions-cli` offload handler. Lets the in-shell agent
+ * T188 — `unibot-sessions-cli` offload handler. Lets the in-shell agent
  * query historical chat sessions and messages without round-tripping
  * back through the LLM. Three subcommands:
  *
@@ -31,7 +31,7 @@ import java.util.TimeZone
  * column names), so query semantics translate one-to-one.
  *
  * Output flags `--compact` / `-q` / `--quiet` are honored uniformly via
- * [OffloadOutput.formatBody], same as every other android-* / minis-*
+ * [OffloadOutput.formatBody], same as every other android-* / unibot-*
  * tool.
  */
 class SessionsOffloadHandler(
@@ -39,7 +39,7 @@ class SessionsOffloadHandler(
 ) : NativeOffloadHandler {
 
     override fun handle(request: NativeOffloadRequest): NativeOffloadResult {
-        // argv[0] is the program name ("minis-sessions-cli"); subcommand
+        // argv[0] is the program name ("unibot-sessions-cli"); subcommand
         // and options follow. Drop argv[0] before parsing so positional[0]
         // is the subcommand name. `full` is declared boolean so
         // `--full <token>` never greedily consumes the next token as a value
@@ -118,7 +118,7 @@ class SessionsOffloadHandler(
                 "search",
                 "INVALID_ARGS",
                 "--keywords is required for search. " +
-                    "Example: minis-sessions-cli search --keywords \"API error\"",
+                    "Example: unibot-sessions-cli search --keywords \"API error\"",
             )
             return NativeOffloadResult(
                 EXIT_INVALID_ARGS,
@@ -288,7 +288,7 @@ class SessionsOffloadHandler(
 
     companion object {
         private const val TAG = "SessionsOffload"
-        private const val TOOL_NAME = "minis-sessions-cli"
+        private const val TOOL_NAME = "unibot-sessions-cli"
         private const val DEFAULT_LIMIT = 50
         private const val MAX_LIMIT = 100
 
@@ -300,10 +300,10 @@ class SessionsOffloadHandler(
             timeZone = TimeZone.getDefault()
         }
 
-        private const val HELP_TEXT = """minis-sessions-cli - Query historical chat sessions and messages
+        private const val HELP_TEXT = """unibot-sessions-cli - Query historical chat sessions and messages
 
 USAGE:
-  minis-sessions-cli <command> [options]
+  unibot-sessions-cli <command> [options]
 
 COMMANDS:
   list      List recent sessions (default: 50, max: 100)
@@ -344,15 +344,15 @@ WORKFLOW:
   4. Use --offset to paginate through long conversations
 
 EXAMPLES:
-  minis-sessions-cli list
-  minis-sessions-cli list --limit 10
-  minis-sessions-cli list --keywords python flask
-  minis-sessions-cli list --start 2025-01-01 --end 2025-03-31
-  minis-sessions-cli search --keywords "API error" --limit 20
-  minis-sessions-cli search --keywords deploy --ids abc123,def456
-  minis-sessions-cli messages --id <session_id>
-  minis-sessions-cli messages --id <session_id> --full
-  minis-sessions-cli messages --id <session_id> --offset 20 --limit 10
+  unibot-sessions-cli list
+  unibot-sessions-cli list --limit 10
+  unibot-sessions-cli list --keywords python flask
+  unibot-sessions-cli list --start 2025-01-01 --end 2025-03-31
+  unibot-sessions-cli search --keywords "API error" --limit 20
+  unibot-sessions-cli search --keywords deploy --ids abc123,def456
+  unibot-sessions-cli messages --id <session_id>
+  unibot-sessions-cli messages --id <session_id> --full
+  unibot-sessions-cli messages --id <session_id> --offset 20 --limit 10
 """
     }
 }

@@ -1,6 +1,6 @@
 //
 //  TerminalBuffer.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Terminal screen buffer with character grid, scrollback, and cursor management
 //

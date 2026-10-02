@@ -27,7 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.provider.thinking.ThinkingRule
 import ai.unicto.unibot.provider.thinking.ThinkingResolveContext
@@ -153,7 +153,7 @@ fun ThinkingRuleEditorDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Column {
-                    MinisTextButton(onClick = { formatMenuOpen = true }) {
+                    UnibotTextButton(onClick = { formatMenuOpen = true }) {
                         Text(stringResource(choice.titleRes))
                     }
                     DropdownMenu(expanded = formatMenuOpen, onDismissRequest = { formatMenuOpen = false }) {
@@ -236,12 +236,12 @@ fun ThinkingRuleEditorDialog(
             }
         },
         confirmButton = {
-            MinisTextButton(onClick = { if (isValid) onSave(buildRule()) }, enabled = isValid) {
+            UnibotTextButton(onClick = { if (isValid) onSave(buildRule()) }, enabled = isValid) {
                 Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
-            MinisTextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            UnibotTextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }

@@ -47,8 +47,8 @@ import ai.unicto.unibot.data.model.ModelGroup
 import ai.unicto.unibot.data.model.ProviderInstance
 import ai.unicto.unibot.data.model.ProviderType
 import ai.unicto.unibot.data.repository.ProviderRepository
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * Multi-step onboarding flow shown on first launch.
@@ -92,7 +92,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(48.dp))
-            MinisButton(onClick = onNext, modifier = Modifier.fillMaxWidth(0.6f)) {
+            UnibotButton(onClick = onNext, modifier = Modifier.fillMaxWidth(0.6f)) {
                 Text(stringResource(R.string.onboarding_get_started))
             }
         }
@@ -167,7 +167,7 @@ private fun ApiKeyStep(
 
             Spacer(Modifier.height(16.dp))
 
-            MinisButton(
+            UnibotButton(
                 onClick = {
                     if (apiKey.isNotBlank()) {
                         val instance = ProviderInstance(
@@ -199,10 +199,10 @@ private fun ApiKeyStep(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                MinisTextButton(onClick = onSkip) {
+                UnibotTextButton(onClick = onSkip) {
                     Text(stringResource(R.string.common_skip))
                 }
-                MinisButton(onClick = onNext, enabled = saved) {
+                UnibotButton(onClick = onNext, enabled = saved) {
                     Text(stringResource(R.string.common_next))
                 }
             }
@@ -335,10 +335,10 @@ private fun ModelSelectionStep(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                MinisTextButton(onClick = onComplete) {
+                UnibotTextButton(onClick = onComplete) {
                     Text(stringResource(R.string.common_skip))
                 }
-                MinisButton(
+                UnibotButton(
                     onClick = {
                         // Create default model group from selections
                         if (selected.isNotEmpty()) {

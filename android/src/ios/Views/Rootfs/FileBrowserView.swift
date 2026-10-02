@@ -1,6 +1,6 @@
 //
 //  FileBrowserView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  File browser for exploring and exporting files from the rootfs
 //
@@ -217,8 +217,8 @@ struct FileBrowserView: View {
             }
         }
         .sheet(item: $moveOrCopyItem) { item in
-            let minisPath = viewModel.rootPath.appendingPathComponent("var/minis")
-            let initial = FileManager.default.fileExists(atPath: minisPath.path) ? minisPath : nil
+            let unibotPath = viewModel.rootPath.appendingPathComponent("var/minis")
+            let initial = FileManager.default.fileExists(atPath: unibotPath.path) ? unibotPath : nil
             NavigationStack {
                 DirectoryPickerView(
                     rootPath: viewModel.rootPath,
@@ -556,7 +556,7 @@ private struct HTMLFilePreview: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
-        config.setURLSchemeHandler(BrowserUseManager.sharedMinisSchemeHandler, forURLScheme: "minis")
+        config.setURLSchemeHandler(BrowserUseManager.sharedUnibotSchemeHandler, forURLScheme: "unibot")
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         return webView
@@ -802,7 +802,7 @@ private struct FileBrowserRow: View {
             .sheet(isPresented: $showAddWebApp) {
                 // The browser exposes already-resolved host URLs via
                 // FileItem.url, so we hand the URL straight to the sheet
-                // without going through minis:// resolution.
+                // without going through unibot:// resolution.
                 WebAppAddToHomeSheet(htmlURL: item.url, sourceSessionId: nil)
             }
     }
@@ -888,7 +888,7 @@ struct FileItemRow: View {
 /// The source lives on the rootfs/fakefs, which isn't a stable URL the share
 /// extensions can read, so we stage a copy in tmp first (mirrors the old
 /// export path), then hand it to `UIActivityViewController` (reusing
-/// `MinisShareSheet.sanitizedShareURL` for the ShareKit UTI crash mitigation).
+/// `UnibotShareSheet.sanitizedShareURL` for the ShareKit UTI crash mitigation).
 struct DocumentExportView: UIViewControllerRepresentable {
     let fileURL: URL
 
@@ -898,7 +898,7 @@ struct DocumentExportView: UIViewControllerRepresentable {
             .appendingPathComponent(fileURL.lastPathComponent)
         try? FileManager.default.removeItem(at: staged)
         try? FileManager.default.copyItem(at: fileURL, to: staged)
-        let shareURL = MinisShareSheet.sanitizedShareURL(staged) ?? staged
+        let shareURL = UnibotShareSheet.sanitizedShareURL(staged) ?? staged
         return UIActivityViewController(activityItems: [shareURL], applicationActivities: nil)
     }
 
@@ -954,7 +954,7 @@ class FileBrowserViewModel: ObservableObject {
 
             do {
                 // Resolve symlinks so contentsOfDirectory works on bind-mounted dirs
-                // (e.g. /var/minis/attachments -> Library/MinisChat/...)
+                // (e.g. /var/minis/attachments -> Library/UnibotChat/...)
                 let resolvedPath = self.currentPath.resolvingSymlinksInPath()
                 // Note: we deliberately do NOT bulk-prefetch iCloud placeholder
                 // files here. A large iCloud folder could contain thousands of
@@ -1069,7 +1069,7 @@ class FileBrowserViewModel: ObservableObject {
                 Self.signalFileProviderParent(forLinuxPath: linux)
             }
             // iCloud Sync: if the removed file lives under a session's
-            // workspace tree (Library/MinisChat/minis/<sid>/...), queue
+            // workspace tree (Library/UnibotChat/unibot/<sid>/...), queue
             // a SessionFile cloud-delete so peers stop seeing it.
             Self.queueSessionFileCloudDelete(forRemovedURL: removedURL)
             loadItems()
@@ -1123,13 +1123,13 @@ class FileBrowserViewModel: ObservableObject {
         }
     }
 
-    /// If `removedURL` lives inside a session's per-session minis directory
-    /// (`Library/MinisChat/minis/<sid>/<subdir>/<rel>`), queue a SessionFile
+    /// If `removedURL` lives inside a session's per-session unibot directory
+    /// (`Library/UnibotChat/unibot/<sid>/<subdir>/<rel>`), queue a SessionFile
     /// cloud-delete so peer devices stop seeing the file. Silent when the URL
     /// is outside any session tree (e.g. shared/skills/memory deletes — those
     /// are not SessionFile-scoped) or when sync isn't configured.
     private static func queueSessionFileCloudDelete(forRemovedURL removedURL: URL) {
-        let baseURL = ChatStore.shared.minisBaseURL
+        let baseURL = ChatStore.shared.unibotBaseURL
             .resolvingSymlinksInPath().standardized
         let removed = removedURL.resolvingSymlinksInPath().standardized
         let basePath = baseURL.path
@@ -1178,9 +1178,9 @@ class FileBrowserViewModel: ObservableObject {
         let fm = FileManager.default
         let dest = destURL.resolvingSymlinksInPath().standardized.path
         let roots: [(String, URL)] = [
-            ("shared", AIChatViewModel.minisSharedPersistentDir),
-            ("skills", AIChatViewModel.minisSkillsPersistentDir),
-            ("memory", AIChatViewModel.minisMemoryPersistentDir),
+            ("shared", AIChatViewModel.unibotSharedPersistentDir),
+            ("skills", AIChatViewModel.unibotSkillsPersistentDir),
+            ("memory", AIChatViewModel.unibotMemoryPersistentDir),
         ]
         for (key, rootURL) in roots {
             let rootPath = rootURL.resolvingSymlinksInPath().standardized.path
@@ -1257,7 +1257,7 @@ class FileBrowserViewModel: ObservableObject {
         // Why this is the reliable source: `loadItems()` lists
         // `currentPath.resolvingSymlinksInPath()`, so each `item.url` is already
         // symlink-RESOLVED. For a bind-mounted subdir like `/var/minis/browser`
-        // (an APFS symlink → `.../Library/MinisChat/minis/<sid>/browser`) the
+        // (an APFS symlink → `.../Library/UnibotChat/unibot/<sid>/browser`) the
         // resolved item URL lands OUTSIDE the rootfs `data/` tree, so BOTH the
         // resolved-prefix and raw-prefix checks below miss and the function fell
         // through to `url.lastPathComponent` — copying just the filename
@@ -1281,7 +1281,7 @@ class FileBrowserViewModel: ObservableObject {
             return join(rootLabel, String(urlStd.dropFirst(rootStd.count)))
         }
         // [T-ios-copy-abs-path-fullpath] Bind-mounted subtrees (attachments →
-        // MinisChat container) resolve OUTSIDE the rootfs `data/` tree, so the
+        // UnibotChat container) resolve OUTSIDE the rootfs `data/` tree, so the
         // resolved prefix check above won't match them. Fall back to the
         // UN-resolved namespace: the listing keeps the logical `/var/minis/…`
         // path on the URL before symlink resolution would diverge.

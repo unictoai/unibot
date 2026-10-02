@@ -83,10 +83,10 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.backup.BackupCategory
 import ai.unicto.unibot.backup.BackupFormat
 import ai.unicto.unibot.backup.BackupHistory
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.settings.SettingsScaffold
 import ai.unicto.unibot.ui.settings.SettingsSection
 
@@ -386,7 +386,7 @@ private fun BackupTab(
         // Progress belongs in the run's own entry in Backup History below,
         // which shows the live status line and the whole log; the control
         // stays a control. Same reasoning, and the same shape, as iOS.
-        MinisButton(
+        UnibotButton(
             onClick = {
                 if (running) vm.stopExport()
                 else vm.startExport(passphrase.takeIf { encrypt })
@@ -723,7 +723,7 @@ private fun MaxFileSizeRow(
                         modifier = Modifier.size(18.dp),
                     )
                 }
-                MinisMenu(
+                UnibotMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                     alignEnd = true,
@@ -941,7 +941,7 @@ private fun RestoreTab(
     }
 
     Column(Modifier.padding(16.dp)) {
-        MinisButton(
+        UnibotButton(
             onClick = { vm.startRestore(passphrase.takeIf { p.manifest.encryption != null }) },
             enabled = !running && restoreSelected.isNotEmpty(),
             modifier = Modifier.fillMaxWidth(),
@@ -990,7 +990,7 @@ private fun RestoreTab(
                 )
             }
         }
-        MinisOutlinedButton(
+        UnibotOutlinedButton(
             onClick = { vm.cancelRestore(); onPassphraseChange("") },
             enabled = !running,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -1089,7 +1089,7 @@ private fun RestoreReport(
     }
 
     Column(Modifier.padding(16.dp)) {
-        MinisButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+        UnibotButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.backup_done))
         }
     }
@@ -1400,7 +1400,7 @@ private fun ServerPackagePicker(
         },
         confirmButton = {},
         dismissButton = {
-            MinisTextButton(onClick = onDismiss) { Text(stringResource(R.string.backup_dest_cancel)) }
+            UnibotTextButton(onClick = onDismiss) { Text(stringResource(R.string.backup_dest_cancel)) }
         },
     )
 }

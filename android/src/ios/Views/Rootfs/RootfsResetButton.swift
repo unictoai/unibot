@@ -1,6 +1,6 @@
 //
 //  RootfsResetButton.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Quick reset button component for easy integration
 //

@@ -161,6 +161,7 @@
 			<string>unibot Share</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>unibot</string>
 				<string>minis</string>
 			</array>
 		</dict>
@@ -169,6 +170,7 @@
 			<string>MCP OAuth Callback</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>unibot-mcp</string>
 				<string>minis-mcp</string>
 			</array>
 		</dict>

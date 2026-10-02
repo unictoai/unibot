@@ -135,9 +135,9 @@ final class BrowserUseManager: NSObject, ObservableObject {
 
     // MARK: - WebView Factory
 
-    /// Shared scheme handler for `minis://` URLs across all browser tabs
+    /// Shared scheme handler for `unibot://` URLs across all browser tabs
     /// and in-app previews that embed a WKWebView.
-    static let sharedMinisSchemeHandler = MinisURLSchemeHandler()
+    static let sharedUnibotSchemeHandler = UnibotURLSchemeHandler()
 
     /// Resolve the effective UA string. For `.custom` with an empty custom string,
     /// fall back to mobile Safari so WebKit never reverts to its default UA.
@@ -156,10 +156,11 @@ final class BrowserUseManager: NSObject, ObservableObject {
         config.processPool = sharedProcessPool
         config.websiteDataStore = .default()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
-        config.setURLSchemeHandler(Self.sharedMinisSchemeHandler, forURLScheme: "minis")
+        config.setURLSchemeHandler(Self.sharedUnibotSchemeHandler, forURLScheme: "unibot")
+        config.setURLSchemeHandler(Self.sharedUnibotSchemeHandler, forURLScheme: "minis") // legacy
 
         // Bridge JS window.print() to the native iOS print dialog. Injected on
-        // every page (minis:// and external http/https) at document start so a
+        // every page (unibot:// and external http/https) at document start so a
         // print button works even if it fires before the page finishes loading.
         config.userContentController.addUserScript(printBridgeScript())
 
@@ -212,7 +213,7 @@ final class BrowserUseManager: NSObject, ObservableObject {
 
     // MARK: - Print Support
 
-    nonisolated static let printMessageHandlerName = "minisPrint"
+    nonisolated static let printMessageHandlerName = "unibotPrint"
 
     /// Override `window.print()` to message the native side so we can present the
     /// iOS system print dialog (WKWebView ignores `window.print()` by default).
@@ -739,10 +740,10 @@ final class BrowserUseManager: NSObject, ObservableObject {
             return .error("Invalid URL: \(urlString)")
         }
 
-        // Only allow HTTP(S) and minis:// schemes for direct navigation
+        // Only allow HTTP(S) and unibot:// schemes for direct navigation
         let scheme = url.scheme?.lowercased() ?? ""
-        if !["http", "https", "minis"].contains(scheme) {
-            return .error("Cannot navigate to \(scheme):// URLs. Only http://, https://, and minis:// are supported.")
+        if !["http", "https", "unibot", "minis"].contains(scheme) {
+            return .error("Cannot navigate to \(scheme):// URLs. Only http://, https://, and unibot:// are supported.")
         }
 
         logger.info("[NavTiming] load_start url=\(url.absoluteString.prefix(100))")
@@ -2082,7 +2083,7 @@ final class BrowserUseManager: NSObject, ObservableObject {
         // The user script keeps top-level `return`/`await` by staying the body
         // of its own async function, which we then await.
         """
-        const __minisNormalize = (function () {
+        const __unibotNormalize = (function () {
             const MAX_DEPTH = 32;
             function norm(v, depth, seen) {
                 if (v === null || v === undefined) return null;
@@ -2137,10 +2138,10 @@ final class BrowserUseManager: NSObject, ObservableObject {
                 try { return norm(v, 0, new WeakSet()); } catch (e) { return v; }
             };
         })();
-        const __minisResult = await (async () => {
+        const __unibotResult = await (async () => {
         \(script)
         })();
-        return __minisNormalize(__minisResult);
+        return __unibotNormalize(__unibotResult);
         """
     }
 
@@ -2355,7 +2356,7 @@ extension BrowserUseManager: WKNavigationDelegate {
         preferences: WKWebpagePreferences,
         decisionHandler: @escaping (WKNavigationActionPolicy, WKWebpagePreferences) -> Void
     ) {
-        let allowedSchemes: Set<String> = ["http", "https", "about", "blob", "minis"]
+        let allowedSchemes: Set<String> = ["http", "https", "about", "blob", "unibot", "minis"]
 
         // <a download> anchors (including blob: URLs) mark the action as a
         // download — route it through WKDownload instead of navigating.
@@ -2378,7 +2379,7 @@ extension BrowserUseManager: WKNavigationDelegate {
                 if let cont = self.navigationContinuation {
                     self.navigationContinuation = nil
                     cont.resume(throwing: URLError(.unsupportedURL, userInfo: [
-                        NSLocalizedDescriptionKey: "Blocked navigation to \(scheme):// — only http(s) and minis:// are allowed in the browser."
+                        NSLocalizedDescriptionKey: "Blocked navigation to \(scheme):// — only http(s) and unibot:// are allowed in the browser."
                     ]))
                 }
             }
@@ -2494,7 +2495,7 @@ extension BrowserUseManager: WKDownloadDelegate {
                 completionHandler(nil)
                 return
             }
-            let dir = AIChatViewModel.minisWorkspacePersistentDir(for: sid)
+            let dir = AIChatViewModel.unibotWorkspacePersistentDir(for: sid)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
             // Unique filename: name.ext, name-1.ext, name-2.ext, …
@@ -2651,25 +2652,25 @@ extension BrowserUseManager: WKScriptMessageHandler {
     }
 }
 
-// MARK: - MinisURLSchemeHandler
+// MARK: - UnibotURLSchemeHandler
 
-/// Handles `minis://` URLs in WKWebView by resolving them to local files.
-/// Supports `minis://workspace/file.html`, `minis://shared/...`, etc.
-final class MinisURLSchemeHandler: NSObject, WKURLSchemeHandler {
-    private let logger = AppLogger(category: "MinisScheme")
+/// Handles `unibot://` URLs in WKWebView by resolving them to local files.
+/// Supports `unibot://workspace/file.html`, `unibot://shared/...`, etc.
+final class UnibotURLSchemeHandler: NSObject, WKURLSchemeHandler {
+    private let logger = AppLogger(category: "UnibotScheme")
 
     func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
         let url = urlSchemeTask.request.url!
-        logger.info("[MinisScheme] start \(url.absoluteString)")
+        logger.info("[UnibotScheme] start \(url.absoluteString)")
 
-        guard let fileURL = AIChatViewModel.resolveMinisURL(url) else {
-            logger.warning("[MinisScheme] not found: \(url.absoluteString)")
+        guard let fileURL = AIChatViewModel.resolveUnibotURL(url) else {
+            logger.warning("[UnibotScheme] not found: \(url.absoluteString)")
             urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
             return
         }
 
         guard let data = try? Data(contentsOf: fileURL) else {
-            logger.warning("[MinisScheme] read failed: \(fileURL.path)")
+            logger.warning("[UnibotScheme] read failed: \(fileURL.path)")
             urlSchemeTask.didFailWithError(URLError(.cannotOpenFile))
             return
         }
@@ -2684,7 +2685,7 @@ final class MinisURLSchemeHandler: NSObject, WKURLSchemeHandler {
         urlSchemeTask.didReceive(response)
         urlSchemeTask.didReceive(data)
         urlSchemeTask.didFinish()
-        logger.info("[MinisScheme] served \(url.absoluteString) → \(fileURL.lastPathComponent) (\(data.count) bytes, \(mimeType))")
+        logger.info("[UnibotScheme] served \(url.absoluteString) → \(fileURL.lastPathComponent) (\(data.count) bytes, \(mimeType))")
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {
@@ -2789,7 +2790,7 @@ final class BrowserDownloadCenter: ObservableObject {
                              progress: progress, state: .downloading,
                              startedAt: Date(), onCancel: onCancel))
         queueAgentEvent(sessionId: sessionId, filename: filename,
-                        line: "\(filename): download started → saving to minis://workspace/\(filename)")
+                        line: "\(filename): download started → saving to unibot://workspace/\(filename)")
         return id
     }
 
@@ -2799,7 +2800,7 @@ final class BrowserDownloadCenter: ObservableObject {
         entries[idx].seen = false
         let e = entries[idx]
         queueAgentEvent(sessionId: e.sessionId, filename: e.filename,
-                        line: "\(e.filename): download COMPLETED (\(sizeText)) → minis://workspace/\(e.filename) (shell path: /var/minis/workspace/\(e.filename))")
+                        line: "\(e.filename): download COMPLETED (\(sizeText)) → unibot://workspace/\(e.filename) (shell path: /var/minis/workspace/\(e.filename))")
     }
 
     func failed(id: UUID, reason: String) {
@@ -2858,7 +2859,7 @@ final class BrowserDownloadCenter: ObservableObject {
             let done = ByteCountFormatter.string(fromByteCount: p.completedUnitCount, countStyle: .file)
             let total = p.totalUnitCount > 0
                 ? ByteCountFormatter.string(fromByteCount: p.totalUnitCount, countStyle: .file) : "?"
-            return "\(e.filename): downloading \(pct) (\(done) / \(total)) → saving to minis://workspace/\(e.filename)"
+            return "\(e.filename): downloading \(pct) (\(done) / \(total)) → saving to unibot://workspace/\(e.filename)"
         }
         // A live progress line supersedes the same file's queued "started" line.
         lines += events.filter { !inflightNames.contains($0.filename) }.map(\.line)

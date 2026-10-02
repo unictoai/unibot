@@ -139,9 +139,9 @@ import ai.unicto.unibot.BuildConfig
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.FileMentionIndex
 import ai.unicto.unibot.logging.AppLogger
-import ai.unicto.unibot.ui.components.MinisAlertDialog
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisMenuDivider
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -272,7 +272,7 @@ import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 // ─── User Message (right-aligned, iOS: tertiarySystemFill bubble, 18dp radius) ─
 
@@ -323,7 +323,7 @@ internal fun UserMessageBubble(
         Box(
             modifier = Modifier
                 .widthIn(max = bubbleMaxWidth)
-                // pointerInput on the OUTER box (= MinisMenu's anchor). Long-press
+                // pointerInput on the OUTER box (= UnibotMenu's anchor). Long-press
                 // anywhere on the bubble (text or attachments) opens the menu;
                 // press coords are stored in this box's coordinate space, which
                 // is exactly what DropdownMenu's `offset` parameter expects.
@@ -469,14 +469,14 @@ internal fun UserMessageBubble(
             // alignEnd-branch max 280dp → 196dp) so the popup feels less
             // chunky on user bubbles, which only host 2-3 short items
             // (Copy / Retry / Edit). Override is local to the user-message
-            // call site — other MinisMenu callers keep the default 240dp
+            // call site — other UnibotMenu callers keep the default 240dp
             // minimum.
             // [T-android-tool-menu-minwidth] Match the tool-pill long-press
             // menu: width = min(220dp, screen width). Wants 220dp but must never
             // exceed the device width on a narrow screen; cap max to the same
             // value so the widthIn(min,max) range is always valid.
             val userMenuWidthDp = minOf(220, LocalConfiguration.current.screenWidthDp).dp
-            MinisMenu(
+            UnibotMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
                 offset = androidx.compose.ui.unit.DpOffset(0.dp, 6.dp),

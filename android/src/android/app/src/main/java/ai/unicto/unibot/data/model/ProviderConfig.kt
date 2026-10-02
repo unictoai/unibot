@@ -222,7 +222,7 @@ data class ProviderInstance(
     var appendV1Suffix: Boolean = true,
     // [T-provider-custom-user-agent] Optional per-provider User-Agent
     // override. Some relay gateways only accept requests whose UA looks like
-    // an official client (e.g. Claude Code); Minis' default UA gets rejected.
+    // an official client (e.g. Claude Code); Unibot' default UA gets rejected.
     // null/blank → keep the default UA; non-blank → replace the User-Agent
     // header on every outbound request (chat / models / responses) for this
     // instance. Only surfaced in the UI for custom-base OpenAI-/Anthropic-
@@ -410,7 +410,7 @@ data class ProviderConfig(
     // voiceInputGroupId (meta KV row, not synced CRDT member maps). Absent in
     // old persisted JSON → deserializes to null (ignoreUnknownKeys + default).
     var visionGroupId: String? = null,
-    // Models and groups exposed to the agent loop (minis-model-use terminal
+    // Models and groups exposed to the agent loop (unibot-model-use terminal
     // command) — mirrors iOS agentLoopModelEntryIds / agentLoopGroupIds.
     val agentLoopModelEntryIds: MutableList<String> = mutableListOf(),
     val agentLoopGroupIds: MutableList<String> = mutableListOf(),

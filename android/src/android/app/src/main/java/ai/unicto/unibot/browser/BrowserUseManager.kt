@@ -36,8 +36,8 @@ class BrowserUseManager(
     val webView: WebView,
     profile: UserAgentProfile = UserAgentProfile.MOBILE_CHROME,
     /**
-     * [T-android-minis-url-session-scope] Which chat session's sandbox a
-     * `minis://` URL should resolve against, or null when unknown.
+     * [T-android-unibot-url-session-scope] Which chat session's sandbox a
+     * `unibot://` URL should resolve against, or null when unknown.
      *
      * A LAMBDA, not a value: tabs are created before `BrowserTabPool.setSession`
      * runs, so a snapshot taken at construction time would be permanently null
@@ -230,7 +230,7 @@ class BrowserUseManager(
 
     init {
         configureWebView(webView, profile)
-        webView.addJavascriptInterface(jsBridge, "__minis__")
+        webView.addJavascriptInterface(jsBridge, "__unibot__")
         setupWebViewClient()
         setupWebChromeClient()
         // Intercept page-triggered downloads (Content-Disposition attachment,
@@ -271,7 +271,7 @@ class BrowserUseManager(
 
     /**
      * Read a blob: URL from inside the page's JS context and deliver its bytes
-     * through the `__minis__.saveBlobDownload` bridge. blob: object URLs are
+     * through the `__unibot__.saveBlobDownload` bridge. blob: object URLs are
      * scoped to the page — they cannot be fetched from native code, so this
      * injected fetch + FileReader round-trip is the only way to get the data.
      */
@@ -284,12 +284,12 @@ class BrowserUseManager(
                     .then(function(blob) {
                         var reader = new FileReader();
                         reader.onloadend = function() {
-                            __minis__.saveBlobDownload(reader.result, ${JSONObject.quote(guessedName)});
+                            __unibot__.saveBlobDownload(reader.result, ${JSONObject.quote(guessedName)});
                         };
-                        reader.onerror = function() { __minis__.blobDownloadError('FileReader error'); };
+                        reader.onerror = function() { __unibot__.blobDownloadError('FileReader error'); };
                         reader.readAsDataURL(blob);
                     })
-                    .catch(function(e) { __minis__.blobDownloadError(String(e)); });
+                    .catch(function(e) { __unibot__.blobDownloadError(String(e)); });
             })();
         """.trimIndent()
         webView.post { webView.evaluateJavascript(js, null) }
@@ -418,23 +418,24 @@ class BrowserUseManager(
                 view: WebView, request: WebResourceRequest
             ): android.webkit.WebResourceResponse? {
                 val url = request.url ?: return null
-                if (url.scheme != "minis") return null
-                return interceptMinisURL(url)
+                // Legacy minis:// accepted too (old content may reference it).
+                if (url.scheme != "unibot" && url.scheme != "minis") return null
+                return interceptUnibotURL(url)
             }
         }
     }
 
-    /** Resolve minis:// URLs to local workspace files. */
-    private fun interceptMinisURL(uri: android.net.Uri): android.webkit.WebResourceResponse? {
+    /** Resolve unibot:// URLs to local workspace files. */
+    private fun interceptUnibotURL(uri: android.net.Uri): android.webkit.WebResourceResponse? {
         try {
-            // minis://workspace/foo.html → /var/minis/workspace/foo.html, then
+            // unibot://workspace/foo.html → /var/minis/workspace/foo.html, then
             // resolve to the host file via PRoot bind mounts (per-session
             // workspace lives under filesDir/minis-sessions/<sid>/workspace/).
             val host = uri.host ?: return null
             val path = uri.path ?: ""
             val linuxPath = "/var/minis/$host$path"
 
-            // [T-android-minis-url-session-scope] Resolve against THIS session
+            // [T-android-unibot-url-session-scope] Resolve against THIS session
             // first, and only then fall back to the global bind-mount map.
             //
             // `workspace`, `attachments`, `offloads` and `browser` live under
@@ -446,7 +447,7 @@ class BrowserUseManager(
             // /var/minis/workspace, which is empty), or another session had
             // booted more recently and the mount pointed at ITS workspace.
             //
-            // Measured on a GEM-W09: `minis://workspace/jump-jump.html` 404'd
+            // Measured on a GEM-W09: `unibot://workspace/jump-jump.html` 404'd
             // while the file sat intact at 5969 bytes in
             // minis-sessions/145d6883…/workspace/. The rootfs directory the
             // resolver actually reached contained nothing but `.` and `..`.
@@ -473,7 +474,7 @@ class BrowserUseManager(
             // the agent's session viewport when the page doesn't declare one.
             // Without this, Android WebView falls back to a hardcoded 980 CSS
             // px width regardless of the WebView's measured size, making
-            // `set_viewport` look like a no-op for `minis://` HTML pages.
+            // `set_viewport` look like a no-op for `unibot://` HTML pages.
             val stream = if (mimeType == "text/html" && lastAppliedViewport != null) {
                 ensureMetaViewport(localFile.readBytes(), lastAppliedViewport!!.first)
             } else {
@@ -483,7 +484,7 @@ class BrowserUseManager(
                 mapOf("Access-Control-Allow-Origin" to "*"),
                 stream)
         } catch (e: Exception) {
-            Log.w(TAG, "minis:// intercept error: ${e.message}")
+            Log.w(TAG, "unibot:// intercept error: ${e.message}")
             return null
         }
     }
@@ -732,7 +733,7 @@ class BrowserUseManager(
 
         withContext(Dispatchers.Main) {
             // Re-assert the last applied viewport before loadUrl. Intercepted
-            // navigations (minis://) served via shouldInterceptRequest skip
+            // navigations (unibot://) served via shouldInterceptRequest skip
             // the layout pass that a real network load triggers, so without
             // this the page reports Android WebView's 980px no-meta fallback
             // even when a session override (e.g. 960x540) is active.
@@ -942,7 +943,7 @@ class BrowserUseManager(
     /**
      * Public live-preview snapshot — mirrors iOS `webView.takeSnapshot()`.
      * Called by the UI on a timer (e.g. every 3s while a tool is streaming) so
-     * the Minis Computer sheet and FloatingToolStatusBar can show the browser
+     * the Unibot Computer sheet and FloatingToolStatusBar can show the browser
      * state even for actions that don't save an imageFilePath (get_readable,
      * get_text, execute_js, fetch, etc.).
      */
@@ -1077,7 +1078,7 @@ class BrowserUseManager(
         if (script.isNullOrEmpty()) return BrowserActionResult.error("execute_js requires 'script'")
         // Wrap in an async IIFE so `await` works in user scripts.
         // Android WebView doesn't resolve Promises from evaluateJavascript,
-        // so we use a JS bridge callback (__minis__.resolve / __minis__.reject).
+        // so we use a JS bridge callback (__unibot__.resolve / __unibot__.reject).
         return try {
             val deferred = CompletableDeferred<String>()
             asyncJsDeferred = deferred
@@ -1087,14 +1088,14 @@ class BrowserUseManager(
                         var __r__ = (async function(){ $script })();
                         var __v__ = await __r__;
                         if (__v__ === undefined || __v__ === null) {
-                            __minis__.resolve(String(__v__));
+                            __unibot__.resolve(String(__v__));
                         } else if (typeof __v__ === 'object') {
-                            __minis__.resolve(JSON.stringify(__v__));
+                            __unibot__.resolve(JSON.stringify(__v__));
                         } else {
-                            __minis__.resolve(String(__v__));
+                            __unibot__.resolve(String(__v__));
                         }
                     } catch(e) {
-                        __minis__.reject(e.message || String(e));
+                        __unibot__.reject(e.message || String(e));
                     }
                 })();
             """.trimIndent()
@@ -1164,7 +1165,7 @@ class BrowserUseManager(
         // resolves to a Promise. Android's `WebView.evaluateJavascript` does
         // NOT await Promises, so calling `evaluateJavascript(js)` returns the
         // Promise's `{}` string representation and the caller sees a
-        // "No value for base64" parse error. Route through the __minis__
+        // "No value for base64" parse error. Route through the __unibot__
         // bridge so we actually wait for the Promise to resolve.
         val raw = awaitPromiseJs(BrowserUseJS.fetch(urlString))
             ?: return BrowserActionResult.error("fetch timed out")
@@ -1210,7 +1211,7 @@ class BrowserUseManager(
 
     /**
      * Evaluate an `(async function(){...})()` expression and wait for the
-     * returned Promise to resolve via the `__minis__` bridge. Returns the
+     * returned Promise to resolve via the `__unibot__` bridge. Returns the
      * resolved string (JSON or plain) or null on timeout. Mirrors the same
      * pattern used by [executeJS].
      */
@@ -1222,14 +1223,14 @@ class BrowserUseManager(
                 try {
                     var __v__ = await ($js);
                     if (__v__ === undefined || __v__ === null) {
-                        __minis__.resolve('null');
+                        __unibot__.resolve('null');
                     } else if (typeof __v__ === 'object') {
-                        __minis__.resolve(JSON.stringify(__v__));
+                        __unibot__.resolve(JSON.stringify(__v__));
                     } else {
-                        __minis__.resolve(String(__v__));
+                        __unibot__.resolve(String(__v__));
                     }
                 } catch(e) {
-                    __minis__.reject(e && e.message ? e.message : String(e));
+                    __unibot__.reject(e && e.message ? e.message : String(e));
                 }
             })();
         """.trimIndent()
@@ -1279,7 +1280,7 @@ class BrowserUseManager(
     /**
      * Last CSS-pixel viewport applied via [applyViewport]. Used so [navigate]
      * can re-assert the same size before `loadUrl()` — intercepted
-     * (`minis://`) loads skip WebView's measure pass, otherwise stranding the
+     * (`unibot://`) loads skip WebView's measure pass, otherwise stranding the
      * page at the 980px no-meta fallback.
      */
     private var lastAppliedViewport: Pair<Int, Int>? = null
@@ -1808,7 +1809,7 @@ class BrowserUseManager(
         // already finished loading (readyState === 'complete') is almost
         // always stable — confirm with two samples 50ms apart and return
         // without paying the 200ms poll interval. Keeps trivial static
-        // pages (e.g. minis:// docs) fast at any budget.
+        // pages (e.g. unibot:// docs) fast at any budget.
         val readyState = evaluateJavascript(
             "(function(){try{return document.readyState;}catch(e){return '';}})()"
         ).trim('"')

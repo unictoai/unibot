@@ -62,7 +62,7 @@ final class ShareCoordinator: ObservableObject {
     /// cutoff — within that window the user's intent to inject clearly stands.
     private static let bufferTTL: TimeInterval = 300
 
-    /// Set to true when a `minis://share` URL is received.
+    /// Set to true when a `unibot://share` URL is received.
     @Published var hasPendingShare = false {
         didSet {
             shareLog.info("[Share] hasPendingShare changed: \(oldValue) → \(self.hasPendingShare)")
@@ -75,7 +75,7 @@ final class ShareCoordinator: ObservableObject {
     /// [T-share-double-raise] `hasPendingShare` alone cannot coalesce
     /// concurrent raises: it stays false for the whole sleep, so a second call
     /// inside that window passed the guard and scheduled a SECOND flip. The URL
-    /// genuinely arrives twice on every share — MinisApp.onOpenURL and
+    /// genuinely arrives twice on every share — UnibotApp.onOpenURL and
     /// AppDelegate's scene openURLContexts both route it to DeepLinkRouter —
     /// so this is the normal path, not an edge case.
     private var raiseInFlight = false
@@ -194,7 +194,7 @@ final class ShareCoordinator: ObservableObject {
             shareLog.info("[Share] consumeBuffer: expired (age=\(String(format: "%.1f", age))s > \(Self.bufferTTL)s), discarding")
             SharedContainerStore.cleanSharedFiles()
             // [T-share-buffer-merge] Never drop a share silently: the user
-            // explicitly shared content into Minis — tell them it didn't make
+            // explicitly shared content into Unibot — tell them it didn't make
             // it instead of letting the screenshot vanish into thin air.
             Task { @MainActor in
                 ShareFeedbackToast.show(AppLocalized("Shared content expired. Please share again."))

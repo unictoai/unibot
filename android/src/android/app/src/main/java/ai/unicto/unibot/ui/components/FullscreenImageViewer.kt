@@ -483,7 +483,7 @@ internal suspend fun shareImage(context: Context, model: Any) {
 internal suspend fun saveToGallery(context: Context, bitmap: Bitmap): Boolean =
     withContext(Dispatchers.IO) {
         try {
-            val filename = "minis_${System.currentTimeMillis()}.png"
+            val filename = "unibot_${System.currentTimeMillis()}.png"
             val stream: OutputStream?
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
@@ -502,8 +502,8 @@ internal suspend fun saveToGallery(context: Context, bitmap: Bitmap): Boolean =
             } else {
                 @Suppress("DEPRECATION")
                 val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                val minisDir = File(dir, "unibot").also { it.mkdirs() }
-                val file = File(minisDir, filename)
+                val unibotDir = File(dir, "unibot").also { it.mkdirs() }
+                val file = File(unibotDir, filename)
                 stream = file.outputStream()
                 stream.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }

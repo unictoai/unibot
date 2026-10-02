@@ -1,6 +1,6 @@
 //
 //  SharedFoldersSettingsView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Settings screen that lists the three FileProvider-exposed shared directories
 //  (shared, skills, memory), lets the user tap each row to browse its contents,
@@ -147,7 +147,7 @@ struct SharedFolderEntry: Identifiable, Hashable {
     let iconColor: Color
     /// Whether the Files app (via FileProvider extension) can write to this
     /// folder. `memory` and `skills` are read-only from Files; `shared` is r/w.
-    /// Note: the MinisApp itself always reads/writes all three — this flag only
+    /// Note: the UnibotApp itself always reads/writes all three — this flag only
     /// describes the Files-app-facing surface.
     let isWritableFromFiles: Bool
 
@@ -191,7 +191,7 @@ final class SharedFoldersViewModel: ObservableObject {
     }
 
     private static func buildEntries() -> [SharedFolderEntry] {
-        let root = AIChatViewModel.minisAppGroupRoot
+        let root = AIChatViewModel.unibotAppGroupRoot
         return [
             SharedFolderEntry(
                 name: "shared",

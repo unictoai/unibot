@@ -64,8 +64,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.UnibotApp
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.WebAppShortcutRepository
 import kotlinx.coroutines.Dispatchers
@@ -346,17 +346,17 @@ fun AddToHomeSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MinisOutlinedButton(
+                UnibotOutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(android.R.string.cancel))
                 }
-                MinisButton(
+                UnibotButton(
                     enabled = copiedFile != null && titleText.isNotBlank(),
                     modifier = Modifier.weight(1f),
                     onClick = {
-                        val target = copiedFile ?: return@MinisButton
+                        val target = copiedFile ?: return@UnibotButton
                         val finalTitle = titleText.trim().ifBlank {
                             fileName.removeSuffix(".html").removeSuffix(".htm")
                         }

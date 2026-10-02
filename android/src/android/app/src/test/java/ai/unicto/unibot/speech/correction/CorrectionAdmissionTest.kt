@@ -217,15 +217,15 @@ class CorrectionAdmissionTest {
 
     // ── Signal 4: Latin near-sound ────────────────────────────────────────────
     // [T-android-correction-latin-phonetic] iOS 4f061b70. Signals 1-3 all miss
-    // linux→minis: phonetic Levenshtein on the full key is 0.40 (consonants
+    // linux→unibot: phonetic Levenshtein on the full key is 0.40 (consonants
     // differ outright), neither side is an ordered subsequence of the other, and
     // there are no digits. It fell through to RejectedReword, so the confusion
     // dictionary never accumulated evidence and correction never fired.
 
     @Test
-    fun `signal 4 admits linux to minis`() {
-        val v = judge("linux", "minis", sentence = 40)
-        assertTrue("linux->minis must be collected, got $v", v.isAdmitted)
+    fun `signal 4 admits linux to unibot`() {
+        val v = judge("linux", "unibot", sentence = 40)
+        assertTrue("linux->unibot must be collected, got $v", v.isAdmitted)
         assertEquals(CorrectionAdmission.Verdict.LatinPhonetic, v)
     }
 
@@ -240,7 +240,7 @@ class CorrectionAdmissionTest {
     @Test
     fun `signal 4 requires equal syllable counts`() {
         // Differing vowel-group counts ⇒ different rhythm ⇒ not an ASR confusion.
-        assertFalse(CorrectionAdmission.isLatinPhoneticSimilar("minis", "mn"))
+        assertFalse(CorrectionAdmission.isLatinPhoneticSimilar("unibot", "mn"))
     }
 
     @Test

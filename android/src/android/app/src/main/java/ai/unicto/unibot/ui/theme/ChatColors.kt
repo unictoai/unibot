@@ -7,7 +7,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 // Semantic chat colors mirroring iOS ChatColors (AIChatView.swift).
-// Resolved from LocalChatPalette, which is provided by MinisTheme.
+// Resolved from LocalChatPalette, which is provided by UnibotTheme.
 //
 // iOS reference:
 //   systemBackground        -> background

@@ -1,6 +1,6 @@
 //
 //  FaceIDProtectionSettingsView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Settings entry for per-session biometric protection. Surfaces the
 //  master toggle, an idle-timeout picker, and (when relevant) a count of

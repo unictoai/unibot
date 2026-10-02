@@ -168,7 +168,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         val dest = File(dir, name)
         val bytes = Computers.getFile(c, remote, dest)
         val body = JSONObject().put("ok", true).put("computer", c.name).put("path", "/var/minis/attachments/$name").put("bytes", bytes)
-        if (Regex("(?i)\\.(png|jpe?g|gif|webp)$").containsMatchIn(name)) body.put("markdown", "![${name}](minis://attachments/$name)")
+        if (Regex("(?i)\\.(png|jpe?g|gif|webp)$").containsMatchIn(name)) body.put("markdown", "![${name}](unibot://attachments/$name)")
         return ok(body)
     }
 
@@ -204,7 +204,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         File(dir, name).writeBytes(shot.first)
         return ok(
             JSONObject().put("ok", true).put("computer", c.name).put("path", "/var/minis/attachments/$name")
-                .put("markdown", "![${c.name}](minis://attachments/$name)").put("bytes", shot.first.size),
+                .put("markdown", "![${c.name}](unibot://attachments/$name)").put("bytes", shot.first.size),
         )
     }
 
@@ -231,8 +231,8 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
 
     private fun resolveLocal(path: String, sessionId: String?): File? {
         val linux = when {
-            path.startsWith("minis://attachments/") -> "/var/minis/attachments/" + path.removePrefix("minis://attachments/")
-            path.startsWith("minis://") -> path.removePrefix("minis://")
+            path.startsWith("unibot://attachments/") -> "/var/minis/attachments/" + path.removePrefix("unibot://attachments/")
+            path.startsWith("unibot://") -> path.removePrefix("unibot://")
             else -> path
         }
         val file = when {

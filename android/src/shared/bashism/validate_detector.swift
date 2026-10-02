@@ -1,7 +1,7 @@
 // Shared BashismDetector conformance validator (T-bash-on-demand).
 // Runs the iOS detector algorithm (Foundation NSRegularExpression, the same
 // engine the app uses) against bashism_rules.json + bashism_test_vectors.json.
-// The Xcode MinisTests host target can't link the iSH static libs in this
+// The Xcode UnibotTests host target can't link the iSH static libs in this
 // project, so this standalone harness is the canonical iOS-side regression
 // gate. Run: `swift src/shared/bashism/validate_detector.swift`
 import Foundation

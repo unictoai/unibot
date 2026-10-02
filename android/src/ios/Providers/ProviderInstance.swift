@@ -32,7 +32,7 @@ struct ProviderInstance: Identifiable, Codable, Hashable {
     /// the user changes `customBaseURL`/`appendV1Suffix` so we re-probe the new endpoint.
     var imageEndpointResolved: ImageEndpointMode?
     /// Optional custom `User-Agent` header for outbound requests. nil/empty = use the
-    /// Minis default UA. Set for proxy/relay endpoints that gate on client UA (only
+    /// Unibot default UA. Set for proxy/relay endpoints that gate on client UA (only
     /// allow e.g. Claude Code). Applied to chat/models/responses requests of API-key
     /// and manual-token providers; OAuth providers keep their required client UA.
     var customUserAgent: String?
@@ -293,7 +293,7 @@ struct ProviderInstance: Identifiable, Codable, Hashable {
             return true
         }
         // Provider-specific OAuth storage (Claude Code login, Codex login, …).
-        // Mirrors the diagnostic in MinisApp.swift scenePhase=active.
+        // Mirrors the diagnostic in UnibotApp.swift scenePhase=active.
         switch providerType {
         case .anthropic:
             return ProviderKeychainHelper.loadOAuthToken(

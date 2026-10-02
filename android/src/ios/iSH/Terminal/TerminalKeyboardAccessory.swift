@@ -1,6 +1,6 @@
 //
 //  TerminalKeyboardAccessory.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Quick command bar with terminal control buttons
 //

@@ -1,6 +1,6 @@
 //
 //  ClipboardOffload.h
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-clipboard` — read/write UIPasteboard.
 //

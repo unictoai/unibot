@@ -195,14 +195,14 @@ class FirstConversation(
                 append("reading and organising files and photos they mount, setting reminders and scheduled tasks, searching the web), one concrete line each, no emoji; ")
                 append("end by asking what they want to try first. Then end the reply with exactly this fenced block:\n")
                 append("```$BLOCK\n{\"agent_name\": \"<the name>\"}\n```\n")
-                append("The app saves the name to SOUL.md from the block — do not call minis-config for it.\n")
+                append("The app saves the name to SOUL.md from the block — do not call unibot-config for it.\n")
                 append("(b) If the message is about something else, help with it first, in full, and end with one light sentence bringing the naming back; ")
                 append("no block, the chooser stays.\n")
                 append("Reply in the user's language.").append(addressLine)
             }
             Phase.NAMED -> {
                 val name = SoulStore.load(context)?.metadata?.name ?: SoulMetadata.DEFAULT.name
-                "First conversation. The user just named you \"$name\" — the app already saved it to SOUL.md, so it is your name now; do not call minis-config for it. " +
+                "First conversation. The user just named you \"$name\" — the app already saved it to SOUL.md, so it is your name now; do not call unibot-config for it. " +
                     "Reply in the user's language: one short line about the name, then three bullets with the most useful things you can do for them right now on this phone " +
                     "(choose from: running commands in your Linux sandbox, browsing websites and filling forms, reading and organising files and photos they mount, " +
                     "setting reminders and scheduled tasks, searching the web). One concrete line each, no emoji. End by asking what they want to try first." + addressLine

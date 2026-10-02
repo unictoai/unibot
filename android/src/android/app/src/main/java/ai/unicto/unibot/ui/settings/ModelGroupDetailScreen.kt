@@ -66,9 +66,9 @@ import ai.unicto.unibot.R
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.components.SectionTextField
 import kotlin.math.roundToInt
 
@@ -361,7 +361,7 @@ fun ModelGroupDetailScreen(
                                         IconButton(onClick = { showMenu = true }) {
                                             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.model_group_detail_more_options))
                                         }
-                                        ai.unicto.unibot.ui.components.MinisMenu(
+                                        ai.unicto.unibot.ui.components.UnibotMenu(
                                             expanded = showMenu,
                                             onDismissRequest = { showMenu = false },
                                         ) {
@@ -390,7 +390,7 @@ fun ModelGroupDetailScreen(
             // obvious and leaves "Delete group" alone at the bottom.
             item {
                 Spacer(Modifier.height(12.dp))
-                MinisOutlinedButton(
+                UnibotOutlinedButton(
                     onClick = onAddModels,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -562,7 +562,7 @@ fun ModelGroupDetailScreen(
             // destructive action, with nothing adjacent to mis-tap.
             item {
                 Spacer(Modifier.height(20.dp))
-                MinisButton(
+                UnibotButton(
                     onClick = { showDeleteDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -591,7 +591,7 @@ fun ModelGroupDetailScreen(
                 Text(stringResource(R.string.model_group_detail_remove_named_model_confirm, name))
             },
             confirmButton = {
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         val newIds = memberIds.toMutableList().apply { remove(removingId) }
                         memberIds = newIds
@@ -603,7 +603,7 @@ fun ModelGroupDetailScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { entryToRemove = null }) { Text(stringResource(R.string.common_cancel)) }
+                UnibotTextButton(onClick = { entryToRemove = null }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -615,7 +615,7 @@ fun ModelGroupDetailScreen(
             title = { Text(stringResource(R.string.model_group_detail_delete_group)) },
             text = { Text(stringResource(R.string.model_group_detail_delete_named_group_confirm, group.name)) },
             confirmButton = {
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         providerRepository.removeGroup(groupId)
                         showDeleteDialog = false
@@ -626,7 +626,7 @@ fun ModelGroupDetailScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+                UnibotTextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }

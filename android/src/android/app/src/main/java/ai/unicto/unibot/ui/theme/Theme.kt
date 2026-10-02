@@ -139,11 +139,11 @@ private val DarkColorScheme = darkColorScheme(
 // Reads from ChatPalette so it follows the in-app theme override (theme_mode pref),
 // not android.isSystemInDarkTheme(), which only tracks the system setting.
 @Composable
-fun minisFabColor(): Color = LocalChatPalette.current.fabAccent
+fun unibotFabColor(): Color = LocalChatPalette.current.fabAccent
 
 // App-wide shape system — larger corners for a modern, friendly feel
 // DropdownMenu uses extraSmall, Dialog uses extraLarge, BottomSheet uses extraLarge
-private val MinisShapes = Shapes(
+private val UnibotShapes = Shapes(
     extraSmall = RoundedCornerShape(12.dp),   // DropdownMenu, Tooltip, OutlinedTextField default
     small = RoundedCornerShape(12.dp),        // Chip, TextField
     medium = RoundedCornerShape(20.dp),       // Card, Snackbar
@@ -152,7 +152,7 @@ private val MinisShapes = Shapes(
 )
 
 @Composable
-fun MinisTheme(
+fun UnibotTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     fontScale: Float = 1f,
     content: @Composable () -> Unit,
@@ -163,7 +163,7 @@ fun MinisTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        shapes = MinisShapes,
+        shapes = UnibotShapes,
         typography = typography,
     ) {
         CompositionLocalProvider(LocalChatPalette provides chatPalette, content = content)

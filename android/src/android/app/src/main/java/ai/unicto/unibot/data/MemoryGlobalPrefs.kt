@@ -23,7 +23,7 @@ import android.content.SharedPreferences
  * snapshot matches the seed.
  */
 object MemoryGlobalPrefs {
-    private const val PREFS = "minis_memory_prefs"
+    private const val PREFS = "unibot_memory_prefs"
     private const val KEY_GLOBAL_ENABLED = "memory.global.enabled"
 
     private fun prefs(context: Context): SharedPreferences =

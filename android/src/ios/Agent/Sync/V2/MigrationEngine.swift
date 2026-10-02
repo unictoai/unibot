@@ -17,7 +17,7 @@ enum MigrationStatus: String, Codable {
 enum MigrationPhase: String, Codable {
     case detect            // 0: just decided to migrate
     case v1FullFetch       // 1: fetch every device-* zone via v1 fetcher
-    case v2ZonesCreate     // 2: ensure minis-shared / -devices / -secrets exist
+    case v2ZonesCreate     // 2: ensure unibot-shared / -devices / -secrets exist
     case v2InitialPush     // 3: push every local row to v2 zones
     case v1ZoneDelete      // 4: delete THIS device's device-<id> zone
     case lock              // 5: write completed flag
@@ -25,7 +25,7 @@ enum MigrationPhase: String, Codable {
 }
 
 /// Persisted migration state. Lives in
-/// Library/MinisChat/cloud-sync-v2/migration-state.json.
+/// Library/UnibotChat/cloud-sync-v2/migration-state.json.
 struct MigrationState: Codable {
     var status: MigrationStatus
     var phase: MigrationPhase
@@ -59,7 +59,7 @@ final class MigrationEngine {
     private init() {
         let dir = FileManager.default
             .urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MinisChat/cloud-sync-v2", isDirectory: true)
+            .appendingPathComponent("UnibotChat/cloud-sync-v2", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         self.stateURL = dir.appendingPathComponent("migration-state.json")
         self.statusKey = "cloudSync.v2.migrationStatus"
@@ -629,7 +629,7 @@ final class MigrationEngine {
     }
 
     private func phaseV2ZonesCreate(_ s: inout MigrationState) async throws {
-        logger.info("[SyncMigration] phase=v2ZonesCreate start: zones=[minis-shared,minis-devices,minis-secrets]")
+        logger.info("[SyncMigration] phase=v2ZonesCreate start: zones=[unibot-shared,unibot-devices,unibot-secrets]")
         // Booting the transport queues the three zones via
         // pendingDatabaseChanges; sendChanges then materializes them.
         // SyncCore must already have ICloudSharedZoneTransport registered.
@@ -1057,7 +1057,7 @@ enum V1FetcherShim {
     }
 
     enum ZoneKind: String {
-        case v2     // minis-shared / minis-devices / minis-secrets
+        case v2     // unibot-shared / unibot-devices / unibot-secrets
         case v1     // device-<id>
         case system // _defaultZone
         case other  // legacy "devices", unknown

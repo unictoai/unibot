@@ -10,7 +10,7 @@ private let qtLog = AppLogger(category: "QuickTest")
 /// A model can have several modalities (e.g. text output + image generation +
 /// image input). We run up to the top-3 most distinctive applicable tests
 /// CONCURRENTLY and lay their results out side by side (stacked cards), each with
-/// its own running / success / failure state. All prompts are short + Minis-themed.
+/// its own running / success / failure state. All prompts are short + Unibot-themed.
 struct ModelQuickTestSheet: View {
     let entry: ModelEntry
     @Environment(\.dismiss) private var dismiss
@@ -311,7 +311,7 @@ final class TestSession: ObservableObject {
             throw QuickTestError.noOutput("Couldn't build audio converter.")
         }
         let tmpURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("minis-quicktest-\(UUID().uuidString).wav")
+            .appendingPathComponent("unibot-quicktest-\(UUID().uuidString).wav")
         do {
             let outFile = try AVAudioFile(forWriting: tmpURL,
                                           settings: dstFormat.settings,

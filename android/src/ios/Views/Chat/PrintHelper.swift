@@ -1,6 +1,6 @@
 //
 //  PrintHelper.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Shared wrappers around UIPrintInteractionController so every preview
 //  surface (web/HTML, image gallery, text + markdown file previews)

@@ -1,6 +1,6 @@
 //
 //  SkillStore.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Manages AI skill (SKILL.md) lifecycle: import, storage, session overrides,
 //  and system prompt injection.  All metadata is stored in a SQLite database
@@ -76,7 +76,7 @@ final class SkillStore: ObservableObject {
     private var db: OpaquePointer?
 
     private var skillsDir: URL {
-        AIChatViewModel.minisSkillsPersistentDir
+        AIChatViewModel.unibotSkillsPersistentDir
     }
 
     func skillDirectoryURL(for skillId: String) -> URL {
@@ -85,7 +85,7 @@ final class SkillStore: ObservableObject {
 
     private var dbPath: String {
         let library = fm.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-        return library.appendingPathComponent("MinisChat/skills.db").path
+        return library.appendingPathComponent("UnibotChat/skills.db").path
     }
 
     private var rootfsSkillsDir: URL {
@@ -982,7 +982,7 @@ Do not create extraneous files: README.md, INSTALLATION_GUIDE.md, CHANGELOG.md, 
     ///
     /// Registers the orphan (parse frontmatter → DB row with `.session` source →
     /// in-memory array) AND markDirty so it enters the upload queue. The
-    /// directory name is the id (NOT a re-slugified name) so the `minis://` link
+    /// directory name is the id (NOT a re-slugified name) so the `unibot://` link
     /// keeps resolving. Idempotent: a no-op when the id is already loaded, and
     /// `dbInsertSkill`'s `ON CONFLICT` preserves `use_count`. Returns true if a
     /// new orphan was ingested.

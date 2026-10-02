@@ -69,7 +69,7 @@ fun ShizukuPermissionScreen(onBack: () -> Unit) {
                 title = stringResource(stateTitle(snap.state)),
                 subtitle = if (snap.state == ShizukuManager.State.READY) {
                     // [T-android-sui-support] Name the live provider so a Sui
-                    // user can see their root module is what's serving Minis.
+                    // user can see their root module is what's serving Unibot.
                     if (snap.isSui) {
                         stringResource(R.string.shizuku_ready_subtitle_sui, snap.version, snap.uid)
                     } else {

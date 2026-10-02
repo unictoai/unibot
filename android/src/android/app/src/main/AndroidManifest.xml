@@ -17,7 +17,7 @@
          mediaPlayback has no such cap and AOSP's foreground-service-type
          validation accepts it as long as the permission is held; the
          "must use MediaStyle / play actual media" rule is Play Store
-         policy, not an OS runtime check, and Minis ships as a sideload.
+         policy, not an OS runtime check, and Unibot ships as a sideload.
     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- unibot: the hub connection (this phone reachable from the user's other devices) -->
@@ -27,7 +27,7 @@
          tools after screen-off. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- T-bg-overlay phase 2: floating tool-status capsule rendered via
-         WindowManager TYPE_APPLICATION_OVERLAY while Minis is backgrounded
+         WindowManager TYPE_APPLICATION_OVERLAY while Unibot is backgrounded
          and an agent task is in flight. The user must additionally grant
          "Display over other apps" the first time they toggle the feature
          on; the app silently falls back to the Phase 1 notification when
@@ -77,10 +77,10 @@
          into a host-side `readdir(/storage/emulated/0/...)` running as the app uid.
          Without MANAGE_EXTERNAL_STORAGE, FuseDaemon (MediaProvider) silently filters
          out files owned by other packages from getdents64 results — so an Obsidian
-         vault mounted into Minis would only show files Minis itself wrote, not the
+         vault mounted into Unibot would only show files Unibot itself wrote, not the
          vault's actual notes. This permission grants the app uid full POSIX access
          (read + write + readdir) to /storage/emulated/0/, matching the user's mental
-         model of "the folder they picked is the folder Minis sees". -->
+         model of "the folder they picked is the folder Unibot sees". -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <!-- "Take Photo" composer entry. We never use the camera background; the
          permission is requested at the moment the user taps the menu item. -->
@@ -187,7 +187,7 @@
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
-        android:theme="@style/Theme.Minis">
+        android:theme="@style/Theme.Unibot">
 
         <!-- [T-android-tablet-split] MainActivity resize/rotation handling.
 
@@ -207,7 +207,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:theme="@style/Theme.Minis"
+            android:theme="@style/Theme.Unibot"
             android:windowSoftInputMode="adjustResize">
             <!-- T-android-dynamic-app-icon: LAUNCHER intent-filter moved
                  to the <activity-alias> entries below so the user can pick
@@ -216,12 +216,14 @@
                  itself never appears in the launcher directly, but all
                  internal Intent(this, MainActivity::class.java) startActivity
                  calls keep working because MainActivity is always enabled.
-                 The minis:// deep-link filter stays on MainActivity since
+                 The unibot:// deep-link filter stays on MainActivity since
                  deep-links never go through the LAUNCHER category. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="unibot" />
+                <!-- Legacy scheme: old chats may still contain minis:// links. -->
                 <data android:scheme="minis" />
             </intent-filter>
         </activity>
@@ -247,7 +249,7 @@
             <!-- T-android-app-icon-shortcuts: app-icon long-press quick
                  actions (mirrors iOS QuickActionRouter / UIApplicationShortcutItem).
                  Three static shortcuts (new_chat / voice_chat / camera_chat)
-                 launch MainActivity via minis://action/<name> deep-link.
+                 launch MainActivity via unibot://action/<name> deep-link.
                  The shortcuts meta-data must live on the alias that owns
                  the LAUNCHER filter, not on MainActivity itself. -->
             <meta-data
@@ -291,10 +293,10 @@
         <activity
             android:name=".share.ShareReceiverActivity"
             android:exported="true"
-            android:theme="@style/Theme.Minis">
-            <!-- T157: widen mime to */* so Minis appears in the system share
+            android:theme="@style/Theme.Unibot">
+            <!-- T157: widen mime to */* so Unibot appears in the system share
                  sheet for any file type (xml/pdf/zip/audio/video/…). The
-                 narrower text/plain + image/* + application/* set hid Minis
+                 narrower text/plain + image/* + application/* set hid Unibot
                  from the chooser whenever the source app declared a more
                  specific mime. ShareReceiverActivity already handles any
                  incoming mime via the T185/T150 attachment path, so the
@@ -309,10 +311,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
-            <!-- T142: ACTION_VIEW filters so Minis appears in the system
+            <!-- T142: ACTION_VIEW filters so Unibot appears in the system
                  "Open with" chooser triggered by other apps (Telegram tap-to-
                  open, gallery long-press → Open with, file manager Open as…).
-                 Each mime is its own filter — using "*/*" would force Minis
+                 Each mime is its own filter — using "*/*" would force Unibot
                  into every file chooser on the device and several OEM ROMs
                  actively reject the registration. Mirror only mimes a chat
                  composer can usefully prefill: images, PDFs, plain/structured
@@ -358,7 +360,7 @@
             <!-- T163: register for the system "Open with" chooser when the
                  user taps a file in Files / Photos / any document viewer.
                  The T142 filters above only fire for BROWSABLE intents
-                 (web links, deep-links) and never list Minis in the OEM
+                 (web links, deep-links) and never list Unibot in the OEM
                  file manager's chooser. Termux's working pattern is
                  scheme=file + scheme=content + mimeType=*/* without
                  BROWSABLE — file managers don't tag intents BROWSABLE.
@@ -388,7 +390,7 @@
             android:exported="true"
             android:taskAffinity=""
             android:excludeFromRecents="false"
-            android:theme="@style/Theme.Minis">
+            android:theme="@style/Theme.Unibot">
             <intent-filter>
                 <action android:name="ai.unicto.unibot.action.OPEN_WEBAPP" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -527,7 +529,7 @@
              User must enable this manually in Settings → Notifications → Device &
              app notifications → Notification access. -->
         <service
-            android:name=".offload.MinisNotificationListenerService"
+            android:name=".offload.UnibotNotificationListenerService"
             android:exported="true"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
@@ -582,7 +584,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/minis_accessibility_service" />
+                android:resource="@xml/unibot_accessibility_service" />
         </service>
 
         <!-- unibot: keeps the phone on the hub in the background -->

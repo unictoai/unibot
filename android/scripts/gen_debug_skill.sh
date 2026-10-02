@@ -34,9 +34,9 @@ TMP="$OUT.tmp"
   echo ''
   echo 'enum DebugSkillGenerated {'
   emit_const "skillMarkdownB64"  "$SKILL_DIR/SKILL.md"
-  emit_const "clientPythonB64"   "$SKILL_DIR/examples/minis_rpc.py"
-  emit_const "clientNodeB64"     "$SKILL_DIR/examples/minis_rpc.mjs"
-  emit_const "clientBashB64"     "$SKILL_DIR/examples/minis_rpc.sh"
+  emit_const "clientPythonB64"   "$SKILL_DIR/examples/unibot_rpc.py"
+  emit_const "clientNodeB64"     "$SKILL_DIR/examples/unibot_rpc.mjs"
+  emit_const "clientBashB64"     "$SKILL_DIR/examples/unibot_rpc.sh"
   echo '}'
   echo '#endif'
 } > "$TMP"

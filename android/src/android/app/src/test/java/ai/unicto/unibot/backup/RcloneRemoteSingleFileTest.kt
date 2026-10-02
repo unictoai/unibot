@@ -11,7 +11,7 @@ import org.junit.Test
  * [T-android-backup-remote-singlefile] Pins the remote delivery layout.
  *
  * The bug: Android uploaded any package over 8 MiB as
- * `.minis-parts/<backupId>/000000, 000001, …` and NEVER assembled it, so the
+ * `.unibot-parts/<backupId>/000000, 000001, …` and NEVER assembled it, so the
  * server held a directory of anonymous fragments instead of a `.minisbak`. A
  * user browsing their NAS saw no backup, and the iOS restore picker — which
  * lists `.minisbak` files only — could not see it either. iOS dropped chunking

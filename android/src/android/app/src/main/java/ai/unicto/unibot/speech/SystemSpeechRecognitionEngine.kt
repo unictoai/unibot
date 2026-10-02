@@ -755,7 +755,7 @@ class SystemSpeechRecognitionEngine(private val appContext: Context) : SpeechRec
                 // Per-utterance finals then had no compliant delivery path:
                 // every terminal onResults arrived with an EMPTY
                 // RESULTS_RECOGNITION (finalLen=0 on 100% of sessions in
-                // minis-2026-08-16.log) while Google's own process logged
+                // unibot-2026-08-16.log) while Google's own process logged
                 // `#onResults withSpeech: true` two ms earlier — the text
                 // existed and went nowhere. The engine then salvaged only the
                 // LAST buffered partial, which resets at every internal

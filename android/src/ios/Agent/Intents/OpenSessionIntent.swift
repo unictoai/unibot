@@ -1,7 +1,7 @@
 import AppIntents
 import Foundation
 
-/// Opens a specific chat session in the Minis app.
+/// Opens a specific chat session in the Unibot app.
 struct OpenSessionIntent: AppIntent {
     static var title: LocalizedStringResource = "Open Session"
     static var description = IntentDescription("Opens a unibot chat session in the app.")

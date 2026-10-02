@@ -6,7 +6,7 @@ import org.junit.Test
 /**
  * [T-android-new-chat-shortcut] Pins the chord-matching rule used by
  * ChatSplitScaffold's `onPreviewKeyEvent` (Ctrl/⌘+N → new chat, Ctrl/⌘+F →
- * search), mirroring iOS's ⌘N (MinisApp.swift) and ⌘F (ContentView).
+ * search), mirroring iOS's ⌘N (UnibotApp.swift) and ⌘F (ContentView).
  *
  * Same shape as the other pure-rule tests here: the real handler needs a
  * Compose KeyEvent, which wraps a platform event and cannot be constructed in a

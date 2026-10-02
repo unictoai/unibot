@@ -168,7 +168,7 @@ object AppLogger {
 
     /**
      * Append a logcat tail line to today's log file. Lines that AppLogger
-     * itself produced (tag prefix `Minis.`) are skipped — [log] already wrote
+     * itself produced (tag prefix `Unibot.`) are skipped — [log] already wrote
      * them via [writer], so without this filter every `info()` / `warning()`
      * / etc. call would appear twice in the file (once from [log], once
      * echoed back through logcat).
@@ -330,7 +330,7 @@ object AppLogger {
         if (date != currentDate || writer == null) {
             writer?.close()
             val dir = logDir ?: throw IllegalStateException("AppLogger not initialized")
-            val file = File(dir, "minis-$date.log")
+            val file = File(dir, "unibot-$date.log")
             writer = PrintWriter(FileWriter(file, true))
             currentDate = date
         }
@@ -363,7 +363,7 @@ object AppLogger {
     /**
      * Capped, prefix-filtered log listing for the UI.
      *
-     * - `prefix`: filename starts-with filter (e.g. `"minis-"` for daily
+     * - `prefix`: filename starts-with filter (e.g. `"unibot-"` for daily
      *   logs, `"crash-"` / `"native-crash-"` for crash reports). Empty
      *   string returns all `.log` files.
      * - `limit`: keep at most this many files, sorted by name descending
@@ -410,7 +410,7 @@ object AppLogger {
         // just-deleted file; a FileWriter on an unlinked inode keeps writing to
         // the zombie file (invisible on disk) until currentDate changes or the
         // writer is nulled. Drop it and reset currentDate so the next
-        // getWriter() reopens a fresh minis-<date>.log on the following write.
+        // getWriter() reopens a fresh unibot-<date>.log on the following write.
         // @Synchronized shares getWriter()'s monitor so this can't race a write.
         writer?.close()
         writer = null

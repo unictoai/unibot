@@ -201,7 +201,7 @@ fun UnifiedModelPickerSheet(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                    MinisTextButton(onClick = onDismiss) {
+                    UnibotTextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.model_picker_done))
                     }
                 }
@@ -289,7 +289,7 @@ fun UnifiedModelPickerSheet(
                             val editTrailing: (@Composable () -> Unit)? =
                                 if (onEditGroups == null) null else {
                                     {
-                                        MinisTextButton(
+                                        UnibotTextButton(
                                             onClick = onEditGroups,
                                             modifier = Modifier.padding(end = 8.dp),
                                         ) {

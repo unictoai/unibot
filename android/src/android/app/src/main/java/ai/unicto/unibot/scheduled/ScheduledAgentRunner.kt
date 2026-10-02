@@ -59,7 +59,7 @@ object ScheduledAgentRunner {
      *   ~10s broadcast budget and gets the whole process ANR-killed, along
      *   with every PRoot sandbox child. The alarm path passing the default
      *   `true` was exactly that bug. Waiting is only safe off a broadcast —
-     *   e.g. the minis-scheduled CLI, which runs in its own offload thread.
+     *   e.g. the unibot-scheduled CLI, which runs in its own offload thread.
      * @return the session id once the action has been DISPATCHED (resolved +
      *   prompt sent), or null when the runner couldn't even start (no provider,
      *   target chat gone, UnibotApp not initialized).
@@ -298,7 +298,7 @@ object ScheduledAgentRunner {
         sessionId: String,
         preview: String,
     ) {
-        val deepLink = Uri.parse("minis://session/$sessionId")
+        val deepLink = Uri.parse("unibot://session/$sessionId")
         val openIntent = Intent(Intent.ACTION_VIEW, deepLink).apply {
             setPackage(context.packageName)
         }

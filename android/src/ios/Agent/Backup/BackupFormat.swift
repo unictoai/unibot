@@ -40,7 +40,7 @@ enum BackupCategory: String, Codable, CaseIterable, Sendable {
     case providers
     case mcpServers = "mcp_servers"
     case voiceCorrections = "voice_corrections"
-    /// Shell environment variables (`Library/MinisChat/env-vars.json`).
+    /// Shell environment variables (`Library/UnibotChat/env-vars.json`).
     ///
     /// Their VALUES were already collected into secrets.json, but the metadata
     /// file — id, key, createdAt, note — never was. Restoring therefore wrote

@@ -1,6 +1,6 @@
 //
 //  PlayerOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-player`.
 //  Subcommands: play, pause, resume, seek, status, stop, list
@@ -13,7 +13,7 @@
 #include "kernel/native_offload.h"
 #include <unistd.h>
 
-#import "Minis-Swift.h"
+#import "Unibot-Swift.h"
 
 static NSString *const TOOL_NAME = @"apple-player";
 

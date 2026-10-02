@@ -48,8 +48,8 @@ import ai.unicto.unibot.provider.ImageBudget
 import ai.unicto.unibot.provider.LLMProvider
 import ai.unicto.unibot.provider.ProviderFactory
 import ai.unicto.unibot.sandbox.ExecutionCoordinator
-import ai.unicto.unibot.terminal.MinisOpenUrlBroker
-import ai.unicto.unibot.terminal.MinisUrlMarker
+import ai.unicto.unibot.terminal.UnibotOpenUrlBroker
+import ai.unicto.unibot.terminal.UnibotUrlMarker
 import ai.unicto.unibot.tools.AgentTools
 import ai.unicto.unibot.tools.FileEditTool
 import ai.unicto.unibot.tools.FileReadTool
@@ -148,7 +148,7 @@ internal fun ChatViewModel.filteredSlashCommands(): List<SlashCommand> {
     // tagged [mcp] with a wrench icon to distinguish them from skills (⚡).
     // All servers enabled for this session are shown (not just the Top-20
     // disclosed in the system prompt). Tapping fills the composer with the
-    // server name; discovery/call happens model-side via minis-mcp-cli.
+    // server name; discovery/call happens model-side via unibot-mcp-cli.
     val mcpRows: List<SlashCommand> = mcpRepository?.servers?.value
         ?.filter { mcpRepository.isEnabledForSession(it.id, sid) }
         ?.sortedBy { it.id.lowercase() }

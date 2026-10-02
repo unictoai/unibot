@@ -20,7 +20,7 @@ private const val TAG = "UnibotVoiceAssist"
  * v1 behaviour: when the system invokes the assistant (long-press home /
  * power-button gesture / corner swipe, depending on the OEM), we open a new
  * unibot chat with voice input auto-started (the same flow as the launcher
- * "voice chat" quick action: minis://action/voice_chat).
+ * "voice chat" quick action: unibot://action/voice_chat).
  *
  * Screen-context assist (AssistStructure / screenshot) is accepted but
  * ignored in v1 — the session just hands off to the app.
@@ -63,7 +63,7 @@ class UnibotVoiceInteractionSession(context: Context) : VoiceInteractionSession(
             // Same deep link as the launcher "voice chat" quick action:
             // MainActivity opens a fresh draft chat and ChatScreen auto-fires
             // voice input on first compose (DeepLinkCoordinator ChatAction.START_VOICE).
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("minis://action/voice_chat")).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("unibot://action/voice_chat")).apply {
                 `package` = context.packageName
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }

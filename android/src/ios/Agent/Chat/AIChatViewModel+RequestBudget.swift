@@ -4,7 +4,7 @@ import UIKit
 
 private let logger = AppLogger(category: "AIChatVM")
 
-// MARK: - Request-level image budget + Minis paths + tool-output offload
+// MARK: - Request-level image budget + Unibot paths + tool-output offload
 
 extension AIChatViewModel {
 
@@ -90,7 +90,7 @@ extension AIChatViewModel {
         // we're keying a cache by content, not signing anything).
         let digest = Insecure.SHA1.hash(data: data)
         let sha = digest.map { String(format: "%02x", $0) }.joined()
-        let attachmentsRoot = minisPersistentBase
+        let attachmentsRoot = unibotPersistentBase
             .appendingPathComponent(sessionId, isDirectory: true)
             .appendingPathComponent("attachments", isDirectory: true)
             .appendingPathComponent("spillover", isDirectory: true)
@@ -242,14 +242,14 @@ extension AIChatViewModel {
     }
 
     /// Persistent storage directory for a specific session's workspace.
-    nonisolated static func minisWorkspacePersistentDir(for sid: String) -> URL {
-        minisPersistentBase.appendingPathComponent(sid, isDirectory: true)
+    nonisolated static func unibotWorkspacePersistentDir(for sid: String) -> URL {
+        unibotPersistentBase.appendingPathComponent(sid, isDirectory: true)
             .appendingPathComponent("workspace", isDirectory: true)
     }
 
     /// Persistent storage directory for a specific session's browser snapshots.
-    nonisolated static func minisBrowserPersistentDir(for sid: String) -> URL {
-        minisPersistentBase.appendingPathComponent(sid, isDirectory: true)
+    nonisolated static func unibotBrowserPersistentDir(for sid: String) -> URL {
+        unibotPersistentBase.appendingPathComponent(sid, isDirectory: true)
             .appendingPathComponent("browser", isDirectory: true)
     }
 
@@ -257,62 +257,62 @@ extension AIChatViewModel {
     /// Everything under this path is exposed to iOS Files via the replicated
     /// FileProvider extension. Keep ONLY user-facing subdirs (shared, skills,
     /// memory) here — anything else leaks into "On My iPhone → unibot".
-    nonisolated static var minisAppGroupRoot: URL {
+    nonisolated static var unibotAppGroupRoot: URL {
         FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID
-        )!.appendingPathComponent("MinisFileProvider", isDirectory: true)
+        )!.appendingPathComponent("UnibotFileProvider", isDirectory: true)
     }
 
     /// App Group subdirectory for private metadata that must NOT be exposed
     /// to iOS Files (mounted-folders.json, FileProvider extension logs, etc).
-    /// Sibling of `minisAppGroupRoot` inside the same App Group container.
-    nonisolated static var minisConfigRoot: URL {
+    /// Sibling of `unibotAppGroupRoot` inside the same App Group container.
+    nonisolated static var unibotConfigRoot: URL {
         let url = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID
-        )!.appendingPathComponent("MinisConfig", isDirectory: true)
+        )!.appendingPathComponent("UnibotConfig", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
 
     /// Persistent storage directory for memory (shared across all sessions).
     /// Stored in the App Group container so the FileProvider extension can access it.
-    nonisolated static var minisMemoryPersistentDir: URL {
-        minisAppGroupRoot.appendingPathComponent("memory", isDirectory: true)
+    nonisolated static var unibotMemoryPersistentDir: URL {
+        unibotAppGroupRoot.appendingPathComponent("memory", isDirectory: true)
     }
 
     /// Persistent storage directory for skills (shared across all sessions).
     /// Stored in the App Group container so the FileProvider extension can access it.
-    nonisolated static var minisSkillsPersistentDir: URL {
-        minisAppGroupRoot.appendingPathComponent("skills", isDirectory: true)
+    nonisolated static var unibotSkillsPersistentDir: URL {
+        unibotAppGroupRoot.appendingPathComponent("skills", isDirectory: true)
     }
 
     /// Persistent storage directory for shared files (shared across all sessions).
     /// Stored in the App Group container so the FileProvider extension can access it.
-    nonisolated static var minisSharedPersistentDir: URL {
-        minisAppGroupRoot.appendingPathComponent("shared", isDirectory: true)
+    nonisolated static var unibotSharedPersistentDir: URL {
+        unibotAppGroupRoot.appendingPathComponent("shared", isDirectory: true)
     }
 
     /// Persistent storage directory for MCP server configs (servers.json,
-    /// daemon log). Deliberately under MinisConfig, NOT minisAppGroupRoot:
+    /// daemon log). Deliberately under UnibotConfig, NOT unibotAppGroupRoot:
     /// servers.json carries credentials (Authorization headers, API keys) and
     /// must never surface in iOS Files via the FileProvider extension.
-    nonisolated static var minisMcpServersPersistentDir: URL {
-        minisConfigRoot.appendingPathComponent("mcp-servers", isDirectory: true)
+    nonisolated static var unibotMcpServersPersistentDir: URL {
+        unibotConfigRoot.appendingPathComponent("mcp-servers", isDirectory: true)
     }
 
-    /// Resolve a `minis://` URL to a host filesystem URL.
+    /// Resolve a `unibot://` URL to a host filesystem URL.
     /// Shared resolution logic used by Markdown link handlers and the browser's WKURLSchemeHandler.
-    nonisolated static func resolveMinisURL(_ url: URL) -> URL? {
-        guard url.scheme == "minis", let host = url.host else { return nil }
+    nonisolated static func resolveUnibotURL(_ url: URL) -> URL? {
+        guard ["unibot", "minis"].contains(url.scheme), let host = url.host else { return nil }
         // Tolerate double-encoded links (%25E6…) alongside the correct
         // single-encoded form. [T-fix-double-encoding]
-        let subPaths = MinisURLPathDecoding.subPathCandidates(for: url)
+        let subPaths = UnibotURLPathDecoding.subPathCandidates(for: url)
         let fm = FileManager.default
 
         // Primary: resolve via active session
         if let sid = activeSessionId {
             for subPath in subPaths {
-                let candidate = minisPersistentBase
+                let candidate = unibotPersistentBase
                     .appendingPathComponent(sid, isDirectory: true)
                     .appendingPathComponent(host, isDirectory: true)
                     .appendingPathComponent(subPath)
@@ -322,9 +322,9 @@ extension AIChatViewModel {
 
         // Global directories (skills, memory, shared)
         let globalDirs: [(String, URL)] = [
-            ("skills", minisSkillsPersistentDir),
-            ("memory", minisMemoryPersistentDir),
-            ("shared", minisSharedPersistentDir),
+            ("skills", unibotSkillsPersistentDir),
+            ("memory", unibotMemoryPersistentDir),
+            ("shared", unibotSharedPersistentDir),
         ]
         for (subdir, dir) in globalDirs where host == subdir {
             for subPath in subPaths {
@@ -334,10 +334,10 @@ extension AIChatViewModel {
         }
 
         // Scan all sessions
-        if let sessions = try? fm.contentsOfDirectory(atPath: minisPersistentBase.path) {
+        if let sessions = try? fm.contentsOfDirectory(atPath: unibotPersistentBase.path) {
             for sid in sessions {
                 for subPath in subPaths {
-                    let candidate = minisPersistentBase
+                    let candidate = unibotPersistentBase
                         .appendingPathComponent(sid, isDirectory: true)
                         .appendingPathComponent(host, isDirectory: true)
                         .appendingPathComponent(subPath)
@@ -359,7 +359,7 @@ extension AIChatViewModel {
         let sid = sessionId ?? "unknown"
 
         // Write to persistent storage (bind-mounted, so iSH sees it automatically)
-        let persistDir = Self.minisOffloadsPersistentDir(for: sid)
+        let persistDir = Self.unibotOffloadsPersistentDir(for: sid)
         try? fm.createDirectory(at: persistDir, withIntermediateDirectories: true)
 
         let timestamp = Int(Date().timeIntervalSince1970)
@@ -368,7 +368,7 @@ extension AIChatViewModel {
         let persistPath = persistDir.appendingPathComponent(fileName)
         try? output.write(to: persistPath, atomically: true, encoding: .utf8)
 
-        let linuxPath = "\(Self.minisOffloadsLinuxDir)/\(fileName)"
+        let linuxPath = "\(Self.unibotOffloadsLinuxDir)/\(fileName)"
         return OffloadResult(linuxPath: linuxPath)
     }
 

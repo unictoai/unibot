@@ -1,6 +1,6 @@
 //
 //  ISHKernel.h
-//  MinisApp
+//  UnibotApp
 //
 //  Objective-C wrapper for iSH kernel initialization and control
 //

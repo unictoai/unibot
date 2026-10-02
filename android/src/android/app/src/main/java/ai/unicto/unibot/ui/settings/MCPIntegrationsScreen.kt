@@ -53,7 +53,7 @@ import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.MCPRepository
 import ai.unicto.unibot.ui.components.DialogTextField
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * MCP Integrations management screen. Mirrors [SkillsManagementScreen]:
@@ -74,7 +74,7 @@ fun MCPIntegrationsScreen(
     val servers by mcpRepository.servers.collectAsState()
 
     // [T-android-mcp-list-reload-on-appear] MCPRepository reads servers.json
-    // only in init() (app launch). A server the agent writes via minis-mcp-cli
+    // only in init() (app launch). A server the agent writes via unibot-mcp-cli
     // AFTER launch isn't reflected in the `servers` StateFlow until restart.
     // Re-read the file each time the screen appears (mirrors the Skills screen's
     // reloadFromDisk on entry) so CLI-added servers show without an app restart.
@@ -190,13 +190,13 @@ fun MCPIntegrationsScreen(
             title = { Text(stringResource(R.string.mcp_delete_title, id)) },
             text = { Text(stringResource(R.string.mcp_delete_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     mcpRepository.delete(id)
                     deleteId = null
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                MinisTextButton(onClick = { deleteId = null }) { Text(stringResource(R.string.cancel)) }
+                UnibotTextButton(onClick = { deleteId = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -394,7 +394,7 @@ private fun MCPFormTab(
                 FieldLabel(stringResource(R.string.mcp_form_url))
                 if (envVarRepository != null) {
                     Spacer(Modifier.weight(1f))
-                    MinisTextButton(
+                    UnibotTextButton(
                         onClick = { showUrlVarPicker = true },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 8.dp, vertical = 0.dp,
@@ -414,7 +414,7 @@ private fun MCPFormTab(
                 FieldLabel(stringResource(R.string.mcp_form_headers))
                 if (envVarRepository != null) {
                     Spacer(Modifier.weight(1f))
-                    MinisTextButton(
+                    UnibotTextButton(
                         onClick = { showHeaderVarPicker = true },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 8.dp, vertical = 0.dp,
@@ -497,7 +497,7 @@ private fun MCPFormTab(
                 )
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     if (oauthAuthorized) {
-                        MinisTextButton(
+                        UnibotTextButton(
                             enabled = !oauthBusy,
                             onClick = {
                                 val sid = name.trim()
@@ -514,7 +514,7 @@ private fun MCPFormTab(
                         }
                     }
                     Spacer(Modifier.weight(1f))
-                    MinisTextButton(
+                    UnibotTextButton(
                         enabled = !oauthBusy,
                         onClick = {
                             val sid = name.trim()
@@ -590,7 +590,7 @@ private fun MCPFormTab(
                 FieldLabel(stringResource(R.string.mcp_form_env))
                 Spacer(Modifier.weight(1f))
                 if (envVarRepository != null) {
-                    MinisTextButton(
+                    UnibotTextButton(
                         onClick = { showEnvVarPicker = true },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 8.dp, vertical = 0.dp,
@@ -603,7 +603,7 @@ private fun MCPFormTab(
                 // affordance. Non-empty → confirm dialog before wiping; empty →
                 // clears immediately (no-op confirm). Disabled while blank so the
                 // affordance reads as inert when there's nothing to delete.
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         if (env.isBlank()) env = "" else showClearEnvConfirm = true
                     },
@@ -696,15 +696,15 @@ private fun MCPFormTab(
         // mcpServers JSON — Copy to clipboard + Share intent. Builds from the
         // live form so it includes unsaved edits.
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            MinisTextButton(onClick = {
-                val server = buildServerFromForm() ?: return@MinisTextButton
+            UnibotTextButton(onClick = {
+                val server = buildServerFromForm() ?: return@UnibotTextButton
                 clipboard.setText(androidx.compose.ui.text.AnnotatedString(mcpRepository.exportServerJSON(server)))
                 android.widget.Toast.makeText(
                     context, context.getString(R.string.mcp_export_copied), android.widget.Toast.LENGTH_SHORT,
                 ).show()
             }) { Text(stringResource(R.string.mcp_export_copy)) }
-            MinisTextButton(onClick = {
-                val server = buildServerFromForm() ?: return@MinisTextButton
+            UnibotTextButton(onClick = {
+                val server = buildServerFromForm() ?: return@UnibotTextButton
                 shareMcpServerJson(context, server.id, mcpRepository.exportServerJSON(server))
             }) { Text(stringResource(R.string.mcp_export_share)) }
         }
@@ -713,14 +713,14 @@ private fun MCPFormTab(
             // FIX 1: Delete affordance lives inside the edit sheet so a plain
             // row tap no longer means delete, without losing the delete path.
             if (isEdit) {
-                MinisTextButton(onClick = onRequestDelete) {
+                UnibotTextButton(onClick = onRequestDelete) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             }
             Spacer(Modifier.weight(1f))
-            MinisTextButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
-            MinisTextButton(onClick = {
-                val server = buildServerFromForm() ?: return@MinisTextButton
+            UnibotTextButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
+            UnibotTextButton(onClick = {
+                val server = buildServerFromForm() ?: return@UnibotTextButton
                 // [T-android-mcp-oauth] Store the client secret in the encrypted
                 // store (keyed by server id) — it never goes into servers.json.
                 // Cleared when the OAuth section is emptied.
@@ -799,13 +799,13 @@ private fun MCPFormTab(
             title = { Text(stringResource(R.string.mcp_form_env_clear_confirm_title)) },
             text = { Text(stringResource(R.string.mcp_form_env_clear_confirm_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     env = ""
                     showClearEnvConfirm = false
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showClearEnvConfirm = false }) {
+                UnibotTextButton(onClick = { showClearEnvConfirm = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -900,8 +900,8 @@ private fun MCPImportTab(
             Text(errorText!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            MinisTextButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
-            MinisTextButton(
+            UnibotTextButton(onClick = onDone) { Text(stringResource(R.string.cancel)) }
+            UnibotTextButton(
                 onClick = {
                     val imported = mcpRepository.importJSON(text)
                     if (imported.isEmpty()) errorText = context.getString(R.string.mcp_import_none)

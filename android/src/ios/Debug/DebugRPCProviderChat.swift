@@ -1314,7 +1314,7 @@ enum DebugRPCChat {
     /// for every text block in the cached VM, measure the SAME
     /// cachedAttributedString with (A) the precalc engine (bare NSLayoutManager
     /// usedRect + 8) and (B) the real render engine (SelectableMarkdownTextView
-    /// .sizeThatFits — MinisLayoutManager + 4/4 insets). The per-block deltas
+    /// .sizeThatFits — UnibotLayoutManager + 4/4 insets). The per-block deltas
     /// attribute the scroll-jitter precalc mismatch to engine config vs
     /// attributed-string drift, and the timings decide whether precalc can
     /// simply switch to engine B.

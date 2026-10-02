@@ -1,8 +1,8 @@
 //
 //  DebugOffload.m
-//  MinisApp
+//  UnibotApp
 //
-//  Native offload handler for `minis-debug`.
+//  Native offload handler for `unibot-debug`.
 //  Most subcommands (viewTree / search / inspect / ls / readFile / writeFile /
 //  shellExecute / screenshot / snapshot / overlay) call the in-app
 //  DebugJSONRPC dispatcher directly (same process — iSH runs embedded) and are
@@ -12,7 +12,7 @@
 //  output (OSLogStore + LoggingManager file) entirely in-process, never
 //  touching DebugLocalDispatch, so it is **available in Release builds** — a
 //  user reproducing a bug on their own Release device can read StopDiag /
-//  RetryDiag etc. without attaching Xcode (T-ios-minis-debug-logs-oslogstore).
+//  RetryDiag etc. without attaching Xcode (T-ios-unibot-debug-logs-oslogstore).
 //
 //  The handler, the `logs` path, and registration are compiled in every
 //  configuration; only the RPC-backed subcommands are wrapped in `#if DEBUG`.
@@ -20,10 +20,10 @@
 
 #import <Foundation/Foundation.h>
 #import "NativeOffloadUtils.h"
-#if __has_include("Minis-Swift.h")
-#import "Minis-Swift.h"
-#elif __has_include("MinisApp-Swift.h")
-#import "MinisApp-Swift.h"
+#if __has_include("Unibot-Swift.h")
+#import "Unibot-Swift.h"
+#elif __has_include("UnibotApp-Swift.h")
+#import "UnibotApp-Swift.h"
 #endif
 #include "kernel/native_offload.h"
 #include <unistd.h>
@@ -31,13 +31,13 @@
 #include <stdbool.h>
 #include <string.h>
 
-static NSString *const TOOL_NAME = @"minis-debug";
+static NSString *const TOOL_NAME = @"unibot-debug";
 
 static NSString *const HELP_TEXT =
-    @"minis-debug - Debug-build CLI for the in-app DebugJSONRPC dispatcher (in-process, no TCP)\n"
+    @"unibot-debug - Debug-build CLI for the in-app DebugJSONRPC dispatcher (in-process, no TCP)\n"
      "\n"
      "USAGE:\n"
-     "  minis-debug <command> [options]\n"
+     "  unibot-debug <command> [options]\n"
      "\n"
      "COMMANDS:\n"
      "  discover                              List every JSON-RPC method (rpc.discover)\n"
@@ -70,18 +70,18 @@ static NSString *const HELP_TEXT =
      "  -q, --quiet       Output only the data field\n"
      "\n"
      "EXAMPLES:\n"
-     "  minis-debug discover\n"
-     "  minis-debug viewTree --maxDepth 4\n"
-     "  minis-debug search Chat --scope type\n"
-     "  minis-debug inspect 0x10abc1234\n"
-     "  minis-debug highlight 0x10abc1234 --color green --duration 1.5\n"
-     "  minis-debug ls /var/minis/attachments\n"
-     "  minis-debug read /var/minis/log.txt --limit 4096\n"
-     "  minis-debug exec ls -la /var/minis\n"
-     "  minis-debug snapshot list --type markdown\n"
-     "  minis-debug overlay mode --mode byTypePrefix --type Selectable\n"
-     "  minis-debug logs --grep StopDiag --last 50\n"
-     "  minis-debug logs --minutes 5 --grep RetryDiag\n";
+     "  unibot-debug discover\n"
+     "  unibot-debug viewTree --maxDepth 4\n"
+     "  unibot-debug search Chat --scope type\n"
+     "  unibot-debug inspect 0x10abc1234\n"
+     "  unibot-debug highlight 0x10abc1234 --color green --duration 1.5\n"
+     "  unibot-debug ls /var/minis/attachments\n"
+     "  unibot-debug read /var/minis/log.txt --limit 4096\n"
+     "  unibot-debug exec ls -la /var/minis\n"
+     "  unibot-debug snapshot list --type markdown\n"
+     "  unibot-debug overlay mode --mode byTypePrefix --type Selectable\n"
+     "  unibot-debug logs --grep StopDiag --last 50\n"
+     "  unibot-debug logs --minutes 5 --grep RetryDiag\n";
 
 #pragma mark - Arg helpers (shared by all subcommands, incl. Release-safe `logs`)
 
@@ -106,14 +106,14 @@ static NSNumber *_Nullable opt_double(int argc, char **argv, const char *name) {
 
 #pragma mark - logs (Release-safe, in-process — no DebugLocalDispatch)
 
-/// Read the app's own runtime log via the Swift MinisDebugLogReader bridge
+/// Read the app's own runtime log via the Swift UnibotDebugLogReader bridge
 /// (OSLogStore + LoggingManager file). Unlike every other subcommand this does
 /// NOT route through DebugLocalDispatch, so it works in Release builds.
 static int cmd_logs(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL compact, BOOL quiet) {
-    Class reader = NSClassFromString(@"MinisDebugLogReader");
+    Class reader = NSClassFromString(@"UnibotDebugLogReader");
     if (!reader) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"logs", NOFF_ERR_INTERNAL_ERROR,
-                                             @"MinisDebugLogReader bridge unavailable");
+                                             @"UnibotDebugLogReader bridge unavailable");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_ERROR;
     }
@@ -121,7 +121,7 @@ static int cmd_logs(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL co
     SEL sel = @selector(readLogsJSONWithLastN:minutes:grep:);
     if (!shared || ![shared respondsToSelector:sel]) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"logs", NOFF_ERR_INTERNAL_ERROR,
-                                             @"MinisDebugLogReader.readLogsJSON missing");
+                                             @"UnibotDebugLogReader.readLogsJSON missing");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_ERROR;
     }
@@ -198,7 +198,7 @@ static NSDictionary *_Nullable call_rpc(NSString *method, NSDictionary *params, 
     id parsed = [NSJSONSerialization JSONObjectWithData:respData options:0 error:&parseErr];
     if (![parsed isKindOfClass:[NSDictionary class]]) {
         if (outError) {
-            *outError = [NSError errorWithDomain:@"MinisDebugOffload"
+            *outError = [NSError errorWithDomain:@"UnibotDebugOffload"
                                             code:-1
                                         userInfo:@{NSLocalizedDescriptionKey:
                                                     [NSString stringWithFormat:@"unexpected RPC response: %@", resp]}];
@@ -251,7 +251,7 @@ static int cmd_search(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
     NSString *kw = second_positional(argc, argv);
     if (!kw) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"search", NOFF_ERR_INVALID_ARGS,
-                                             @"search requires a keyword. Usage: minis-debug search <keyword> [--scope all|text|type]");
+                                             @"search requires a keyword. Usage: unibot-debug search <keyword> [--scope all|text|type]");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -265,7 +265,7 @@ static int cmd_inspect(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL
     NSString *addr = second_positional(argc, argv);
     if (!addr) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"inspect", NOFF_ERR_INVALID_ARGS,
-                                             @"inspect requires a view address. Usage: minis-debug inspect <address>");
+                                             @"inspect requires a view address. Usage: unibot-debug inspect <address>");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -276,7 +276,7 @@ static int cmd_highlight(int argc, char **argv, int stdout_fd, int stderr_fd, BO
     NSString *addr = second_positional(argc, argv);
     if (!addr) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"highlight", NOFF_ERR_INVALID_ARGS,
-                                             @"highlight requires a view address. Usage: minis-debug highlight <address> [--color red] [--duration 2.0]");
+                                             @"highlight requires a view address. Usage: unibot-debug highlight <address> [--color red] [--duration 2.0]");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -308,7 +308,7 @@ static int cmd_read(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL co
     NSString *path = second_positional(argc, argv);
     if (!path) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"read", NOFF_ERR_INVALID_ARGS,
-                                             @"read requires a path. Usage: minis-debug read <path> [--offset N] [--limit N] [--base64]");
+                                             @"read requires a path. Usage: unibot-debug read <path> [--offset N] [--limit N] [--base64]");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -325,7 +325,7 @@ static int cmd_write(int argc, char **argv, int stdin_fd, int stdout_fd, int std
     NSString *path = second_positional(argc, argv);
     if (!path) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"write", NOFF_ERR_INVALID_ARGS,
-                                             @"write requires a path. Usage: minis-debug write <path> --content <text> [--encoding utf8|base64] [--mode 0644]");
+                                             @"write requires a path. Usage: unibot-debug write <path> --content <text> [--encoding utf8|base64] [--mode 0644]");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -349,7 +349,7 @@ static int cmd_exec(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL co
     NSArray<NSString *> *pos = noff_positional_args(argc, argv);
     if (pos.count < 2) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"exec", NOFF_ERR_INVALID_ARGS,
-                                             @"exec requires a command. Usage: minis-debug exec <command...>");
+                                             @"exec requires a command. Usage: unibot-debug exec <command...>");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -369,7 +369,7 @@ static int cmd_snapshot(int argc, char **argv, int stdout_fd, int stderr_fd, BOO
     NSString *sub = second_positional(argc, argv);
     if (!sub) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"snapshot", NOFF_ERR_INVALID_ARGS,
-                                             @"snapshot requires a subcommand. Usage: minis-debug snapshot <list|get|clear|enable|disable> [--type markdown|messageList] [--id X]");
+                                             @"snapshot requires a subcommand. Usage: unibot-debug snapshot <list|get|clear|enable|disable> [--type markdown|messageList] [--id X]");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -409,7 +409,7 @@ static int cmd_overlay(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL
     NSString *sub = second_positional(argc, argv);
     if (!sub) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"overlay", NOFF_ERR_INVALID_ARGS,
-                                             @"overlay requires a subcommand. Usage: minis-debug overlay <enable|disable|mode> [--mode all|byType|byTypePrefix|byAddress] [--type X] [--address X]");
+                                             @"overlay requires a subcommand. Usage: unibot-debug overlay <enable|disable|mode> [--mode all|byType|byTypePrefix|byAddress] [--type X] [--address X]");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -524,7 +524,7 @@ static int hangtest_handler(int argc, char **argv,
                             int stdin_fd, int stdout_fd, int stderr_fd) {
     (void)argc; (void)argv; (void)stdin_fd; (void)stderr_fd;
     atomic_store_explicit(&g_hangtest_abort, false, memory_order_release);
-    const char *msg = "minis-hangtest: wedged; send a signal to abort\n";
+    const char *msg = "unibot-hangtest: wedged; send a signal to abort\n";
     if (stdout_fd >= 0) (void) write(stdout_fd, msg, strlen(msg));
     NSLog(@"[HangTest] handler entered — will block until aborted");
 
@@ -533,7 +533,7 @@ static int hangtest_handler(int argc, char **argv,
     for (int i = 0; i < 600 * 50; i++) {
         if (atomic_load_explicit(&g_hangtest_abort, memory_order_acquire)) {
             NSLog(@"[HangTest] abort observed — returning so the guest task can exit");
-            const char *done = "minis-hangtest: aborted\n";
+            const char *done = "unibot-hangtest: aborted\n";
             if (stdout_fd >= 0) (void) write(stdout_fd, done, strlen(done));
             return 0;
         }
@@ -545,19 +545,19 @@ static int hangtest_handler(int argc, char **argv,
 #endif
 
 void debug_offload_register(void) {
-    int err = native_offload_add_handler("minis-debug", debug_handler);
+    int err = native_offload_add_handler("unibot-debug", debug_handler);
     if (err == 0) {
-        noff_ensure_guest_stub("/usr/local/bin/minis-debug");
-        NSLog(@"NativeOffloads: minis-debug handler registered (logs available in all builds; RPC subcommands DEBUG-only)");
+        noff_ensure_guest_stub("/usr/local/bin/unibot-debug");
+        NSLog(@"NativeOffloads: unibot-debug handler registered (logs available in all builds; RPC subcommands DEBUG-only)");
     } else {
-        NSLog(@"NativeOffloads: failed to register minis-debug handler (err=%d)", err);
+        NSLog(@"NativeOffloads: failed to register unibot-debug handler (err=%d)", err);
     }
 
 #if DEBUG
-    if (native_offload_add_handler("minis-hangtest", hangtest_handler) == 0) {
-        noff_ensure_guest_stub("/usr/local/bin/minis-hangtest");
-        native_offload_set_abort_handler("minis-hangtest", hangtest_abort_requested);
-        NSLog(@"NativeOffloads: minis-hangtest handler registered (DEBUG only)");
+    if (native_offload_add_handler("unibot-hangtest", hangtest_handler) == 0) {
+        noff_ensure_guest_stub("/usr/local/bin/unibot-hangtest");
+        native_offload_set_abort_handler("unibot-hangtest", hangtest_abort_requested);
+        NSLog(@"NativeOffloads: unibot-hangtest handler registered (DEBUG only)");
     }
 #endif
 }

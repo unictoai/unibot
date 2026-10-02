@@ -1,6 +1,6 @@
 //
 //  MountedFoldersSettingsView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Settings screen for managing user-mounted external folders. Lets the user
 //  pick a folder from iOS Files (e.g. an Obsidian vault in iCloud Drive),

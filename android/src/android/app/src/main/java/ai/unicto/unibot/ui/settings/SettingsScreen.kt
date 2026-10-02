@@ -305,7 +305,7 @@ fun SettingsScreen(
 
             // -- About --
             ai.unicto.unibot.ui.muse.MuseCard {
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_about_minis), icon = Icons.Outlined.Info, onClick = onAboutClick)
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_about_unibot), icon = Icons.Outlined.Info, onClick = onAboutClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(
                     title = stringResource(R.string.settings_privacy_policy),

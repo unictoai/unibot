@@ -41,9 +41,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ai.unicto.unibot.backup.remote.RcloneBackendCatalog
 import ai.unicto.unibot.ui.settings.SettingsScaffold
@@ -126,7 +126,7 @@ fun RcloneDestinationsScreen(onBack: () -> Unit) {
         }
 
         Column(Modifier.padding(16.dp)) {
-            MinisButton(
+            UnibotButton(
                 onClick = { adding = true },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.backup_dest_add_server)) }
@@ -134,7 +134,7 @@ fun RcloneDestinationsScreen(onBack: () -> Unit) {
             if (remotes.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 remotes.forEach { r ->
-                    MinisOutlinedButton(
+                    UnibotOutlinedButton(
                         onClick = { vm.remove(r.name) },
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     ) { Text(stringResource(R.string.backup_dest_remove, r.name)) }
@@ -289,7 +289,7 @@ internal fun AddServerForm(
         Spacer(Modifier.height(16.dp))
         val nameOk = displayName.trim().isNotEmpty() &&
             displayName.trim().all { it.isLetterOrDigit() || it == '-' || it == '_' }
-        MinisButton(
+        UnibotButton(
             onClick = {
                 vm.connectAndBrowse(
                     backend = backend.type,
@@ -328,7 +328,7 @@ internal fun AddServerForm(
                 )
             }
         }
-        MinisOutlinedButton(
+        UnibotOutlinedButton(
             onClick = onCancel,
             enabled = !busy,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -507,7 +507,7 @@ internal fun FolderBrowser(vm: RcloneDestinationsViewModel, onSaved: (String) ->
         }
 
         Spacer(Modifier.height(12.dp))
-        MinisButton(
+        UnibotButton(
             // savePending only invokes this on success (the catch sets _error
             // instead), so leaving the form here cannot strand a failed save
             // on a screen the user has already been navigated away from.
@@ -516,7 +516,7 @@ internal fun FolderBrowser(vm: RcloneDestinationsViewModel, onSaved: (String) ->
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.backup_dest_use_folder)) }
 
-        MinisOutlinedButton(
+        UnibotOutlinedButton(
             onClick = { vm.cancelPending() },
             enabled = !busy,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -549,7 +549,7 @@ internal fun FolderBrowser(vm: RcloneDestinationsViewModel, onSaved: (String) ->
                 // AlertDialog button, unlike a SwiftUI alert action, is not
                 // omitted when disabled, so the iOS "Create button missing"
                 // trap (e747b6da1) cannot occur here.
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         vm.createFolder(newFolderName.trim())
                         showNewFolder = false; newFolderName = ""
@@ -558,7 +558,7 @@ internal fun FolderBrowser(vm: RcloneDestinationsViewModel, onSaved: (String) ->
                 ) { Text(stringResource(R.string.backup_dest_create)) }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showNewFolder = false; newFolderName = "" }) {
+                UnibotTextButton(onClick = { showNewFolder = false; newFolderName = "" }) {
                     Text(stringResource(R.string.backup_dest_cancel))
                 }
             },

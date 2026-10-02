@@ -42,7 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -322,7 +322,7 @@ fun MountedFoldersScreen(
         AlertDialog(
             onDismissRequest = { addError = null },
             confirmButton = {
-                MinisTextButton(onClick = { addError = null }) {
+                UnibotTextButton(onClick = { addError = null }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -347,7 +347,7 @@ fun MountedFoldersScreen(
             title = { Text(stringResource(R.string.mount_picker_intro_title)) },
             text = { Text(stringResource(R.string.mount_picker_intro_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showPickerIntro = false
                     pickerLauncher.launch(initialPickerUri())
                 }) {
@@ -355,7 +355,7 @@ fun MountedFoldersScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showPickerIntro = false }) {
+                UnibotTextButton(onClick = { showPickerIntro = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -675,11 +675,11 @@ private fun AddMountSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                MinisTextButton(onClick = onDismiss) {
+                UnibotTextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.cancel))
                 }
                 Spacer(Modifier.width(8.dp))
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = { onConfirm(name.trim(), allowWrite) },
                     enabled = isValidMountName(name),
                 ) {

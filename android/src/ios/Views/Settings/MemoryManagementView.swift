@@ -1,6 +1,6 @@
 //
 //  MemoryManagementView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Settings-level memory management: unified file list with edit/delete.
 //
@@ -110,7 +110,7 @@ struct MemoryManagementView: View {
 
     private func loadFiles() {
         let fm = FileManager.default
-        let memDir = AIChatViewModel.minisMemoryPersistentDir
+        let memDir = AIChatViewModel.unibotMemoryPersistentDir
         try? fm.createDirectory(at: memDir, withIntermediateDirectories: true)
 
         // GLOBAL.md always first
@@ -144,7 +144,7 @@ struct MemoryManagementView: View {
 
     private func deleteFiles(at offsets: IndexSet) {
         let fm = FileManager.default
-        let memDir = AIChatViewModel.minisMemoryPersistentDir
+        let memDir = AIChatViewModel.unibotMemoryPersistentDir
         for idx in offsets {
             let file = memoryFiles[idx]
             if file.isGlobal { continue }
@@ -202,7 +202,7 @@ private struct MemoryFileEditView: View {
     @State private var suppressNextChange = false
 
     private var fileURL: URL {
-        AIChatViewModel.minisMemoryPersistentDir.appendingPathComponent(fileName)
+        AIChatViewModel.unibotMemoryPersistentDir.appendingPathComponent(fileName)
     }
 
     var body: some View {
@@ -289,7 +289,7 @@ private struct MemoryFileEditView: View {
 
     private func save() {
         let fm = FileManager.default
-        try? fm.createDirectory(at: AIChatViewModel.minisMemoryPersistentDir, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: AIChatViewModel.unibotMemoryPersistentDir, withIntermediateDirectories: true)
         do {
             try content.data(using: .utf8)?.write(to: fileURL)
             hasChanges = false
@@ -297,7 +297,7 @@ private struct MemoryFileEditView: View {
             // [T-toast-feedback] Confirm the save succeeded — the screen
             // doesn't dismiss or change, so without this the user gets no
             // signal that the write landed.
-            MinisToast.show(AppLocalized("Saved"))
+            UnibotToast.show(AppLocalized("Saved"))
             // Enqueue for iCloud v2 sync. GLOBAL.md uses its own singleton
             // record; per-day logs use the dateKey from the filename.
             if isGlobal {

@@ -65,16 +65,16 @@ import androidx.compose.ui.res.stringResource
 import ai.unicto.unibot.data.model.ProviderType
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.logging.AppLogger
-import ai.unicto.unibot.ui.components.MinisAlertDialog
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
 import ai.unicto.unibot.ui.util.bringIntoViewOnFocus
 import ai.unicto.unibot.R
 import kotlinx.coroutines.launch
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisSmallButton
-import ai.unicto.unibot.ui.components.MinisSmallOutlinedButton
-import ai.unicto.unibot.ui.components.MinisSmallTextButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotSmallButton
+import ai.unicto.unibot.ui.components.UnibotSmallOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotSmallTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.components.SectionTextField
 
 private const val TAG = "ProviderDetail"
@@ -161,7 +161,7 @@ fun ProviderDetailScreen(
                     )
                     if (labelChanged) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        MinisSmallButton(onClick = {
+                        UnibotSmallButton(onClick = {
                             providerRepository.updateInstance(instance.copy(label = label))
                             AppLogger.info(TAG, "Updated label for ${instance.id}: '$label'")
                         }) {
@@ -288,7 +288,7 @@ fun ProviderDetailScreen(
                 )
                 // [T-provider-custom-user-agent] Custom User-Agent input —
                 // only for OpenAI-/Anthropic-compat (relay) protocols. Some
-                // gateways reject Minis' default UA and only allow official
+                // gateways reject Unibot' default UA and only allow official
                 // clients (e.g. Claude Code). Blank → default UA. Official
                 // direct OpenAI/Anthropic instances still see the field because
                 // protocol == openAI/anthropic; it's harmless there (the value
@@ -319,7 +319,7 @@ fun ProviderDetailScreen(
                 }
                 // Save action — TextButton presentation so it reads as a list
                 // row rather than a floating filled button inside the card.
-                MinisSmallTextButton(
+                UnibotSmallTextButton(
                     onClick = {
                         providerRepository.updateInstance(
                             instance.copy(
@@ -408,7 +408,7 @@ fun ProviderDetailScreen(
 
         // ─── Image Generation Endpoint ──────────────────────────────
         // [T-android-image-endpoint-mode] OpenAI-compatible providers only.
-        // Picks how minis-model-use routes image-output models:
+        // Picks how unibot-model-use routes image-output models:
         // auto-probe / forced Images API / forced Chat Completions. Mirrors
         // iOS ProviderInstanceDetailView.imageEndpointSection.
         if (instance.supportsImageEndpointSetting) {
@@ -709,7 +709,7 @@ fun ProviderDetailScreen(
         // Match iOS visual: button sits on the page background with horizontal
         // gutter padding only. The 20dp top padding mirrors SettingsSection's
         // top spacing so the rhythm against the cards above stays consistent.
-        MinisOutlinedButton(
+        UnibotOutlinedButton(
             onClick = onAddCustomModel,
             modifier = Modifier
                 .fillMaxWidth()
@@ -720,11 +720,11 @@ fun ProviderDetailScreen(
         }
 
         // [T-android-delete-provider-button-height] The "Delete provider" button
-        // uses the same default 48dp MinisButtonHeight as "Add custom model"
+        // uses the same default 48dp UnibotButtonHeight as "Add custom model"
         // above it for visual consistency (no explicit .height override). The
         // destructive intent is conveyed by the error container color, not by a
         // taller button.
-        MinisButton(
+        UnibotButton(
             onClick = { showDeleteDialog = true },
             modifier = Modifier
                 .fillMaxWidth()
@@ -741,7 +741,7 @@ fun ProviderDetailScreen(
     }
 
     if (showDeleteDialog) {
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = stringResource(R.string.provider_detail_delete_provider),
             text = stringResource(R.string.provider_detail_delete_provider_confirm, instance.label),
@@ -761,7 +761,7 @@ fun ProviderDetailScreen(
     // from any modelGroups it belongs to (see ProviderRepository L304-306),
     // so the StateFlow update propagates the row removal everywhere.
     entryToDelete?.let { e ->
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = { entryToDelete = null },
             title = stringResource(R.string.provider_detail_delete_model),
             text = stringResource(R.string.provider_detail_delete_model_confirm, e.model.displayName),
@@ -846,7 +846,7 @@ private fun OAuthCredentialBlock(
     }
     Spacer(modifier = Modifier.height(8.dp))
     if (displayedKey.isNotEmpty()) {
-        MinisSmallButton(
+        UnibotSmallButton(
             onClick = {
                 // [T-android-openai-oauth-signout-signin-stuck] A real sign-out
                 // must clear BOTH credential stores: (1) the persisted OAuth
@@ -870,9 +870,9 @@ private fun OAuthCredentialBlock(
             Text(stringResource(R.string.provider_detail_sign_out))
         }
     } else {
-        MinisSmallButton(
+        UnibotSmallButton(
             onClick = {
-                if (isAuthenticating) return@MinisSmallButton
+                if (isAuthenticating) return@UnibotSmallButton
                 isAuthenticating = true
                 kimiLoginJob = scope.launch {
                     try {
@@ -958,7 +958,7 @@ private fun ApiKeyCredentialBlock(
             // a neutral outlined pill (onSurfaceVariant content/border), forming
             // the standard MD3 outlined-vs-filled pair with the filled Save below.
             // Previously a primary-teal text button — indistinguishable from Save.
-            MinisSmallOutlinedButton(
+            UnibotSmallOutlinedButton(
                 onClick = onCancelEdit,
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -968,7 +968,7 @@ private fun ApiKeyCredentialBlock(
                 Text(stringResource(R.string.common_cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
-            MinisSmallButton(onClick = onSave, enabled = editValue.isNotBlank()) {
+            UnibotSmallButton(onClick = onSave, enabled = editValue.isNotBlank()) {
                 Text(stringResource(R.string.provider_detail_save_key))
             }
         }
@@ -985,7 +985,7 @@ private fun ApiKeyCredentialBlock(
                     contentDescription = if (keyVisible) "Hide" else "Show",
                 )
             }
-            MinisSmallTextButton(onClick = onBeginEdit) {
+            UnibotSmallTextButton(onClick = onBeginEdit) {
                 Text(stringResource(R.string.common_edit))
             }
         }
@@ -1068,7 +1068,7 @@ private fun ManualBearerTokenSection(
         Row(modifier = Modifier.padding(top = 8.dp)) {
             // [T-android-settings-ui-md3] #4 + #12 neutral outlined Cancel (see
             // the API-key edit pair above) paired with the filled Save.
-            MinisSmallOutlinedButton(
+            UnibotSmallOutlinedButton(
                 onClick = {
                     isEditing = false
                     draft = ""
@@ -1081,7 +1081,7 @@ private fun ManualBearerTokenSection(
                 Text(stringResource(R.string.common_cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
-            MinisSmallButton(
+            UnibotSmallButton(
                 onClick = {
                     val cleaned = draft.replace(Regex("\\s+"), "")
                     if (cleaned.isNotEmpty() && manager != null) {
@@ -1116,14 +1116,14 @@ private fun ManualBearerTokenSection(
             )
         }
         Row(modifier = Modifier.padding(top = 8.dp)) {
-            MinisSmallOutlinedButton(onClick = {
+            UnibotSmallOutlinedButton(onClick = {
                 draft = ""
                 isEditing = true
             }) {
                 Text(stringResource(R.string.common_change))
             }
             Spacer(modifier = Modifier.width(8.dp))
-            MinisSmallOutlinedButton(
+            UnibotSmallOutlinedButton(
                 onClick = {
                     manager?.deleteManualBearerToken()
                     AppLogger.info(TAG, "Manual bearer token removed for ${instance.id}")
@@ -1137,7 +1137,7 @@ private fun ManualBearerTokenSection(
             }
         }
     } else {
-        MinisSmallOutlinedButton(onClick = {
+        UnibotSmallOutlinedButton(onClick = {
             draft = ""
             isEditing = true
         }) {

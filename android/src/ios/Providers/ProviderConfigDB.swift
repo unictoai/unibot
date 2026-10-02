@@ -24,11 +24,11 @@ actor ProviderConfigDB {
 
     // MARK: - File locations
 
-    /// Default DB path: same MinisChat folder as `provider-config.json`.
+    /// Default DB path: same UnibotChat folder as `provider-config.json`.
     static func defaultURL() -> URL {
         let library = FileManager.default
             .urls(for: .libraryDirectory, in: .userDomainMask)[0]
-        let base = library.appendingPathComponent("MinisChat", isDirectory: true)
+        let base = library.appendingPathComponent("UnibotChat", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appendingPathComponent("provider-config.db")
     }

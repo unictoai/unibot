@@ -458,7 +458,7 @@ fun InlineVoiceInputPanel(
     // button no longer hides in this case (hiding it stranded users inside
     // voice mode), so the panel owns the explanation: say WHY nothing will be
     // transcribed and link to the two things that fix it — the system speech
-    // service, or an ASR provider configured in Minis. The composer's toggle
+    // service, or an ASR provider configured in Unibot. The composer's toggle
     // stays visible throughout, so leaving is always one tap away.
     val engineAvailable by SpeechRecognitionManager.isAvailable.collectAsState()
     if (!engineAvailable) {
@@ -1196,7 +1196,7 @@ private fun statusLabel(
  *
  *  - the device's speech service (Google app / OEM equivalent) is missing or
  *    disabled → open system voice-input settings;
- *  - no ASR provider is configured in Minis → open Provider settings.
+ *  - no ASR provider is configured in Unibot → open Provider settings.
  *
  * Leaving is always available: the toggle in the composer is untouched.
  */
@@ -1276,7 +1276,7 @@ private fun VoiceEngineUnavailableNotice(
                     ctx.startActivity(
                         android.content.Intent(
                             android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("minis://settings/providers"),
+                            android.net.Uri.parse("unibot://settings/providers"),
                         ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                     )
                 }

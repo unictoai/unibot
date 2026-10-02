@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.browser.BrowserTabPool
 
 /**
@@ -89,7 +89,7 @@ fun BrowserDownloadsSheet(
                     modifier = Modifier.weight(1f),
                 )
                 if (downloads.any { it.state != BrowserTabPool.DownloadState.DOWNLOADING }) {
-                    MinisTextButton(onClick = { tabPool.clearFinishedDownloads() }) {
+                    UnibotTextButton(onClick = { tabPool.clearFinishedDownloads() }) {
                         Text(stringResource(R.string.browser_downloads_clear))
                     }
                 }

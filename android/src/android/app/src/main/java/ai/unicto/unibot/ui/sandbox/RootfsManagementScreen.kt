@@ -1,7 +1,7 @@
 package ai.unicto.unibot.ui.sandbox
 
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import android.text.format.Formatter
 import androidx.compose.foundation.background
@@ -316,7 +316,7 @@ fun RootfsManagementScreen(
             title = { Text(stringResource(R.string.rootfs_reset_confirm_title)) },
             text = { Text(stringResource(R.string.rootfs_reset_confirm_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showResetDialog = false
                     viewModel.resetRootfs(context, keepUserData = false)
                 }) {
@@ -324,7 +324,7 @@ fun RootfsManagementScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showResetDialog = false }) {
+                UnibotTextButton(onClick = { showResetDialog = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -339,7 +339,7 @@ fun RootfsManagementScreen(
                 Text(stringResource(R.string.rootfs_reset_backup_confirm_message))
             },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showResetBackupDialog = false
                     viewModel.resetRootfs(context, keepUserData = true)
                 }) {
@@ -347,7 +347,7 @@ fun RootfsManagementScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showResetBackupDialog = false }) {
+                UnibotTextButton(onClick = { showResetBackupDialog = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },

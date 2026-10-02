@@ -257,7 +257,7 @@ EOF
     ln -sf /etc/init.d/networking "$ROOTFS/etc/runlevels/default/networking" 2>/dev/null || true
 
     # Set hostname
-    echo "minis-vm" > "$ROOTFS/etc/hostname"
+    echo "unibot-vm" > "$ROOTFS/etc/hostname"
 
     # Create welcome message
     cat > "$ROOTFS/etc/motd" << 'EOF'
@@ -268,7 +268,7 @@ EOF
  | |  | | | | | | \__ \   \ V / | |  | |
  |_|  |_|_|_| |_|_|___/    \_/  |_|  |_|
 
- Welcome to MinisApp Alpine Linux VM
+ Welcome to UnibotApp Alpine Linux VM
  Running on QEMU aarch64
 
 EOF
@@ -347,7 +347,7 @@ main() {
     log_info "To test the VM locally:"
     log_info "  cd $ALPINE_DIR && ./qemu-boot.sh"
     echo
-    log_info "To use in MinisApp:"
+    log_info "To use in UnibotApp:"
     log_info "  Copy alpine-aarch64.qcow2 to the app bundle or download at runtime"
 }
 

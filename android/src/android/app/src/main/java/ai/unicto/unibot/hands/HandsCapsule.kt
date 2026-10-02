@@ -446,7 +446,7 @@ class HandsCapsule(private val context: Context) {
     fun bringAppToFront(sessionId: String?) {
         try {
             val intent = Intent(context, Class.forName("ai.unicto.unibot.MainActivity")).apply {
-                if (!sessionId.isNullOrBlank()) data = android.net.Uri.parse("minis://session/$sessionId")
+                if (!sessionId.isNullOrBlank()) data = android.net.Uri.parse("unibot://session/$sessionId")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             context.startActivity(intent)

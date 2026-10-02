@@ -2,8 +2,8 @@ package ai.unicto.unibot.ui.onboarding
 
 import ai.unicto.unibot.R
 import androidx.compose.ui.res.stringResource
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -99,7 +99,7 @@ fun OnboardingModelSelectionScreen(
                     }
                 },
                 actions = {
-                    MinisTextButton(onClick = onBack) {
+                    UnibotTextButton(onClick = onBack) {
                         Text(stringResource(R.string.common_skip))
                     }
                 },
@@ -217,7 +217,7 @@ fun OnboardingModelSelectionScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            MinisButton(
+            UnibotButton(
                 onClick = {
                     if (selected.isNotEmpty()) {
                         val group = ModelGroup(name = "Default Models")

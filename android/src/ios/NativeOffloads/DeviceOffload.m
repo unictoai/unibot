@@ -1,6 +1,6 @@
 //
 //  DeviceOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-device`.
 //  Subcommands: info, battery, storage

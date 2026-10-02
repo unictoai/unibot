@@ -8,11 +8,11 @@ import org.junit.Test
  * [T-android-inapp-theme-popups #187] Source guard: nothing under `ui/` may ask
  * Android whether the SYSTEM is in dark mode.
  *
- * Minis resolves its own theme from the `theme_mode` preference (0=System,
- * 1=Light, 2=Dark) in MainActivity and hands the answer to `MinisTheme`, which
+ * Unibot resolves its own theme from the `theme_mode` preference (0=System,
+ * 1=Light, 2=Dark) in MainActivity and hands the answer to `UnibotTheme`, which
  * publishes it as `ChatPalette.isDark` (read via [ChatColors.isDark]).
  * `isSystemInDarkTheme()` tracks only the OS setting, so the two DISAGREE
- * exactly when the user has overridden the theme in-app — system light + Minis
+ * exactly when the user has overridden the theme in-app — system light + Unibot
  * dark being the reported case. A component reading the system API then paints
  * light chrome inside a dark app (GH OpenMinis#187: pop-up menus followed the
  * system theme; the web-preview sheets and KaTeX formulas did the same).
@@ -28,7 +28,7 @@ import org.junit.Test
  *   • MainActivity — the "follow the system" branch of the theme_mode `when`.
  *     This is the one place the system value is the correct answer.
  *   • Theme.kt — the `darkTheme` default parameter, for previews/tests that
- *     invoke MinisTheme without an explicit value.
+ *     invoke UnibotTheme without an explicit value.
  *
  * If a new file legitimately needs the system value, add it here WITH the
  * reason; the point is that the exception becomes a deliberate, reviewed act.

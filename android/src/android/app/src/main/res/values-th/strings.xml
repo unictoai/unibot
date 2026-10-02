@@ -147,7 +147,7 @@
     <string name="mcp_add">เพิ่มเซิร์ฟเวอร์ MCP</string>
     <string name="mcp_edit">แก้ไขเซิร์ฟเวอร์ MCP</string>
     <string name="mcp_section_servers">เซิร์ฟเวอร์</string>
-    <string name="mcp_section_footer">เซิร์ฟเวอร์ MCP ช่วยให้ Agent เรียกใช้เครื่องมือภายนอกผ่าน minis-mcp-cli ได้ การตั้งค่าถูกเก็บไว้ที่ /var/minis/mcp-servers/servers.json (ใช้ร่วมกับ Claude Desktop ได้)</string>
+    <string name="mcp_section_footer">เซิร์ฟเวอร์ MCP ช่วยให้ Agent เรียกใช้เครื่องมือภายนอกผ่าน unibot-mcp-cli ได้ การตั้งค่าถูกเก็บไว้ที่ /var/minis/mcp-servers/servers.json (ใช้ร่วมกับ Claude Desktop ได้)</string>
     <string name="mcp_empty_title">ไม่มีเซิร์ฟเวอร์ MCP</string>
     <string name="mcp_empty_action">เพิ่มเซิร์ฟเวอร์ด้วยปุ่ม +</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -282,7 +282,7 @@
     <string name="settings_section_logs">บันทึก</string>
     <string name="settings_logs_subtitle">ดูและส่งออกบันทึกของแอป</string>
     <string name="settings_section_about">เกี่ยวกับ</string>
-    <string name="settings_about_minis">เกี่ยวกับ unibot</string>
+    <string name="settings_about_unibot">เกี่ยวกับ unibot</string>
     <string name="settings_about_subtitle">เวอร์ชันและข้อมูลโครงการ</string>
     <string name="settings_privacy_policy">นโยบายความเป็นส่วนตัว</string>
     <string name="settings_feedback">ข้อเสนอแนะ</string>
@@ -290,7 +290,7 @@
     <string name="settings_feedback_telegram">ข้อเสนอแนะ (Telegram)</string>
     <string name="settings_feedback_email">ข้อเสนอแนะ (อีเมล)</string>
     <string name="about_title">เกี่ยวกับ</string>
-    <string name="about_minis_tagline">unibot คือ Agent บนอุปกรณ์ของคุณที่ทำงานในเครื่องทั้งหมดและเป็นส่วนตัวอย่างสมบูรณ์</string>
+    <string name="about_unibot_tagline">unibot คือ Agent บนอุปกรณ์ของคุณที่ทำงานในเครื่องทั้งหมดและเป็นส่วนตัวอย่างสมบูรณ์</string>
     <string name="about_links">ลิงก์</string>
     <string name="about_github_repository">GitHub Repository</string>
     <string name="about_version_format">เวอร์ชัน %1$s (%2$s)</string>
@@ -507,7 +507,7 @@
     <string name="browser_nav_forward">ไปข้างหน้า</string>
     <string name="browser_stop">หยุด</string>
     <string name="browser_reload">โหลดใหม่</string>
-    <string name="browser_minis_browsing">%1$s กำลังท่องเว็บ</string>
+    <string name="browser_unibot_browsing">%1$s กำลังท่องเว็บ</string>
     <string name="chat_typing_indicator">%1$s กำลังคิด</string>
     <string name="read_aloud_unavailable">อ่านออกเสียงไม่สำเร็จ: ไม่มีเอนจินเสียงที่ใช้งานได้ ตรวจสอบการตั้งค่าเอาต์พุตเสียง หรือติดตั้งเอนจินเสียงของระบบ</string>
     <string name="chat_error_stream_dropped_partial">การเชื่อมต่อหลุด — คำตอบนี้อาจไม่สมบูรณ์ แตะ ลองอีกครั้ง เพื่อดำเนินการต่อ</string>
@@ -718,8 +718,8 @@
     <string name="perm_agent_policy">สิทธิ์ของ Agent</string>
     <string name="perm_a11y_system_ready">เปิดใช้บริการแล้ว</string>
     <string name="perm_a11y_system_disabled">ยังไม่ได้เปิดใช้บริการ</string>
-    <string name="perm_allow_minis_config">อนุญาต minis-config</string>
-    <string name="perm_minis_config_desc">เมื่อปิดใช้ Agent จะไม่สามารถอ่านหรือแก้ไขการตั้งค่าใดๆ ผ่าน minis-config ได้ ประวัติการเปลี่ยนแปลงที่ บันทึก → การเปลี่ยนแปลงการตั้งค่า ยังเข้าถึงได้อยู่ Agent จะได้รับข้อผิดพลาด permission_denied และสามารถแนะนำคุณผ่าน deep link แทนได้</string>
+    <string name="perm_allow_unibot_config">อนุญาต unibot-config</string>
+    <string name="perm_unibot_config_desc">เมื่อปิดใช้ Agent จะไม่สามารถอ่านหรือแก้ไขการตั้งค่าใดๆ ผ่าน unibot-config ได้ ประวัติการเปลี่ยนแปลงที่ บันทึก → การเปลี่ยนแปลงการตั้งค่า ยังเข้าถึงได้อยู่ Agent จะได้รับข้อผิดพลาด permission_denied และสามารถแนะนำคุณผ่าน deep link แทนได้</string>
     <string name="perm_section_privacy">ความเป็นส่วนตัว</string>
     <string name="perm_section_media">สื่อ</string>
     <string name="perm_section_system">ระบบ</string>
@@ -797,7 +797,7 @@
     <string name="skill_empty_title">ยังไม่ได้ติดตั้งทักษะ</string>
     <string name="skill_empty_action">แตะ + เพื่อนำเข้าไฟล์ SKILL.md, .zip หรือ .skill หรือเรียกดู unibot Skills</string>
     <string name="skill_import_modal_title">นำเข้าทักษะ</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">ลบ %1$s หรือไม่</string>
     <string name="skill_delete_confirm_text">การกระทำนี้จะลบทักษะและไฟล์ของมันอย่างถาวร</string>
     <string name="skill_import_sheet_title">นำเข้าทักษะ</string>
@@ -861,8 +861,8 @@
     <string name="storage_overview_sessions">ไฟล์ของเซสชัน</string>
     <string name="storage_section_sessions">เซสชัน</string>
     <string name="storage_no_sessions">ไม่มีเซสชัน</string>
-    <string name="storage_section_minis_files">ไฟล์ unibot</string>
-    <string name="storage_no_minis_files">ไม่มีไฟล์ minis</string>
+    <string name="storage_section_unibot_files">ไฟล์ unibot</string>
+    <string name="storage_no_unibot_files">ไม่มีไฟล์ unibot</string>
     <string name="storage_section_media">ไฟล์สื่อ</string>
     <string name="storage_no_media_files">ไม่มีไฟล์สื่อ</string>
     <string name="storage_clear_session_footer">ลบไฟล์ทั้งหมดที่เซสชันนี้สร้างขึ้น ตัวบทสนทนาเองจะยังคงอยู่</string>
@@ -1163,7 +1163,7 @@
     <string name="settings_dynamic_island_footer">แสดงสถานะของ Agent แบบสดบนชิปสถานะของ Android 16 เมื่อเปิดใช้ ระบบจะใช้แทนแคปซูลลอย เพื่อไม่ให้เห็นตัวบอกสถานะสองอันพร้อมกัน</string>
     <string name="settings_dynamic_island_unsupported">ระบบเวอร์ชันปัจจุบันของคุณยังไม่รองรับ Live Updates (ต้องใช้ Android 16 ขึ้นไปและเปิดฟีเจอร์นี้ไว้)</string>
     <string name="agent_loop_section_title">โมเดลที่ unibot เรียกใช้ได้ขณะทำงาน</string>
-    <string name="agent_loop_section_footer">ระหว่างทำงาน unibot จะเรียกโมเดลเหล่านี้สำหรับงานย่อย เช่น การสร้างรูปภาพหรือการสรุปข้อความ ซึ่งเป็นงานที่โมเดลของตัวเองทำไม่ได้ นอกจากนี้ยังเรียกจากเทอร์มินัลผ่าน minis-model-use ได้ด้วย Agent จะมองเห็นเฉพาะโมเดลเหล่านี้เท่านั้น</string>
+    <string name="agent_loop_section_footer">ระหว่างทำงาน unibot จะเรียกโมเดลเหล่านี้สำหรับงานย่อย เช่น การสร้างรูปภาพหรือการสรุปข้อความ ซึ่งเป็นงานที่โมเดลของตัวเองทำไม่ได้ นอกจากนี้ยังเรียกจากเทอร์มินัลผ่าน unibot-model-use ได้ด้วย Agent จะมองเห็นเฉพาะโมเดลเหล่านี้เท่านั้น</string>
     <string name="agent_loop_section_empty_hint">ยังไม่ได้เพิ่มโมเดลหรือกลุ่ม</string>
     <string name="agent_loop_section_add_models">เพิ่มโมเดล</string>
     <string name="agent_loop_section_add_groups">เพิ่มกลุ่ม</string>
@@ -1597,7 +1597,7 @@
     <string name="webapp_pin_success">เพิ่มไปยังหน้าจอหลักแล้ว</string>
     <string name="webapp_source_missing_title">ไฟล์ต้นทางไม่มีอยู่แล้ว</string>
     <string name="webapp_source_missing_body">ไฟล์ที่เป็นฐานของทางลัดนี้ถูกย้ายหรือลบไปแล้ว</string>
-    <string name="webapp_open_in_minis">เปิดใน unibot</string>
+    <string name="webapp_open_in_unibot">เปิดใน unibot</string>
     <string name="webapp_action_close">ปิด</string>
     <string name="webapp_action_fullscreen">เข้าสู่โหมดเต็มหน้าจอ</string>
     <string name="webapp_action_exit_fullscreen">ออกจากโหมดเต็มหน้าจอ</string>

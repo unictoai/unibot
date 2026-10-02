@@ -19,7 +19,7 @@ import java.util.UUID
  *   - `deviceId` — opaque UUID for any "my-device" disambiguation.
  */
 object DeviceIdentity {
-    private const val PREFS_NAME = "minis_device_identity"
+    private const val PREFS_NAME = "unibot_device_identity"
     private const val KEY_DEVICE_ID = "deviceId"
 
     @Volatile private var cached: String? = null

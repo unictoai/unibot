@@ -1,6 +1,6 @@
 //
 //  TerminalCanvasView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  UIScrollView-backed terminal renderer using UITextView for native text selection.
 //  Uses NSAttributedString for ANSI color rendering with a cursor overlay.
@@ -934,7 +934,7 @@ extension TerminalScrollContainerView: UITextViewDelegate {
                   interaction: UITextItemInteraction) -> Bool {
         guard let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https" else { return true }
-        MinisOpenURLBroker.shared.offer(url)
+        UnibotOpenURLBroker.shared.offer(url)
         return false
     }
 }

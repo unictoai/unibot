@@ -79,7 +79,7 @@ struct ThinkingRulesSection: View {
     /// Shown instead of the rule list when this provider's requests never consult the
     /// resolver. A notice rather than a hidden section: silently dropping the whole
     /// section reads as "the feature is missing or I can't find it", whereas one line
-    /// explains that thinking parameters here are maintained by Minis by design.
+    /// explains that thinking parameters here are maintained by Unibot by design.
     private var unsupportedNoticeSection: some View {
         Section {
             HStack(alignment: .firstTextBaseline, spacing: 8) {

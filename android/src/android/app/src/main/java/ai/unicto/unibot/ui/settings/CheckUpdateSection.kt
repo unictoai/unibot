@@ -44,8 +44,8 @@ import ai.unicto.unibot.BuildConfig
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.UpdateChecker
 import kotlinx.coroutines.launch
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.i18n.uppercaseForDisplay
 
 /**
@@ -318,11 +318,11 @@ private fun UpdateDialog(
         },
         confirmButton = {
             if (needsInstallPerm) {
-                MinisButton(onClick = onOpenSettings) {
+                UnibotButton(onClick = onOpenSettings) {
                     Text(stringResource(R.string.check_update_open_install_settings))
                 }
             } else {
-                MinisButton(
+                UnibotButton(
                     onClick = onDownload,
                     enabled = downloadProgress == null,
                 ) {
@@ -344,7 +344,7 @@ private fun UpdateDialog(
             }
         },
         dismissButton = {
-            MinisTextButton(onClick = onDismiss, enabled = downloadProgress == null) {
+            UnibotTextButton(onClick = onDismiss, enabled = downloadProgress == null) {
                 Text(stringResource(R.string.cancel))
             }
         },

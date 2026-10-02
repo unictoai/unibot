@@ -39,7 +39,7 @@ class RiskApprovalNotifier(
 
         val open = PendingIntent.getActivity(
             context, request.id.hashCode(),
-            Intent(Intent.ACTION_VIEW, Uri.parse("minis://session/${request.sessionId}")).apply {
+            Intent(Intent.ACTION_VIEW, Uri.parse("unibot://session/${request.sessionId}")).apply {
                 setPackage(context.packageName)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             },

@@ -38,7 +38,7 @@ import java.util.zip.ZipOutputStream
  * next foreground Activity gets a one-shot AlertDialog offering to share
  * the logs via ACTION_SEND_MULTIPLE.
  *
- * Self-contained on purpose: zero Minis-internal dependencies (no
+ * Self-contained on purpose: zero Unibot-internal dependencies (no
  * AppLogger / ChatViewModel / ProviderRepository etc), uses
  * `android.util.Log` directly, every entry point wrapped in try/catch.
  * Runs early enough that a partial-init / pre-DI launch can't break it.
@@ -187,7 +187,7 @@ object CrashFrequencyDetector {
      * (either share or dismiss button) so the app resumes normal
      * operation. The next launch starts from a fresh flag value.
      *
-     * Kept as a static getter to preserve the "zero Minis internal
+     * Kept as a static getter to preserve the "zero Unibot internal
      * dependencies" contract — callers from anywhere in the app can
      * check the flag without introducing a reverse import on this file.
      */
@@ -393,12 +393,12 @@ object CrashFrequencyDetector {
             .sortedByDescending { it.lastModified() }
             .take(PICK_CRASH_LIMIT)
 
-        // Daily AppLogger logs (minis-YYYY-MM-DD.log) for the last 3
+        // Daily AppLogger logs (unibot-YYYY-MM-DD.log) for the last 3
         // days. Default unchecked — they're large and only useful for
         // tracking down what the agent was doing right before the
         // crash; the user opts in when they care about that context.
         val dailyLogs = (logsDir.listFiles { f ->
-            f.name.startsWith("minis-") && f.name.endsWith(".log")
+            f.name.startsWith("unibot-") && f.name.endsWith(".log")
         } ?: emptyArray<File>())
             .toList()
             .filter { now - it.lastModified() <= PICK_RUN_LOG_WINDOW_MS }
@@ -882,7 +882,7 @@ object CrashFrequencyDetector {
      * Bundle [files] into a single zip under cacheDir/share/. Returns the
      * zip File on success or null if the input list is effectively empty.
      * Uses the cache dir so the OS cleans up stale archives if the user
-     * shares but never re-opens Minis; FileProvider already grants the
+     * shares but never re-opens Unibot; FileProvider already grants the
      * receiving app read access via FLAG_GRANT_READ_URI_PERMISSION.
      */
     private fun packageZip(ctx: Context, files: List<File>): File? {
@@ -890,7 +890,7 @@ object CrashFrequencyDetector {
         if (readable.isEmpty()) return null
         val shareDir = File(ctx.cacheDir, "share").apply { mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val zipFile = File(shareDir, "minis-logs-$stamp.zip")
+        val zipFile = File(shareDir, "unibot-logs-$stamp.zip")
         ZipOutputStream(FileOutputStream(zipFile).buffered()).use { zout ->
             val buf = ByteArray(64 * 1024)
             for (f in readable) {

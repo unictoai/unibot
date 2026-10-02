@@ -147,7 +147,7 @@
     <string name="mcp_add">添加 MCP 服务器</string>
     <string name="mcp_edit">编辑 MCP 服务器</string>
     <string name="mcp_section_servers">服务器</string>
-    <string name="mcp_section_footer">MCP 服务器让 AI 通过 minis-mcp-cli 调用外部工具。配置保存在 /var/minis/mcp-servers/servers.json（与 Claude Desktop 兼容）。</string>
+    <string name="mcp_section_footer">MCP 服务器让 AI 通过 unibot-mcp-cli 调用外部工具。配置保存在 /var/minis/mcp-servers/servers.json（与 Claude Desktop 兼容）。</string>
     <string name="mcp_empty_title">暂无 MCP 服务器</string>
     <string name="mcp_empty_action">点击 + 按钮添加服务器。</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -282,7 +282,7 @@
     <string name="settings_section_logs">日志</string>
     <string name="settings_logs_subtitle">查看与导出应用日志</string>
     <string name="settings_section_about">关于</string>
-    <string name="settings_about_minis">关于 unibot</string>
+    <string name="settings_about_unibot">关于 unibot</string>
     <string name="settings_about_subtitle">版本与项目信息</string>
     <string name="settings_privacy_policy">隐私政策</string>
     <string name="settings_feedback">反馈问题</string>
@@ -290,7 +290,7 @@
     <string name="settings_feedback_telegram">反馈 (Telegram)</string>
     <string name="settings_feedback_email">反馈 (邮件)</string>
     <string name="about_title">关于</string>
-    <string name="about_minis_tagline">一个开源的个人智能体，面向你的所有设备。目前在这台手机上：一切都在本机运行，模型由你自己带。</string>
+    <string name="about_unibot_tagline">一个开源的个人智能体，面向你的所有设备。目前在这台手机上：一切都在本机运行，模型由你自己带。</string>
     <string name="about_links">链接</string>
     <string name="about_github_repository">GitHub 仓库</string>
     <string name="about_version_format">版本 %1$s (%2$s)</string>
@@ -507,7 +507,7 @@
     <string name="browser_nav_forward">前进</string>
     <string name="browser_stop">停止</string>
     <string name="browser_reload">重新加载</string>
-    <string name="browser_minis_browsing">%1$s 正在浏览</string>
+    <string name="browser_unibot_browsing">%1$s 正在浏览</string>
     <string name="chat_typing_indicator">%1$s 正在思考</string>
     <string name="read_aloud_unavailable">朗读失败：没有可用的语音引擎。请检查语音输出设置，或安装系统语音引擎。</string>
     <string name="chat_error_stream_dropped_partial">连接中断，此回复可能不完整。点击重试以继续。</string>
@@ -718,8 +718,8 @@
     <string name="perm_agent_policy">Agent 权限</string>
     <string name="perm_a11y_system_ready">已启用</string>
     <string name="perm_a11y_system_disabled">未启用</string>
-    <string name="perm_allow_minis_config">允许 minis-config</string>
-    <string name="perm_minis_config_desc">禁用后，Agent 将无法通过 minis-config 读取或修改任何设置。日志 → 配置变更 中的变更历史仍可查看。Agent 会收到 permission_denied 错误，并通过深度链接引导你操作。</string>
+    <string name="perm_allow_unibot_config">允许 unibot-config</string>
+    <string name="perm_unibot_config_desc">禁用后，Agent 将无法通过 unibot-config 读取或修改任何设置。日志 → 配置变更 中的变更历史仍可查看。Agent 会收到 permission_denied 错误，并通过深度链接引导你操作。</string>
     <string name="perm_section_privacy">隐私</string>
     <string name="perm_section_media">媒体</string>
     <string name="perm_section_system">系统</string>
@@ -797,7 +797,7 @@
     <string name="skill_empty_title">未安装 Skill</string>
     <string name="skill_empty_action">点击 + 导入 SKILL.md 或浏览 unibot Skills。</string>
     <string name="skill_import_modal_title">导入技能</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">删除 %1$s？</string>
     <string name="skill_delete_confirm_text">这将永久删除该 skill 及其文件。</string>
     <string name="skill_import_sheet_title">导入技能</string>
@@ -861,8 +861,8 @@
     <string name="storage_overview_sessions">会话文件</string>
     <string name="storage_section_sessions">会话</string>
     <string name="storage_no_sessions">无会话</string>
-    <string name="storage_section_minis_files">unibot 文件</string>
-    <string name="storage_no_minis_files">无 unibot 文件</string>
+    <string name="storage_section_unibot_files">unibot 文件</string>
+    <string name="storage_no_unibot_files">无 unibot 文件</string>
     <string name="storage_section_media">媒体文件</string>
     <string name="storage_no_media_files">无媒体文件</string>
     <string name="storage_clear_session_footer">删除此会话生成的所有文件。对话内容本身将保留。</string>
@@ -1163,7 +1163,7 @@
     <string name="settings_dynamic_island_footer">在 Android 16 状态胶囊上显示实时的助手状态。开启后将取代悬浮窗，避免同时出现两个状态指示。</string>
     <string name="settings_dynamic_island_unsupported">当前系统版本暂不支持实时更新（需 Android 16 及以上并已开启该功能）。</string>
     <string name="agent_loop_section_title">unibot 运行时可调用的模型</string>
-    <string name="agent_loop_section_footer">在 unibot 任务中，Agent 会调用这些模型来完成生图、总结等子任务 —— 也就是它自身模型做不到的工作。也可在终端通过 minis-model-use 调用。只有这些对 Agent 可见。</string>
+    <string name="agent_loop_section_footer">在 unibot 任务中，Agent 会调用这些模型来完成生图、总结等子任务 —— 也就是它自身模型做不到的工作。也可在终端通过 unibot-model-use 调用。只有这些对 Agent 可见。</string>
     <string name="agent_loop_section_empty_hint">尚未添加模型或分组</string>
     <string name="agent_loop_section_add_models">添加模型</string>
     <string name="agent_loop_section_add_groups">添加分组</string>
@@ -1594,7 +1594,7 @@
     <string name="webapp_pin_success">已添加到桌面</string>
     <string name="webapp_source_missing_title">源文件已不存在</string>
     <string name="webapp_source_missing_body">该快捷方式所指向的文件已被移动或删除。</string>
-    <string name="webapp_open_in_minis">在 unibot 中打开</string>
+    <string name="webapp_open_in_unibot">在 unibot 中打开</string>
     <string name="webapp_action_close">关闭</string>
     <string name="webapp_action_fullscreen">进入全屏</string>
     <string name="webapp_action_exit_fullscreen">退出全屏</string>

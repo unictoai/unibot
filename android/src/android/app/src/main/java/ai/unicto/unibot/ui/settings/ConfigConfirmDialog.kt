@@ -41,10 +41,10 @@ import ai.unicto.unibot.config.ConfigRisk
 import ai.unicto.unibot.config.confirm.ConfigConfirmationGate
 import ai.unicto.unibot.config.confirm.PendingConfigChange
 import ai.unicto.unibot.config.confirm.PendingConfigChangeItem
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
- * Root-level confirmation dialog for every minis-config write.
+ * Root-level confirmation dialog for every unibot-config write.
  * Mirrors iOS `ConfigConfirmSheet`. Mounted in [ai.unicto.unibot.MainActivity]
  * so it shows over any active screen. Bound to
  * [ConfigConfirmationGate.pending].
@@ -114,7 +114,7 @@ private fun ConfigConfirmDialog(change: PendingConfigChange) {
         },
         confirmButton = {
             val applyText = if (approvedCount == 0) "Reject All" else "Apply"
-            MinisTextButton(
+            UnibotTextButton(
                 onClick = { ConfigConfirmationGate.userApprove(workingItems.toList()) },
                 enabled = workingItems.isNotEmpty(),
             ) {
@@ -122,7 +122,7 @@ private fun ConfigConfirmDialog(change: PendingConfigChange) {
             }
         },
         dismissButton = {
-            MinisTextButton(onClick = { ConfigConfirmationGate.userReject() }) {
+            UnibotTextButton(onClick = { ConfigConfirmationGate.userReject() }) {
                 Text("Cancel")
             }
         },

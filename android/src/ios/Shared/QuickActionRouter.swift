@@ -1,6 +1,6 @@
 //
 //  QuickActionRouter.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Home-screen Quick Actions (long-press app icon → "New Chat",
 //  "Chat with Voice", "Chat with Camera").
@@ -48,9 +48,9 @@ final class QuickActionRouter: ObservableObject {
     // MARK: - Shortcut item types (also referenced from AppDelegate)
 
     enum ShortcutType {
-        static let newChat = "me.wsen.minis.newChat"
-        static let voiceChat = "me.wsen.minis.voiceChat"
-        static let cameraChat = "me.wsen.minis.cameraChat"
+        static let newChat = "me.wsen.unibot.newChat"
+        static let voiceChat = "me.wsen.unibot.voiceChat"
+        static let cameraChat = "me.wsen.unibot.cameraChat"
     }
 
     /// Install the dynamic shortcut items on the running app. Idempotent —

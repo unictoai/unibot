@@ -51,7 +51,7 @@ object CorrectionAdmission {
          * [T-android-correction-latin-phonetic] Signal 4: Levenshtein similarity
          * of the two consonant skeletons at or above which a same-syllable-count
          * Latin pair counts as a near-sound. 0.30 is the loosest value that still
-         * admits linux↔minis (skeletons lnx/mns, sim 0.33) while rejecting
+         * admits linux↔unibot (skeletons lnx/mns, sim 0.33) while rejecting
          * cursor↔claude (crsr/cld, 0.25) — the latter already passes Signal 1.
          */
         const val LATIN_SKELETON_SIMILARITY = 0.30
@@ -71,7 +71,7 @@ object CorrectionAdmission {
         /** Chinese-number ↔ arabic / alphanumeric term. */
         object DigitNorm : Verdict()
 
-        /** Latin near-sound (consonant-skeleton match) — e.g. linux→minis. */
+        /** Latin near-sound (consonant-skeleton match) — e.g. linux→unibot. */
         object LatinPhonetic : Verdict()
 
         data class RejectedReword(val sim: Double) : Verdict()
@@ -148,7 +148,7 @@ object CorrectionAdmission {
         // meaningfully shorter.
         if (isAcronymRelated(keyA, keyB)) return Verdict.Acronym
 
-        // Signal 4 — Latin near-sound (linux→minis). Levenshtein over the full
+        // Signal 4 — Latin near-sound (linux→unibot). Levenshtein over the full
         // key scores these ~0.40 because the consonants differ outright, but the
         // words share syllable rhythm and a consonant landmark, which is what an
         // ASR actually confuses. Gated on the ORIGINAL text being Latin-script:
@@ -258,7 +258,7 @@ object CorrectionAdmission {
      * same skeleton index.
      *
      * Why the skeleton rather than a consonant multiset: a bag of consonants
-     * throws away order, and linux/minis (l,n,x vs m,n,s) then scores exactly
+     * throws away order, and linux/unibot (l,n,x vs m,n,s) then scores exactly
      * the same as linux/ninja (l,n,x vs n,n,j) — so no threshold can separate
      * the real confusion from the spurious one. The skeleton keeps position, and
      * the same-index anchor requires the shared consonant to land in the same
@@ -268,7 +268,7 @@ object CorrectionAdmission {
      * Deliberately loose — it answers "could an ASR have confused these?", not
      * "should this correction apply". The locality guard here and the vocabulary
      * evidence downstream are the real gatekeepers. Known accepted false
-     * positive: linux↔ninja, indistinguishable from linux↔minis on every
+     * positive: linux↔ninja, indistinguishable from linux↔unibot on every
      * feature available to this signal.
      */
     fun isLatinPhoneticSimilar(keyA: String, keyB: String): Boolean {

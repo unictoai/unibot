@@ -193,7 +193,7 @@ fun QuickTestSheet(
                         contentDescription = stringResource(R.string.quicktest_run_again),
                     )
                 }
-                MinisTextButton(onClick = onDismiss) {
+                UnibotTextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.quicktest_done))
                 }
             }

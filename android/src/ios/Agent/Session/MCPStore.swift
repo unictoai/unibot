@@ -1,13 +1,13 @@
 //
 //  MCPStore.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Manages MCP (Model Context Protocol) server configurations: CRUD, JSON
 //  import, per-session overrides, and Top-20 system-prompt injection.
 //
-//  The server list lives in MinisConfig/mcp-servers/servers.json (mcpServers
+//  The server list lives in UnibotConfig/mcp-servers/servers.json (mcpServers
 //  object form, Claude-Desktop compatible), bind-mounted into the guest at
-//  /var/minis/mcp-servers — the SAME file the in-guest `minis-mcp-cli`
+//  /var/minis/mcp-servers — the SAME file the in-guest `unibot-mcp-cli`
 //  reads/writes, so the two co-read/write it. Session-override metadata reuses
 //  the skills.db SQLite file via an `mcp_session_overrides` table (mirrors
 //  SkillStore's session_skill_overrides).
@@ -52,8 +52,8 @@ struct MCPServerConfig: Codable, Identifiable, Hashable {
     var args: [String]?
     var env: [String: String]?
     /// Per-server startup/handshake timeout in seconds for a STDIO server's
-    /// first MCP `initialize` (Minis config, not MCP protocol). Enforcement
-    /// lives entirely in the in-guest `minis-mcp-cli` daemon; the native layer
+    /// first MCP `initialize` (Unibot config, not MCP protocol). Enforcement
+    /// lives entirely in the in-guest `unibot-mcp-cli` daemon; the native layer
     /// only round-trips the field so an edit/import/export never drops it.
     /// Optional: absent means the daemon default (60s). [T-mcp-startup-timeout]
     var startupTimeoutSeconds: Int?
@@ -107,17 +107,17 @@ final class MCPStore: ObservableObject {
     // MARK: - Paths
 
     /// Host path of the guest's /var/minis/mcp-servers/servers.json. Lives in
-    /// the MinisConfig persistent dir (same mechanism as skills/shared/memory:
+    /// the UnibotConfig persistent dir (same mechanism as skills/shared/memory:
     /// the guest path is a bind mount / symlink onto this dir — see the static
     /// mount tables in ISHExecutionCoordinator.performMount and
-    /// ensureMinisSymlinks). NOT minisAppGroupRoot: servers.json carries
+    /// ensureUnibotSymlinks). NOT unibotAppGroupRoot: servers.json carries
     /// credentials and must never surface in iOS Files.
     private var serversFileURL: URL { Self.syncFileURL }
 
     /// Host path of the guest's servers.json, as a static for the sync layer
     /// (P4) which runs off the MainActor. Same file as `serversFileURL`.
     nonisolated static var syncFileURL: URL {
-        AIChatViewModel.minisMcpServersPersistentDir.appendingPathComponent("servers.json")
+        AIChatViewModel.unibotMcpServersPersistentDir.appendingPathComponent("servers.json")
     }
 
     /// Pre-mount-mechanism location: a real file inside the rootfs data tree
@@ -130,7 +130,7 @@ final class MCPStore: ObservableObject {
     }
 
     /// One-time migration of servers.json from the rootfs data tree into the
-    /// MinisConfig persistent dir. Runs before load() on every launch; no-op
+    /// UnibotConfig persistent dir. Runs before load() on every launch; no-op
     /// once migrated. Guards with lstat: after the mount layer has run, the
     /// old parent is a symlink onto the NEW dir, and copying through it would
     /// be self-copy. copyItem preserves the modification date, which is the
@@ -165,7 +165,7 @@ final class MCPStore: ObservableObject {
             try fm.copyItem(at: oldURL, to: newURL)
             // Remove the old file so the mount layer's real-dir migration
             // doesn't find a stale duplicate; the dir itself is replaced with
-            // a symlink by ensureMinisSymlinks/performMount.
+            // a symlink by ensureUnibotSymlinks/performMount.
             try? fm.removeItem(at: oldURL)
             let attrs = (try? fm.attributesOfItem(atPath: newURL.path)) ?? [:]
             let size = attrs[.size] as? Int ?? 0
@@ -185,7 +185,7 @@ final class MCPStore: ObservableObject {
     /// Reuse the skills.db file for the mcp_session_overrides table.
     private var dbPath: String {
         let library = fm.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-        return library.appendingPathComponent("MinisChat/skills.db").path
+        return library.appendingPathComponent("UnibotChat/skills.db").path
     }
 
     // MARK: - Database (session overrides)
@@ -242,7 +242,7 @@ final class MCPStore: ObservableObject {
         return sqlite3_column_int(stmt, 0) != 0
     }
 
-    // MARK: - servers.json (co-read/write with minis-mcp-cli)
+    // MARK: - servers.json (co-read/write with unibot-mcp-cli)
 
     /// The on-disk JSON shape: { "mcpServers": { "<name>": {...} } }
     private struct ServersFile: Codable {
@@ -262,7 +262,7 @@ final class MCPStore: ObservableObject {
         var command: String?
         var args: [String]?
         var env: [String: String]?
-        var startupTimeoutSeconds: Int?   // Minis STDIO startup timeout; round-tripped verbatim
+        var startupTimeoutSeconds: Int?   // Unibot STDIO startup timeout; round-tripped verbatim
     }
 
     func load() {
@@ -619,7 +619,7 @@ final class MCPStore: ObservableObject {
         }.prefix(Self.maxMetadataCount)
         let maxNoteLength = 200   // same cap as SkillStore.skillPromptFragment
 
-        var lines = "Available MCP Servers (use minis-mcp-cli to discover and call):\n"
+        var lines = "Available MCP Servers (use unibot-mcp-cli to discover and call):\n"
         for s in selected {
             var note = s.note ?? ""
             if note.count > maxNoteLength {
@@ -631,17 +631,17 @@ final class MCPStore: ObservableObject {
                 lines += "- \(s.id): \(note)\n"
             }
         }
-        lines += "\nTo use: run `minis-mcp-cli tools <server>` to see available tools,\n"
-        lines += "then `minis-mcp-cli call <server> <tool> [args]` to invoke."
+        lines += "\nTo use: run `unibot-mcp-cli tools <server>` to see available tools,\n"
+        lines += "then `unibot-mcp-cli call <server> <tool> [args]` to invoke."
         // Agent-facing guidance on the runtime env placeholder; English-only,
         // not localized (this is prompt text, never shown in the UI).
-        lines += "\nWhen adding or modifying an MCP server config (via minis-mcp-cli add / the UI), use $$VARNAME in env/headers/url values as a placeholder resolved at runtime from the system/App environment variables — do not hardcode secrets; reference an existing App environment variable as $$NAME."
+        lines += "\nWhen adding or modifying an MCP server config (via unibot-mcp-cli add / the UI), use $$VARNAME in env/headers/url values as a placeholder resolved at runtime from the system/App environment variables — do not hardcode secrets; reference an existing App environment variable as $$NAME."
         return lines
     }
 
     // MARK: - Tools refresh (native → in-guest CLI) [T-mcp-tools-refresh]
 
-    /// One tool row from `minis-mcp-cli tools --refresh`.
+    /// One tool row from `unibot-mcp-cli tools --refresh`.
     struct MCPToolInfo: Identifiable, Hashable {
         var id: String { name }
         let name: String
@@ -663,7 +663,7 @@ final class MCPStore: ObservableObject {
     }
 
     /// Force-reconnect + re-list a server's tools via the in-guest CLI
-    /// (`minis-mcp-cli refresh <name>`), so tools the remote added after the
+    /// (`unibot-mcp-cli refresh <name>`), so tools the remote added after the
     /// last connect show up without restarting anything. The synthetic
     /// sessionId gives the coordinator a mount context; the static mount layer
     /// it initializes includes /var/minis/mcp-servers.
@@ -674,7 +674,7 @@ final class MCPStore: ObservableObject {
         let quoted = "'" + server.replacingOccurrences(of: "'", with: "'\\''") + "'"
         let result = try await ISHExecutionCoordinator.shared.execute(
             sessionId: "mcp-settings",
-            command: "minis-mcp-cli refresh \(quoted)",
+            command: "unibot-mcp-cli refresh \(quoted)",
             timeout: 120,
             lineCallback: { _ in },
             pidCallback: { _ in }
@@ -856,7 +856,7 @@ final class MCPStore: ObservableObject {
         AppLogger(category: "MCPStore").info("[Sync] applied MCPServerItem deletion '\(name)'")
     }
 
-    /// Detect edits that bypassed the CRUD paths (in-guest minis-mcp-cli
+    /// Detect edits that bypassed the CRUD paths (in-guest unibot-mcp-cli
     /// writes servers.json directly). Called by SyncDirtyScanner when the
     /// file mtime moves. Compares current semantic fingerprints against the
     /// persisted last-synced set:

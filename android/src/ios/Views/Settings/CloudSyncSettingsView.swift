@@ -724,7 +724,7 @@ struct SyncLogView: View {
                 Button {
                     let report = store.exportSanitizedReport()
                     let tempURL = FileManager.default.temporaryDirectory
-                        .appendingPathComponent("minis-sync-diagnostic.txt")
+                        .appendingPathComponent("unibot-sync-diagnostic.txt")
                     try? report.write(to: tempURL, atomically: true, encoding: .utf8)
                     shareItem = ShareFileItem(url: tempURL)
                 } label: {
@@ -783,8 +783,8 @@ private struct ShareFileItem: Identifiable {
 private struct SyncLogShareSheet: UIViewControllerRepresentable {
     let url: URL
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        // [T-share-sheet-uti] See MinisShareSheet.sanitizedShareURL.
-        let safeURL = MinisShareSheet.sanitizedShareURL(url) ?? url
+        // [T-share-sheet-uti] See UnibotShareSheet.sanitizedShareURL.
+        let safeURL = UnibotShareSheet.sanitizedShareURL(url) ?? url
         return UIActivityViewController(activityItems: [safeURL], applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}

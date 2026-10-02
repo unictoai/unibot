@@ -1,7 +1,7 @@
 package ai.unicto.unibot.ui.settings
 
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import android.content.Context
 import android.text.format.Formatter
@@ -53,10 +53,10 @@ import java.io.File
 private data class SessionStorageInfo(
     val id: String,
     val title: String?,
-    val minisSize: Long,
+    val unibotSize: Long,
     val mediaSize: Long,
 ) {
-    val totalSize: Long get() = minisSize + mediaSize
+    val totalSize: Long get() = unibotSize + mediaSize
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,11 +89,11 @@ fun StorageManagementScreen(
                 val mediaSizes = mediaSizesBySession(mediaDir, allSessions.map { it.id }.toSet())
 
                 sessions = allSessions.map { session ->
-                    val minisDir = File(sessionsDir, session.id)
+                    val unibotDir = File(sessionsDir, session.id)
                     SessionStorageInfo(
                         id = session.id,
                         title = session.title,
-                        minisSize = directorySize(minisDir),
+                        unibotSize = directorySize(unibotDir),
                         mediaSize = mediaSizes[session.id] ?: 0L,
                     )
                 }.sortedByDescending { it.totalSize }
@@ -172,7 +172,7 @@ fun SessionStorageDetailScreen(
     val scope = rememberCoroutineScope()
 
     var session by remember { mutableStateOf<ChatSessionEntity?>(null) }
-    var minisSize by remember { mutableLongStateOf(0L) }
+    var unibotSize by remember { mutableLongStateOf(0L) }
     var mediaSize by remember { mutableLongStateOf(0L) }
     var isClearing by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
@@ -184,7 +184,7 @@ fun SessionStorageDetailScreen(
         scope.launch {
             withContext(Dispatchers.IO) {
                 session = chatDao.getSession(sessionId)
-                minisSize = directorySize(File(sessionsDir, sessionId))
+                unibotSize = directorySize(File(sessionsDir, sessionId))
                 val mediaSizes = mediaSizesBySession(mediaDir, setOf(sessionId))
                 mediaSize = mediaSizes[sessionId] ?: 0L
             }
@@ -193,15 +193,15 @@ fun SessionStorageDetailScreen(
 
     LaunchedEffect(Unit) { reload() }
 
-    val totalSize = minisSize + mediaSize
+    val totalSize = unibotSize + mediaSize
     val hasFiles = totalSize > 0
 
     SettingsScaffold(title = session?.title ?: "Session", onBack = onBack) {
-        SettingsSection(header = stringResource(R.string.storage_section_minis_files)) {
-            if (minisSize > 0) {
+        SettingsSection(header = stringResource(R.string.storage_section_unibot_files)) {
+            if (unibotSize > 0) {
                 SettingsValueRow(
                     title = stringResource(R.string.storage_browse_files),
-                    value = Formatter.formatFileSize(context, minisSize),
+                    value = Formatter.formatFileSize(context, unibotSize),
                     onClick = {
                         onBrowseFiles(File(sessionsDir, sessionId).absolutePath)
                     },
@@ -210,7 +210,7 @@ fun SessionStorageDetailScreen(
                 )
             } else {
                 Text(
-                    stringResource(R.string.storage_no_minis_files),
+                    stringResource(R.string.storage_no_unibot_files),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(16.dp),
@@ -283,7 +283,7 @@ fun SessionStorageDetailScreen(
                 Text("This will delete ${Formatter.formatFileSize(context, totalSize)} of files. This action cannot be undone.")
             },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showClearDialog = false
                     isClearing = true
                     scope.launch {
@@ -291,7 +291,7 @@ fun SessionStorageDetailScreen(
                             File(sessionsDir, sessionId).deleteRecursively()
                             deleteSessionMedia(mediaDir, sessionId)
                         }
-                        minisSize = 0L
+                        unibotSize = 0L
                         mediaSize = 0L
                         isClearing = false
                     }
@@ -303,7 +303,7 @@ fun SessionStorageDetailScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+                UnibotTextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }

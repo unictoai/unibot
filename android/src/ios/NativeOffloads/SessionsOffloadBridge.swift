@@ -1,8 +1,8 @@
 //
 //  SessionsOffloadBridge.swift
-//  MinisApp
+//  UnibotApp
 //
-//  Swift bridge for minis-sessions-cli offload.
+//  Swift bridge for unibot-sessions-cli offload.
 //  Provides synchronous @objc entry points that query ChatStore.
 //
 
@@ -420,7 +420,7 @@ private let logger = AppLogger(category: "SessionsOffload")
     // MARK: - Open Session (navigate UI to a given session)
 
     /// Routes the app UI to the given session, mirroring what
-    /// `minis://sessions/<id>` does. Validates that the session exists
+    /// `unibot://sessions/<id>` does. Validates that the session exists
     /// (via ChatStore) before posting the open-session notification so
     /// a typo from the CLI doesn't leave the user staring at a stale
     /// navigation. Returns immediately — UI navigation happens on the

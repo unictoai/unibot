@@ -51,8 +51,8 @@ import ai.unicto.unibot.agent.shell.BashismDetector
 import ai.unicto.unibot.agent.shell.BashismReminder
 import ai.unicto.unibot.agent.shell.OnDemandBash
 import ai.unicto.unibot.sandbox.ExecutionCoordinator
-import ai.unicto.unibot.terminal.MinisOpenUrlBroker
-import ai.unicto.unibot.terminal.MinisUrlMarker
+import ai.unicto.unibot.terminal.UnibotOpenUrlBroker
+import ai.unicto.unibot.terminal.UnibotUrlMarker
 import ai.unicto.unibot.tools.AgentTools
 import ai.unicto.unibot.tools.DelegateTool
 import ai.unicto.unibot.tools.FileEditTool
@@ -398,7 +398,7 @@ class ChatViewModel(
             ToolBlockStatus.RUNNING,
         )
         // T145 phase 1: dedicated tag so the streaming-state debug pipeline
-        // can be filtered with `adb logcat -s Minis.ChatVMStream:D`.
+        // can be filtered with `adb logcat -s Unibot.ChatVMStream:D`.
         // Removed once the retry-state regression is rooted out.
         private const val TAG_STREAM = "ChatVMStream"
         /**
@@ -3817,7 +3817,7 @@ class ChatViewModel(
     internal val activeSessionId: String
         get() = realSessionId.ifEmpty { sessionId }
 
-    /** Public accessor used by ChatScreen to resolve session-scoped minis:// links. */
+    /** Public accessor used by ChatScreen to resolve session-scoped unibot:// links. */
     val currentSessionId: String
         get() = activeSessionId
 
@@ -8644,7 +8644,7 @@ class ChatViewModel(
                         // media (gpt-image-2 image). Inline chat display is out
                         // of scope for this change — the image is delivered via
                         // sendMessage→LLMResponse.mediaAttachments for the
-                        // minis-model-use CLI path. No-op here so the chat agent
+                        // unibot-model-use CLI path. No-op here so the chat agent
                         // loop compiles with the new chunk variant.
                     }
                 }
@@ -9878,8 +9878,8 @@ class ChatViewModel(
         val b64 = android.util.Base64.encodeToString(
             normalized.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
         return "( command -v bash >/dev/null 2>&1 || exit $BASH_MISSING_SENTINEL; " +
-            "printf %s '$b64' | base64 -d > /tmp/.minis-exec-\$\$.sh && " +
-            "bash /tmp/.minis-exec-\$\$.sh; rc=\$?; rm -f /tmp/.minis-exec-\$\$.sh; exit \$rc )"
+            "printf %s '$b64' | base64 -d > /tmp/.unibot-exec-\$\$.sh && " +
+            "bash /tmp/.unibot-exec-\$\$.sh; rc=\$?; rm -f /tmp/.unibot-exec-\$\$.sh; exit \$rc )"
     }
 
     private suspend fun executeShellCommand(
@@ -9991,14 +9991,14 @@ class ChatViewModel(
                 command = command,
                 timeout = timeoutSec * 1000L,
                 lineCallback = lc@{ rawLine ->
-                    // Strip any OSC MinisOpenURL markers emitted by
-                    // /usr/local/bin/minis-open and forward the captured
+                    // Strip any OSC UnibotOpenURL markers emitted by
+                    // /usr/local/bin/unibot-open and forward the captured
                     // URLs to the broker so the chat screen can present the
                     // in-app preview. Lines that were *entirely* a marker
                     // (nothing visible afterwards) are dropped so the tool
                     // output doesn't grow blank rows.
-                    val (cleanedLine, capturedUrls) = MinisUrlMarker.extract(rawLine)
-                    for (raw in capturedUrls) MinisOpenUrlBroker.offer(raw)
+                    val (cleanedLine, capturedUrls) = UnibotUrlMarker.extract(rawLine)
+                    for (raw in capturedUrls) UnibotOpenUrlBroker.offer(raw)
                     if (cleanedLine.isEmpty() && rawLine.isNotEmpty()) return@lc
 
                     val idx = toolBlocks.indexOfFirst { it.id == toolId }
@@ -10036,8 +10036,8 @@ class ChatViewModel(
             // Also scrub markers from the aggregated one-shot output and
             // broker any URLs that only appeared there (defensive — handles
             // executors that don't fire lineCallback for every line).
-            val (cleanedOutput, oneShotUrls) = MinisUrlMarker.extract(result.output)
-            for (raw in oneShotUrls) MinisOpenUrlBroker.offer(raw)
+            val (cleanedOutput, oneShotUrls) = UnibotUrlMarker.extract(result.output)
+            for (raw in oneShotUrls) UnibotOpenUrlBroker.offer(raw)
             val output = if (cleanedOutput.isBlank()) "(no output)" else cleanedOutput
             val exitInfo = if (result.exitCode != 0) " (exit code ${result.exitCode})" else ""
             // Exit code 124 is the BusyBox/GNU timeout-utility convention for
@@ -10098,7 +10098,7 @@ class ChatViewModel(
             var inferenceBytes: ByteArray? = null
 
             // Persist browser screenshots to /var/minis/browser/<session>/ so the
-            // agent can reference them via minis:// in subsequent tool calls
+            // agent can reference them via unibot:// in subsequent tool calls
             // (mirrors iOS AIChatViewModel case "browser_use").
             val base64 = result.base64Image
             var linuxImagePath: String? = null
@@ -10115,20 +10115,20 @@ class ChatViewModel(
                     if (persistPath != null) {
                         persistentImagePath = persistPath
                         linuxImagePath = "/var/minis/browser/$filename"
-                        linuxPathToMinisURL(linuxImagePath)?.let {
-                            output = "$output\nminis_url: $it"
+                        linuxPathToUnibotURL(linuxImagePath)?.let {
+                            output = "$output\nunibot_url: $it"
                         }
                     }
                 }
             }
 
-            // Persist fetched files (fetch action) and append minis_url
+            // Persist fetched files (fetch action) and append unibot_url
             val fetchData = result.fetchedFileData
             val fetchName = result.fetchedFileName
             if (fetchData != null && fetchName != null) {
                 persistBrowserArtifact(fetchName, fetchData)
-                linuxPathToMinisURL("/var/minis/browser/$fetchName")?.let {
-                    output = "$output\nminis_url: $it"
+                linuxPathToUnibotURL("/var/minis/browser/$fetchName")?.let {
+                    output = "$output\nunibot_url: $it"
                 }
             }
 
@@ -10150,7 +10150,7 @@ class ChatViewModel(
     /**
      * Write bytes to <filesDir>/minis-sessions/<sessionId>/browser/<filename>.
      * That directory is bind-mounted to `/var/minis/browser/` so the agent can
-     * read it back via file_read / file_write / minis:// URLs.
+     * read it back via file_read / file_write / unibot:// URLs.
      * Returns the host absolute path on success, null otherwise.
      */
     private fun persistBrowserArtifact(filename: String, data: ByteArray): String? {
@@ -10167,10 +10167,10 @@ class ChatViewModel(
     }
 
     /**
-     * Convert a Linux path under /var/minis/ to a percent-encoded minis:// URL.
-     * Mirrors iOS AIChatViewModel.linuxPathToMinisURL.
+     * Convert a Linux path under /var/minis/ to a percent-encoded unibot:// URL.
+     * Mirrors iOS AIChatViewModel.linuxPathToUnibotURL.
      */
-    private fun linuxPathToMinisURL(path: String): String? {
+    private fun linuxPathToUnibotURL(path: String): String? {
         val prefix = "/var/minis/"
         if (!path.startsWith(prefix)) return null
         val rest = path.removePrefix(prefix)
@@ -10179,7 +10179,7 @@ class ChatViewModel(
         val namespace = rest.substring(0, slash)
         val filename = rest.substring(slash + 1)
         val encoded = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20")
-        return "minis://$namespace/$encoded"
+        return "unibot://$namespace/$encoded"
     }
 
     /**
@@ -10352,7 +10352,7 @@ class ChatViewModel(
             //
             // 𝙓𝙄𝙉 TG36302 (0.10): user saw a red "timeout / retry" banner
             // glued to the bottom of the conversation while the agent
-            // continued running (LM Studio tool loop on 30/30, "Minis is
+            // continued running (LM Studio tool loop on 30/30, "Unibot is
             // thinking" indicator). Caused by (a) the fallback-switch branch in
             // runAgentLoop not calling clearInlineError(), and (b) the
             // streaming-side-channel writing every subsequent delta into
@@ -10637,7 +10637,7 @@ class ChatViewModel(
         // Cache-friendly layout: keep `base` byte-stable by stripping out anything
         // that varies per request, then append a "Runtime context" suffix at the
         // very end with all the dynamic bits (date, timezone, locale, configured
-        // minis-model-use count). OpenAI / DeepSeek prompt caching is prefix-
+        // unibot-model-use count). OpenAI / DeepSeek prompt caching is prefix-
         // based, so the longer the static head, the better the hit rate.
         // Pre-T122 the prompt embedded `Current time: yyyy-MM-dd HH:mm` mid-base,
         // which guaranteed cache misses across minute boundaries — even a quick
@@ -10647,7 +10647,7 @@ class ChatViewModel(
         val tzId = java.util.TimeZone.getDefault().id
         val lang = context.resources.configuration.locales[0].toLanguageTag()
 
-        // Count of agent-loop-visible models for the `minis-model-use` CLI
+        // Count of agent-loop-visible models for the `unibot-model-use` CLI
         // (exposed as a shell command via the native_offload handler).
         val modelUseCount = try { providerRepository.resolvedAgentLoopEntries().size } catch (_: Exception) { 0 }
 
@@ -10699,7 +10699,7 @@ Memory system (currently ENABLED):
 
 Memory system (currently DISABLED):
 - The user has turned OFF memory injection and memory tools for this session. GLOBAL.md and recent daily logs are NOT included in this prompt, and the memory_write / memory_get tools are NOT available — do not attempt to call them.
-- If the user asks why earlier memories aren't visible, or asks you to save something, tell them memory is currently disabled and point them at the /memory slash command or [Settings → Memory](minis://settings/memory) to re-enable it.
+- If the user asks why earlier memories aren't visible, or asks you to save something, tell them memory is currently disabled and point them at the /memory slash command or [Settings → Memory](unibot://settings/memory) to re-enable it.
 - SOUL.md (personality / identity) is unaffected by this toggle; the persona section above still applies."""
         }
         val base = identitySection + """You should proactively use shell commands to accomplish the user's tasks — installing packages (apk add), writing and running scripts, managing files, networking, and any other operations a Linux terminal can perform.
@@ -10713,8 +10713,8 @@ Available tools:
   当 browser_use 触达 Google 登录 / OAuth 页（accounts.google.com、signin.google.com、myaccount.google.com、oauth2.googleapis.com 等）或网页返回 "disallowed_useragent" / 403 包含 "browser is not secure" 字样时，**不要重试或尝试登录** — Google 永久禁止 in-app WebView 完成登录，重试只会浪费 turn。改为告诉用户："此页面需要在系统 Chrome 完成登录" 并给出可点击的 Markdown link [在 Chrome 中打开](https://accounts.google.com/...)。点该 link 时 app 会跳出 Custom Tab；用户在 Chrome 完成操作后，请他**把所需结果（邮件正文 / 文档摘要 / 表格数据）粘贴回 chat**，你再继续帮他处理。这是 Android 平台限制，不是 bug。${toolListMemoryBullets}
 
 Shared directory /var/minis/ (bidirectional read/write between shell and app):
-  /var/minis/attachments/ — Media files (images, audio, video). Display inline with ![desc](minis://attachments/filename).
-  /var/minis/workspace/   — Working files (scripts, data, configs). Link with [name](minis://workspace/filename).
+  /var/minis/attachments/ — Media files (images, audio, video). Display inline with ![desc](unibot://attachments/filename).
+  /var/minis/workspace/   — Working files (scripts, data, configs). Link with [name](unibot://workspace/filename).
   /var/minis/offloads/    — Auto-saved large outputs. Read with file_read.
   /var/minis/browser/     — Browser screenshots and extracts.
   /var/minis/shared/      — Cross-session shared storage for artifacts and documents. Organize by project or topic (e.g. shared/myproject/, shared/datasets/). Do NOT store temporary files here.
@@ -10722,23 +10722,23 @@ Shared directory /var/minis/ (bidirectional read/write between shell and app):
   /var/minis/memory/YYYY-MM-DD.md — Daily memory log.
   /var/minis/mounts/<name>/      — User-mounted external folders from Settings → Mount External Folders. Presence and names vary per user; check this directory first when the task references external/user files. Some mounts may be read-only — file_write / file_edit will reject writes with a clear error message.
 
-The minis:// URL scheme:
-  minis://attachments/file.png  →  /var/minis/attachments/file.png
-  minis://workspace/data.csv    →  /var/minis/workspace/data.csv
-  minis://shared/project/f.txt  →  /var/minis/shared/project/f.txt
+The unibot:// URL scheme:
+  unibot://attachments/file.png  →  /var/minis/attachments/file.png
+  unibot://workspace/data.csv    →  /var/minis/workspace/data.csv
+  unibot://shared/project/f.txt  →  /var/minis/shared/project/f.txt
 
-IMPORTANT: minis:// URLs are app-internal — they are NOT web URLs. Do NOT pass minis:// action URLs (open_terminal, views, settings) to browser_use — those are app deep links, use Markdown links in chat instead. However, minis:// resource URLs CAN be opened in browser_use with navigate. All directories under /var/minis/ are accessible: workspace, attachments, offloads, shared, etc. The built-in browser fully supports minis:// — HTML pages and all sub-resources (JS, CSS, images, fonts, etc.) referenced via minis:// absolute URLs or relative paths resolve correctly within the current session. When building multi-file web projects, use file_write to create files in the same directory (e.g. /var/minis/workspace/myapp/), then reference sub-resources with relative paths in HTML (e.g. <link href="style.css">, <script src="app.js">, <img src="logo.png">). The browser resolves relative paths against the minis:// base URL automatically. Cross-directory references also work with absolute minis:// URLs (e.g. <img src="minis://attachments/photo.png"> from a workspace HTML page). Navigate to the entry HTML to preview, e.g. minis://workspace/myapp/index.html.
-To display a minis:// URL in chat, write it as a Markdown link or image (e.g. [name](minis://...)) — the app handles it when the user taps it.
-IMPORTANT: minis:// URLs MUST be percent-encoded. Non-ASCII characters (Chinese, emoji, spaces, etc.) in filenames will break Markdown rendering if not encoded. Use the minis_url from tool results directly — it is already encoded. If you construct a minis:// URL manually, percent-encode the filename (e.g. %E4%B8%AD%E6%96%87 for non-ASCII characters).
-When you write files to /var/minis/, the tool result includes a minis_url you can embed directly in Markdown.
-Inline media — use the ![desc](minis://...) image syntax for ALL of images, audio, AND video. The same ![]() syntax renders an inline audio player or video player, not just images:
-  - Images: ![chart](minis://attachments/chart.png)   → inline image (.png/.jpg/.gif/.webp)
-  - Audio:  ![song](minis://attachments/song.mp3)     → inline audio player (.mp3/.m4a/.wav)
-  - Video:  ![clip](minis://attachments/clip.mp4)     → inline video player (.mp4/.mov/.m4v)
+IMPORTANT: unibot:// URLs are app-internal — they are NOT web URLs. Do NOT pass unibot:// action URLs (open_terminal, views, settings) to browser_use — those are app deep links, use Markdown links in chat instead. However, unibot:// resource URLs CAN be opened in browser_use with navigate. All directories under /var/minis/ are accessible: workspace, attachments, offloads, shared, etc. The built-in browser fully supports unibot:// — HTML pages and all sub-resources (JS, CSS, images, fonts, etc.) referenced via unibot:// absolute URLs or relative paths resolve correctly within the current session. When building multi-file web projects, use file_write to create files in the same directory (e.g. /var/minis/workspace/myapp/), then reference sub-resources with relative paths in HTML (e.g. <link href="style.css">, <script src="app.js">, <img src="logo.png">). The browser resolves relative paths against the unibot:// base URL automatically. Cross-directory references also work with absolute unibot:// URLs (e.g. <img src="unibot://attachments/photo.png"> from a workspace HTML page). Navigate to the entry HTML to preview, e.g. unibot://workspace/myapp/index.html.
+To display a unibot:// URL in chat, write it as a Markdown link or image (e.g. [name](unibot://...)) — the app handles it when the user taps it.
+IMPORTANT: unibot:// URLs MUST be percent-encoded. Non-ASCII characters (Chinese, emoji, spaces, etc.) in filenames will break Markdown rendering if not encoded. Use the unibot_url from tool results directly — it is already encoded. If you construct a unibot:// URL manually, percent-encode the filename (e.g. %E4%B8%AD%E6%96%87 for non-ASCII characters).
+When you write files to /var/minis/, the tool result includes a unibot_url you can embed directly in Markdown.
+Inline media — use the ![desc](unibot://...) image syntax for ALL of images, audio, AND video. The same ![]() syntax renders an inline audio player or video player, not just images:
+  - Images: ![chart](unibot://attachments/chart.png)   → inline image (.png/.jpg/.gif/.webp)
+  - Audio:  ![song](unibot://attachments/song.mp3)     → inline audio player (.mp3/.m4a/.wav)
+  - Video:  ![clip](unibot://attachments/clip.mp4)     → inline video player (.mp4/.mov/.m4v)
 Do NOT use the [text](url) link form for audio/video when you want them to play inline — that only produces a tappable link. Use ![]() to embed an actual player.
-For non-media files, use Markdown links: [filename](minis://workspace/filename).
-Tappable link previews: text/code (.py/.json/.md/etc), images, audio, video, HTML, and PDF files open native previews when the user taps a [name](minis://...) link.
-Use Markdown links for all non-media minis:// files — the user can tap to preview them directly in chat.
+For non-media files, use Markdown links: [filename](unibot://workspace/filename).
+Tappable link previews: text/code (.py/.json/.md/etc), images, audio, video, HTML, and PDF files open native previews when the user taps a [name](unibot://...) link.
+Use Markdown links for all non-media unibot:// files — the user can tap to preview them directly in chat.
 
 File creation guidelines:
 - Use file_write to CREATE new files. Use file_edit to MODIFY existing files. The shell is BusyBox ash: heredoc syntax (cat << EOF, python3 << 'EOF') may mis-parse braces, quotes, or special characters and execute abnormally — avoid it whenever possible, and prefer file_write over echo/printf for writing file contents. When you hit escaping or parsing errors with long inline content, write the content to a file first (file_write), then pass or execute the file (e.g. `python3 /tmp/script.py`).
@@ -10763,8 +10763,8 @@ Tone and style:
 - Be concise. Prefer action over explanation — when the user asks for something that can be done via shell, do it directly.
 
 Android-only tools (android-* CLIs):
-CLI tools at /usr/local/bin with the `android-` prefix give you access to Android framework capabilities and on-device control. Invoke them from shell_execute like any other binary — they are already on PATH. Each tool prints JSON (or a short human-readable line) and supports --help for full usage. Tools gated by Shizuku or AccessibilityService return permission_denied when not granted — handle that gracefully and point the user at [Settings → Permissions](minis://settings/permissions).
-- android-alarm — schedule alarms/timers in the system Clock app (`schedule <HH:MM> --label <L> [--repeat ONCE|DAILY|WEEKDAYS]`, `timer <seconds> --label <L>`, `open`). Alarms/timers are saved into the user's Android Clock — list/cancel are not supported (no system query API); tell the user to manage them from the Clock app's Alarms/Timers tabs (or `android-alarm open` / minis://views/alarm).
+CLI tools at /usr/local/bin with the `android-` prefix give you access to Android framework capabilities and on-device control. Invoke them from shell_execute like any other binary — they are already on PATH. Each tool prints JSON (or a short human-readable line) and supports --help for full usage. Tools gated by Shizuku or AccessibilityService return permission_denied when not granted — handle that gracefully and point the user at [Settings → Permissions](unibot://settings/permissions).
+- android-alarm — schedule alarms/timers in the system Clock app (`schedule <HH:MM> --label <L> [--repeat ONCE|DAILY|WEEKDAYS]`, `timer <seconds> --label <L>`, `open`). Alarms/timers are saved into the user's Android Clock — list/cancel are not supported (no system query API); tell the user to manage them from the Clock app's Alarms/Timers tabs (or `android-alarm open` / unibot://views/alarm).
 - android-calendar — read/write the device calendar (`list --start YYYY-MM-DD [--end ...] [--max N]`; `create --title <T> --start <ISO> [--end <ISO>] [--description <D>] [--location <L>] [--all-day]`).
 - android-clipboard — `get | set <text> [--label L] | clear`.
 - android-contacts — `list [--max N] | search <query> [--max N] | get <id> | delete <id>`. Requires READ_CONTACTS (delete also needs WRITE_CONTACTS).
@@ -10779,17 +10779,17 @@ CLI tools at /usr/local/bin with the `android-` prefix give you access to Androi
 - android-weather <latitude> <longitude> — Open-Meteo forecast (current + hourly + daily). No API key needed.
 - android-shizuku-cli — invoke privileged Android system APIs (package management, settings, system commands) via Shizuku when granted. Curated subcommands return structured JSON; for anything not covered, fall back to `android-shizuku-cli exec <any shell command>` which runs the command via `sh -c` with Shizuku privilege (same surface as `adb shell`). Run with no args (or --help) for the subcommand list.
 - android-a11y-cli — drive system UI (read screen, tap, type, swipe, scroll) via the Android AccessibilityService when enabled. Run with no args (or --help) for the subcommand list.
-- minis-open <url-or-path>: Opens a resource inside unibot without leaving the chat. Accepts http/https URLs (→ built-in WebKit preview) and chat-resource file paths under /var/minis/** (→ built-in file preview, routed by extension: images to the image viewer, .md to markdown preview, .html to HTML preview, .pdf/office docs to QuickLook, audio/video to the media player, else share sheet). Examples: minis-open https://example.com, minis-open /var/minis/workspace/report.md, minis-open /var/minis/attachments/chart.png. Prefer this over android-open for anything that can be previewed in-app so the user doesn't lose conversation context. Use android-open for non-web schemes (tel:, mailto:, geo:, intent:, etc.) or when the user explicitly wants the system handler.
-- minis-sessions-cli: Manage chat sessions. `list` recent or by date range, `search --keywords` cross-session, `messages --id` to read, `send` to create/continue a session, `retry` to re-run, `status` to check, `open` to navigate the app UI. Run --help for full options.
-- minis-model-use: Invoke other LLM models pre-configured by the user. Use `minis-model-use list` to see them (includes each model's modality capabilities like image_output, audio_output, etc.), `minis-model-use search <query>` to filter by name/provider. `minis-model-use run --model <id_or_name>` sends an OpenAI-compatible messages request; pass input via --input <json_file> or stdin, output goes to stdout or --output <path>. The OpenAI shape is the PRIMARY input for every model and modality; standard params are auto-converted to the underlying provider, so do not hand-write provider-native bodies as the primary input. For provider-specific extras the standard schema doesn't model (web-search plugins, image-to-image fields, TTS/video or other custom endpoints), escape hatches exist for OpenAI-compatible providers (they error or are ignored on Anthropic/Gemini models): `extra_body` (object merged verbatim into the request body), a custom `endpoint` path, and a top-level `passthrough` envelope for fully verbatim requests with RAW (unparsed) responses. Results may carry `warnings` (fields that were ignored/downgraded and why) and `applied_extras` (which extras actually took effect) — read them to self-correct. Run --help for the full contract before using these. Models may support multimodal output (image generation, TTS/audio, video) — check the modalities field in list output. For image_output models, pass generation params in the input JSON: top-level `n`/`size`/`quality`/`prompt` (OpenAI /images/generations style) or `generation_config.{aspect_ratio,image_size,number_of_images,person_generation}` (Gemini). Run with --help for full usage.
-- minis-config: Read or change unibot settings programmatically. Run `minis-config --help` for subcommands and `minis-config topic-help <topic>` for details on a specific area. For array-valued fields (e.g. `models`, `groups`, `envvars`, `defaults.agentLoopEntries`) the `get` subcommand accepts `--filter <keywords>` (whitespace-AND, case-insensitive substring match against each element's JSON) and `--page <N> --page-size <N>` (default 20, max 100) — use these instead of dumping the full list when you only need a subset, and check the response's `pagination` / `agent_hint` fields for the next-page command. Every write triggers an in-app confirmation sheet and is logged to a revertable audit (1000-entry rolling log). After a successful change the response includes a `user_message` field — relay it (or paraphrase) so the user knows how to review or revert via Settings → Logs → Config Changes. If the call returns `permission_denied`, the user has disabled minis-config in [Settings → Permissions](minis://settings/permissions); relay that message and don't retry. You CAN add new providers and write their `apiKey` (literal string OR a `${'$'}${'$'}ENV_VAR` reference to copy from an env var at write time), but `get` never echoes API keys / OAuth tokens / env var values back — those reads return `permission_denied` by design. OAuth tokens and env var values are not settable via this tool; for an env var, point the user at [Set ENV_NAME](minis://settings/environments?create_key=ENV_NAME&create_value=) so they enter the value themselves.
-- minis-scheduled: Create and manage scheduled tasks — prompts that run automatically at a chosen time. `minis-scheduled create --time HH:MM --prompt "..." [--label L] [--repeat once|daily|weekdays|custom --days mon,tue,...] [--target new|follow-up|rerun --session <id> --message <id>] [--model <modelId>] [--start YYYY-MM-DD] [--end YYYY-MM-DD]` schedules it; `list` shows existing tasks (with nextTriggerMs and run history), `delete --id <taskId>`, `enable`/`disable --id <taskId>`, and `run --id <taskId>` fires one immediately. Target modes: `new` runs the prompt in a fresh chat; `follow-up` appends the prompt to an existing chat (--session); `rerun` re-runs an existing chat (--session) from a chosen user message (--message). Use this when the user asks to "remind me / do X every morning / run this later / schedule a task". Run --help for full usage.
-Interactive terminal: minis://open_terminal opens a terminal for tasks that require interactive stdin (passwords, ssh, TUI apps like htop/vi). Write it as a Markdown link in your response — the app opens it when tapped. The optional init_command parameter pre-fills (NOT executes) a command; it MUST be fully percent-encoded (spaces → %20, & → %26, | → %7C, etc.). Only use this for genuinely interactive sessions — for everything else, use shell_execute. Examples: [Open Terminal](minis://open_terminal), [Login to SSH](minis://open_terminal?init_command=ssh%20user%40host).
+- unibot-open <url-or-path>: Opens a resource inside unibot without leaving the chat. Accepts http/https URLs (→ built-in WebKit preview) and chat-resource file paths under /var/minis/** (→ built-in file preview, routed by extension: images to the image viewer, .md to markdown preview, .html to HTML preview, .pdf/office docs to QuickLook, audio/video to the media player, else share sheet). Examples: unibot-open https://example.com, unibot-open /var/minis/workspace/report.md, unibot-open /var/minis/attachments/chart.png. Prefer this over android-open for anything that can be previewed in-app so the user doesn't lose conversation context. Use android-open for non-web schemes (tel:, mailto:, geo:, intent:, etc.) or when the user explicitly wants the system handler.
+- unibot-sessions-cli: Manage chat sessions. `list` recent or by date range, `search --keywords` cross-session, `messages --id` to read, `send` to create/continue a session, `retry` to re-run, `status` to check, `open` to navigate the app UI. Run --help for full options.
+- unibot-model-use: Invoke other LLM models pre-configured by the user. Use `unibot-model-use list` to see them (includes each model's modality capabilities like image_output, audio_output, etc.), `unibot-model-use search <query>` to filter by name/provider. `unibot-model-use run --model <id_or_name>` sends an OpenAI-compatible messages request; pass input via --input <json_file> or stdin, output goes to stdout or --output <path>. The OpenAI shape is the PRIMARY input for every model and modality; standard params are auto-converted to the underlying provider, so do not hand-write provider-native bodies as the primary input. For provider-specific extras the standard schema doesn't model (web-search plugins, image-to-image fields, TTS/video or other custom endpoints), escape hatches exist for OpenAI-compatible providers (they error or are ignored on Anthropic/Gemini models): `extra_body` (object merged verbatim into the request body), a custom `endpoint` path, and a top-level `passthrough` envelope for fully verbatim requests with RAW (unparsed) responses. Results may carry `warnings` (fields that were ignored/downgraded and why) and `applied_extras` (which extras actually took effect) — read them to self-correct. Run --help for the full contract before using these. Models may support multimodal output (image generation, TTS/audio, video) — check the modalities field in list output. For image_output models, pass generation params in the input JSON: top-level `n`/`size`/`quality`/`prompt` (OpenAI /images/generations style) or `generation_config.{aspect_ratio,image_size,number_of_images,person_generation}` (Gemini). Run with --help for full usage.
+- unibot-config: Read or change unibot settings programmatically. Run `unibot-config --help` for subcommands and `unibot-config topic-help <topic>` for details on a specific area. For array-valued fields (e.g. `models`, `groups`, `envvars`, `defaults.agentLoopEntries`) the `get` subcommand accepts `--filter <keywords>` (whitespace-AND, case-insensitive substring match against each element's JSON) and `--page <N> --page-size <N>` (default 20, max 100) — use these instead of dumping the full list when you only need a subset, and check the response's `pagination` / `agent_hint` fields for the next-page command. Every write triggers an in-app confirmation sheet and is logged to a revertable audit (1000-entry rolling log). After a successful change the response includes a `user_message` field — relay it (or paraphrase) so the user knows how to review or revert via Settings → Logs → Config Changes. If the call returns `permission_denied`, the user has disabled unibot-config in [Settings → Permissions](unibot://settings/permissions); relay that message and don't retry. You CAN add new providers and write their `apiKey` (literal string OR a `${'$'}${'$'}ENV_VAR` reference to copy from an env var at write time), but `get` never echoes API keys / OAuth tokens / env var values back — those reads return `permission_denied` by design. OAuth tokens and env var values are not settable via this tool; for an env var, point the user at [Set ENV_NAME](unibot://settings/environments?create_key=ENV_NAME&create_value=) so they enter the value themselves.
+- unibot-scheduled: Create and manage scheduled tasks — prompts that run automatically at a chosen time. `unibot-scheduled create --time HH:MM --prompt "..." [--label L] [--repeat once|daily|weekdays|custom --days mon,tue,...] [--target new|follow-up|rerun --session <id> --message <id>] [--model <modelId>] [--start YYYY-MM-DD] [--end YYYY-MM-DD]` schedules it; `list` shows existing tasks (with nextTriggerMs and run history), `delete --id <taskId>`, `enable`/`disable --id <taskId>`, and `run --id <taskId>` fires one immediately. Target modes: `new` runs the prompt in a fresh chat; `follow-up` appends the prompt to an existing chat (--session); `rerun` re-runs an existing chat (--session) from a chosen user message (--message). Use this when the user asks to "remind me / do X every morning / run this later / schedule a task". Run --help for full usage.
+Interactive terminal: unibot://open_terminal opens a terminal for tasks that require interactive stdin (passwords, ssh, TUI apps like htop/vi). Write it as a Markdown link in your response — the app opens it when tapped. The optional init_command parameter pre-fills (NOT executes) a command; it MUST be fully percent-encoded (spaces → %20, & → %26, | → %7C, etc.). Only use this for genuinely interactive sessions — for everything else, use shell_execute. Examples: [Open Terminal](unibot://open_terminal), [Login to SSH](unibot://open_terminal?init_command=ssh%20user%40host).
 
 Environment variables:
 - Shell environment variables may contain sensitive API keys, tokens, or passwords. NEVER echo, print, cat, or otherwise output their values to stdout/stderr. Always reference them by variable name (e.g. ${'$'}API_KEY) inside scripts or commands — never inline the literal value.
-- When a skill or task requires an environment variable that is not set, tell the user which variable is missing and provide a tappable deep link to create it: [Set ENV_NAME](minis://settings/environments?create_key=ENV_NAME&create_value=) — the user can tap it to open the Environment Variables page with the key pre-filled.
-- Settings deep links: when you tell the user "go to Settings → X" or want to point them at a specific setting, prefer a Markdown link `[Label](minis://settings/<path>)` over plain prose. Available paths: providers (list), providers/<instanceId> (one provider), model-groups (incl. Agent Loop), model-groups/<groupId>, usage (token usage), skills, memory, storage, shared-folders (Shared Folders: /var/minis/{shared,skills,memory}), mount-external (Mount External Folders), logs, appearance, background, about, permissions, environments[?create_key=K&create_value=V[&create_note=N]], rootfs (also reachable as mirrors). Unknown paths fall back to Settings home, but prefer the exact path so users land where they want. These settings/action links are app deep links — render them as Markdown links in chat (same action-vs-resource rule as the minis:// section above: only /var/minis resource URLs may go to browser_use).
+- When a skill or task requires an environment variable that is not set, tell the user which variable is missing and provide a tappable deep link to create it: [Set ENV_NAME](unibot://settings/environments?create_key=ENV_NAME&create_value=) — the user can tap it to open the Environment Variables page with the key pre-filled.
+- Settings deep links: when you tell the user "go to Settings → X" or want to point them at a specific setting, prefer a Markdown link `[Label](unibot://settings/<path>)` over plain prose. Available paths: providers (list), providers/<instanceId> (one provider), model-groups (incl. Agent Loop), model-groups/<groupId>, usage (token usage), skills, memory, storage, shared-folders (Shared Folders: /var/minis/{shared,skills,memory}), mount-external (Mount External Folders), logs, appearance, background, about, permissions, environments[?create_key=K&create_value=V[&create_note=N]], rootfs (also reachable as mirrors). Unknown paths fall back to Settings home, but prefer the exact path so users land where they want. These settings/action links are app deep links — render them as Markdown links in chat (same action-vs-resource rule as the unibot:// section above: only /var/minis resource URLs may go to browser_use).
 - To check if a variable is set, use `[ -n "${'$'}VAR" ] && echo 'set' || echo 'not set'`. NEVER use echo ${'$'}VAR, printenv VAR, or any command that would output the actual value into the conversation context.${memorySystemSection}
 
 Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended, so in-app scheduled scripts may not run as expected. For recurring tasks that must fire while the app is backgrounded, use the native alarm tool (AlarmManager) or tell the user to set up a system-level schedule (Google Calendar event, Tasker automation, etc.). (Waiting or polling WITHIN the current turn is different — that is what shell_execute `delay` chains are for, per the shell_execute notes above.)"""
@@ -10858,7 +10858,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
             append("\n\nRuntime context:\n")
             append("- Current date: ").append(dateStr).append(" (").append(tzId).append(")\n")
             append("- Device language: ").append(lang).append("\n")
-            append("- minis-model-use models available: ").append(modelUseCount)
+            append("- unibot-model-use models available: ").append(modelUseCount)
             // unibot: the first-conversation addendum — a few lines for two
             // turns, then null. Last so the cacheable prefix stays untouched.
             if (ubFirstConversation.isBoundTo(realSessionId.ifEmpty { sessionId })) {
@@ -11227,7 +11227,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
                 val urlPath = m.linuxPath.removePrefix("/var/minis/")
                 append("  <file path=\"")
                 append(m.linuxPath)
-                append("\" url=\"minis://")
+                append("\" url=\"unibot://")
                 append(urlPath)
                 append("\" size=\"")
                 append(m.size)

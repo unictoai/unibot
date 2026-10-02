@@ -3,7 +3,7 @@ import Foundation
 import UniformTypeIdentifiers
 import UserNotifications
 
-/// Sends a prompt to the Minis AI agent and returns immediately with structured session info.
+/// Sends a prompt to the Unibot AI agent and returns immediately with structured session info.
 /// The agent continues running in the background — use Get Session Status to poll for completion.
 struct SendPromptIntent: AppIntent {
     static var title: LocalizedStringResource = "Send Prompt"

@@ -242,7 +242,7 @@ class OpenAIProvider private constructor(
 
     /**
      * Arbitrary extra fields merged into the /images/generations JSON body, so
-     * `minis-model-use` can pass provider-specific params our fixed schema never
+     * `unibot-model-use` can pass provider-specific params our fixed schema never
      * modeled (e.g. Volcengine Seedream's `image` for image-to-image,
      * `watermark`, `tools`). User keys WIN over our defaults (response_format)
      * but never replace the resolved `model`. Empty = no passthrough. Set
@@ -416,7 +416,7 @@ class OpenAIProvider private constructor(
     // arrive in between, and OkHttp's idle-data-read counter trips.
     // The 180s cap turned that normal reasoning silence into a hard
     // SocketTimeoutException (observed in 0.10-preview, log file
-    // minis-2026-05-27.log around 13:28 — 3:00 of silence then trip).
+    // unibot-2026-05-27.log around 13:28 — 3:00 of silence then trip).
     // Going back to 600s leaves room for the longest realistic
     // reasoning bursts; the cancel-race concern T171 hedged against
     // (OkHttp call.cancel() racing a thread inside execute()) is
@@ -603,7 +603,7 @@ class OpenAIProvider private constructor(
         var usage: LLMUsage? = null
         // [T-codex-gpt-image2-oauth-android] Collect model-generated media
         // (gpt-image-2 images) so non-streaming callers — notably
-        // minis-model-use (ModelUseOffloadHandler) — get them on
+        // unibot-model-use (ModelUseOffloadHandler) — get them on
         // LLMResponse.mediaAttachments and can write the image to --output.
         val media = mutableListOf<LLMMediaAttachment>()
         streamMessage(
@@ -1713,7 +1713,7 @@ class OpenAIProvider private constructor(
     /**
      * [T-android-image-edit-endpoint] Call `/images/edits` for image-to-image
      * (reference-image) generation. Android previously had no such endpoint, so
-     * minis-model-use returned `image_edit_not_supported` for every
+     * unibot-model-use returned `image_edit_not_supported` for every
      * input-image + pure-image-generator call — the gap this closes. Mirrors
      * iOS `OpenAIProvider.editImage`.
      *
@@ -2417,7 +2417,7 @@ class OpenAIProvider private constructor(
             // [T-android-default-ua] `defaultUserAgent = null` — keep the
             // codex_cli_rs fingerprint set above when no per-provider
             // override is configured. We must NOT fall back to the branded
-            // Minis UA here: the ChatGPT OAuth backend validates the
+            // Unibot UA here: the ChatGPT OAuth backend validates the
             // client identity against this header.
             builder.applyUserAgentOverride(customUserAgent, defaultUserAgent = null)
             return builder.build()
@@ -2566,7 +2566,7 @@ class OpenAIProvider private constructor(
         val trace = ThinkingRuleResolver.apply(body, ctx)
         // [T-thinking-rules-observability] Design §8 / GH OpenMinis#100: which rule
         // actually won must be inspectable, or a rule layer just replaces one hidden
-        // variable with a more complicated one. minis-config exposure is Phase 2.
+        // variable with a more complicated one. unibot-config exposure is Phase 2.
         ai.unicto.unibot.logging.AppLogger.info(
             "Thinking",
             "[resolve] model=${model.id} level=${level.name} ${trace.logLine}",
@@ -2851,7 +2851,7 @@ class OpenAIProvider private constructor(
          * message — the same contract [buildRequestBody] implements.
          *
          * This parameter did not exist, and that was a silent data loss: every
-         * caller that supplies images this way (minis-model-use's `image_url`
+         * caller that supplies images this way (unibot-model-use's `image_url`
          * blocks, VisionGroupResolver.describeOnce, any direct
          * sendMessage(imageParts=…)) had its pixels dropped on the floor the
          * moment the provider was on the Responses path, with no error. The
@@ -3184,7 +3184,7 @@ class OpenAIProvider private constructor(
                         } else if (attachTopLevelImages) {
                             // [T-android-responses-toplevel-images] Structured
                             // message with no ImageData parts, but images were
-                            // supplied top-level (minis-model-use / Vision
+                            // supplied top-level (unibot-model-use / Vision
                             // Group). Previously this fell into the text-only
                             // branch below and the pixels vanished.
                             val contentArray = JSONArray()
@@ -3220,7 +3220,7 @@ class OpenAIProvider private constructor(
                 }
             } else if (msg.audioParts.isNotEmpty()) {
                 // [GH#67] Legacy (non-contentParts) message carrying audio —
-                // the minis-model-use path. The Responses API keeps the SAME
+                // the unibot-model-use path. The Responses API keeps the SAME
                 // nested input_audio shape as Chat Completions ({data,
                 // format}), unlike input_image which flattens image_url to a
                 // string. Text rides along as input_text.
@@ -3257,7 +3257,7 @@ class OpenAIProvider private constructor(
                 // [T-android-responses-toplevel-images] THE reported bug's path.
                 // A plain (contentParts-free) user message plus top-level
                 // images — what VisionGroupResolver.describeOnce and
-                // minis-model-use's image_url blocks produce. This builder had
+                // unibot-model-use's image_url blocks produce. This builder had
                 // no imageParts parameter at all, so the message was emitted as
                 // a bare text string and the pixels never reached the wire. The
                 // vision model then answered "no image was provided", with no
@@ -3356,10 +3356,10 @@ class OpenAIProvider private constructor(
                 val digest = java.security.MessageDigest.getInstance("SHA-256")
                     .digest(text.toByteArray(Charsets.UTF_8))
                 val hex = digest.joinToString("") { "%02x".format(it) }
-                return "minis-${hex.take(32)}"
+                return "unibot-${hex.take(32)}"
             }
         }
-        return "minis-${java.util.UUID.randomUUID().toString().lowercase()}"
+        return "unibot-${java.util.UUID.randomUUID().toString().lowercase()}"
     }
 
     /**

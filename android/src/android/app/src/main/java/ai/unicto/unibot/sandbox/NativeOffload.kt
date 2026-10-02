@@ -32,7 +32,7 @@ data class NativeOffloadRequest(
     val cwd: String,
     /**
      * T340: chat session id forwarded by the agent shell via the
-     * `MINIS_CHAT_SESSION_ID` env var. Lets [OffloadPermissionManager]
+     * `UNIBOT_CHAT_SESSION_ID` env var. Lets [OffloadPermissionManager]
      * scope ASK_ONCE grants/denials per-chat-session instead of using
      * a single process-wide bucket. Null when the offload originates
      * outside a chat (e.g. interactive terminal) — handlers fall back
@@ -262,7 +262,7 @@ object NativeOffloadServer {
                     argv = argv,
                     env = env,
                     cwd = cwd,
-                    sessionId = env["MINIS_CHAT_SESSION_ID"]?.takeIf { it.isNotEmpty() },
+                    sessionId = env["UNIBOT_CHAT_SESSION_ID"]?.takeIf { it.isNotEmpty() },
                 ))
             } catch (e: Exception) {
                 Log.w(TAG, "handler '$name' threw: ${e.message}", e)

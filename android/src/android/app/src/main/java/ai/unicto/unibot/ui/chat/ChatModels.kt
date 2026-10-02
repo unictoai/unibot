@@ -48,8 +48,8 @@ import ai.unicto.unibot.provider.ImageBudget
 import ai.unicto.unibot.provider.LLMProvider
 import ai.unicto.unibot.provider.ProviderFactory
 import ai.unicto.unibot.sandbox.ExecutionCoordinator
-import ai.unicto.unibot.terminal.MinisOpenUrlBroker
-import ai.unicto.unibot.terminal.MinisUrlMarker
+import ai.unicto.unibot.terminal.UnibotOpenUrlBroker
+import ai.unicto.unibot.terminal.UnibotUrlMarker
 import ai.unicto.unibot.tools.AgentTools
 import ai.unicto.unibot.tools.FileEditTool
 import ai.unicto.unibot.tools.FileReadTool
@@ -245,7 +245,7 @@ data class SlashCommand(
      * configured MCP server (vs. a built-in command or a skill). Distinct from
      * [isSkill] so the picker can tag MCP rows with [mcp] + a wrench icon and
      * skills with ⚡. Tapping fills the composer with the server name; the
-     * actual discovery/call happens model-side via minis-mcp-cli.
+     * actual discovery/call happens model-side via unibot-mcp-cli.
      */
     val isMcp: Boolean = false,
 )

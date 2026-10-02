@@ -103,7 +103,7 @@ final class DebugJSONRPC: @unchecked Sendable {
     private static let responseMeta: [String: Any] = {
         let info = Bundle.main.infoDictionary ?? [:]
         return [
-            "app": "MinisApp",
+            "app": "UnibotApp",
             "version": info["CFBundleShortVersionString"] as? String ?? "?",
             "build": info["CFBundleVersion"] as? String ?? "?",
             "device": DeviceIdentity.deviceName,
@@ -365,7 +365,7 @@ final class DebugJSONRPC: @unchecked Sendable {
             return try await DebugRPCProvider.thinkingRulesDelete(params: params)
         case "provider.thinkingRules.resolve":
             return try await DebugRPCProvider.thinkingRulesResolve(params: params)
-        // [T-config-debug-rpc] minis-config, driven remotely through the same
+        // [T-config-debug-rpc] unibot-config, driven remotely through the same
         // ConfigOffloadBridge entry points the in-guest CLI binary calls.
         case "config.get":
             return try await DebugRPCConfig.get(params: params)
@@ -843,7 +843,7 @@ final class DebugJSONRPC: @unchecked Sendable {
             }
         case "mic":
             await MainActor.run {
-                NotificationCenter.default.post(name: Notification.Name("MinisDebugVoiceMicTap"), object: nil)
+                NotificationCenter.default.post(name: Notification.Name("UnibotDebugVoiceMicTap"), object: nil)
             }
         default:
             throw RPCError(code: -32602, message: "Unknown action '\(action)' (open|close|mic)")
@@ -1187,7 +1187,7 @@ final class DebugJSONRPC: @unchecked Sendable {
     ///
     /// Params:
     ///   recordType  (string, default "MessageV2")
-    ///   zone        (string, default "minis-shared")
+    ///   zone        (string, default "unibot-shared")
     ///   predicate   (string, default "TRUEPREDICATE")
     ///   predicateArgs (array of strings, optional — passed positionally
     ///                  via NSPredicate(format:argumentArray:); each
@@ -1206,7 +1206,7 @@ final class DebugJSONRPC: @unchecked Sendable {
     ///   { "ok": false, "errorCode": Int, "ckCode": Int, "description": "..." }
     private func handleSyncCKQuery(params: [String: Any]) async -> Any {
         let recordType = (params["recordType"] as? String) ?? "MessageV2"
-        let zoneName = (params["zone"] as? String) ?? "minis-shared"
+        let zoneName = (params["zone"] as? String) ?? "unibot-shared"
         let predicateString = (params["predicate"] as? String) ?? "TRUEPREDICATE"
         let predicateArgs = params["predicateArgs"] as? [String] ?? []
         let sortKey = params["sortKey"] as? String
@@ -1285,7 +1285,7 @@ final class DebugJSONRPC: @unchecked Sendable {
 
     /// List all CKRecordZone IDs in the user's private database. Used to
     /// diagnose v1 zone presence (device-<id>) and confirm v2 zones
-    /// (minis-shared / minis-devices / minis-secrets) when migration
+    /// (unibot-shared / unibot-devices / unibot-secrets) when migration
     /// counters look suspect.
     private func handleSyncAllZones() async -> Any {
         let container = CKContainer(identifier: "iCloud.ai.unicto.unibot.app")
@@ -1352,9 +1352,9 @@ final class DebugJSONRPC: @unchecked Sendable {
             // Default: all v2 zones + own v1 zone.
             let myDeviceId = DeviceIdentity.deviceId
             zonesToScan = [
-                ("minis-shared", ["SessionV2", "MessageV2", "CompactMarkerV2", "SessionFileV2", "SkillV2"]),
-                ("minis-devices", ["SyncDeviceV2"]),
-                ("minis-secrets", ["ProviderConfigV2", "EnvVarV2", "EnvVarItem"]),
+                ("unibot-shared", ["SessionV2", "MessageV2", "CompactMarkerV2", "SessionFileV2", "SkillV2"]),
+                ("unibot-devices", ["SyncDeviceV2"]),
+                ("unibot-secrets", ["ProviderConfigV2", "EnvVarV2", "EnvVarItem"]),
                 ("device-\(myDeviceId)", ["Session", "Message", "CompactMarker", "SessionFile"]),
             ]
         }
@@ -1427,11 +1427,11 @@ final class DebugJSONRPC: @unchecked Sendable {
     /// matching `device-*` as a v1 zone.
     private static func guessRecordTypes(forZone zone: String) -> [String] {
         switch zone {
-        case "minis-shared":
+        case "unibot-shared":
             return ["SessionV2", "MessageV2", "CompactMarkerV2", "SessionFileV2", "SkillV2"]
-        case "minis-devices":
+        case "unibot-devices":
             return ["SyncDeviceV2"]
-        case "minis-secrets":
+        case "unibot-secrets":
             return ["ProviderConfigV2", "EnvVarV2", "EnvVarItem"]
         default:
             if zone.hasPrefix("device-") {
@@ -2092,7 +2092,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         // route to that session's bucket. Omit (or pass nil) for the default
         // global view (fs_context = 0).
         let sessionId = params["sessionId"] as? String
-        let fsContext: UInt64 = sessionId.map { MinisFsRouter.shared.context(for: $0) } ?? 0
+        let fsContext: UInt64 = sessionId.map { UnibotFsRouter.shared.context(for: $0) } ?? 0
 
         // Run off the main thread (blocks on semaphore).
         let (result, didTimeout): (ISHShellExecutionResult?, Bool) = await withCheckedContinuation { continuation in
@@ -2283,7 +2283,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         // find_and_tap RPC on 127.0.0.1:8200. iCTRL is a UI test bundle so
         // it has XCUIElement.tap(), which drives the OS's real touch
         // pipeline and works on SwiftUI Lists / hosting-view content that
-        // MinisApp's app-embedded synthesis can't reach. iCTRL's isLoopback
+        // UnibotApp's app-embedded synthesis can't reach. iCTRL's isLoopback
         // check bypasses its bearer auth for us. If iCTRL isn't running (or
         // returns "no element found") we fall through to the existing app-
         // embedded escalation ladder — behaviour unchanged when the tool
@@ -2397,7 +2397,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         }
 
         // iCTRL defaults to querying whatever app is currently bound (or
-        // SpringBoard if none). Since debug.tap is called BY MinisApp asking
+        // SpringBoard if none). Since debug.tap is called BY UnibotApp asking
         // to tap something in ITSELF, pin the query to our own bundle id
         // unless the caller explicitly overrides via ictrl_bundle_id.
         let bundleId = (params["ictrl_bundle_id"] as? String) ?? Bundle.main.bundleIdentifier ?? "ai.unicto.unibot.app"
@@ -2518,7 +2518,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         // customAction target.perform → Foundation recursion → NSException →
         // abort, taking the whole app down from a debug-server tap RPC fired
         // during launch). Swift can't catch ObjC exceptions — run each
-        // invocation under MinisCatchObjCException and treat a raise as
+        // invocation under UnibotCatchObjCException and treat a raise as
         // "this node didn't activate" instead of terminating the process.
         var stack: [UIView] = [root]
         var visits = 0
@@ -2526,7 +2526,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         func attempt(_ label: String, _ body: () -> Bool) -> Bool {
             var accepted = false
             var reason: NSString?
-            let ok = MinisCatchObjCException({ accepted = body() }, &reason)
+            let ok = UnibotCatchObjCException({ accepted = body() }, &reason)
             if !ok {
                 caughtReason = reason
                 AppLogger(category: "DebugServer").error("[debug.tap] \(label) raised NSException (caught): \(reason ?? "?")")
@@ -2591,7 +2591,7 @@ final class DebugJSONRPC: @unchecked Sendable {
             // raise an ObjC exception Swift can't catch.
             // [T-ios-debugtap-nsexception-abort]
             var sendReason: NSString?
-            if !MinisCatchObjCException({ control.sendActions(for: .touchUpInside) }, &sendReason) {
+            if !UnibotCatchObjCException({ control.sendActions(for: .touchUpInside) }, &sendReason) {
                 AppLogger(category: "DebugServer").error("[debug.tap] sendActions raised NSException (caught): \(sendReason ?? "?")")
                 return ["ok": false, "strategy": strategy,
                         "error": "target action raised NSException: \(sendReason ?? "?")"]
@@ -2815,7 +2815,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         // bridge and fall back to a fixed error envelope.
         var data: Data?
         var reason: NSString?
-        let ok = MinisCatchObjCException({
+        let ok = UnibotCatchObjCException({
             data = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys])
         }, &reason)
         guard ok, let data, let str = String(data: data, encoding: .utf8) else {
@@ -3027,16 +3027,16 @@ final class DebugJSONRPC: @unchecked Sendable {
     /// allow-list: `name` params for the other db.* methods must be one of these,
     /// so no arbitrary filesystem path can be opened.
     private func knownDatabases() -> [(name: String, url: URL)] {
-        // Every app SQLite db lives under Library/MinisChat/ (verified against
+        // Every app SQLite db lives under Library/UnibotChat/ (verified against
         // ChatStore, ProviderConfigDB, VoiceCorrectionDB, AlarmOffloadBridge),
         // except the rootfs meta.db which lives inside the iSH rootfs.
         let fm = FileManager.default
         let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let chatBase = library.appendingPathComponent("MinisChat", isDirectory: true)
+        let chatBase = library.appendingPathComponent("UnibotChat", isDirectory: true)
         let rootfs = RootfsManager.shared.rootfsPath
         return [
-            ("minis", chatBase.appendingPathComponent("minis.db")),
-            ("skills", chatBase.appendingPathComponent("minis").appendingPathComponent("skills.db")),
+            ("unibot", chatBase.appendingPathComponent("minis.db")),
+            ("skills", chatBase.appendingPathComponent("unibot").appendingPathComponent("skills.db")),
             ("provider-config", chatBase.appendingPathComponent("provider-config.db")),
             ("voice-correction", chatBase.appendingPathComponent("voice-correction.db")),
             ("alarm-labels", chatBase.appendingPathComponent("alarm-labels.db")),

@@ -1,6 +1,6 @@
 //
 //  MountDetailView.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Unified detail page for both "Shared Folders" (shared/skills/memory) and
 //  "Mount External Folders" (user-picked external directories). Provides:

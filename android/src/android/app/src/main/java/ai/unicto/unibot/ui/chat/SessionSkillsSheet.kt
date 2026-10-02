@@ -35,7 +35,7 @@ import ai.unicto.unibot.data.repository.SkillRepository
 import ai.unicto.unibot.ui.components.DialogTextField
 import ai.unicto.unibot.ui.settings.SettingsSection
 import ai.unicto.unibot.ui.settings.SkillRowItem
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * Bottom sheet showing all skills with per-session enable/disable toggles.
@@ -129,7 +129,7 @@ fun SessionSkillsSheet(
                     Spacer(modifier = Modifier.weight(1f))
                     // Enable/Disable All operate on the FILTERED subset so a
                     // user can bulk-toggle the result of a search.
-                    MinisTextButton(
+                    UnibotTextButton(
                         onClick = {
                             for (skill in filteredSkills) {
                                 overrides[skill.id] = true
@@ -142,7 +142,7 @@ fun SessionSkillsSheet(
                     ) {
                         Text(stringResource(R.string.session_skills_enable_all), fontSize = 12.sp)
                     }
-                    MinisTextButton(
+                    UnibotTextButton(
                         onClick = {
                             for (skill in filteredSkills) {
                                 overrides[skill.id] = false

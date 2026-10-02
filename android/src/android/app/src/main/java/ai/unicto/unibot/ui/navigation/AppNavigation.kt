@@ -58,7 +58,7 @@ import ai.unicto.unibot.ui.settings.SkillDetailScreen
 import ai.unicto.unibot.ui.settings.StorageManagementScreen
 import ai.unicto.unibot.ui.settings.SkillFileViewerScreen
 import ai.unicto.unibot.ui.settings.UsageStatsScreen
-import ai.unicto.unibot.ui.settings.MinisSkillsBrowserScreen
+import ai.unicto.unibot.ui.settings.UnibotSkillsBrowserScreen
 import ai.unicto.unibot.ui.settings.MountDetailScreen
 import ai.unicto.unibot.ui.settings.MountedFoldersScreen
 import ai.unicto.unibot.ui.settings.SharedFolderDetailScreen
@@ -131,7 +131,7 @@ object Routes {
     const val SKILLS = "skills"
     const val SKILL_DETAIL = "skill/{skillId}"
     const val SKILL_FILE = "skill_file/{skillId}/{relativePath}"
-    const val MINIS_SKILLS_BROWSER = "minis_skills_browser"
+    const val UNIBOT_SKILLS_BROWSER = "unibot_skills_browser"
 
     fun skillDetail(skillId: String) = "skill/$skillId"
     fun skillFile(skillId: String, relativePath: String = "SKILL.md"): String {
@@ -493,7 +493,7 @@ fun AppNavigation(
     }
 
     // Pinned-shortcut cold start: when launched via
-     // `minis://session/<id>/<resource-path>`, set the pending HTML
+     // `unibot://session/<id>/<resource-path>`, set the pending HTML
      // preview synchronously and start NavHost directly at the matching
      // chat so ChatScreen's LaunchedEffect consumes the pending state on
      // first composition — no sessions-list flash, no launch-session
@@ -1364,7 +1364,7 @@ fun AppNavigation(
                     skillRepository = skillRepository,
                     onBack = { navController.safePopBackStack() },
                     onSkillClick = { skillId -> navController.safeNavigate(Routes.skillDetail(skillId)) },
-                    onMinisSkillsClick = { navController.safeNavigate(Routes.MINIS_SKILLS_BROWSER) },
+                    onUnibotSkillsClick = { navController.safeNavigate(Routes.UNIBOT_SKILLS_BROWSER) },
                 )
             }
         }
@@ -1406,9 +1406,9 @@ fun AppNavigation(
             }
         }
 
-        composable(Routes.MINIS_SKILLS_BROWSER) {
+        composable(Routes.UNIBOT_SKILLS_BROWSER) {
             if (skillRepository != null) {
-                MinisSkillsBrowserScreen(
+                UnibotSkillsBrowserScreen(
                     skillRepository = skillRepository,
                     onBack = { navController.safePopBackStack() },
                 )

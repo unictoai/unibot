@@ -53,7 +53,7 @@ class ShellGuardTest {
             "git status && git log --oneline -5", "git commit -am 'x'", "mkdir -p out && cp a.txt out/",
             "sed -i 's/a/b/' file.txt", "echo hi > /tmp/x", "lark-cli calendar +agenda --today",
             "lark-cli im +list-chats", "gh pr list", "gh api repos/o/r/issues", "rmdir empty",
-            "minis-config set defaults.theme dark", "find . -name '*.log'", "kill -9 1234",
+            "unibot-config set defaults.theme dark", "find . -name '*.log'", "kill -9 1234",
             "rsync -a src/ dst/", "ssh-keygen -t ed25519 -f /tmp/k -N ''",
         )) assertEquals(cmd, RiskClass.SAFE, cls(cmd))
     }

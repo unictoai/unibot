@@ -19,7 +19,7 @@ import ai.unicto.unibot.data.repository.ProviderRepository
  * Exposes `ProviderInstance` fields under `providers.<id>.…`. Mirrors
  * iOS `ProvidersCollection`.
  *
- * [T-minis-config-provider-add] Add is OPEN (per user decision: writes
+ * [T-unibot-config-provider-add] Add is OPEN (per user decision: writes
  * are agent-permitted, reads of credentials remain guarded). Remove
  * stays denied — yanking a provider may break tool calls already in
  * flight, and the user's revertable choice is to disable it instead
@@ -31,7 +31,7 @@ import ai.unicto.unibot.data.repository.ProviderRepository
  *     via [envVars]); reads throw permission_denied (forwarded by the
  *     bridge as `error: permission_denied`, NOT `read_failed`).
  *   - oauthToken stays HiddenField on every axis — OAuth tokens come
- *     from a multi-step browser flow that minis-config cannot drive.
+ *     from a multi-step browser flow that unibot-config cannot drive.
  */
 class ProvidersCollection(
     private val repo: ProviderRepository,
@@ -67,7 +67,7 @@ class ProvidersCollection(
                 path = "providers.$forId.oauthToken",
                 displayName = "OAuth Token",
                 description = "Hidden — completed via the in-app OAuth flow.",
-                reason = "OAuth tokens cannot be set via minis-config — use Settings UI",
+                reason = "OAuth tokens cannot be set via unibot-config — use Settings UI",
             ),
         )
     }
@@ -163,7 +163,7 @@ class ProvidersCollection(
         val resolved = envVars.getValue(key)
             ?: throw ConfigError.InvalidValue(
                 "$fieldName references env var \$\$$key, but no such env var exists. " +
-                    "Create it first via [Set $key](minis://settings/environments?create_key=$key&create_value=)."
+                    "Create it first via [Set $key](unibot://settings/environments?create_key=$key&create_value=)."
             )
         if (resolved.isEmpty()) {
             throw ConfigError.InvalidValue("$fieldName references env var \$\$$key but its value is empty.")
@@ -314,8 +314,8 @@ class ProvidersCollection(
     /**
      * [T-android-minisconfig-custom-useragent] Per-provider User-Agent
      * override. Empty string clears the override and falls back to the
-     * branded default (Minis/<version> (Android <release>; <model>) — see
-     * MinisUserAgent.DEFAULT) at request build time. Cloned from
+     * branded default (Unibot/<version> (Android <release>; <model>) — see
+     * UnibotUserAgent.DEFAULT) at request build time. Cloned from
      * [customBaseURL] in shape; the underlying field on ProviderInstance
      * has been wired through ProviderFactory + applyUserAgentOverride
      * since #802, so a write here takes effect on the very next outbound
@@ -352,7 +352,7 @@ class ProvidersCollection(
     /**
      * Write-only API key. Read always throws permission_denied (the
      * bridge surfaces this as `error: permission_denied`, not
-     * `read_failed`, thanks to the explicit catch added in T-minis-
+     * `read_failed`, thanks to the explicit catch added in T-unibot-
      * config-provider-add). Write accepts either a literal value or a
      * `$$ENV_NAME` reference resolved at write time against the env
      * var store; failed lookups throw invalid_value.
@@ -367,7 +367,7 @@ class ProvidersCollection(
             revertable = false,
             reader = {
                 throw ConfigError.PermissionDenied(
-                    "API keys are never read back via minis-config. To change one, write a new value."
+                    "API keys are never read back via unibot-config. To change one, write a new value."
                 )
             },
             writer = { v ->

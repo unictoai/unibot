@@ -60,9 +60,9 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.agent.SoulBodyLimitCheck
 import ai.unicto.unibot.agent.SoulIcon
 import ai.unicto.unibot.agent.SoulFile
@@ -235,7 +235,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
             // Save lives in the app bar, where a top-level commit action
             // belongs and where it stays reachable without scrolling the
             // (long) prompt editor to the bottom.
-            MinisTextButton(
+            UnibotTextButton(
                 onClick = save,
                 enabled = loaded && isDirty && !bodyLimitCheck.isOverLimit,
             ) { Text(stringResource(R.string.soul_save)) }
@@ -396,7 +396,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MinisOutlinedButton(
+                UnibotOutlinedButton(
                     onClick = { showRestoreDialog = true },
                     // [T-android-soul-save-in-appbar] Full width now that Save
                     // has moved to the app bar and this is the only button left
@@ -423,13 +423,13 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
             title = { Text(stringResource(R.string.soul_discard_confirm_title)) },
             text = { Text(stringResource(R.string.soul_discard_confirm_body)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showDiscardDialog = false
                     onBack()
                 }) { Text(stringResource(R.string.soul_discard_confirm)) }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showDiscardDialog = false }) {
+                UnibotTextButton(onClick = { showDiscardDialog = false }) {
                     Text(stringResource(R.string.soul_discard_cancel))
                 }
             },
@@ -442,7 +442,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
             title = { Text(stringResource(R.string.soul_restore_confirm_title)) },
             text = { Text(stringResource(R.string.soul_restore_confirm_body)) },
             confirmButton = {
-                MinisButton(onClick = {
+                UnibotButton(onClick = {
                     val parsed = SoulMDParser.parse(SoulStore.DEFAULT_CONTENT)
                     name = parsed.metadata.name
                     preservedEmoji = parsed.metadata.emoji
@@ -454,7 +454,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
                 }) { Text(stringResource(R.string.soul_restore_default)) }
             },
             dismissButton = {
-                MinisOutlinedButton(onClick = { showRestoreDialog = false }) {
+                UnibotOutlinedButton(onClick = { showRestoreDialog = false }) {
                     Text(stringResource(R.string.soul_cancel))
                 }
             },
@@ -467,7 +467,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
             title = { Text(stringResource(R.string.soul_save_error_title)) },
             text = { Text(err) },
             confirmButton = {
-                MinisButton(onClick = { saveError = null }) { Text(stringResource(R.string.soul_ok)) }
+                UnibotButton(onClick = { saveError = null }) { Text(stringResource(R.string.soul_ok)) }
             },
         )
     }
@@ -483,7 +483,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
             title = { Text(stringResource(R.string.soul_icon_error_title)) },
             text = { Text(err) },
             confirmButton = {
-                MinisButton(onClick = { iconError = null }) { Text(stringResource(R.string.soul_ok)) }
+                UnibotButton(onClick = { iconError = null }) { Text(stringResource(R.string.soul_ok)) }
             },
         )
     }
@@ -664,10 +664,10 @@ private fun SoulEmojiPickerSheet(
 
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MinisOutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                UnibotOutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.soul_cancel))
                 }
-                MinisButton(
+                UnibotButton(
                     onClick = { onPick(draft) },
                     enabled = draft.isNotEmpty(),
                     modifier = Modifier.weight(1f),
@@ -733,12 +733,12 @@ private fun LangPicker(lang: String, onLangChange: (String) -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { (key, label) ->
                 if (key == current.first) {
-                    MinisButton(
+                    UnibotButton(
                         onClick = { onLangChange(key) },
                         modifier = Modifier.weight(1f),
                     ) { Text(label) }
                 } else {
-                    MinisOutlinedButton(
+                    UnibotOutlinedButton(
                         onClick = { onLangChange(key) },
                         modifier = Modifier.weight(1f),
                     ) { Text(label) }

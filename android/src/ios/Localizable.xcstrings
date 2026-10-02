@@ -1836,61 +1836,61 @@
         }
       }
     },
-    "During a unibot task, the agent calls these models for sub-tasks such as generating an image or summarizing text — work its own model can't do. Also callable from the terminal via minis-model-use. Only these are visible to the agent." : {
+    "During a unibot task, the agent calls these models for sub-tasks such as generating an image or summarizing text — work its own model can't do. Also callable from the terminal via unibot-model-use. Only these are visible to the agent." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Während einer unibot-Aufgabe ruft der Agent diese Modelle für Teilaufgaben wie Bilderzeugung oder Zusammenfassung auf — Arbeiten, die sein eigenes Modell nicht leisten kann. Auch über das Terminal mit minis-model-use aufrufbar. Nur diese sind für den Agent sichtbar."
+            "value" : "Während einer unibot-Aufgabe ruft der Agent diese Modelle für Teilaufgaben wie Bilderzeugung oder Zusammenfassung auf — Arbeiten, die sein eigenes Modell nicht leisten kann. Auch über das Terminal mit unibot-model-use aufrufbar. Nur diese sind für den Agent sichtbar."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "During a unibot task, the agent calls these models for sub-tasks such as generating an image or summarizing text — work its own model can't do. Also callable from the terminal via minis-model-use. Only these are visible to the agent."
+            "value" : "During a unibot task, the agent calls these models for sub-tasks such as generating an image or summarizing text — work its own model can't do. Also callable from the terminal via unibot-model-use. Only these are visible to the agent."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Durante una tarea de unibot, el agente invoca estos modelos para subtareas como generar una imagen o resumir texto, trabajo que su propio modelo no puede hacer. También se pueden invocar desde la terminal con minis-model-use. Solo estos son visibles para el agente."
+            "value" : "Durante una tarea de unibot, el agente invoca estos modelos para subtareas como generar una imagen o resumir texto, trabajo que su propio modelo no puede hacer. También se pueden invocar desde la terminal con unibot-model-use. Solo estos son visibles para el agente."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pendant une tâche unibot, l'agent appelle ces modèles pour des sous-tâches telles que la génération d'images ou le résumé — un travail que son propre modèle ne peut pas faire. Également appelables depuis le terminal via minis-model-use. Seuls ceux-ci sont visibles par l'agent."
+            "value" : "Pendant une tâche unibot, l'agent appelle ces modèles pour des sous-tâches telles que la génération d'images ou le résumé — un travail que son propre modèle ne peut pas faire. Également appelables depuis le terminal via unibot-model-use. Seuls ceux-ci sont visibles par l'agent."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "unibot のタスク中、Agent は画像生成や要約など、自身のモデルでは行えないサブタスクのためにこれらのモデルを呼び出します。ターミナルから minis-model-use でも呼び出せます。Agent にはこれらのみが表示されます。"
+            "value" : "unibot のタスク中、Agent は画像生成や要約など、自身のモデルでは行えないサブタスクのためにこれらのモデルを呼び出します。ターミナルから unibot-model-use でも呼び出せます。Agent にはこれらのみが表示されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "unibot 작업 중 Agent는 이미지 생성이나 요약처럼 자체 모델로는 할 수 없는 하위 작업을 위해 이 모델들을 호출합니다. 터미널에서 minis-model-use로도 호출할 수 있습니다. Agent에게는 이것만 보입니다."
+            "value" : "unibot 작업 중 Agent는 이미지 생성이나 요약처럼 자체 모델로는 할 수 없는 하위 작업을 위해 이 모델들을 호출합니다. 터미널에서 unibot-model-use로도 호출할 수 있습니다. Agent에게는 이것만 보입니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Во время задачи unibot агент вызывает эти модели для подзадач, таких как генерация изображения или создание сводки — работы, которую не может выполнить его собственная модель. Также вызываются из терминала через minis-model-use. Только они видны агенту."
+            "value" : "Во время задачи unibot агент вызывает эти модели для подзадач, таких как генерация изображения или создание сводки — работы, которую не может выполнить его собственная модель. Также вызываются из терминала через unibot-model-use. Только они видны агенту."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在 unibot 任务中,Agent 会调用这些模型来完成生图、总结等子任务 —— 也就是它自身模型做不到的工作。也可通过终端 minis-model-use 命令调用。仅这些对 Agent 可见。"
+            "value" : "在 unibot 任务中,Agent 会调用这些模型来完成生图、总结等子任务 —— 也就是它自身模型做不到的工作。也可通过终端 unibot-model-use 命令调用。仅这些对 Agent 可见。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在 unibot 任務中,Agent 會調用這些模型來完成生圖、總結等子任務 —— 也就是它自身模型做不到的工作。也可通過終端 minis-model-use 命令調用。僅這些對 Agent 可見。"
+            "value" : "在 unibot 任務中,Agent 會調用這些模型來完成生圖、總結等子任務 —— 也就是它自身模型做不到的工作。也可通過終端 unibot-model-use 命令調用。僅這些對 Agent 可見。"
           }
         }
       }
@@ -6140,7 +6140,7 @@
       }
     },
     "%@ is thinking" : {
-      "comment" : "Streaming indicator shown while the assistant is composing a reply. {name} is the Soul-customized assistant name (default 'Minis').",
+      "comment" : "Streaming indicator shown while the assistant is composing a reply. {name} is the Soul-customized assistant name (default 'Unibot').",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6314,60 +6314,60 @@
         }
       }
     },
-    "%@ outputs %@ and usually can't drive an Agent task. Pick a text-output model for the session, or add this model to Available Models in Agent Loop so the agent can call it via minis-model-use when it needs to generate %@." : {
+    "%@ outputs %@ and usually can't drive an Agent task. Pick a text-output model for the session, or add this model to Available Models in Agent Loop so the agent can call it via unibot-model-use when it needs to generate %@." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ gibt %2$@ aus und kann eine Agent-Aufgabe normalerweise nicht steuern. Wähle für die Sitzung ein Modell mit Textausgabe oder füge dieses Modell zu „Verfügbare Modelle im Agent Loop“ hinzu, damit der Agent es bei Bedarf über minis-model-use aufrufen kann, um %3$@ zu generieren."
+            "value" : "%1$@ gibt %2$@ aus und kann eine Agent-Aufgabe normalerweise nicht steuern. Wähle für die Sitzung ein Modell mit Textausgabe oder füge dieses Modell zu „Verfügbare Modelle im Agent Loop“ hinzu, damit der Agent es bei Bedarf über unibot-model-use aufrufen kann, um %3$@ zu generieren."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ outputs %2$@ and usually can't drive an Agent task. Pick a text-output model for the session, or add this model to Available Models in Agent Loop so the Agent can call it via minis-model-use when it needs to generate %3$@."
+            "value" : "%1$@ outputs %2$@ and usually can't drive an Agent task. Pick a text-output model for the session, or add this model to Available Models in Agent Loop so the Agent can call it via unibot-model-use when it needs to generate %3$@."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ genera %@ y normalmente no puede ejecutar una tarea de Agent. Elige un modelo de salida de texto para la sesión, o añade este modelo a Modelos disponibles en Agent Loop para que unibot Agent pueda invocarlo mediante minis-model-use cuando necesite generar %@."
+            "value" : "%@ genera %@ y normalmente no puede ejecutar una tarea de Agent. Elige un modelo de salida de texto para la sesión, o añade este modelo a Modelos disponibles en Agent Loop para que unibot Agent pueda invocarlo mediante unibot-model-use cuando necesite generar %@."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ produit %2$@ et ne peut généralement pas piloter une tâche Agent. Choisissez un modèle à sortie texte pour la session, ou ajoutez ce modèle aux « Modèles disponibles dans l’Agent Loop » afin que l’Agent puisse l’appeler via minis-model-use lorsqu’il a besoin de générer %3$@."
+            "value" : "%1$@ produit %2$@ et ne peut généralement pas piloter une tâche Agent. Choisissez un modèle à sortie texte pour la session, ou ajoutez ce modèle aux « Modèles disponibles dans l’Agent Loop » afin que l’Agent puisse l’appeler via unibot-model-use lorsqu’il a besoin de générer %3$@."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ は %2$@ を出力するため、通常は Agent タスクを駆動できません。セッションにはテキスト出力モデルを選ぶか、このモデルを「Agent Loop 利用可能モデル」に追加してください。そうすれば Agent が %3$@ を生成する必要があるときに minis-model-use 経由で呼び出せます。"
+            "value" : "%1$@ は %2$@ を出力するため、通常は Agent タスクを駆動できません。セッションにはテキスト出力モデルを選ぶか、このモデルを「Agent Loop 利用可能モデル」に追加してください。そうすれば Agent が %3$@ を生成する必要があるときに unibot-model-use 経由で呼び出せます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@은(는) %2$@을(를) 출력하므로 일반적으로 Agent 작업을 수행할 수 없습니다. 세션에는 텍스트 출력 모델을 선택하거나, 이 모델을 \"Agent Loop 사용 가능한 모델\"에 추가하세요. 그러면 Agent가 %3$@을(를) 생성해야 할 때 minis-model-use를 통해 호출할 수 있습니다."
+            "value" : "%1$@은(는) %2$@을(를) 출력하므로 일반적으로 Agent 작업을 수행할 수 없습니다. 세션에는 텍스트 출력 모델을 선택하거나, 이 모델을 \"Agent Loop 사용 가능한 모델\"에 추가하세요. 그러면 Agent가 %3$@을(를) 생성해야 할 때 unibot-model-use를 통해 호출할 수 있습니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ выдаёт %2$@ и обычно не может выполнять задачи Agent. Выберите для сессии модель с текстовым выводом или добавьте эту модель в «Доступные модели» в Agent Loop, чтобы Agent мог вызывать её через minis-model-use, когда ему нужно сгенерировать %3$@."
+            "value" : "%1$@ выдаёт %2$@ и обычно не может выполнять задачи Agent. Выберите для сессии модель с текстовым выводом или добавьте эту модель в «Доступные модели» в Agent Loop, чтобы Agent мог вызывать её через unibot-model-use, когда ему нужно сгенерировать %3$@."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ 输出 %2$@，通常无法驱动 Agent 任务。请为会话选择文本输出模型，或将该模型加入「Agent Loop 可用模型」，这样 Agent 在需要生成 %3$@ 时可通过 minis-model-use 调用它。"
+            "value" : "%1$@ 输出 %2$@，通常无法驱动 Agent 任务。请为会话选择文本输出模型，或将该模型加入「Agent Loop 可用模型」，这样 Agent 在需要生成 %3$@ 时可通过 unibot-model-use 调用它。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ 輸出 %2$@，通常無法驅動 Agent 任務。請為對話選擇文字輸出模型，或將該模型加入「Agent Loop 可用模型」，這樣 Agent 在需要產生 %3$@ 時可透過 minis-model-use 呼叫它。"
+            "value" : "%1$@ 輸出 %2$@，通常無法驅動 Agent 任務。請為對話選擇文字輸出模型，或將該模型加入「Agent Loop 可用模型」，這樣 Agent 在需要產生 %3$@ 時可透過 unibot-model-use 呼叫它。"
           }
         }
       }
@@ -13346,60 +13346,60 @@
         }
       }
     },
-    "Allow minis-config" : {
+    "Allow unibot-config" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "minis-config erlauben"
+            "value" : "unibot-config erlauben"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Allow minis-config"
+            "value" : "Allow unibot-config"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permitir minis-config"
+            "value" : "Permitir unibot-config"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autoriser minis-config"
+            "value" : "Autoriser unibot-config"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "minis-config を許可"
+            "value" : "unibot-config を許可"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "minis-config 허용"
+            "value" : "unibot-config 허용"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Разрешить minis-config"
+            "value" : "Разрешить unibot-config"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "允许 minis-config"
+            "value" : "允许 unibot-config"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "允許 minis-config"
+            "value" : "允許 unibot-config"
           }
         }
       }
@@ -51992,7 +51992,7 @@
       }
     },
     "Message %@ (@ to mention files)" : {
-      "comment" : "Chat input placeholder. %@ is the Soul-customized assistant name (default 'Minis'). The parenthetical is an inline hint reminding the user that typing '@' opens the file-mention picker.",
+      "comment" : "Chat input placeholder. %@ is the Soul-customized assistant name (default 'Unibot'). The parenthetical is an inline hint reminding the user that typing '@' opens the file-mention picker.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -54804,119 +54804,119 @@
         }
       }
     },
-    "Models and groups listed here can be invoked from the terminal via minis-model-use." : {
+    "Models and groups listed here can be invoked from the terminal via unibot-model-use." : {
       "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die hier aufgeführten Modelle und Gruppen können über minis-model-use im Terminal aufgerufen werden."
+            "value" : "Die hier aufgeführten Modelle und Gruppen können über unibot-model-use im Terminal aufgerufen werden."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Models and groups listed here can be invoked from the terminal via minis-model-use."
+            "value" : "Models and groups listed here can be invoked from the terminal via unibot-model-use."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los modelos y grupos que aparecen aquí se pueden invocar desde la terminal con minis-model-use."
+            "value" : "Los modelos y grupos que aparecen aquí se pueden invocar desde la terminal con unibot-model-use."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les modèles et groupes listés ici peuvent être invoqués depuis le terminal via minis-model-use."
+            "value" : "Les modèles et groupes listés ici peuvent être invoqués depuis le terminal via unibot-model-use."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ここに表示されたモデルとグループはターミナルからminis-model-useで呼び出せます。"
+            "value" : "ここに表示されたモデルとグループはターミナルからunibot-model-useで呼び出せます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "여기에 나열된 모델과 그룹은 터미널에서 minis-model-use를 통해 호출할 수 있습니다."
+            "value" : "여기에 나열된 모델과 그룹은 터미널에서 unibot-model-use를 통해 호출할 수 있습니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перечисленные здесь модели и группы можно вызывать из терминала через minis-model-use."
+            "value" : "Перечисленные здесь модели и группы можно вызывать из терминала через unibot-model-use."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此处列出的模型和组可通过终端 minis-model-use 调用。"
+            "value" : "此处列出的模型和组可通过终端 unibot-model-use 调用。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此處列出的模型和組可通過終端 minis-model-use 調用。"
+            "value" : "此處列出的模型和組可通過終端 unibot-model-use 調用。"
           }
         }
       }
     },
-    "Models and groups listed here can be invoked from the terminal via minis-model-use. Only these are visible to the agent." : {
+    "Models and groups listed here can be invoked from the terminal via unibot-model-use. Only these are visible to the agent." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die hier aufgeführten Modelle und Gruppen können über das Terminal mit minis-model-use aufgerufen werden. Nur diese sind für den Agent sichtbar."
+            "value" : "Die hier aufgeführten Modelle und Gruppen können über das Terminal mit unibot-model-use aufgerufen werden. Nur diese sind für den Agent sichtbar."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Models and groups listed here can be invoked from the terminal via minis-model-use. Only these are visible to the Agent."
+            "value" : "Models and groups listed here can be invoked from the terminal via unibot-model-use. Only these are visible to the Agent."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los modelos y grupos que aparecen aquí se pueden invocar desde la terminal con minis-model-use. Solo estos son visibles para unibot Agent."
+            "value" : "Los modelos y grupos que aparecen aquí se pueden invocar desde la terminal con unibot-model-use. Solo estos son visibles para unibot Agent."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les modèles et groupes listés ici peuvent être invoqués depuis le terminal via minis-model-use. Seuls ceux-ci sont visibles par unibot Agent."
+            "value" : "Les modèles et groupes listés ici peuvent être invoqués depuis le terminal via unibot-model-use. Seuls ceux-ci sont visibles par unibot Agent."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ここに表示されるモデルとグループは、ターミナルから minis-model-use で呼び出せます。Agent にはこれらのみが表示されます。"
+            "value" : "ここに表示されるモデルとグループは、ターミナルから unibot-model-use で呼び出せます。Agent にはこれらのみが表示されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "여기에 나열된 모델과 그룹은 터미널에서 minis-model-use를 통해 호출할 수 있습니다. Agent에게는 이것만 보입니다."
+            "value" : "여기에 나열된 모델과 그룹은 터미널에서 unibot-model-use를 통해 호출할 수 있습니다. Agent에게는 이것만 보입니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перечисленные здесь модели и группы можно вызывать из терминала через minis-model-use. Только они видны для Agent."
+            "value" : "Перечисленные здесь модели и группы можно вызывать из терминала через unibot-model-use. Только они видны для Agent."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此处列出的模型和分组可通过终端 minis-model-use 命令调用。仅这些对 Agent 可见。"
+            "value" : "此处列出的模型和分组可通过终端 unibot-model-use 命令调用。仅这些对 Agent 可见。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此處列出的模型和分組可通過終端 minis-model-use 命令調用。僅這些對 Agent 可見。"
+            "value" : "此處列出的模型和分組可通過終端 unibot-model-use 命令調用。僅這些對 Agent 可見。"
           }
         }
       }
@@ -59058,7 +59058,7 @@
         }
       }
     },
-    "No minis files" : {
+    "No unibot files" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -59069,13 +59069,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No minis files"
+            "value" : "No unibot files"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin archivos de minis"
+            "value" : "Sin archivos de unibot"
           }
         },
         "fr" : {
@@ -59099,7 +59099,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нет файлов minis"
+            "value" : "Нет файлов unibot"
           }
         },
         "zh-Hans" : {
@@ -99032,60 +99032,60 @@
         }
       }
     },
-    "When disabled, the agent cannot read or modify any settings via minis-config. The change history at Logs → Config Changes remains accessible. The agent will receive a permission_denied error and can guide you via deep links instead." : {
+    "When disabled, the agent cannot read or modify any settings via unibot-config. The change history at Logs → Config Changes remains accessible. The agent will receive a permission_denied error and can guide you via deep links instead." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wenn deaktiviert, kann der Agent keine Einstellungen über minis-config lesen oder ändern. Der Änderungsverlauf unter Logs → Konfigurationsänderungen bleibt zugänglich. Der Agent erhält einen permission_denied-Fehler und kann Sie stattdessen über Deep Links anleiten."
+            "value" : "Wenn deaktiviert, kann der Agent keine Einstellungen über unibot-config lesen oder ändern. Der Änderungsverlauf unter Logs → Konfigurationsänderungen bleibt zugänglich. Der Agent erhält einen permission_denied-Fehler und kann Sie stattdessen über Deep Links anleiten."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When disabled, the Agent cannot read or modify any settings via minis-config. The change history at Logs → Config Changes remains accessible. The Agent will receive a permission_denied error and can guide you via deep links instead."
+            "value" : "When disabled, the Agent cannot read or modify any settings via unibot-config. The change history at Logs → Config Changes remains accessible. The Agent will receive a permission_denied error and can guide you via deep links instead."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si se desactiva, unibot Agent no puede leer ni modificar ninguna configuración mediante minis-config. El historial de cambios en Registros → Cambios de configuración sigue estando accesible. El Agent recibirá un error permission_denied y, en su lugar, podrá guiarte con enlaces directos."
+            "value" : "Si se desactiva, unibot Agent no puede leer ni modificar ninguna configuración mediante unibot-config. El historial de cambios en Registros → Cambios de configuración sigue estando accesible. El Agent recibirá un error permission_denied y, en su lugar, podrá guiarte con enlaces directos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lorsque désactivé, unibot Agent ne peut ni lire ni modifier les paramètres via minis-config. L'historique des modifications dans Journaux → Modifications de configuration reste accessible. L'Agent recevra une erreur permission_denied et pourra vous guider via des liens profonds."
+            "value" : "Lorsque désactivé, unibot Agent ne peut ni lire ni modifier les paramètres via unibot-config. L'historique des modifications dans Journaux → Modifications de configuration reste accessible. L'Agent recevra une erreur permission_denied et pourra vous guider via des liens profonds."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無効にすると、Agent は minis-config 経由で設定を読み書きできません。ログ → 設定変更 の履歴は引き続き閲覧できます。Agent には permission_denied エラーが返され、代わりにディープリンクで案内できます。"
+            "value" : "無効にすると、Agent は unibot-config 経由で設定を読み書きできません。ログ → 設定変更 の履歴は引き続き閲覧できます。Agent には permission_denied エラーが返され、代わりにディープリンクで案内できます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "비활성화하면 Agent가 minis-config 를 통해 설정을 읽거나 변경할 수 없습니다. 로그 → 설정 변경 의 이력은 계속 확인할 수 있습니다. Agent는 permission_denied 오류를 받고, 대신 딥 링크로 안내할 수 있습니다."
+            "value" : "비활성화하면 Agent가 unibot-config 를 통해 설정을 읽거나 변경할 수 없습니다. 로그 → 설정 변경 의 이력은 계속 확인할 수 있습니다. Agent는 permission_denied 오류를 받고, 대신 딥 링크로 안내할 수 있습니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Когда выключено, Agent не может читать или изменять какие-либо настройки через minis-config. История изменений в разделе Логи → Изменения конфигурации остаётся доступной. Agent получит ошибку permission_denied и вместо этого сможет направить вас с помощью глубоких ссылок."
+            "value" : "Когда выключено, Agent не может читать или изменять какие-либо настройки через unibot-config. История изменений в разделе Логи → Изменения конфигурации остаётся доступной. Agent получит ошибку permission_denied и вместо этого сможет направить вас с помощью глубоких ссылок."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "禁用后，Agent 无法通过 minis-config 读取或修改任何设置。日志 → 设置更改 中的更改历史仍可访问。Agent 将收到 permission_denied 错误，并可以改为通过深层链接为你引导。"
+            "value" : "禁用后，Agent 无法通过 unibot-config 读取或修改任何设置。日志 → 设置更改 中的更改历史仍可访问。Agent 将收到 permission_denied 错误，并可以改为通过深层链接为你引导。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "停用後，Agent 無法透過 minis-config 讀取或修改任何設定。記錄 → 設定變更 中的變更歷史仍可存取。Agent 將收到 permission_denied 錯誤，並可改為透過深層連結為你引導。"
+            "value" : "停用後，Agent 無法透過 unibot-config 讀取或修改任何設定。記錄 → 設定變更 中的變更歷史仍可存取。Agent 將收到 permission_denied 錯誤，並可改為透過深層連結為你引導。"
           }
         }
       }

@@ -27,7 +27,7 @@ object Hands {
     private const val PREFS = "unibot"
     private const val KEY_ENABLED = "hands.enabled"
     private const val KEY_MODEL = "hands.model_entry"
-    const val DEEP_LINK = "minis://settings/hands"
+    const val DEEP_LINK = "unibot://settings/hands"
     const val MIN_SDK = Build.VERSION_CODES.R
 
     private fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -522,7 +522,7 @@ final class ViewModelCache {
     // MARK: - Background UI Suspension
 
     /// Suspend streaming UI updates on ALL cached VMs that are actively
-    /// processing. Called from MinisApp on scenePhase → .inactive so that
+    /// processing. Called from UnibotApp on scenePhase → .inactive so that
     /// no MarkdownRenderer layout work runs on the main thread while the
     /// app is transitioning to background — iOS can SIGKILL for excessive
     /// background CPU/rendering otherwise.
@@ -540,7 +540,7 @@ final class ViewModelCache {
     /// sets the teardown GUARD (`transitionSuspended`), which is what keeps
     /// `objectWillChange` out of a hosting subgraph UIKit is destroying.
     ///
-    /// The one caller is `MinisApp`'s `.id(appLanguage)` re-key: changing the
+    /// The one caller is `UnibotApp`'s `.id(appLanguage)` re-key: changing the
     /// app language drops and re-mounts the entire view tree, including a chat
     /// that may be mid-stream underneath the Settings sheet. That is the same
     /// race the two ContentView observers guard for push/pop, but there is no
@@ -561,7 +561,7 @@ final class ViewModelCache {
     }
 
     /// Resume streaming UI updates on ALL cached VMs, flushing any chunks
-    /// that accumulated while backgrounded. Called from MinisApp on
+    /// that accumulated while backgrounded. Called from UnibotApp on
     /// scenePhase → .active so the user sees the latest content
     /// immediately on return.
     func resumeAllStreamingUI() {

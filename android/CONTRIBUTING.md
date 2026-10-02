@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Minis.
+Thanks for your interest in Unibot.
 
 ## We do not accept pull requests
 
@@ -21,10 +21,10 @@ Everything else. The product is shaped by what people report:
   crashes, papercuts, feature requests, questions about behaviour. A clear
   report is worth more to us than a patch, because it tells us what to build.
 - **Share what you have built** — real workflows and use cases go in
-  **[AwesomeMinis](https://github.com/OpenMinis/AwesomeMinis)**, which does
+  **[AwesomeUnibot](https://github.com/OpenMinis/AwesomeUnibot)**, which does
   take contributions.
-- **Write a skill** — **[MinisSkills](https://github.com/OpenMinis/MinisSkills)**
-  also takes contributions, and skills are how most people extend Minis
+- **Write a skill** — **[UnibotSkills](https://github.com/OpenMinis/UnibotSkills)**
+  also takes contributions, and skills are how most people extend Unibot
   without touching the app at all.
 - **Talk to us** — the [Telegram group](https://t.me/+2NzhOJuzRyI1YmM1) is
   where most day-to-day discussion happens.

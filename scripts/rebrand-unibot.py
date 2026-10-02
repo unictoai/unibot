@@ -20,9 +20,9 @@ What was changed (mechanical passes + hand fixes):
    versionName 0.1.0, signing config renamed to "unibot".
 2. Kotlin/Java: com.openminis.app -> ai.unicto.unibot,
    io.github.nanomuse.* -> ai.unicto.unibot.* (packages moved on disk).
-   MinisAccessibilityService -> UnibotAccessibilityService.
+   UnibotAccessibilityService -> UnibotAccessibilityService.
    ServiceLoader: ai.unicto.unibot.crash.CrashFileSenderFactory.
-   DocumentsProvider authority: ai.unicto.unibot.minis.documents.
+   DocumentsProvider authority: ai.unicto.unibot.unibot.documents.
    Rclone gomobile Java package: ai.unicto.unibot.rclone.
 3. Android resources: nm_ prefix -> ub_ (~3,200 occurrences, 65 files);
    nm_strings.xml -> ub_strings.xml; backup rules renamed to
@@ -31,7 +31,7 @@ What was changed (mechanical passes + hand fixes):
    scripts/gen-unibot-icons.py (ic_launcher_foreground_ub*.xml,
    ic_launcher_monochrome.xml, ic_stat_unibot.xml); stale nanoMuse
    vectors and raster mipmaps removed.
-4. Internal minis:// protocol KEPT deliberately (105 files of rootfs
+4. Internal unibot:// protocol KEPT deliberately (105 files of rootfs
    plumbing; renaming it buys nothing and risks breakage).
 5. Native commands renamed: nanomuse-media/-hands/-pc -> unibot-media/-hands/-pc
    (audit runtime scripts/prompts before changing again).
@@ -58,7 +58,7 @@ What was changed (mechanical passes + hand fixes):
 15. All version sources aligned to 0.1.0 (Android, Python, web, desktop, iOS).
 
 Deliberately NOT changed:
-- minis:// URIs, MinisApp/MinisSkills internal identifiers (compat).
+- unibot:// URIs, UnibotApp/UnibotSkills internal identifiers (compat).
 - OpenMinis attribution in NOTICE/About ("Based on OpenMinis 1.13").
 - docs/releases/v0.1.*.md historical notes (upstream history).
 - demo/showcase + cloud/deploy: their ops configs, inert unless installed.

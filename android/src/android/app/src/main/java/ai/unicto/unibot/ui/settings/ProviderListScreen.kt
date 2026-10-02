@@ -54,7 +54,7 @@ import ai.unicto.unibot.data.model.ProviderInstance
 import ai.unicto.unibot.data.repository.ProviderRepository
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
-import ai.unicto.unibot.ui.components.MinisAlertDialog
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
 import ai.unicto.unibot.ui.components.SwipeRowAction
 import ai.unicto.unibot.ui.components.SwipeRowActions
 import ai.unicto.unibot.logging.AppLogger
@@ -364,7 +364,7 @@ fun ProviderListScreen(
     // ProviderDetailScreen's "Delete Provider" button, so swipe-delete and
     // detail-delete cannot drift apart.
     instanceToDelete?.let { target ->
-        MinisAlertDialog(
+        UnibotAlertDialog(
             onDismissRequest = { instanceToDelete = null },
             title = stringResource(R.string.provider_detail_delete_provider),
             text = stringResource(

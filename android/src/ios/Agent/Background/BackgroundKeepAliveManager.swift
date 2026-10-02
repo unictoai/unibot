@@ -219,7 +219,7 @@ final class BackgroundKeepAliveManager: NSObject, ObservableObject, CLLocationMa
 
     /// [T-bg-keepalive-debounce] Pending debounced stop of silent audio. When
     /// the app receives a transient `foreground` signal (e.g. a call ending →
-    /// Minis briefly foregrounds → immediately backgrounds again), stopping the
+    /// Unibot briefly foregrounds → immediately backgrounds again), stopping the
     /// keep-alive audio synchronously releases the audio session right before
     /// we go back to background, and iOS then kills the process. While sessions
     /// are active we instead DELAY the stop; if a `background` signal arrives
@@ -490,7 +490,7 @@ final class BackgroundKeepAliveManager: NSObject, ObservableObject, CLLocationMa
         // App-icon badge: tracks the running-task count while the app is
         // backgrounded, gated by `backgroundNotificationsEnabled` (the
         // same toggle that controls task-completion banners). Foreground
-        // entry clears the badge in `MinisApp.handleScenePhaseChange`.
+        // entry clears the badge in `UnibotApp.handleScenePhaseChange`.
         Publishers.CombineLatest(
             SessionActivityTracker.shared.$activeSessions,
             $backgroundNotificationsEnabled
@@ -796,7 +796,7 @@ final class BackgroundKeepAliveManager: NSObject, ObservableObject, CLLocationMa
             evaluateSilentAudio(caller: "reevaluate-deactivate")
             // THEN soft-finish the Live Activity: flip to a completed state
             // (checkmark + last message) and leave it on screen; it's dismissed
-            // when the user taps it and Minis foregrounds.
+            // when the user taps it and Unibot foregrounds.
             Task { await AgentLiveActivityManager.shared.finishActivity() }
         }
     }
@@ -808,7 +808,7 @@ final class BackgroundKeepAliveManager: NSObject, ObservableObject, CLLocationMa
     /// the user has turned the task-notifications toggle off, the badge
     /// is forced to 0 — Apple HIG treats badge as a notification
     /// affordance, so it inherits that gate. Foreground transitions
-    /// clear the badge separately in `MinisApp.handleScenePhaseChange`.
+    /// clear the badge separately in `UnibotApp.handleScenePhaseChange`.
     func refreshActiveTaskBadge() {
         refreshActiveTaskBadge(
             sessions: SessionActivityTracker.shared.activeSessions,

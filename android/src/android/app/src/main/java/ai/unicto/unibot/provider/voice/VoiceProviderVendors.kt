@@ -239,7 +239,7 @@ class DoubaoVoiceProvider(providerId: String, apiKey: String?) :
     override fun buildVoiceInputRequest(request: VoiceInputRequest): Request {
         val url = composedUrlString(voiceInputEndpointPath())
         val body = JSONObject()
-            .put("user", JSONObject().put("uid", "minis_user"))
+            .put("user", JSONObject().put("uid", "unibot_user"))
             .put("audio", JSONObject().put("data", Base64.encodeToString(request.audioData, Base64.NO_WRAP)))
             .put("request", JSONObject().put("model_name", "bigmodel"))
         val builder = Request.Builder()

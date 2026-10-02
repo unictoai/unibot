@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.backup.remote.RcloneChunkedUpload
 import ai.unicto.unibot.backup.remote.RcloneRemoteStore
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.settings.SettingsScaffold
 import ai.unicto.unibot.ui.settings.SettingsSection
 
@@ -128,7 +128,7 @@ fun BackupDestinationBrowseScreen(
             // record points at — say so before it goes.
             text = { Text(stringResource(R.string.backup_dest_delete_note, pkg.displayName)) },
             confirmButton = {
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         vm.deleteServerPackage(remote, pkg)
                         pendingDelete = null
@@ -141,7 +141,7 @@ fun BackupDestinationBrowseScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { pendingDelete = null }) {
+                UnibotTextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.backup_dest_cancel))
                 }
             },

@@ -27,7 +27,7 @@ class ScheduledNotificationReceiver : BroadcastReceiver() {
         const val EXTRA_ID = "scheduled_notification_id"
         const val EXTRA_TITLE = "scheduled_notification_title"
         const val EXTRA_BODY = "scheduled_notification_body"
-        const val CHANNEL_ID = "minis_agent_notifications"
+        const val CHANNEL_ID = "unibot_agent_notifications"
         private const val TAG = "ScheduledNotifReceiver"
 
         /**
@@ -58,7 +58,7 @@ class ScheduledNotificationReceiver : BroadcastReceiver() {
          * FLAG_IMMUTABLE is mandatory, not defensive: targetSdk 35 means
          * Android 12+ throws if a PendingIntent declares neither mutability.
          * It also stops a malicious app from filling in extras on an intent
-         * that would then be sent AS Minis.
+         * that would then be sent AS Unibot.
          */
         fun contentIntentFor(context: Context, notifId: Int): PendingIntent {
             val launchIntent = Intent(context, MainActivity::class.java).apply {

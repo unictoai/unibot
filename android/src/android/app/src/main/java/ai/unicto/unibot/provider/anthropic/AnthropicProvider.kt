@@ -988,7 +988,7 @@ class AnthropicProvider(
 
         // [T-provider-custom-user-agent] Applied last so a non-blank override
         // wins over the OAuth claude-cli UA above. null/blank → fall back to
-        // the branded Minis UA on the regular apiKey path, but on the OAuth
+        // the branded Unibot UA on the regular apiKey path, but on the OAuth
         // path keep the claude-cli/2.1.195 fingerprint set at line ~779 (the
         // Anthropic OAuth backend pairs UA + X-Stainless-* and rejects calls
         // whose UA doesn't match the registered client identity). T-android-
@@ -996,7 +996,7 @@ class AnthropicProvider(
         // everywhere else.
         builder.applyUserAgentOverride(
             customUserAgent,
-            defaultUserAgent = if (isOAuth) null else ai.unicto.unibot.provider.MinisUserAgent.DEFAULT,
+            defaultUserAgent = if (isOAuth) null else ai.unicto.unibot.provider.UnibotUserAgent.DEFAULT,
         )
         return builder.build()
     }

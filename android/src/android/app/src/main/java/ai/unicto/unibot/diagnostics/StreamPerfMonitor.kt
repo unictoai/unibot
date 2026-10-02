@@ -6,7 +6,7 @@ import ai.unicto.unibot.logging.AppLogger
 /**
  * [T-android-stream-pipeline-incremental] Per-streaming-turn render-pipeline
  * aggregator. Exists to quantify the frozen/live incremental flatten rollout
- * against the ANR baseline (minis-2026-06-10 crash loop: GC freeing
+ * against the ANR baseline (unibot-2026-06-10 crash loop: GC freeing
  * 130–180MB/s, buildFlatChatItems up to 100s, main-thread regex hang).
  *
  * Zero-overhead contract (the monitor must never become its own perf bug):

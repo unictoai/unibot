@@ -1,6 +1,6 @@
 //
 //  TerminalTypes.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Data structures for the terminal emulator
 //

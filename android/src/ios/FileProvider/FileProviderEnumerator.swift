@@ -86,7 +86,7 @@ final class FileProviderEnumerator: NSObject, NSFileProviderEnumerator {
 
     /// Names of metadata files/dirs that historically lived under providerRoot
     /// and must never be exposed to iOS Files. Even after migration to
-    /// MinisConfig/, a stale copy might still be around after upgrading —
+    /// UnibotConfig/, a stale copy might still be around after upgrading —
     /// this list protects against that.
     private static let metadataBlacklist: Set<String> = [
         "mounted-folders.json",

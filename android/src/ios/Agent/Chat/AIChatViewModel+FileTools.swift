@@ -24,9 +24,9 @@ extension AIChatViewModel {
     }
 
     /// Snapshot all files under /var/minis/ with their modification dates.
-    func snapshotMinisFiles() -> [String: Date] {
+    func snapshotUnibotFiles() -> [String: Date] {
         let fm = FileManager.default
-        guard let hostBase = resolveHostPath(Self.minisLinuxBaseDir) else { return [:] }
+        guard let hostBase = resolveHostPath(Self.unibotLinuxBaseDir) else { return [:] }
         guard fm.fileExists(atPath: hostBase.path) else { return [:] }
         // Resolve symlinks (e.g. /var → /private/var) so path prefix stripping works reliably.
         let resolvedBase = hostBase.resolvingSymlinksInPath().path
@@ -55,7 +55,7 @@ extension AIChatViewModel {
 
                 let resolvedFile = fileURL.resolvingSymlinksInPath().path
                 let relativePath = resolvedFile.replacingOccurrences(of: resolvedBase, with: "")
-                let linuxPath = Self.minisLinuxBaseDir + relativePath
+                let linuxPath = Self.unibotLinuxBaseDir + relativePath
                 let modDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
                 result[linuxPath] = modDate
             }
@@ -63,11 +63,11 @@ extension AIChatViewModel {
         return result
     }
 
-    /// Resolve a minis:// URL string to a host filesystem URL.
+    /// Resolve a unibot:// URL string to a host filesystem URL.
     /// Global dirs (memory/skills/shared) live in the App Group container;
-    /// session dirs live under minisPersistentBase/<sessionId>/<host>/.
-    private func resolveMinisURL(_ urlString: String) -> URL? {
-        guard let url = URL(string: urlString), url.scheme == "minis",
+    /// session dirs live under unibotPersistentBase/<sessionId>/<host>/.
+    private func resolveUnibotURL(_ urlString: String) -> URL? {
+        guard let url = URL(string: urlString), ["unibot", "minis"].contains(url.scheme),
               let host = url.host else { return nil }
         // Tolerate double-encoded links. Prefer a variant that exists on disk;
         // otherwise return the first (single-decoded) so the write path still
@@ -75,24 +75,24 @@ extension AIChatViewModel {
         // [T-fix-double-encoding]
         let base: URL
         switch host {
-        case "memory": base = Self.minisMemoryPersistentDir
-        case "skills": base = Self.minisSkillsPersistentDir
-        case "shared": base = Self.minisSharedPersistentDir
-        case "mcp-servers": base = Self.minisMcpServersPersistentDir
+        case "memory": base = Self.unibotMemoryPersistentDir
+        case "skills": base = Self.unibotSkillsPersistentDir
+        case "shared": base = Self.unibotSharedPersistentDir
+        case "mcp-servers": base = Self.unibotMcpServersPersistentDir
         default:
             guard let sid = sessionId else { return nil }
-            base = Self.minisPersistentBase
+            base = Self.unibotPersistentBase
                 .appendingPathComponent(sid, isDirectory: true)
                 .appendingPathComponent(host, isDirectory: true)
         }
-        let subPaths = MinisURLPathDecoding.subPathCandidates(for: url)
+        let subPaths = UnibotURLPathDecoding.subPathCandidates(for: url)
         let candidates = subPaths.map { base.appendingPathComponent($0) }
         return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
             ?? candidates.first
     }
 
-    /// Convert a Linux path under /var/minis/ to a minis:// URL, or nil if not under /var/minis/.
-    func linuxPathToMinisURL(_ path: String) -> String? {
+    /// Convert a Linux path under /var/minis/ to a unibot:// URL, or nil if not under /var/minis/.
+    func linuxPathToUnibotURL(_ path: String) -> String? {
         let prefix = "/var/minis/"
         guard path.hasPrefix(prefix) else { return nil }
         let rest = String(path.dropFirst(prefix.count))  // "attachments/foo.png"
@@ -100,7 +100,7 @@ extension AIChatViewModel {
         let namespace = String(rest[rest.startIndex..<slashIdx])
         let filename = String(rest[rest.index(after: slashIdx)...])  // "foo.png"
         let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? filename
-        return "minis://\(namespace)/\(encoded)"
+        return "unibot://\(namespace)/\(encoded)"
     }
 
     /// Resolve a Linux path for direct file reads (read_image, file_read, file_write).
@@ -116,9 +116,9 @@ extension AIChatViewModel {
                 // Mount table returned a stale path — fall through to session/rootfs fallbacks
                 logger.notice("📂[RESOLVE] stale mount entry, trying fallbacks…")
             }
-            // Mount table has no entry — fall back to resolveMinisURL with self.sessionId
-            if let minisURL = linuxPathToMinisURL(linuxPath),
-               let resolved = resolveMinisURL(minisURL) {
+            // Mount table has no entry — fall back to resolveUnibotURL with self.sessionId
+            if let unibotURL = linuxPathToUnibotURL(linuxPath),
+               let resolved = resolveUnibotURL(unibotURL) {
                 let exists = FileManager.default.fileExists(atPath: resolved.path)
                 logger.notice("📂[RESOLVE-sessionFallback] \(linuxPath) → \(resolved.path) exists=\(exists) sid=\(self.sessionId ?? "nil")")
                 return resolved
@@ -130,11 +130,11 @@ extension AIChatViewModel {
         return fallback
     }
 
-    /// Resolve a minis:// URL or /var/minis/ Linux path for direct reads.
+    /// Resolve a unibot:// URL or /var/minis/ Linux path for direct reads.
     /// Unifies both URL schemes into a single async resolution path.
-    func resolveMinisPath(_ pathOrURL: String) async -> URL? {
-        if pathOrURL.hasPrefix("minis://") {
-            // Convert minis:// URL to Linux path, then resolve via mount table
+    func resolveUnibotPath(_ pathOrURL: String) async -> URL? {
+        if pathOrURL.hasPrefix("unibot://") {
+            // Convert unibot:// URL to Linux path, then resolve via mount table
             guard let url = URL(string: pathOrURL), let host = url.host else { return nil }
             let subPath = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
             let linuxPath = "/var/minis/\(host)" + (subPath.isEmpty ? "" : "/\(subPath)")
@@ -365,8 +365,8 @@ extension AIChatViewModel {
         header += "]"
 
         var output = "\(header)\n\(content)"
-        if let minisURL = linuxPathToMinisURL(path) {
-            output += "\nminis_url: \(minisURL)"
+        if let unibotURL = linuxPathToUnibotURL(path) {
+            output += "\nminis_url: \(unibotURL)"
         }
         return FileToolResult(output: output, success: true)
     }
@@ -427,8 +427,8 @@ extension AIChatViewModel {
         // `resolvePathForDirectRead` gates its mount-table result on
         // `fileExists(resolved)` — fine for reads, wrong for writes because a
         // brand-new file doesn't exist yet. That gate silently falls through
-        // to `resolveMinisURL` which returns a per-session fake path
-        // (`minisPersistentBase/<sid>/mounts/...`) that's not inside the
+        // to `resolveUnibotURL` which returns a per-session fake path
+        // (`unibotPersistentBase/<sid>/mounts/...`) that's not inside the
         // fakefs `data/` dir, so the defense-in-depth check below also misses
         // it and the write "succeeds" to a location nobody sees.
         //
@@ -503,7 +503,7 @@ extension AIChatViewModel {
         // Defense-in-depth: if the Linux path is under /var/minis/mounts/ but
         // the resolved hostURL landed anywhere other than the real external
         // folder (the fakefs `data/var/minis/mounts/` shadow, or a per-session
-        // `minisPersistentBase/<sid>/mounts/` fallback path), the mount-table
+        // `unibotPersistentBase/<sid>/mounts/` fallback path), the mount-table
         // lookup missed and we'd be writing to an orphan file invisible to
         // both iSH and the real host folder. Reject rather than silently
         // "succeed".
@@ -511,7 +511,7 @@ extension AIChatViewModel {
             let resolvedPath = hostURL.standardizedFileURL.path
             let fakefsMountsPrefix = RootfsManager.shared.dataPath
                 .appendingPathComponent("var/minis/mounts").standardizedFileURL.path
-            let sessionFallbackPrefix = Self.minisPersistentBase
+            let sessionFallbackPrefix = Self.unibotPersistentBase
                 .standardizedFileURL.path
             #if DEBUG
             print("[FileWrite] defenseCheck resolved=\(resolvedPath)")
@@ -564,8 +564,8 @@ extension AIChatViewModel {
         let bytesWritten = contentData.count
         let action = appendMode ? "Appended" : "Wrote"
         var result = "\(action) to \(path) (\(bytesWritten) bytes)"
-        if let minisURL = linuxPathToMinisURL(path) {
-            result += "\nminis_url: \(minisURL)"
+        if let unibotURL = linuxPathToUnibotURL(path) {
+            result += "\nminis_url: \(unibotURL)"
         }
         return FileToolResult(output: result, success: true)
     }
@@ -707,8 +707,8 @@ extension AIChatViewModel {
         if let note = fuzzyNote {
             result += " — \(note)"
         }
-        if let minisURL = linuxPathToMinisURL(path) {
-            result += "\nminis_url: \(minisURL)"
+        if let unibotURL = linuxPathToUnibotURL(path) {
+            result += "\nminis_url: \(unibotURL)"
         }
         return FileToolResult(output: result, success: true)
     }

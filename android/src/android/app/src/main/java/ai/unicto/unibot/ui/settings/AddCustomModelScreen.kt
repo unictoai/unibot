@@ -22,7 +22,7 @@ import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.components.RowLabel
 import ai.unicto.unibot.ui.components.SectionTextField
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisButton
+import ai.unicto.unibot.ui.components.UnibotButton
 
 /**
  * Add Custom Model — adopts the SettingsScaffold/SettingsSection toolkit
@@ -74,7 +74,7 @@ fun AddCustomModelScreen(
         }
 
         Spacer(Modifier.height(20.dp))
-        MinisButton(
+        UnibotButton(
             onClick = {
                 val name = displayName.ifBlank { modelId }
                 val model = LLMModel(

@@ -25,9 +25,9 @@ struct ProviderConfig: Codable, Equatable {
     var defaultSubGroupId: String?
     /// Stores per-session model bindings keyed by sessionId.
     var sessionBindings: [String: SessionModelBinding]
-    /// ModelEntry IDs for individual models available in agent loop (minis-model-use).
+    /// ModelEntry IDs for individual models available in agent loop (unibot-model-use).
     var agentLoopModelEntryIds: [String]
-    /// ModelGroup IDs whose members are available in agent loop (minis-model-use).
+    /// ModelGroup IDs whose members are available in agent loop (unibot-model-use).
     var agentLoopGroupIds: [String]
     /// Model group used for voice INPUT (speech-to-text), parallel to the
     /// Default Primary/Sub group selectors. Per-device (local-only, not synced).
@@ -166,7 +166,7 @@ final class ProviderConfigStore: ObservableObject {
     /// still written exclusively through `save()`.
     nonisolated static var configFileURLForBackup: URL {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-        return library.appendingPathComponent("MinisChat/provider-config.json")
+        return library.appendingPathComponent("UnibotChat/provider-config.json")
     }
 
     /// v3 SQLite store. Populated on first launch from `provider-config.json`
@@ -200,7 +200,7 @@ final class ProviderConfigStore: ObservableObject {
 
     init() {
         let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let baseURL = libraryURL.appendingPathComponent("MinisChat", isDirectory: true)
+        let baseURL = libraryURL.appendingPathComponent("UnibotChat", isDirectory: true)
         try? FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
         self.fileURL = baseURL.appendingPathComponent("provider-config.json")
         // First-frame value comes from the V2 JSON so the UI has something to
@@ -1463,7 +1463,7 @@ final class ProviderConfigStore: ObservableObject {
         return nil
     }
 
-    /// [T-ios-minis-config-entry-id-composite] Normalize an entry reference in
+    /// [T-ios-unibot-config-entry-id-composite] Normalize an entry reference in
     /// any historical form (composite key, legacy random uuid, legacy ":"
     /// composite) to the entry's CURRENT id (the composite key). Returns the
     /// input unchanged when nothing resolves — callers validate afterwards, so

@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [T-android-voice-correction] Mirrors iOS MinisTests/VoiceCorrectionTests
+ * [T-android-voice-correction] Mirrors iOS UnibotTests/VoiceCorrectionTests
  * (L166-220). The rank provider is injected so no asset is needed.
  */
 class VocabularyFilterTest {

@@ -283,7 +283,7 @@ private fun FloatingMenuButton(
                 modifier = Modifier.size(24.dp),
             )
         }
-        ai.unicto.unibot.ui.components.MinisMenu(
+        ai.unicto.unibot.ui.components.UnibotMenu(
             expanded = menuOpen,
             onDismissRequest = { menuOpen = false },
             alignEnd = true,
@@ -333,7 +333,7 @@ private fun FloatingMenuButton(
                     onOpenExternal()
                 },
             )
-            ai.unicto.unibot.ui.components.MinisMenuDivider()
+            ai.unicto.unibot.ui.components.UnibotMenuDivider()
             androidx.compose.material3.DropdownMenuItem(
                 text = {
                     androidx.compose.material3.Text(

@@ -149,7 +149,7 @@
     <string name="mcp_add">Добавить сервер MCP</string>
     <string name="mcp_edit">Изменить сервер MCP</string>
     <string name="mcp_section_servers">Серверы</string>
-    <string name="mcp_section_footer">Серверы MCP позволяют unibot Agent вызывать внешние инструменты через minis-mcp-cli. Конфигурация хранится в /var/minis/mcp-servers/servers.json (совместимо с Claude Desktop).</string>
+    <string name="mcp_section_footer">Серверы MCP позволяют unibot Agent вызывать внешние инструменты через unibot-mcp-cli. Конфигурация хранится в /var/minis/mcp-servers/servers.json (совместимо с Claude Desktop).</string>
     <string name="mcp_empty_title">Нет серверов MCP</string>
     <string name="mcp_empty_action">Добавьте сервер кнопкой +.</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -284,7 +284,7 @@
     <string name="settings_section_logs">Журналы</string>
     <string name="settings_logs_subtitle">Просмотр и экспорт журналов приложения</string>
     <string name="settings_section_about">О приложении</string>
-    <string name="settings_about_minis">О unibot</string>
+    <string name="settings_about_unibot">О unibot</string>
     <string name="settings_about_subtitle">Версия и информация о проекте</string>
     <string name="settings_privacy_policy">Политика конфиденциальности</string>
     <string name="settings_feedback">Обратная связь</string>
@@ -292,7 +292,7 @@
     <string name="settings_feedback_telegram">Обратная связь (Telegram)</string>
     <string name="settings_feedback_email">Обратная связь (Email)</string>
     <string name="about_title">О приложении</string>
-    <string name="about_minis_tagline">unibot — ваш полностью локальный и приватный Agent прямо на устройстве.</string>
+    <string name="about_unibot_tagline">unibot — ваш полностью локальный и приватный Agent прямо на устройстве.</string>
     <string name="about_links">Ссылки</string>
     <string name="about_github_repository">Репозиторий GitHub</string>
     <string name="about_version_format">Версия %1$s (%2$s)</string>
@@ -509,7 +509,7 @@
     <string name="browser_nav_forward">Вперёд</string>
     <string name="browser_stop">Остановить</string>
     <string name="browser_reload">Обновить</string>
-    <string name="browser_minis_browsing">%1$s просматривает страницы</string>
+    <string name="browser_unibot_browsing">%1$s просматривает страницы</string>
     <string name="chat_typing_indicator">%1$s думает</string>
     <string name="read_aloud_unavailable">Не удалось озвучить: нет доступного голосового движка. Проверьте настройки голосового вывода или установите системный синтезатор речи.</string>
     <string name="chat_error_stream_dropped_partial">Соединение прервано — этот ответ может быть неполным. Нажмите «Повторить», чтобы продолжить.</string>
@@ -720,8 +720,8 @@
     <string name="perm_agent_policy">Разрешение unibot Agent</string>
     <string name="perm_a11y_system_ready">Служба включена</string>
     <string name="perm_a11y_system_disabled">Служба не включена</string>
-    <string name="perm_allow_minis_config">Разрешить minis-config</string>
-    <string name="perm_minis_config_desc">Когда отключено, Agent не может считывать или изменять какие-либо настройки через minis-config. История изменений в Журналы → Изменения настроек остаётся доступной. Agent получит ошибку permission_denied и сможет вместо этого направить вас через глубокие ссылки.</string>
+    <string name="perm_allow_unibot_config">Разрешить unibot-config</string>
+    <string name="perm_unibot_config_desc">Когда отключено, Agent не может считывать или изменять какие-либо настройки через unibot-config. История изменений в Журналы → Изменения настроек остаётся доступной. Agent получит ошибку permission_denied и сможет вместо этого направить вас через глубокие ссылки.</string>
     <string name="perm_section_privacy">Конфиденциальность</string>
     <string name="perm_section_media">Медиа</string>
     <string name="perm_section_system">Система</string>
@@ -799,7 +799,7 @@
     <string name="skill_empty_title">Нет установленных навыков</string>
     <string name="skill_empty_action">Нажмите +, чтобы импортировать SKILL.md или просмотреть Навыки unibot.</string>
     <string name="skill_import_modal_title">Импорт навыка</string>
-    <string name="skill_minis_skills_modal">Навыки unibot</string>
+    <string name="skill_unibot_skills_modal">Навыки unibot</string>
     <string name="skill_delete_confirm_title">Удалить %1$s?</string>
     <string name="skill_delete_confirm_text">Это безвозвратно удалит навык и его файлы.</string>
     <string name="skill_import_sheet_title">Импорт навыка</string>
@@ -863,8 +863,8 @@
     <string name="storage_overview_sessions">Файлы сессий</string>
     <string name="storage_section_sessions">Сессии</string>
     <string name="storage_no_sessions">Нет сессий</string>
-    <string name="storage_section_minis_files">Файлы unibot</string>
-    <string name="storage_no_minis_files">Нет файлов unibot</string>
+    <string name="storage_section_unibot_files">Файлы unibot</string>
+    <string name="storage_no_unibot_files">Нет файлов unibot</string>
     <string name="storage_section_media">Медиафайлы</string>
     <string name="storage_no_media_files">Нет медиафайлов</string>
     <string name="storage_clear_session_footer">Удаляет все файлы, созданные этой сессией. Сам разговор будет сохранён.</string>
@@ -1165,7 +1165,7 @@
     <string name="settings_dynamic_island_footer">Показывать статус unibot Agent на чипе состояния Android 16. Когда включено, заменяет плавающий оверлей, чтобы не было двух индикаторов сразу.</string>
     <string name="settings_dynamic_island_unsupported">Ваша версия системы пока не поддерживает Live Updates (нужен Android 16+ с включённой функцией).</string>
     <string name="agent_loop_section_title">Модели, которые unibot может вызывать во время выполнения</string>
-    <string name="agent_loop_section_footer">Во время задачи unibot агент вызывает эти модели для подзадач, таких как генерация изображения или создание сводки — работы, которую не может выполнить его собственная модель. Также вызываются из терминала через minis-model-use. Только они видны unibot Agent.</string>
+    <string name="agent_loop_section_footer">Во время задачи unibot агент вызывает эти модели для подзадач, таких как генерация изображения или создание сводки — работы, которую не может выполнить его собственная модель. Также вызываются из терминала через unibot-model-use. Только они видны unibot Agent.</string>
     <string name="agent_loop_section_empty_hint">Модели и группы не добавлены</string>
     <string name="agent_loop_section_add_models">Добавить модели</string>
     <string name="agent_loop_section_add_groups">Добавить группы</string>
@@ -1605,7 +1605,7 @@
     <string name="webapp_pin_success">Добавлено на главный экран</string>
     <string name="webapp_source_missing_title">Исходный файл больше не существует</string>
     <string name="webapp_source_missing_body">Файл, на котором основан этот ярлык, был перемещён или удалён.</string>
-    <string name="webapp_open_in_minis">Открыть в unibot</string>
+    <string name="webapp_open_in_unibot">Открыть в unibot</string>
     <string name="webapp_action_close">Закрыть</string>
     <string name="webapp_action_fullscreen">Полноэкранный режим</string>
     <string name="webapp_action_exit_fullscreen">Выйти из полноэкранного режима</string>

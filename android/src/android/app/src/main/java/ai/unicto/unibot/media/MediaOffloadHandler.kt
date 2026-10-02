@@ -24,9 +24,9 @@ import java.util.Locale
  *     unibot-media video --prompt "<text>" [--from <picture>] [--seconds 4-15] [--ratio 16:9] [--name out.mp4]
  *
  * Files land in the session's `/var/minis/attachments/`, and the JSON reply carries a `markdown`
- * line (`![…](minis://attachments/…)`) that renders inline when the agent puts it in its answer.
+ * line (`![…](unibot://attachments/…)`) that renders inline when the agent puts it in its answer.
  * Without the needed model it exits 3 with a plain reason and the settings link, so the agent can
- * tell the user instead of guessing. Registered in `UnibotApp` next to `minis-model-use`.
+ * tell the user instead of guessing. Registered in `UnibotApp` next to `unibot-model-use`.
  */
 class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
 
@@ -72,7 +72,7 @@ class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
         return ok(JSONObject()
             .put("ok", true)
             .put("path", "/var/minis/attachments/$name")
-            .put("markdown", "![${prompt.take(60).replace("]", "")}](minis://attachments/$name)")
+            .put("markdown", "![${prompt.take(60).replace("]", "")}](unibot://attachments/$name)")
             .put("model", ep.model).put("provider", ep.label)
             .put("bytes", file.length()))
     }
@@ -100,7 +100,7 @@ class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
         return ok(JSONObject()
             .put("ok", true)
             .put("path", "/var/minis/attachments/$name")
-            .put("markdown", "[${prompt.take(60).replace("]", "")} (video, ${seconds}s)](minis://attachments/$name)")
+            .put("markdown", "[${prompt.take(60).replace("]", "")} (video, ${seconds}s)](unibot://attachments/$name)")
             .put("model", ep.model).put("provider", ep.label)
             .put("seconds", seconds)
             .put("bytes", file.length()))
@@ -149,8 +149,8 @@ class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
     /** A picture the agent points at: a sandbox path, an attachment link or a host path. */
     private fun loadPicture(path: String, sessionId: String?): Bitmap? {
         val linux = when {
-            path.startsWith("minis://attachments/") -> "/var/minis/attachments/" + path.removePrefix("minis://attachments/")
-            path.startsWith("minis://") -> path.removePrefix("minis://")
+            path.startsWith("unibot://attachments/") -> "/var/minis/attachments/" + path.removePrefix("unibot://attachments/")
+            path.startsWith("unibot://") -> path.removePrefix("unibot://")
             else -> path
         }
         val file = when {
@@ -197,9 +197,9 @@ Usage:
 
 Files are written to /var/minis/attachments/ and the JSON reply carries a `markdown`
 line to put in the answer so the file shows inline. `--from` takes a sandbox path or a
-minis://attachments/... link (image: edit that picture; video: start from it).
+unibot://attachments/... link (image: edit that picture; video: start from it).
 Video takes 1-5 minutes and is billed per second; keep --seconds low.
-Exit 3 means the needed model is not configured — tell the user and link minis://settings/media.
+Exit 3 means the needed model is not configured — tell the user and link unibot://settings/media.
 """
     }
 }

@@ -298,7 +298,7 @@ private fun formatDuration(ms: Int): String {
 }
 
 /**
- * Fullscreen video player dialog. Matches iOS `MinisVideoFullscreenPlayer`:
+ * Fullscreen video player dialog. Matches iOS `UnibotVideoFullscreenPlayer`:
  * - Black background, video centered via VideoView
  * - Top bar: close (X) + share action
  * - Bottom bar: play/pause + current time + slider + duration
@@ -308,7 +308,7 @@ private fun formatDuration(ms: Int): String {
  * Uses AndroidView(VideoView) to avoid ExoPlayer dependency.
  */
 @Composable
-fun MinisFullscreenVideoPlayer(
+fun UnibotFullscreenVideoPlayer(
     file: File,
     onDismiss: () -> Unit,
 ) {

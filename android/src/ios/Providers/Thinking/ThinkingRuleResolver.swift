@@ -625,7 +625,7 @@ enum ThinkingRuleResolver {
         case .extraBodyToggle(let path):
             // Same shape, but conventionally nested under extra_body. Kept as its own case
             // because that is how users think about it (GH OpenMinis#171: DeepSeek's real
-            // switch is extra_body.thinking.enabled and Minis never sent it).
+            // switch is extra_body.thinking.enabled and Unibot never sent it).
             setValue(true, at: path, in: &body, when: ctx.level.isEnabled, otherwiseWrite: false)
             return (nil, nil)
 
@@ -752,7 +752,7 @@ enum ThinkingRuleResolver {
         if id.contains("gemini-3") {
             // [T-gemini37-flash-minimal-400] "minimal" only for Flash variants that
             // still accept it. gemini-3.7-flash rejects it with 400 INVALID_ARGUMENT
-            // (verified via minis-model-use run), so 3.7+ Flash floors at "low" like
+            // (verified via unibot-model-use run), so 3.7+ Flash floors at "low" like
             // Pro. Unversioned ids ("gemini-3-flash-preview") and 3.0–3.6 keep
             // "minimal" — that behaviour is byte-pinned by the Gemini/Anthropic
             // golden snapshot. Version-threshold rule rather than an exact-id

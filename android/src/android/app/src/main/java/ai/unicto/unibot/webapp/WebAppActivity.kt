@@ -65,7 +65,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewAssetLoader
 import ai.unicto.unibot.MainActivity
-import ai.unicto.unibot.ui.components.MinisButton
+import ai.unicto.unibot.ui.components.UnibotButton
 import ai.unicto.unibot.UnibotApp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.logging.AppLogger
@@ -242,8 +242,8 @@ class WebAppActivity : ComponentActivity() {
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                MinisButton(onClick = { openInMinis(sourceSessionId) }) {
-                                    Text(stringResource(R.string.webapp_open_in_minis))
+                                UnibotButton(onClick = { openInUnibot(sourceSessionId) }) {
+                                    Text(stringResource(R.string.webapp_open_in_unibot))
                                 }
                             }
                         }
@@ -253,7 +253,7 @@ class WebAppActivity : ComponentActivity() {
         }
     }
 
-    private fun openInMinis(sourceSessionId: String?) {
+    private fun openInUnibot(sourceSessionId: String?) {
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             sourceSessionId?.let { putExtra(EXTRA_TARGET_SESSION_ID, it) }

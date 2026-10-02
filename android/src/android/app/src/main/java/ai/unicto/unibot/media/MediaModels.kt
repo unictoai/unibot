@@ -37,7 +37,7 @@ object MediaModels {
     private const val KEY_VIDEO_MODEL = "media.video.model"
     private const val KEY_ANIMATE = "media.animate_avatar"
     const val DEFAULT_VIDEO_MODEL = "wan2.2-i2v-flash"
-    const val DEEP_LINK = "minis://settings/media"
+    const val DEEP_LINK = "unibot://settings/media"
 
     fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

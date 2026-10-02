@@ -61,7 +61,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.sandbox.TerminalSession
-import ai.unicto.unibot.terminal.MinisOpenUrlBroker
+import ai.unicto.unibot.terminal.UnibotOpenUrlBroker
 import ai.unicto.unibot.ui.terminal.canvas.TerminalNativeViewCompose
 import ai.unicto.unibot.ui.terminal.canvas.TerminalInputView
 import ai.unicto.unibot.ui.terminal.canvas.rememberTerminalInputController
@@ -162,24 +162,24 @@ fun TerminalScreen(
     // (still composed underneath this destination's stack) doesn't try to
     // present its own preview sheet on top — mirrors iOS ISHTerminalView.
     DisposableEffect(Unit) {
-        MinisOpenUrlBroker.setTerminalVisible(true)
-        onDispose { MinisOpenUrlBroker.setTerminalVisible(false) }
+        UnibotOpenUrlBroker.setTerminalVisible(true)
+        onDispose { UnibotOpenUrlBroker.setTerminalVisible(false) }
     }
 
-    // OSC 1337 MinisOpenURL emitted by `/usr/local/bin/minis-open` is parsed
-    // by TerminalEmulator and forwarded to MinisOpenUrlBroker. From the
+    // OSC 1337 UnibotOpenURL emitted by `/usr/local/bin/unibot-open` is parsed
+    // by TerminalEmulator and forwarded to UnibotOpenUrlBroker. From the
     // standalone terminal we only route web schemes (http(s)/about) into an
-    // in-app WebView preview; minis://-style chat resources need ChatScreen's
+    // in-app WebView preview; unibot://-style chat resources need ChatScreen's
     // resolver and aren't reachable here, so we still consume them to avoid
     // leaking a stale pendingUrl back to chat on next attach.
     var previewUrl by remember { mutableStateOf<String?>(null) }
-    val pendingUrl by MinisOpenUrlBroker.pendingUrl.collectAsStateEffect()
+    val pendingUrl by UnibotOpenUrlBroker.pendingUrl.collectAsStateEffect()
     LaunchedEffect(pendingUrl) {
         val uri = pendingUrl ?: return@LaunchedEffect
-        if (MinisOpenUrlBroker.isWebScheme(uri.scheme)) {
+        if (UnibotOpenUrlBroker.isWebScheme(uri.scheme)) {
             previewUrl = uri.toString()
         }
-        MinisOpenUrlBroker.consume()
+        UnibotOpenUrlBroker.consume()
     }
 
     // T290: Layered layout — top bar fixed, canvas fills middle, accessory

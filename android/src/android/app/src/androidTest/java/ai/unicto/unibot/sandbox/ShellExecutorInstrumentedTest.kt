@@ -141,7 +141,7 @@ class ShellExecutorInstrumentedTest {
     }
 
     @Test
-    fun executeCanAccessMinisDirectories() = runBlocking {
+    fun executeCanAccessUnibotDirectories() = runBlocking {
         skipIfNoBoot()
 
         val result = ShellExecutor.execute(context, "ls /var/minis/")

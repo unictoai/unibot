@@ -1,6 +1,6 @@
 //
 //  AudioPreview.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Standalone audio preview sheet with artwork, scrubber, controls,
 //  export to document picker, and PiP activation. Extracted from
@@ -11,9 +11,9 @@ import AVFoundation
 import SwiftUI
 import UIKit
 
-// MARK: - minis:// Audio Preview (standalone sheet)
+// MARK: - unibot:// Audio Preview (standalone sheet)
 
-struct MinisAudioPreviewView: View {
+struct UnibotAudioPreviewView: View {
     let fileURL: URL
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var player = GlobalAudioPlayer.shared
@@ -55,7 +55,7 @@ struct MinisAudioPreviewView: View {
             // button is the user-facing way to stop playback.
         }
         .sheet(isPresented: $showShareSheet) {
-            MinisShareSheet(url: fileURL)
+            UnibotShareSheet(url: fileURL)
         }
         .sheet(isPresented: $showSavePicker) {
             AudioFileSavePicker(url: fileURL)

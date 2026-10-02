@@ -140,10 +140,10 @@ import ai.unicto.unibot.BuildConfig
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.FileMentionIndex
 import ai.unicto.unibot.logging.AppLogger
-import ai.unicto.unibot.ui.components.MinisAlertDialog
+import ai.unicto.unibot.ui.components.UnibotAlertDialog
 import ai.unicto.unibot.ui.settings.autoExpandThinkingEnabled
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisMenuDivider
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -273,7 +273,7 @@ import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 @Composable
 internal fun AssistantHeader() {
@@ -794,7 +794,7 @@ internal fun ToolCallPill(
             }
         }
         // [T-android-tool-bubble-longpress-menu] Long-press menu anchored to
-        // the pill. Items mirror the user-bubble menu's style (MinisMenu +
+        // the pill. Items mirror the user-bubble menu's style (UnibotMenu +
         // DropdownMenuItem + leading icon). Each item no-ops gracefully if
         // its callback is null (re-run is gated while streaming / when no
         // preceding user turn exists).
@@ -804,7 +804,7 @@ internal fun ToolCallPill(
         // dp; cap max to the same value so the widthIn(min,max) range is always
         // valid (min <= max) even on a sub-220dp display.
         val toolMenuWidthDp = minOf(220, LocalConfiguration.current.screenWidthDp).dp
-        MinisMenu(
+        UnibotMenu(
             expanded = showToolMenu,
             onDismissRequest = { showToolMenu = false },
             offset = androidx.compose.ui.unit.DpOffset(0.dp, 6.dp),
@@ -1101,7 +1101,7 @@ private fun ThinkingFullContentDialog(content: String, onDismiss: () -> Unit) {
                         color = Color(0xFF6D28D9),
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    MinisTextButton(onClick = onDismiss) {
+                    UnibotTextButton(onClick = onDismiss) {
                         Text(text = stringResource(android.R.string.ok))
                     }
                 }

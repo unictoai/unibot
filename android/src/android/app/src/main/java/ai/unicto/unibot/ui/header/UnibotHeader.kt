@@ -82,7 +82,7 @@ fun UnibotStatusLine(text: String, mood: AgentMood) {
 
 /** Opens Settings → Soul, where the name, icon and style live. Tapping the face is the shortcut. */
 fun openSoulSettings(context: Context) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("minis://settings/soul")).apply {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("unibot://settings/soul")).apply {
         setPackage(context.packageName)
         addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
@@ -91,7 +91,7 @@ fun openSoulSettings(context: Context) {
 
 /** Opens the agent's profile page (today's activity, approvals, daily, soul & memory). Tapping the face is the shortcut, as in Muse. */
 fun openAgentProfile(context: Context) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("minis://settings/profile")).apply {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("unibot://settings/profile")).apply {
         setPackage(context.packageName)
         addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
@@ -100,7 +100,7 @@ fun openAgentProfile(context: Context) {
 
 /** Opens the avatar studio (the face, its moods, the image model) — the advanced entry behind the profile page. */
 fun openAvatarStudio(context: Context) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("minis://settings/avatar")).apply {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("unibot://settings/avatar")).apply {
         setPackage(context.packageName)
         addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }

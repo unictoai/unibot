@@ -55,7 +55,7 @@ import ai.unicto.unibot.sandbox.offload.SpeakOffloadHandler
 import ai.unicto.unibot.sandbox.offload.SpeechOffloadHandler
 import ai.unicto.unibot.sandbox.offload.WeatherOffloadHandler
 import ai.unicto.unibot.service.SessionActivityTracker
-import ai.unicto.unibot.ui.MinisImageFetcher
+import ai.unicto.unibot.ui.UnibotImageFetcher
 import kotlinx.coroutines.launch
 
 class UnibotApp : Application(), ImageLoaderFactory {
@@ -201,12 +201,12 @@ class UnibotApp : Application(), ImageLoaderFactory {
     val networkMonitor: NetworkMonitor = NetworkMonitor()
 
     /**
-     * Application-scoped BrowserTabPool for shell-invoked `minis-browser-use`.
+     * Application-scoped BrowserTabPool for shell-invoked `unibot-browser-use`.
      * Separate from the per-ChatViewModel pool so browser state driven from
      * within an ish shell doesn't collide with the agent's own tabs.
      */
     val sharedBrowserTabPool: BrowserTabPool by lazy {
-        BrowserTabPool(this).also { it.setSession("minis-browser-use") }
+        BrowserTabPool(this).also { it.setSession("unibot-browser-use") }
     }
 
     override fun attachBaseContext(base: Context) {
@@ -356,7 +356,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
         // logging enabled in Settings, this also kicks off stdout/stderr
         // capture so subsequent println / Throwable.printStackTrace lines from
         // the rest of onCreate land in today's log file. Mirrors iOS
-        // `LoggingManager.startIfEnabled()` (called from MinisApp.swift:143).
+        // `LoggingManager.startIfEnabled()` (called from UnibotApp.swift:143).
         AppLogger.init(this)
 
         // Bug 2 (MIUI silent kill) diagnostic: write a launch-cycle beacon
@@ -461,11 +461,11 @@ class UnibotApp : Application(), ImageLoaderFactory {
         ai.unicto.unibot.agent.SoulStore.ensureExists(this)
         ai.unicto.unibot.agent.SoulStore.refreshCache(this)
 
-        // T-config: minis-config CLI surface — registry / audit log /
+        // T-config: unibot-config CLI surface — registry / audit log /
         // master-switch store. Initialized eagerly here so
         // ConfigRegistry.get() is safe from any thread for the rest of
         // the process. Mirrors iOS ConfigRegistry.shared.registerBuiltinsIfNeeded().
-        ai.unicto.unibot.config.MinisConfigPermissionStore.init(this)
+        ai.unicto.unibot.config.UnibotConfigPermissionStore.init(this)
         ai.unicto.unibot.config.audit.ConfigAuditLog.init(this)
         ai.unicto.unibot.config.ConfigRegistry.init(
             this, providerRepository, envVarRepository, chatRepository,
@@ -544,7 +544,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
         NativeOffloadServer.register("android-weather", WeatherOffloadHandler(this))
         // T323: UI-layer automation backed by UnibotAccessibilityService.
         NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(this))
-        NativeOffloadServer.register("minis-model-use", ModelUseOffloadHandler(this, providerRepository))
+        NativeOffloadServer.register("unibot-model-use", ModelUseOffloadHandler(this, providerRepository))
         // unibot: unibot-media — pictures and clips through the user's image / video models.
         NativeOffloadServer.register("unibot-media", ai.unicto.unibot.media.MediaOffloadHandler(this))
         // unibot: unibot-hands — the phone's screen as a hand (screenshot → screen model → gesture).
@@ -553,26 +553,26 @@ class UnibotApp : Application(), ImageLoaderFactory {
         NativeOffloadServer.register("unibot-pc", ai.unicto.unibot.reach.ReachOffloadHandler(this))
         // unibot: join the hub, so the user's other devices can reach this phone and it can reach them.
         ai.unicto.unibot.hub.Hub.autoStart(this)
-        // T-config: minis-config — agent-facing settings management
+        // T-config: unibot-config — agent-facing settings management
         // (read/write registered ConfigFields with audit + revert).
         // Mirrors iOS `config_offload_register()` in ISHKernel.m.
         NativeOffloadServer.register(
-            "minis-config",
+            "unibot-config",
             ai.unicto.unibot.sandbox.offload.ConfigOffloadHandler(),
         )
-        NativeOffloadServer.register("minis-browser-use", BrowserUseOffloadHandler(this))
-        // T188: minis-sessions-cli — agent-side query of chat history.
-        // Registers next to the other minis-* tools so PRootKernel.
+        NativeOffloadServer.register("unibot-browser-use", BrowserUseOffloadHandler(this))
+        // T188: unibot-sessions-cli — agent-side query of chat history.
+        // Registers next to the other unibot-* tools so PRootKernel.
         // installHandlerStubs() picks it up on the next rootfs boot
-        // (writes a 17-byte exit-0 stub at /usr/local/bin/minis-sessions-cli
+        // (writes a 17-byte exit-0 stub at /usr/local/bin/unibot-sessions-cli
         // so PATH lookup succeeds; PRoot intercepts the execve before
         // the stub runs and routes to this handler).
-        NativeOffloadServer.register("minis-sessions-cli", SessionsOffloadHandler(chatRepository))
-        // [T-android-scheduled-tasks-full] minis-scheduled — create/list/run
+        NativeOffloadServer.register("unibot-sessions-cli", SessionsOffloadHandler(chatRepository))
+        // [T-android-scheduled-tasks-full] unibot-scheduled — create/list/run
         // timed AI tasks (new chat / follow-up / re-run), mirroring the in-app
         // Scheduled Tasks editor and the iOS Shortcuts intent set.
         NativeOffloadServer.register(
-            "minis-scheduled",
+            "unibot-scheduled",
             ai.unicto.unibot.sandbox.offload.ScheduledTaskOffloadHandler(this),
         )
         // T322: android-shizuku-cli — privileged Android control via Shizuku.
@@ -583,14 +583,14 @@ class UnibotApp : Application(), ImageLoaderFactory {
         NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(this))
         ai.unicto.unibot.offload.ShizukuManager.init(this)
 
-        // T-android-minis-debug-cli: shell-side CLI wrapper around the in-app
+        // T-android-unibot-debug-cli: shell-side CLI wrapper around the in-app
         // DebugServer (127.0.0.1:5321) JSON-RPC. DEBUG-only — Release builds
         // ship neither the DebugServer nor this handler, so the
-        // `/usr/local/bin/minis-debug` stub is also absent (PRootKernel.
+        // `/usr/local/bin/unibot-debug` stub is also absent (PRootKernel.
         // installHandlerStubs enumerates currently-registered handlers).
         if (BuildConfig.DEBUG) {
             NativeOffloadServer.register(
-                "minis-debug",
+                "unibot-debug",
                 ai.unicto.unibot.sandbox.offload.DebugOffloadHandler(this),
             )
         }
@@ -638,7 +638,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
         }
 
         // [T-android-config-confirm-timeout] Wire the config-confirm background
-        // notifier into the (Context-free) gate, so a minis-config approval that
+        // notifier into the (Context-free) gate, so a unibot-config approval that
         // is waiting while the app is backgrounded nudges the user before the
         // 120s timeout. Mirrors iOS ConfigConfirmationGate.notifyIfBackgrounded.
         val configConfirmNotifier = ai.unicto.unibot.notification.ConfigConfirmNotifier(
@@ -739,7 +739,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
         // Initialize speech-recognition adapter layer (system + provider engines).
         ai.unicto.unibot.speech.SpeechRecognitionManager.init(this)
 
-        // Refresh model lists once per calendar day (mirrors iOS MinisApp.swift).
+        // Refresh model lists once per calendar day (mirrors iOS UnibotApp.swift).
         // Runs per-instance in parallel; `autoRefreshModels` skips instances with custom models.
         providerRepository.refreshAllModelsIfNeeded(
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
@@ -789,9 +789,9 @@ class UnibotApp : Application(), ImageLoaderFactory {
         }
 
         // T268: one-shot migration of pre-T266 internal alarms into the
-        // system Clock app. Pre-T266 builds wrote alarms into Minis's own
+        // system Clock app. Pre-T266 builds wrote alarms into Unibot's own
         // SharedPreferences + AlarmManager; T266 retired that path but old
-        // installs still have ghost entries that fire only inside Minis.
+        // installs still have ghost entries that fire only inside Unibot.
         // Replay each future-dated entry through the same SET_ALARM /
         // SET_TIMER intents the new path uses, then clear prefs so the
         // migration runs at most once. Wrapped in runCatching so an
@@ -802,7 +802,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
 
     /**
      * T268: replay any pre-T266 internal alarm/timer entries from
-     * minis_alarms_prefs through SET_ALARM / SET_TIMER, then clear the
+     * unibot_alarms_prefs through SET_ALARM / SET_TIMER, then clear the
      * prefs blob so subsequent launches no-op. Past-dated entries are
      * dropped (the OS never re-fires them anyway). Idempotent: if the
      * blob is missing or empty the function returns immediately.
@@ -816,7 +816,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
      * commands will no longer surface them.
      */
     private fun migrateGhostAlarms() {
-        val prefs = getSharedPreferences("minis_alarms_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("unibot_alarms_prefs", Context.MODE_PRIVATE)
         val raw = prefs.getString("alarms_json", null) ?: return
         if (raw.isBlank() || raw == "[]") return
         val arr = org.json.JSONArray(raw)
@@ -871,20 +871,20 @@ class UnibotApp : Application(), ImageLoaderFactory {
     }
 
     /**
-     * Coil global ImageLoader — registers [MinisImageFetcher] so `minis://`
-     * URIs in Markdown images (e.g. `![alt](minis://attachments/x.png)`)
+     * Coil global ImageLoader — registers [UnibotImageFetcher] so `unibot://`
+     * URIs in Markdown images (e.g. `![alt](unibot://attachments/x.png)`)
      * resolve to local files under /var/minis/.
      */
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .components {
-                add(MinisImageFetcher.Factory())
-                add(MinisImageFetcher.UriFactory())
+                add(UnibotImageFetcher.Factory())
+                add(UnibotImageFetcher.UriFactory())
                 // T-image-cache-mtime-35133: include File.lastModified() in
                 // memory + disk cache key so Grok-style in-place rewrites of
-                // minis://attachments/foo.jpg invalidate Coil's cached bitmap.
-                add(MinisImageFetcher.MtimeKeyer())
-                add(MinisImageFetcher.StringMtimeKeyer())
+                // unibot://attachments/foo.jpg invalidate Coil's cached bitmap.
+                add(UnibotImageFetcher.MtimeKeyer())
+                add(UnibotImageFetcher.StringMtimeKeyer())
             }
             .build()
 

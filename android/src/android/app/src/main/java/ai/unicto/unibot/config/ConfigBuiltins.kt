@@ -56,7 +56,7 @@ internal object ConfigBuiltins {
     //
     // [T-android-memory-enabled-minisconfig] `memory.enabled` mirrors the
     // Settings → Memory switch (MemoryManagementScreen, backed by
-    // MemoryGlobalPrefs: SharedPreferences `minis_memory_prefs`, key
+    // MemoryGlobalPrefs: SharedPreferences `unibot_memory_prefs`, key
     // `memory.global.enabled`, default true). It is the global DEFAULT
     // applied to newly-created sessions: a new chat seeds its per-session
     // memoryEnabled from this value. It does NOT retroactively flip
@@ -67,7 +67,7 @@ internal object ConfigBuiltins {
     // list-topics since topics derive from field-path prefixes.
 
     private fun registerMemory(r: ConfigRegistry, context: Context) {
-        val prefs = context.getSharedPreferences("minis_memory_prefs", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences("unibot_memory_prefs", Context.MODE_PRIVATE)
         r.register(
             PrefsBoolField(
                 path = "memory.enabled",
@@ -85,14 +85,14 @@ internal object ConfigBuiltins {
     private fun registerSelfMeta(r: ConfigRegistry) {
         r.register(
             ClosureField(
-                path = "permissions.minisConfig.enabled",
-                displayName = "Allow minis-config",
+                path = "permissions.unibotConfig.enabled",
+                displayName = "Allow unibot-config",
                 description = "Master switch. Read-only here — toggle via Settings → Permissions.",
                 valueSchema = ConfigSchema.Bool,
                 access = ConfigAccess.READONLY,
                 risk = ConfigRisk.DESTRUCTIVE,
                 revertable = false,
-                reader = { ConfigValue.Bool(MinisConfigPermissionStore.isEnabled) },
+                reader = { ConfigValue.Bool(UnibotConfigPermissionStore.isEnabled) },
                 writer = { _ ->
                     throw ConfigError.PermissionDenied(
                         "Master switch — toggle via Settings → Permissions only"
@@ -239,7 +239,7 @@ internal object ConfigBuiltins {
     }
 
     /** Convert the `model_binding` JSON the chat layer writes into the
-     *  `entry:<uuid>` / `group:<id>` form the iOS minis-config surface uses.
+     *  `entry:<uuid>` / `group:<id>` form the iOS unibot-config surface uses.
      *  Returns empty string when the session has no explicit binding (the
      *  default group/entry fallback applies on next load). */
     private fun formatBinding(bindingJson: String?): String {
@@ -311,9 +311,9 @@ internal object ConfigBuiltins {
     private fun registerChat(r: ConfigRegistry, context: Context) {
         // Default app prefs — Android persists most chat preferences in
         // the default SharedPreferences for the package.
-        val prefs = context.getSharedPreferences("minis_settings", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences("unibot_settings", Context.MODE_PRIVATE)
         // [T-android-config-prefs-mismatch] The chat prefs the SETTINGS UI owns
-        // live here, not in `minis_settings`. Hoisted above the registrations
+        // live here, not in `unibot_settings`. Hoisted above the registrations
         // so every field can bind to the same store the UI reads.
         val appearancePrefs = context.getSharedPreferences(
             ai.unicto.unibot.ui.settings.PREF_APPEARANCE,
@@ -327,8 +327,8 @@ internal object ConfigBuiltins {
                 // [T-android-config-prefs-mismatch] Must match
                 // AppearanceScreen.returnKeySendsMessage exactly — both the
                 // store AND the key. This field previously wrote
-                // `minis_settings/return_key_behavior`, which nothing reads,
-                // so `minis-config set chat.returnKey send` reported success
+                // `unibot_settings/return_key_behavior`, which nothing reads,
+                // so `unibot-config set chat.returnKey send` reported success
                 // while the chat box kept inserting newlines.
                 prefs = appearancePrefs,
                 key = ai.unicto.unibot.ui.settings.KEY_RETURN_KEY_BEHAVIOR,
@@ -353,7 +353,7 @@ internal object ConfigBuiltins {
         // appearance-prefs section starts.)
         // T311: chat.toolPreview / inputFontSize / messageFontSize live in
         // `appearance_prefs` — same SharedPreferences AppearanceScreen.kt
-        // reads/writes, so flipping via minis-config flows back into the
+        // reads/writes, so flipping via unibot-config flows back into the
         // settings UI and into ChatScreen's `OnSharedPreferenceChangeListener`
         // (Compose recomposes immediately, no manual cache invalidation
         // needed on Android — there is no analogue to iOS
@@ -478,7 +478,7 @@ internal object ConfigBuiltins {
         )
         // [T-android-config-feature-unavailable] Live Updates / "dynamic
         // island". Settings → Background renders this toggle DISABLED with an
-        // "unsupported" footer unless the device is capable, so minis-config
+        // "unsupported" footer unless the device is capable, so unibot-config
         // must not be a side door around that gate: on an incapable device the
         // path stays registered (help/list still describe it) but every read
         // and write is refused with `feature_unavailable`.
@@ -522,7 +522,7 @@ internal object ConfigBuiltins {
         // capture pipeline. The previous PrefsBoolField wrote a sibling
         // `logging`/`logging_enabled` key that AppLogger never reads
         // (AppLogger uses `logging_prefs`/`logging_enabled`), so toggling via
-        // minis-config did nothing. Default mirrors AppLogger's own default
+        // unibot-config did nothing. Default mirrors AppLogger's own default
         // (false — opt-in), aligning with iOS.
         r.register(
             ClosureField(
@@ -563,14 +563,14 @@ internal object ConfigBuiltins {
             timeZone = TimeZone.getTimeZone("UTC")
         }
 
-        // Aggregate read-only summary so `minis-config get providers`
+        // Aggregate read-only summary so `unibot-config get providers`
         // returns a useful list of configured instances. Credentials
         // (apiKey / oauthToken) are deliberately omitted.
         r.register(
             ReadOnlyField(
                 path = "providers",
                 displayName = "LLM provider instances (summary)",
-                description = "Read-only list of configured providers (id, label, type, credential type, enabled, base URL). Credentials are not included. Use `minis-config add providers <json>` to create a new provider (payload mirrors a provider-export `config` block, with optional `apiKey` as literal or `\$\$ENV_VAR`).",
+                description = "Read-only list of configured providers (id, label, type, credential type, enabled, base URL). Credentials are not included. Use `unibot-config add providers <json>` to create a new provider (payload mirrors a provider-export `config` block, with optional `apiKey` as literal or `\$\$ENV_VAR`).",
                 valueSchema = ConfigSchema.Json,
                 reader = {
                     val instances = providerRepo.config.value.instances
@@ -595,7 +595,7 @@ internal object ConfigBuiltins {
             )
         )
 
-        // Aggregate read-only summary so `minis-config get models`
+        // Aggregate read-only summary so `unibot-config get models`
         // returns every model entry along with its provider context.
         r.register(
             ReadOnlyField(
@@ -628,7 +628,7 @@ internal object ConfigBuiltins {
             )
         )
 
-        // Aggregate read-only summary so `minis-config get envvars`
+        // Aggregate read-only summary so `unibot-config get envvars`
         // returns every env var key with its non-secret metadata.
         r.register(
             ReadOnlyField(
@@ -676,7 +676,7 @@ internal object ConfigBuiltins {
             )
         )
 
-        // Aggregate read-only summary so `minis-config get groups`
+        // Aggregate read-only summary so `unibot-config get groups`
         // returns every model group with its expanded entries.
         r.register(
             ReadOnlyField(
@@ -783,14 +783,14 @@ internal object ConfigBuiltins {
             ClosureField(
                 path = "defaults.agentLoopEntries",
                 displayName = "Agent loop model entries",
-                description = "Model entries available via minis-model-use. Replace with full list to set; use .append/.remove for single-element ops.",
+                description = "Model entries available via unibot-model-use. Replace with full list to set; use .append/.remove for single-element ops.",
                 valueSchema = ConfigSchema.Array(ConfigSchema.Str()),
                 risk = ConfigRisk.SENSITIVE,
                 revertable = true,
                 reader = {
                     // [T-android-agentloop-dirty-data-skip] Filter out ids that no
                     // longer match a real model entry (legacy bare-UUID / deleted
-                    // rows). Surfacing them confuses minis-model-use and the
+                    // rows). Surfacing them confuses unibot-model-use and the
                     // round-trip set/append flow; skip silently.
                     val valid = repo.config.value.modelEntries.map { it.id }.toSet()
                     ConfigValue.Arr(
@@ -813,7 +813,7 @@ internal object ConfigBuiltins {
                     val cleanIds = ids.filter { it in valid }
                     ids.filterNot { it in valid }.forEach { bad ->
                         ai.unicto.unibot.logging.AppLogger.warning(
-                            "MinisConfig", "skipped unknown agentLoopEntries id: $bad"
+                            "UnibotConfig", "skipped unknown agentLoopEntries id: $bad"
                         )
                     }
                     repo.setAgentLoopEntryIds(cleanIds)
@@ -824,7 +824,7 @@ internal object ConfigBuiltins {
             ClosureField(
                 path = "defaults.agentLoopGroups",
                 displayName = "Agent loop groups",
-                description = "Whole groups exposed via minis-model-use.",
+                description = "Whole groups exposed via unibot-model-use.",
                 valueSchema = ConfigSchema.Array(ConfigSchema.Str()),
                 risk = ConfigRisk.SENSITIVE,
                 revertable = true,
@@ -847,7 +847,7 @@ internal object ConfigBuiltins {
                     val cleanIds = ids.filter { it in valid }
                     ids.filterNot { it in valid }.forEach { bad ->
                         ai.unicto.unibot.logging.AppLogger.warning(
-                            "MinisConfig", "skipped unknown agentLoopGroups id: $bad"
+                            "UnibotConfig", "skipped unknown agentLoopGroups id: $bad"
                         )
                     }
                     repo.setAgentLoopGroupIds(cleanIds)
@@ -948,7 +948,7 @@ internal object ConfigBuiltins {
         // precise [ConfigError.InvalidValue].
 
         // Re-read SOUL.md every call so concurrent writes from Settings
-        // UI don't race with minis-config writes. Parse falls back to
+        // UI don't race with unibot-config writes. Parse falls back to
         // the canonical default content if the file was somehow deleted
         // between launches — same behavior as the Settings page.
         fun loadCurrent(): ai.unicto.unibot.agent.SoulFile =
@@ -988,14 +988,14 @@ internal object ConfigBuiltins {
         // [T-android-soul-custom-icon][T-android-soul-icon-config-images]
         //
         // Accepts an emoji OR an image, matching iOS `fe2f3ae8b`. An address
-        // (minis:// or a /var/minis path) is only an import source: it is
+        // (unibot:// or a /var/minis path) is only an import source: it is
         // resolved, re-encoded through the SAME SoulIcon.encode the Settings
         // picker uses, and only the RESULT is stored inline — so the source
         // file can be deleted afterwards and the icon survives attachment
         // cleanup and syncing to another device.
         //
         // Reading is summarized, never dumped: a stored image reports as
-        // "<image>" so `minis-config get` cannot flood the context with
+        // "<image>" so `unibot-config get` cannot flood the context with
         // base64. For the same reason the field is NOT revertable — the audit
         // log holds "<image>" rather than the bytes, so there is nothing to
         // restore from and offering a revert button would be a lie.
@@ -1003,7 +1003,7 @@ internal object ConfigBuiltins {
             ClosureField(
                 path = "soul.icon",
                 displayName = "Soul icon",
-                // The description IS the API doc — `minis-config topic-help
+                // The description IS the API doc — `unibot-config topic-help
                 // soul` prints it verbatim. It leads with every word a user
                 // might use for this (icon / avatar / persona image /
                 // 角色形象 / 头像) because they are all this ONE field, and a
@@ -1020,8 +1020,8 @@ internal object ConfigBuiltins {
                     "IMAGE — any of these forms:\n" +
                     "  • data URI: data:image/png;base64,iVBORw0KGgo...\n" +
                     "  • bare base64 (no data: prefix) — auto-detected\n" +
-                    "  • minis:// resource, e.g. minis://attachments/icon.png\n" +
-                    "  • a path inside the minis directories, e.g. /var/minis/attachments/icon.png\n" +
+                    "  • unibot:// resource, e.g. unibot://attachments/icon.png\n" +
+                    "  • a path inside the unibot directories, e.g. /var/minis/attachments/icon.png\n" +
                     "  Remote http(s) URLs are NOT supported on Android — download the file first, " +
                     "then pass its path.\n" +
                     "\n" +
@@ -1036,9 +1036,9 @@ internal object ConfigBuiltins {
                     "READING — `get soul.icon` returns \"<image>\" for an image, never the base64.\n" +
                     "\n" +
                     "EXAMPLES (the value is JSON, so the string needs its own quotes)\n" +
-                    "  minis-config set soul.icon '\"⚡\"'\n" +
-                    "  minis-config set soul.icon '\"minis://attachments/icon.png\"'\n" +
-                    "  minis-config set soul.icon '\"\"'   # back to the default sparkle",
+                    "  unibot-config set soul.icon '\"⚡\"'\n" +
+                    "  unibot-config set soul.icon '\"unibot://attachments/icon.png\"'\n" +
+                    "  unibot-config set soul.icon '\"\"'   # back to the default sparkle",
                 // No maxLength: an inline data URI is far longer than any cap
                 // that would make sense stated in characters. The real bound
                 // is SoulIcon.MAX_DATA_URI_CHARS, enforced by the encoder.

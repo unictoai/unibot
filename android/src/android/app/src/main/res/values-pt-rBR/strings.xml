@@ -147,7 +147,7 @@
     <string name="mcp_add">Adicionar servidor MCP</string>
     <string name="mcp_edit">Editar servidor MCP</string>
     <string name="mcp_section_servers">Servidores</string>
-    <string name="mcp_section_footer">Os servidores MCP permitem que o Agente chame ferramentas externas via minis-mcp-cli. As configurações ficam em /var/minis/mcp-servers/servers.json (compatível com o Claude Desktop).</string>
+    <string name="mcp_section_footer">Os servidores MCP permitem que o Agente chame ferramentas externas via unibot-mcp-cli. As configurações ficam em /var/minis/mcp-servers/servers.json (compatível com o Claude Desktop).</string>
     <string name="mcp_empty_title">Nenhum servidor MCP</string>
     <string name="mcp_empty_action">Adicione um servidor com o botão +.</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -282,7 +282,7 @@
     <string name="settings_section_logs">Registros</string>
     <string name="settings_logs_subtitle">Veja e exporte os registros do app</string>
     <string name="settings_section_about">Sobre</string>
-    <string name="settings_about_minis">Sobre o unibot</string>
+    <string name="settings_about_unibot">Sobre o unibot</string>
     <string name="settings_about_subtitle">Versão e informações do projeto</string>
     <string name="settings_privacy_policy">Política de privacidade</string>
     <string name="settings_feedback">Feedback</string>
@@ -290,7 +290,7 @@
     <string name="settings_feedback_telegram">Feedback (Telegram)</string>
     <string name="settings_feedback_email">Feedback (e-mail)</string>
     <string name="about_title">Sobre</string>
-    <string name="about_minis_tagline">O unibot é o seu Agente totalmente local e totalmente privado, rodando no próprio aparelho.</string>
+    <string name="about_unibot_tagline">O unibot é o seu Agente totalmente local e totalmente privado, rodando no próprio aparelho.</string>
     <string name="about_links">Links</string>
     <string name="about_github_repository">Repositório no GitHub</string>
     <string name="about_version_format">Versão %1$s (%2$s)</string>
@@ -507,7 +507,7 @@
     <string name="browser_nav_forward">Avançar</string>
     <string name="browser_stop">Parar</string>
     <string name="browser_reload">Recarregar</string>
-    <string name="browser_minis_browsing">O %1$s está navegando</string>
+    <string name="browser_unibot_browsing">O %1$s está navegando</string>
     <string name="chat_typing_indicator">%1$s está pensando</string>
     <string name="read_aloud_unavailable">Falha na leitura em voz alta: nenhum mecanismo de voz utilizável. Verifique as configurações de saída de voz ou instale um mecanismo de fala do sistema.</string>
     <string name="chat_error_stream_dropped_partial">A conexão caiu — esta resposta pode estar incompleta. Toque em Tentar de novo para continuar.</string>
@@ -718,8 +718,8 @@
     <string name="perm_agent_policy">Permissão do Agente</string>
     <string name="perm_a11y_system_ready">Serviço ativado</string>
     <string name="perm_a11y_system_disabled">Serviço não ativado</string>
-    <string name="perm_allow_minis_config">Permitir o minis-config</string>
-    <string name="perm_minis_config_desc">Quando desativado, o Agente não pode ler nem alterar nenhuma configuração pelo minis-config. O histórico de mudanças em Registros → Mudanças de configuração continua acessível. O Agente receberá um erro permission_denied e poderá orientar você por links diretos.</string>
+    <string name="perm_allow_unibot_config">Permitir o unibot-config</string>
+    <string name="perm_unibot_config_desc">Quando desativado, o Agente não pode ler nem alterar nenhuma configuração pelo unibot-config. O histórico de mudanças em Registros → Mudanças de configuração continua acessível. O Agente receberá um erro permission_denied e poderá orientar você por links diretos.</string>
     <string name="perm_section_privacy">Privacidade</string>
     <string name="perm_section_media">Mídia</string>
     <string name="perm_section_system">Sistema</string>
@@ -797,7 +797,7 @@
     <string name="skill_empty_title">Nenhuma habilidade instalada</string>
     <string name="skill_empty_action">Toque em + para importar um arquivo SKILL.md, .zip ou .skill, ou explore o unibot Skills.</string>
     <string name="skill_import_modal_title">Importar habilidade</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">Excluir: %1$s</string>
     <string name="skill_delete_confirm_text">Isso remove permanentemente a habilidade e os arquivos dela.</string>
     <string name="skill_import_sheet_title">Importar habilidade</string>
@@ -861,8 +861,8 @@
     <string name="storage_overview_sessions">Arquivos das sessões</string>
     <string name="storage_section_sessions">Sessões</string>
     <string name="storage_no_sessions">Nenhuma sessão</string>
-    <string name="storage_section_minis_files">Arquivos do unibot</string>
-    <string name="storage_no_minis_files">Nenhum arquivo do unibot</string>
+    <string name="storage_section_unibot_files">Arquivos do unibot</string>
+    <string name="storage_no_unibot_files">Nenhum arquivo do unibot</string>
     <string name="storage_section_media">Arquivos de mídia</string>
     <string name="storage_no_media_files">Nenhum arquivo de mídia</string>
     <string name="storage_clear_session_footer">Remove todos os arquivos gerados por esta sessão. A conversa em si é mantida.</string>
@@ -1163,7 +1163,7 @@
     <string name="settings_dynamic_island_footer">Mostra o status do Agente ao vivo no chip de status do Android 16. Quando ligado, substitui a cápsula flutuante, para você não ver dois indicadores ao mesmo tempo.</string>
     <string name="settings_dynamic_island_unsupported">A versão atual do seu sistema ainda não é compatível com Live Updates (exige Android 16+ com o recurso ativado).</string>
     <string name="agent_loop_section_title">Modelos que o unibot pode chamar durante a execução</string>
-    <string name="agent_loop_section_footer">Durante uma tarefa, o unibot chama esses modelos para subtarefas como gerar uma imagem ou resumir um texto — coisas que o modelo dele não faz. Também dá para chamá-los pelo terminal, com minis-model-use. Só esses ficam visíveis para o Agente.</string>
+    <string name="agent_loop_section_footer">Durante uma tarefa, o unibot chama esses modelos para subtarefas como gerar uma imagem ou resumir um texto — coisas que o modelo dele não faz. Também dá para chamá-los pelo terminal, com unibot-model-use. Só esses ficam visíveis para o Agente.</string>
     <string name="agent_loop_section_empty_hint">Nenhum modelo ou grupo adicionado</string>
     <string name="agent_loop_section_add_models">Adicionar modelos</string>
     <string name="agent_loop_section_add_groups">Adicionar grupos</string>
@@ -1597,7 +1597,7 @@
     <string name="webapp_pin_success">Adicionado à tela inicial</string>
     <string name="webapp_source_missing_title">O arquivo de origem não existe mais</string>
     <string name="webapp_source_missing_body">O arquivo que dá base a este atalho foi movido ou excluído.</string>
-    <string name="webapp_open_in_minis">Abrir no unibot</string>
+    <string name="webapp_open_in_unibot">Abrir no unibot</string>
     <string name="webapp_action_close">Fechar</string>
     <string name="webapp_action_fullscreen">Entrar em tela cheia</string>
     <string name="webapp_action_exit_fullscreen">Sair da tela cheia</string>

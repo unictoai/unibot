@@ -73,7 +73,7 @@ class ScheduledTaskStore(private val context: Context) {
 
     companion object {
         private const val TAG = "ScheduledTaskStore"
-        private const val PREFS_NAME = "minis_scheduled_tasks_prefs"
+        private const val PREFS_NAME = "unibot_scheduled_tasks_prefs"
         private const val KEY_TASKS = "tasks_json"
     }
 }

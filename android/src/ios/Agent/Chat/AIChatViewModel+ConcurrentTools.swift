@@ -1,6 +1,6 @@
 //
 //  AIChatViewModel+ConcurrentTools.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Concurrent tool execution: dispatches up to `maxConcurrentTools` tool
 //  calls in parallel via TaskGroup, waits for all to complete, then
@@ -354,7 +354,7 @@ extension AIChatViewModel {
                 }
             }
 
-            let preSnapshot = snapshotMinisFiles()
+            let preSnapshot = snapshotUnibotFiles()
             let result: CommandResult
             do {
                 var lineBuffer: [String] = []
@@ -395,13 +395,13 @@ extension AIChatViewModel {
                 #endif
                 result = try await executeCommand(command, timeout: timeout) { [weak self] line in
                     guard let self else { return }
-                    let (cleanedLine, capturedURLs) = MinisURLMarker.extract(from: line)
+                    let (cleanedLine, capturedURLs) = UnibotURLMarker.extract(from: line)
                     if !capturedURLs.isEmpty {
                         Task { @MainActor in
                             for raw in capturedURLs {
                                 if let u = URL(string: raw),
-                                   MinisOpenURLBroker.isSupportedScheme(u.scheme) {
-                                    MinisOpenURLBroker.shared.offer(u)
+                                   UnibotOpenURLBroker.isSupportedScheme(u.scheme) {
+                                    UnibotOpenURLBroker.shared.offer(u)
                                 }
                             }
                         }
@@ -431,11 +431,11 @@ extension AIChatViewModel {
                 let hasStreamedContent = !existingContent.isEmpty
                     && !existingContent.hasSuffix("Executing...")
                 if !hasStreamedContent {
-                    let (cleaned, capturedURLs) = MinisURLMarker.extract(from: result.output)
+                    let (cleaned, capturedURLs) = UnibotURLMarker.extract(from: result.output)
                     for raw in capturedURLs {
                         if let u = URL(string: raw),
-                           MinisOpenURLBroker.isSupportedScheme(u.scheme) {
-                            MinisOpenURLBroker.shared.offer(u)
+                           UnibotOpenURLBroker.isSupportedScheme(u.scheme) {
+                            UnibotOpenURLBroker.shared.offer(u)
                         }
                     }
                     let resultTrimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -457,7 +457,7 @@ extension AIChatViewModel {
             toolSuccess = result.exitCode == 0
 
             // Scan for new/modified files under /var/minis/
-            let postSnapshot = snapshotMinisFiles()
+            let postSnapshot = snapshotUnibotFiles()
             let newOrModified = postSnapshot.filter { key, date in
                 preSnapshot[key] == nil || preSnapshot[key]! < date
             }
@@ -470,9 +470,9 @@ extension AIChatViewModel {
                     ensureParentDirsInMetaDB(for: path)
                     ensureFakefsMetadata(for: path, isDirectory: isDir.boolValue)
                 }
-                toolOutput += "\n\n[minis] New/modified files:"
+                toolOutput += "\n\n[unibot] New/modified files:"
                 for path in newOrModified.keys.sorted() {
-                    if let url = linuxPathToMinisURL(path) {
+                    if let url = linuxPathToUnibotURL(path) {
                         toolOutput += "\n  \(url)"
                     }
                 }
@@ -586,31 +586,31 @@ extension AIChatViewModel {
                 let timestamp = Int(Date().timeIntervalSince1970)
                 let screenshotFilename = "screenshot_\(timestamp).jpg"
                 let sid = sessionId ?? "unknown"
-                let persistDir = Self.minisBrowserPersistentDir(for: sid)
+                let persistDir = Self.unibotBrowserPersistentDir(for: sid)
                 let fm = FileManager.default
                 try? fm.createDirectory(at: persistDir, withIntermediateDirectories: true)
                 let persistPath = persistDir.appendingPathComponent(screenshotFilename)
                 try? data.write(to: persistPath)
 
-                let linuxPath = "\(Self.minisBrowserLinuxDir)/\(screenshotFilename)"
+                let linuxPath = "\(Self.unibotBrowserLinuxDir)/\(screenshotFilename)"
                 toolImageLinuxPath = linuxPath
 
-                if let minisURL = linuxPathToMinisURL(linuxPath) {
-                    toolOutput += "\nminis_url: \(minisURL)"
+                if let unibotURL = linuxPathToUnibotURL(linuxPath) {
+                    toolOutput += "\nunibot_url: \(unibotURL)"
                 }
             }
 
             if let fetchData = browserResult.fetchedFileData,
                let fetchName = browserResult.fetchedFileName {
                 let sid = sessionId ?? "unknown"
-                let persistDir = Self.minisBrowserPersistentDir(for: sid)
+                let persistDir = Self.unibotBrowserPersistentDir(for: sid)
                 try? FileManager.default.createDirectory(at: persistDir, withIntermediateDirectories: true)
                 let persistPath = persistDir.appendingPathComponent(fetchName)
                 try? fetchData.write(to: persistPath)
 
-                let linuxPath = "\(Self.minisBrowserLinuxDir)/\(fetchName)"
-                if let minisURL = linuxPathToMinisURL(linuxPath) {
-                    toolOutput += "\nminis_url: \(minisURL)"
+                let linuxPath = "\(Self.unibotBrowserLinuxDir)/\(fetchName)"
+                if let unibotURL = linuxPathToUnibotURL(linuxPath) {
+                    toolOutput += "\nunibot_url: \(unibotURL)"
                 }
             }
 
@@ -639,7 +639,7 @@ extension AIChatViewModel {
 
         case "read_image":
             let pathArg = toolArgs["path"] as? String ?? ""
-            let resolvedURL = await resolveMinisPath(pathArg)
+            let resolvedURL = await resolveUnibotPath(pathArg)
             ctLogger.info("[read_image] pathArg=\(pathArg) resolvedURL=\(resolvedURL?.path ?? "nil") exists=\(resolvedURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false)")
             if let resolvedURL {
                 let dataOK = (try? Data(contentsOf: resolvedURL)) != nil
@@ -670,8 +670,8 @@ extension AIChatViewModel {
 
                 if pathArg.hasPrefix("/var/minis/") {
                     toolImageLinuxPath = pathArg
-                } else if pathArg.hasPrefix("minis://") {
-                    let tail = String(pathArg.dropFirst("minis://".count))
+                } else if pathArg.hasPrefix("unibot://") {
+                    let tail = String(pathArg.dropFirst("unibot://".count))
                     if !tail.isEmpty {
                         toolImageLinuxPath = "/var/minis/\(tail)"
                     }
@@ -922,7 +922,7 @@ extension AIChatViewModel {
             finalOutput = "(no output)"
         } else if toolOutput.count > maxToolResultLength {
             let offloadResult = offloadToolOutput(toolOutput, toolName: tu.name, toolId: tu.id)
-            let offloadMinisURL = linuxPathToMinisURL(offloadResult.linuxPath)
+            let offloadUnibotURL = linuxPathToUnibotURL(offloadResult.linuxPath)
             let truncatedBody: String
             if tu.name == "shell_execute" || tu.name == "browser_use" {
                 let halfLen = maxToolResultLength / 2
@@ -934,7 +934,7 @@ extension AIChatViewModel {
             }
             finalOutput = truncatedBody
                 + "\n\n[OUTPUT TRUNCATED] Full output (\(toolOutput.count) chars) saved to: \(offloadResult.linuxPath)"
-                + (offloadMinisURL.map { "\nminis_url: \($0)" } ?? "")
+                + (offloadUnibotURL.map { "\nunibot_url: \($0)" } ?? "")
                 + "\nUse file_read tool to read the complete output."
         } else {
             finalOutput = toolOutput

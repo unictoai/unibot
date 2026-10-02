@@ -47,8 +47,8 @@ extension BackupImporter {
         // gigabytes to undo a merge that is itself idempotent.
         let liveDirs: [URL]
         switch category {
-        case .sharedFiles: liveDirs = [AIChatViewModel.minisSharedPersistentDir]
-        case .memory: liveDirs = [AIChatViewModel.minisMemoryPersistentDir]
+        case .sharedFiles: liveDirs = [AIChatViewModel.unibotSharedPersistentDir]
+        case .memory: liveDirs = [AIChatViewModel.unibotMemoryPersistentDir]
         case .mcpServers: liveDirs = [MCPStore.syncFileURL.deletingLastPathComponent()]
         // [review B3] Providers had NO rollback at all. It is a single JSON
         // file rather than a directory, so it is snapshotted via a dedicated
@@ -214,10 +214,10 @@ extension BackupImporter {
         let files = try restoreFileTree(
             root: root, fileIndex: fileIndex, category: .chats,
             destinationFor: { path in
-                // "chats/<sid>/<rel…>" → Library/MinisChat/minis/<sid>/<rel…>
+                // "chats/<sid>/<rel…>" → Library/UnibotChat/unibot/<sid>/<rel…>
                 let parts = path.split(separator: "/", maxSplits: 2).map(String.init)
                 guard parts.count >= 3, parts[0] == "chats" else { return nil }
-                return AIChatViewModel.minisPersistentBase
+                return AIChatViewModel.unibotPersistentBase
                     .appendingPathComponent(parts[1], isDirectory: true)
                     .appendingPathComponent(parts[2])
             })
@@ -239,7 +239,7 @@ extension BackupImporter {
     private func importSharedFiles(root: URL, fileIndex: [BackupFileIndexEntry]) throws
         -> CategoryReport {
         var report = CategoryReport(category: BackupCategory.sharedFiles.rawValue)
-        let base = AIChatViewModel.minisSharedPersistentDir
+        let base = AIChatViewModel.unibotSharedPersistentDir
         let files = try restoreFileTree(
             root: root, fileIndex: fileIndex, category: .sharedFiles,
             destinationFor: { path in
@@ -285,7 +285,7 @@ extension BackupImporter {
             destinationFor: { path in
                 let parts = path.split(separator: "/", maxSplits: 2).map(String.init)
                 guard parts.count >= 3, parts[0] == "skills" else { return nil }
-                return AIChatViewModel.minisSkillsPersistentDir
+                return AIChatViewModel.unibotSkillsPersistentDir
                     .appendingPathComponent(parts[1], isDirectory: true)
                     .appendingPathComponent(parts[2])
             })
@@ -302,7 +302,7 @@ extension BackupImporter {
         let fm = FileManager.default
         let src = root.appendingPathComponent("data/memory", isDirectory: true)
         guard fm.fileExists(atPath: src.path) else { return report }
-        let dst = AIChatViewModel.minisMemoryPersistentDir
+        let dst = AIChatViewModel.unibotMemoryPersistentDir
         try fm.createDirectory(at: dst, withIntermediateDirectories: true)
 
         for name in (try? fm.contentsOfDirectory(atPath: src.path)) ?? [] where name.hasSuffix(".md") {
@@ -710,15 +710,15 @@ extension BackupImporter {
     /// bound.
     func containmentRoot(for category: BackupCategory) -> URL {
         switch category {
-        case .chats: return AIChatViewModel.minisPersistentBase
-        case .sharedFiles: return AIChatViewModel.minisSharedPersistentDir
-        case .skills: return AIChatViewModel.minisSkillsPersistentDir
-        case .memory: return AIChatViewModel.minisMemoryPersistentDir
+        case .chats: return AIChatViewModel.unibotPersistentBase
+        case .sharedFiles: return AIChatViewModel.unibotSharedPersistentDir
+        case .skills: return AIChatViewModel.unibotSkillsPersistentDir
+        case .memory: return AIChatViewModel.unibotMemoryPersistentDir
         case .providers, .mcpServers, .voiceCorrections, .environmentVariables:
             // These write single known files, not index-driven trees; give them
             // the app-group root so the check is still meaningful if one ever
             // starts using restoreFileTree.
-            return AIChatViewModel.minisAppGroupRoot
+            return AIChatViewModel.unibotAppGroupRoot
         }
     }
 
@@ -735,7 +735,7 @@ extension BackupImporter {
     ///   - `resolvingSymlinksInPath()` is the filesystem half. Without it a
     ///     symlink anywhere in the path (a parent component inside the root, or
     ///     the leaf itself) could point outside `root` while the lexical form
-    ///     still looked contained. `minisAppGroupRoot`'s shared/skills/memory
+    ///     still looked contained. `unibotAppGroupRoot`'s shared/skills/memory
     ///     are exposed to iOS Files via the FileProvider extension, so their
     ///     contents are not solely under this app's control.
     ///

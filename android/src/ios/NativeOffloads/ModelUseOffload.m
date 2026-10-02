@@ -1,8 +1,8 @@
 //
 //  ModelUseOffload.m
-//  MinisApp
+//  UnibotApp
 //
-//  Native offload handler for `minis-model-use`.
+//  Native offload handler for `unibot-model-use`.
 //  Subcommands: list, search, run
 //
 
@@ -11,15 +11,15 @@
 #include "kernel/native_offload.h"
 #include <unistd.h>
 
-#import "Minis-Swift.h"
+#import "Unibot-Swift.h"
 
-static NSString *const TOOL_NAME = @"minis-model-use";
+static NSString *const TOOL_NAME = @"unibot-model-use";
 
 static NSString *const HELP_TEXT =
-    @"minis-model-use - List, search, and invoke LLM models\n"
+    @"unibot-model-use - List, search, and invoke LLM models\n"
      "\n"
      "USAGE:\n"
-     "  minis-model-use <command> [options]\n"
+     "  unibot-model-use <command> [options]\n"
      "\n"
      "COMMANDS:\n"
      "  list                           List models you can use\n"
@@ -155,23 +155,23 @@ static NSString *const HELP_TEXT =
      "  -q, --quiet          Output only data field\n"
      "\n"
      "EXAMPLES:\n"
-     "  minis-model-use list\n"
-     "  minis-model-use list --modality audio\n"
-     "  minis-model-use search gemini\n"
-     "  minis-model-use search gemini --modality video\n"
-     "  minis-model-use run --model GPT-5.5 --prompt 'Summarize: ...'\n"
-     "  minis-model-use run --model GPT-5.5 --prompt-file /var/minis/workspace/text.txt\n"
-     "  minis-model-use run --model claude-sonnet-4-6 --input /var/minis/workspace/prompt.json\n"
-     "  minis-model-use run --model deepseek/deepseek-v4-flash --input msgs.json   # qualified form\n"
-     "  minis-model-use run --model deepseek-v4-flash --provider deepseek --input msgs.json   # equivalent\n"
-     "  echo 'What is 2+2?' | minis-model-use run --model gpt-4o\n"
-     "  minis-model-use run --model gemini-2.5-flash --system 'You are a poet' --input msgs.json --output /var/minis/workspace/out.json\n";
+     "  unibot-model-use list\n"
+     "  unibot-model-use list --modality audio\n"
+     "  unibot-model-use search gemini\n"
+     "  unibot-model-use search gemini --modality video\n"
+     "  unibot-model-use run --model GPT-5.5 --prompt 'Summarize: ...'\n"
+     "  unibot-model-use run --model GPT-5.5 --prompt-file /var/minis/workspace/text.txt\n"
+     "  unibot-model-use run --model claude-sonnet-4-6 --input /var/minis/workspace/prompt.json\n"
+     "  unibot-model-use run --model deepseek/deepseek-v4-flash --input msgs.json   # qualified form\n"
+     "  unibot-model-use run --model deepseek-v4-flash --provider deepseek --input msgs.json   # equivalent\n"
+     "  echo 'What is 2+2?' | unibot-model-use run --model gpt-4o\n"
+     "  unibot-model-use run --model gemini-2.5-flash --system 'You are a poet' --input msgs.json --output /var/minis/workspace/out.json\n";
 
 // ── Path helpers ──
 
 // Resolve a caller-supplied *input* file path to a readable host path.
 //
-// minis-model-use runs on the host, not inside the iSH guest, so guest-absolute
+// unibot-model-use runs on the host, not inside the iSH guest, so guest-absolute
 // paths have to be mapped into the fakefs data root. Guest paths under the
 // bind-mounted prefixes (/var/minis/, /home/, /tmp/) are tried there first;
 // every path is then also tried literally, so real host paths (and guest paths
@@ -217,7 +217,7 @@ static int cmd_search(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
     if (positional.count < 1) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"search",
                                              NOFF_ERR_INVALID_ARGS,
-                                             @"No search query provided. Usage: minis-model-use search <query>");
+                                             @"No search query provided. Usage: unibot-model-use search <query>");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -244,7 +244,7 @@ static int cmd_run(int argc, char **argv, int stdin_fd, int stdout_fd, int stder
     if (!modelIdOrName) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"run",
                                              NOFF_ERR_INVALID_ARGS,
-                                             @"--model is required. Usage: minis-model-use run --model <id_or_name>");
+                                             @"--model is required. Usage: unibot-model-use run --model <id_or_name>");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
@@ -386,9 +386,9 @@ static int cmd_run(int argc, char **argv, int stdin_fd, int stdout_fd, int stder
     // preserved (no default).
     //
     // [T-modeluse-identity-pollution] This text used to open with
-    // "You are Minis, an on-device AI assistant running on iOS." — a bare
+    // "You are Unibot, an on-device AI assistant running on iOS." — a bare
     // identity assertion. Sub-models took it literally: they answered "who are
-    // you" as Minis and invented a matching vendor (reproduced across three
+    // you" as Unibot and invented a matching vendor (reproduced across three
     // providers, OpenMinis#103). The damage is not limited to identity
     // questions — anything downstream of the model's self-knowledge
     // (capability boundaries, refusal style, knowledge-cutoff claims) was
@@ -400,7 +400,7 @@ static int cmd_run(int argc, char **argv, int stdin_fd, int stdout_fd, int stder
     // would regress the providers that demand a non-empty instructions block.
     BOOL systemPromptWasInjected = NO;
     if (!systemPrompt) {
-        systemPrompt = @"You are being invoked as a sub-agent inside an app called Minis. "
+        systemPrompt = @"You are being invoked as a sub-agent inside an app called Unibot. "
                        @"This is the calling environment, not your identity — keep your own "
                        @"model identity unchanged. You are handling a focused task delegated "
                        @"by the parent agent loop: answer the request directly and concisely, "
@@ -427,7 +427,7 @@ static int cmd_run(int argc, char **argv, int stdin_fd, int stdout_fd, int stder
 
     // Resolve output host path.
     // [T-model-use-output-relative-path] --output must be an absolute guest
-    // path. minis-model-use forwards to the host, which does NOT inherit the
+    // path. unibot-model-use forwards to the host, which does NOT inherit the
     // iSH shell's cwd, so a relative path can't be resolved and previously
     // leaked through verbatim — the host then tried to open the bare parent
     // component (e.g. "workspace") and failed with a misleading
@@ -437,7 +437,7 @@ static int cmd_run(int argc, char **argv, int stdin_fd, int stdout_fd, int stder
     if (outputPath) {
         if (![outputPath hasPrefix:@"/"]) {
             NSString *msg = [NSString stringWithFormat:
-                @"--output must be an absolute path, got \"%@\". minis-model-use runs on the host and does not inherit the shell's current directory, so relative paths can't be resolved. Use an absolute path like /var/minis/workspace/out.jpg.",
+                @"--output must be an absolute path, got \"%@\". unibot-model-use runs on the host and does not inherit the shell's current directory, so relative paths can't be resolved. Use an absolute path like /var/minis/workspace/out.jpg.",
                 outputPath];
             NSDictionary *err = noff_json_error(TOOL_NAME, @"run",
                                                  NOFF_ERR_INVALID_ARGS, msg);
@@ -587,11 +587,11 @@ static int model_use_handler(int argc, char **argv,
 // ── Registration ──
 
 void model_use_offload_register(void) {
-    int err = native_offload_add_handler("minis-model-use", model_use_handler);
+    int err = native_offload_add_handler("unibot-model-use", model_use_handler);
     if (err == 0) {
-        noff_ensure_guest_stub("/usr/local/bin/minis-model-use");
-        NSLog(@"NativeOffloads: minis-model-use handler registered");
+        noff_ensure_guest_stub("/usr/local/bin/unibot-model-use");
+        NSLog(@"NativeOffloads: unibot-model-use handler registered");
     } else {
-        NSLog(@"NativeOffloads: failed to register minis-model-use handler (err=%d)", err);
+        NSLog(@"NativeOffloads: failed to register unibot-model-use handler (err=%d)", err);
     }
 }

@@ -77,7 +77,7 @@ import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.R
 import kotlinx.coroutines.launch
 import java.util.UUID
-import ai.unicto.unibot.ui.components.MinisButton
+import ai.unicto.unibot.ui.components.UnibotButton
 import ai.unicto.unibot.ui.components.RowLabel
 import ai.unicto.unibot.ui.components.SectionTextField
 
@@ -632,7 +632,7 @@ private fun ColumnScope.ApiKeyConfigSection(
 
     // ── Save button (outside any section — terminal action) ────────────
     Spacer(Modifier.height(20.dp))
-    MinisButton(
+    UnibotButton(
         onClick = {
             val trimmedBase = customBaseURL.trim()
             val instance = ProviderInstance(
@@ -752,7 +752,7 @@ private fun ColumnScope.OAuthConfigSection(
             }
         }
         Spacer(Modifier.height(20.dp))
-        MinisButton(
+        UnibotButton(
             onClick = {
                 val instance = ProviderInstance(
                     id = pendingInstanceId,
@@ -778,7 +778,7 @@ private fun ColumnScope.OAuthConfigSection(
             footer = stringResource(R.string.add_provider_opens_the_provider_s_web_sign_in_flow_af),
         ) {
             SettingsCardBlock {
-                MinisButton(
+                UnibotButton(
                     onClick = {
                         isAuthenticating = true
                         errorMessage = null
@@ -914,7 +914,7 @@ private fun ColumnScope.OAuthConfigSection(
         }
 
         Spacer(Modifier.height(20.dp))
-        MinisButton(
+        UnibotButton(
             onClick = {
                 val trimmedBase = customBaseURL.trim()
                 val instance = ProviderInstance(

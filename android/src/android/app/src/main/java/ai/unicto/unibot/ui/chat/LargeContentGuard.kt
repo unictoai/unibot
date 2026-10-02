@@ -32,7 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.logging.AppLogger
 import java.io.File
 
@@ -126,7 +126,7 @@ internal fun LargeContentBadge(
                 modifier = Modifier.padding(end = 8.dp),
             )
 
-            MinisTextButton(
+            UnibotTextButton(
                 onClick = {
                     AppLogger.info(
                         "LargeContentGuard",
@@ -148,7 +148,7 @@ internal fun LargeContentBadge(
                 )
             }
 
-            MinisTextButton(
+            UnibotTextButton(
                 onClick = {
                     val ok = exportLargeContentToFile(context, content, stableKey)
                     Toast.makeText(
@@ -200,7 +200,7 @@ internal fun LargeContentGuard(
     // inline/math regex scan (Matcher alloc + GC churn) on the WHOLE accumulated
     // text every throttle tick. On a long turn this stacks into a main-thread
     // hang that escalates to 30s+ and an ANR restart loop
-    // (minis-2026-07-09-longctx-hang.log: every JankDiag stack in
+    // (unibot-2026-07-09-longctx-hang.log: every JankDiag stack in
     // java.util.regex.Matcher/Pattern). Once the streaming buffer crosses
     // STREAM_DEGRADE_CHARS we stop feeding it to the markdown renderer and show a
     // bounded plain-text tail instead — no regex, no AnnotatedString, one cheap

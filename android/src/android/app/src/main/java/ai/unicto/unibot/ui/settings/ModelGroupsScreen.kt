@@ -72,8 +72,8 @@ import ai.unicto.unibot.data.model.ModelGroup
 import ai.unicto.unibot.data.model.RoutingStrategy
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
 import ai.unicto.unibot.ui.components.SwipeRowAction
@@ -392,7 +392,7 @@ fun ModelGroupsScreen(
                 }
             },
             confirmButton = {
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         if (newGroupName.isNotBlank()) {
                             val newGroup = ModelGroup(name = newGroupName.trim())
@@ -411,7 +411,7 @@ fun ModelGroupsScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showNewGroupDialog = false
                     newGroupName = ""
                 }) {
@@ -437,7 +437,7 @@ fun ModelGroupsScreen(
                 )
             },
             confirmButton = {
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         providerRepository.removeGroup(target.id)
                         groupToDelete = null
@@ -450,7 +450,7 @@ fun ModelGroupsScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { groupToDelete = null }) {
+                UnibotTextButton(onClick = { groupToDelete = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -668,7 +668,7 @@ private fun LazyListScope.agentLoopModelsSectionItems(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            MinisOutlinedButton(
+            UnibotOutlinedButton(
                 onClick = onAddModelsTap,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(50),
@@ -682,7 +682,7 @@ private fun LazyListScope.agentLoopModelsSectionItems(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.agent_loop_section_add_models))
             }
-            MinisOutlinedButton(
+            UnibotOutlinedButton(
                 onClick = onAddGroupsTap,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(50),

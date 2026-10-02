@@ -3,7 +3,7 @@
 > Status: **implemented & device-verified 2026-08-02** (see §7 Addendum for the
 > critical actuation discovery made during verification)
 > Evidence: 3 IPS reports from 2026-08-02 (iPhone18,1 / iOS 26.5.2 / 1.12 build 1),
-> app log `minis-2026-08-02.log`, sysdiagnose RunningBoard trace.
+> app log `unibot-2026-08-02.log`, sysdiagnose RunningBoard trace.
 
 ---
 
@@ -28,7 +28,7 @@ Cross-checked facts that anchor the design:
    deliver its target, and its target is itself the kill threshold.
 3. **Not memory**: MemMonitor showed `pressure=normal`, 4GB+ free throughout.
 4. All three heaviest stacks are the same pthread run-loop path
-   (`Minis + 37711624/37711236/37509848` — the iSH emulator task threads),
+   (`Unibot + 37711624/37711236/37509848` — the iSH emulator task threads),
    i.e. one sustained CPU-bound guest workload spanning 19:44→19:58.
 
 ### iOS 26 limits (empirical, from these reports)

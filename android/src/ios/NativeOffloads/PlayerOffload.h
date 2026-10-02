@@ -1,6 +1,6 @@
 //
 //  PlayerOffload.h
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-player` — AVPlayer media playback.
 //

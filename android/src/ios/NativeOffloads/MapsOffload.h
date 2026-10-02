@@ -1,6 +1,6 @@
 //
 //  MapsOffload.h
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-maps` — MapKit framework.
 //

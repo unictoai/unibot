@@ -2,7 +2,7 @@ package ai.unicto.unibot.ui.settings
 
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.DialogTextField
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -214,7 +214,7 @@ fun EnvironmentVariablesScreen(
             title = { Text("Delete ${entry?.key ?: "variable"}?") },
             text = { Text(stringResource(R.string.env_var_delete_confirm_text)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     deleteEntryId?.let { envVarRepository.delete(it) }
                     deleteEntryId = null
                 }) {
@@ -222,7 +222,7 @@ fun EnvironmentVariablesScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { deleteEntryId = null }) {
+                UnibotTextButton(onClick = { deleteEntryId = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -331,10 +331,10 @@ private fun EnvVarFormSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                MinisTextButton(onClick = onDismiss) {
+                UnibotTextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.common_cancel))
                 }
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = {
                         val success = if (isEditing) {
                             envVarRepository.update(editEntry!!.id, keyText, valueText, noteText)

@@ -1,6 +1,6 @@
 //
 //  NotificationOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-notification`.
 //  Subcommands: pending, delivered, settings, schedule, cancel
@@ -327,7 +327,7 @@ static int cmd_schedule(int argc, char **argv, int stdout_fd, int stderr_fd, BOO
 
         NSMutableArray *idParts = [NSMutableArray array];
         for (NSDictionary *a in actionInfo) [idParts addObject:a[@"id"]];
-        NSString *categoryId = [@"minis.cli." stringByAppendingString:
+        NSString *categoryId = [@"unibot.cli." stringByAppendingString:
                                 [idParts componentsJoinedByString:@"."]];
         UNNotificationCategory *category =
             [UNNotificationCategory categoryWithIdentifier:categoryId
@@ -385,7 +385,7 @@ static int cmd_schedule(int argc, char **argv, int stdout_fd, int stderr_fd, BOO
         NSDictionary *err = noff_json_error(TOOL_NAME, @"schedule",
                                              NOFF_ERR_AUTHORIZATION_DENIED,
                                              @"Notification permission not granted. "
-                                              "To grant access, open Settings > Notifications > Minis "
+                                              "To grant access, open Settings > Notifications > Unibot "
                                               "and enable notifications.");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_AUTH_DENIED;

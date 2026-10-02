@@ -25,7 +25,7 @@ import org.json.JSONObject
  *     boilerplate lives here rather than 5+ copy-pastes.
  *
  * Session scope: T340 — prefer the chat session id forwarded by the
- * agent shell via the `MINIS_CHAT_SESSION_ID` env var (surfaced as
+ * agent shell via the `UNIBOT_CHAT_SESSION_ID` env var (surfaced as
  * [NativeOffloadRequest.sessionId]). Falls back to
  * `OFFLOAD_GLOBAL_SESSION_ID` when the offload runs outside a chat
  * (e.g. interactive terminal). This keeps "Allow in this session"

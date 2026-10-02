@@ -224,7 +224,7 @@ static void uncaught_exception_handler(NSException *exception) {
 
 + (void)install {
     // [T-ios-mac-uncaught-nsexception] Idempotent. `install` is now called from
-    // MinisApp.init() as well as CrashReporter.onAppLaunch(), and re-installing
+    // UnibotApp.init() as well as CrashReporter.onAppLaunch(), and re-installing
     // would set g_prevExceptionHandler to OUR OWN handler — every uncaught
     // exception would then recurse into itself instead of reaching Apple's
     // reporter. The guard is deliberately not a dispatch_once: a failed first

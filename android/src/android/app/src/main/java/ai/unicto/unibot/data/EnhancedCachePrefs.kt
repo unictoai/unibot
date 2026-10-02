@@ -14,7 +14,7 @@ import android.content.SharedPreferences
  * UserDefaults key `enhancedCacheConfirmed`.
  */
 object EnhancedCachePrefs {
-    private const val PREFS = "minis_enhanced_cache_prefs"
+    private const val PREFS = "unibot_enhanced_cache_prefs"
     private const val KEY_CONFIRMED = "enhancedCacheConfirmed"
 
     private fun prefs(context: Context): SharedPreferences =

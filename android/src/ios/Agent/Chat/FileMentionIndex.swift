@@ -1,6 +1,6 @@
 //
 //  FileMentionIndex.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Backing index for the chat input's `@` file-mention feature.
 //  Layered scan (session → shared → mounts) with 10-minute cache and
@@ -437,14 +437,14 @@ final class FileMentionIndex: ObservableObject {
         return [
             ScanRoot(
                 scope: .workspace,
-                hostURL: AIChatViewModel.minisWorkspacePersistentDir(for: sid),
-                linuxPrefix: AIChatViewModel.minisWorkspaceLinuxDir,
+                hostURL: AIChatViewModel.unibotWorkspacePersistentDir(for: sid),
+                linuxPrefix: AIChatViewModel.unibotWorkspaceLinuxDir,
                 mountName: nil
             ),
             ScanRoot(
                 scope: .attachments,
-                hostURL: AIChatViewModel.minisAttachmentsPersistentDir(for: sid),
-                linuxPrefix: AIChatViewModel.minisAttachmentsLinuxDir,
+                hostURL: AIChatViewModel.unibotAttachmentsPersistentDir(for: sid),
+                linuxPrefix: AIChatViewModel.unibotAttachmentsLinuxDir,
                 mountName: nil
             ),
         ]
@@ -454,20 +454,20 @@ final class FileMentionIndex: ObservableObject {
         [
             ScanRoot(
                 scope: .shared,
-                hostURL: AIChatViewModel.minisSharedPersistentDir,
-                linuxPrefix: AIChatViewModel.minisSharedLinuxDir,
+                hostURL: AIChatViewModel.unibotSharedPersistentDir,
+                linuxPrefix: AIChatViewModel.unibotSharedLinuxDir,
                 mountName: nil
             ),
             ScanRoot(
                 scope: .skills,
-                hostURL: AIChatViewModel.minisSkillsPersistentDir,
-                linuxPrefix: AIChatViewModel.minisSkillsLinuxDir,
+                hostURL: AIChatViewModel.unibotSkillsPersistentDir,
+                linuxPrefix: AIChatViewModel.unibotSkillsLinuxDir,
                 mountName: nil
             ),
             ScanRoot(
                 scope: .memory,
-                hostURL: AIChatViewModel.minisMemoryPersistentDir,
-                linuxPrefix: AIChatViewModel.minisMemoryLinuxDir,
+                hostURL: AIChatViewModel.unibotMemoryPersistentDir,
+                linuxPrefix: AIChatViewModel.unibotMemoryLinuxDir,
                 mountName: nil
             ),
         ]
@@ -477,7 +477,7 @@ final class FileMentionIndex: ObservableObject {
         let mgr = MountedFoldersManager.shared
         return mgr.entries.compactMap { entry -> ScanRoot? in
             guard let url = mgr.resolvedURL(for: entry.id) else { return nil }
-            let linuxPrefix = "\(AIChatViewModel.minisMountsLinuxDir)/\(entry.name)"
+            let linuxPrefix = "\(AIChatViewModel.unibotMountsLinuxDir)/\(entry.name)"
             return ScanRoot(scope: .mount, hostURL: url, linuxPrefix: linuxPrefix, mountName: entry.name)
         }
     }

@@ -3,7 +3,7 @@ import UIKit
 
 private let logger = AppLogger(category: "AIChatVM")
 
-// MARK: - Kernel Boot + Prompt Queue + Minis paths + Dynamic Max Tokens
+// MARK: - Kernel Boot + Prompt Queue + Unibot paths + Dynamic Max Tokens
 
 extension AIChatViewModel {
 
@@ -41,7 +41,7 @@ extension AIChatViewModel {
                     // Install per-session path-translate hook. Must run
                     // before any session task is spawned so the first
                     // /var/minis/* access already routes correctly.
-                    MinisFsRouter.shared.installHook()
+                    UnibotFsRouter.shared.installHook()
                 }
                 RootfsManager.shared.applyDefaultMountOverlay()
                 Task { @MainActor in MirrorSpeedTestViewModel.shared.autoDetectOnceIfNeeded() }
@@ -104,44 +104,44 @@ extension AIChatViewModel {
     //   /var/minis/offloads/     — large tool outputs (migrated from /var/offloads/)
     //   /var/minis/workspace/    — general session working area
     //
-    // Persistent storage: Library/MinisChat/minis/<sessionId>/{attachments,offloads,workspace}/
+    // Persistent storage: Library/UnibotChat/unibot/<sessionId>/{attachments,offloads,workspace}/
     // iSH-visible path:   /var/minis/{attachments,offloads,workspace}/  (session-unaware)
     //
     // On session load/switch, the current session's files are synced into the
     // iSH-visible directory so the model and shell commands always see /var/minis/.
 
-    nonisolated static let minisLinuxBaseDir = "/var/minis"
-    nonisolated static let minisAttachmentsLinuxDir = "/var/minis/attachments"
-    nonisolated static let minisOffloadsLinuxDir = "/var/minis/offloads"
-    nonisolated static let minisWorkspaceLinuxDir = "/var/minis/workspace"
-    nonisolated static let minisBrowserLinuxDir = "/var/minis/browser"
-    nonisolated static let minisMemoryLinuxDir = "/var/minis/memory"
-    nonisolated static let minisSkillsLinuxDir = "/var/minis/skills"
-    nonisolated static let minisSharedLinuxDir = "/var/minis/shared"
-    nonisolated static let minisMcpServersLinuxDir = "/var/minis/mcp-servers"
-    nonisolated static let minisMountsLinuxDir = "/var/minis/mounts"
+    nonisolated static let unibotLinuxBaseDir = "/var/minis"
+    nonisolated static let unibotAttachmentsLinuxDir = "/var/minis/attachments"
+    nonisolated static let unibotOffloadsLinuxDir = "/var/minis/offloads"
+    nonisolated static let unibotWorkspaceLinuxDir = "/var/minis/workspace"
+    nonisolated static let unibotBrowserLinuxDir = "/var/minis/browser"
+    nonisolated static let unibotMemoryLinuxDir = "/var/minis/memory"
+    nonisolated static let unibotSkillsLinuxDir = "/var/minis/skills"
+    nonisolated static let unibotSharedLinuxDir = "/var/minis/shared"
+    nonisolated static let unibotMcpServersLinuxDir = "/var/minis/mcp-servers"
+    nonisolated static let unibotMountsLinuxDir = "/var/minis/mounts"
 
-    /// iOS persistent base for all minis data (Library/MinisChat/minis/).
-    nonisolated static var minisPersistentBase: URL {
+    /// iOS persistent base for all unibot data (Library/UnibotChat/unibot/).
+    nonisolated static var unibotPersistentBase: URL {
         let lib = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        return lib.appendingPathComponent("MinisChat/minis", isDirectory: true)
+        return lib.appendingPathComponent("UnibotChat/unibot", isDirectory: true)
     }
 
     /// Persistent storage directory for a specific session's offloads.
-    nonisolated static func minisOffloadsPersistentDir(for sid: String) -> URL {
-        minisPersistentBase.appendingPathComponent(sid, isDirectory: true)
+    nonisolated static func unibotOffloadsPersistentDir(for sid: String) -> URL {
+        unibotPersistentBase.appendingPathComponent(sid, isDirectory: true)
             .appendingPathComponent("offloads", isDirectory: true)
     }
 
     /// Persistent storage directory for a specific session's attachments.
-    nonisolated static func minisAttachmentsPersistentDir(for sid: String) -> URL {
-        minisPersistentBase.appendingPathComponent(sid, isDirectory: true)
+    nonisolated static func unibotAttachmentsPersistentDir(for sid: String) -> URL {
+        unibotPersistentBase.appendingPathComponent(sid, isDirectory: true)
             .appendingPathComponent("attachments", isDirectory: true)
     }
 
     /// Persistent storage directory for a specific session's uploaded attachments.
-    static func minisUploadsDir(for sid: String) -> URL {
-        minisAttachmentsPersistentDir(for: sid)
+    static func unibotUploadsDir(for sid: String) -> URL {
+        unibotAttachmentsPersistentDir(for: sid)
             .appendingPathComponent("uploads", isDirectory: true)
     }
 

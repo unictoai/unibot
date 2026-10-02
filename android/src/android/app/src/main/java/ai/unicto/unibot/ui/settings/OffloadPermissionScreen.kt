@@ -34,8 +34,8 @@ import ai.unicto.unibot.accessibility.RestrictedSettingsManager
 import ai.unicto.unibot.logging.AppLogger
 import ai.unicto.unibot.offload.OffloadPermissionManager
 import ai.unicto.unibot.offload.ShizukuManager
-import ai.unicto.unibot.ui.components.MinisMenu
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotMenu
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -57,7 +57,7 @@ fun OffloadPermissionScreen(
 
     var showResetConfirm by remember { mutableStateOf(false) }
 
-    val configEnabled by ai.unicto.unibot.config.MinisConfigPermissionStore.enabled.collectAsState()
+    val configEnabled by ai.unicto.unibot.config.UnibotConfigPermissionStore.enabled.collectAsState()
 
     val context = LocalContext.current
 
@@ -86,21 +86,21 @@ fun OffloadPermissionScreen(
         title = stringResource(R.string.perm_title),
         onBack = onBack,
         actions = {
-            MinisTextButton(onClick = { showResetConfirm = true }) {
+            UnibotTextButton(onClick = { showResetConfirm = true }) {
                 Text(stringResource(R.string.perm_reset_all))
             }
         },
     ) {
-        // T-config: master switch for the minis-config CLI surface.
+        // T-config: master switch for the unibot-config CLI surface.
         SettingsSection(
             header = stringResource(R.string.perm_section_config_tool),
-            footer = stringResource(R.string.perm_minis_config_desc),
+            footer = stringResource(R.string.perm_unibot_config_desc),
         ) {
             SettingsSwitchRow(
-                title = stringResource(R.string.perm_allow_minis_config),
+                title = stringResource(R.string.perm_allow_unibot_config),
                 checked = configEnabled,
                 onCheckedChange = {
-                    ai.unicto.unibot.config.MinisConfigPermissionStore.setEnabled(it)
+                    ai.unicto.unibot.config.UnibotConfigPermissionStore.setEnabled(it)
                 },
                 showDivider = false,
             )
@@ -191,7 +191,7 @@ fun OffloadPermissionScreen(
                 SettingsRow(
                     title = stringResource(R.string.system_permissions_a11y_restricted_manual),
                     subtitle = stringResource(R.string.system_permissions_a11y_restricted_manual_sub),
-                    // Lands on Minis' own App info page, where "Allow
+                    // Lands on Unibot' own App info page, where "Allow
                     // restricted settings" lives in the overflow menu.
                     onClick = { openAppDetailsSettings(context) },
                     showDivider = false,
@@ -228,17 +228,17 @@ fun OffloadPermissionScreen(
             title = { Text(stringResource(R.string.perm_reset_confirm_title)) },
             text = { Text(stringResource(R.string.perm_reset_confirm_text)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     OffloadPermissionManager.resetAll()
-                    ai.unicto.unibot.config.MinisConfigPermissionStore.setEnabled(true)
-                    AppLogger.info("PermissionsScreen", "user confirmed Reset All — all tool permissions cleared, minis-config switch reset to default")
+                    ai.unicto.unibot.config.UnibotConfigPermissionStore.setEnabled(true)
+                    AppLogger.info("PermissionsScreen", "user confirmed Reset All — all tool permissions cleared, unibot-config switch reset to default")
                     showResetConfirm = false
                 }) {
                     Text(stringResource(R.string.perm_reset_confirm))
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showResetConfirm = false }) {
+                UnibotTextButton(onClick = { showResetConfirm = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -365,7 +365,7 @@ private fun AgentPolicyRow(
         // edge so it grows down-and-left from the trailing chip instead
         // of Material3's default down-and-right (which on a narrow phone
         // pushed the menu off the screen edge).
-        MinisMenu(expanded = expanded, onDismissRequest = { expanded = false }, alignEnd = true) {
+        UnibotMenu(expanded = expanded, onDismissRequest = { expanded = false }, alignEnd = true) {
             for (level in OffloadPermissionManager.PermissionLevel.entries) {
                 DropdownMenuItem(
                     text = {
@@ -416,7 +416,7 @@ private fun PermissionRow(
         // edge so it grows down-and-left from the trailing chip instead
         // of Material3's default down-and-right (which on a narrow phone
         // pushed the menu off the screen edge).
-        MinisMenu(expanded = expanded, onDismissRequest = { expanded = false }, alignEnd = true) {
+        UnibotMenu(expanded = expanded, onDismissRequest = { expanded = false }, alignEnd = true) {
             for (level in OffloadPermissionManager.PermissionLevel.entries) {
                 DropdownMenuItem(
                     text = {
@@ -508,7 +508,7 @@ private fun openAccessibilitySettings(context: Context) {
 }
 
 /**
- * [T-android-restricted-settings] Open Minis' own App info page — "Allow
+ * [T-android-restricted-settings] Open Unibot' own App info page — "Allow
  * restricted settings" lives in that page's overflow (⋮) menu, and there is no
  * public intent that opens the menu item directly.
  */

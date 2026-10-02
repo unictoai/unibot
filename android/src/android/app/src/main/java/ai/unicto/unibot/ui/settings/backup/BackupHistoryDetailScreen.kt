@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.backup.BackupCategory
 import ai.unicto.unibot.backup.BackupHistory
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.settings.SettingsScaffold
 import ai.unicto.unibot.ui.settings.SettingsSection
 
@@ -213,7 +213,7 @@ fun BackupHistoryDetailScreen(
             },
             confirmButton = {
                 Column {
-                    MinisTextButton(onClick = { confirmRemove = false; onRemove() }) {
+                    UnibotTextButton(onClick = { confirmRemove = false; onRemove() }) {
                         Text(
                             stringResource(
                                 if (canDeleteFiles) R.string.backup_history_remove_record_only
@@ -223,7 +223,7 @@ fun BackupHistoryDetailScreen(
                         )
                     }
                     if (canDeleteFiles) {
-                        MinisTextButton(
+                        UnibotTextButton(
                             onClick = { confirmRemove = false; onRemoveWithFiles?.invoke() },
                         ) {
                             Text(
@@ -235,7 +235,7 @@ fun BackupHistoryDetailScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { confirmRemove = false }) {
+                UnibotTextButton(onClick = { confirmRemove = false }) {
                     Text(stringResource(R.string.backup_dest_cancel))
                 }
             },

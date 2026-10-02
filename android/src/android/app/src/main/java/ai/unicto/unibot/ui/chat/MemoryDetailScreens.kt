@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.ui.theme.ChatColors
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.i18n.uppercaseForDisplay
 
 /**
@@ -257,7 +257,7 @@ fun RevokeConfirmDialog(
         title = { Text(stringResource(R.string.memory_revoke_dialog_title)) },
         text = { Text(stringResource(R.string.memory_revoke_dialog_message)) },
         confirmButton = {
-            MinisTextButton(onClick = onConfirm) {
+            UnibotTextButton(onClick = onConfirm) {
                 Text(
                     stringResource(R.string.memory_action_revoke),
                     color = MaterialTheme.colorScheme.error,
@@ -265,7 +265,7 @@ fun RevokeConfirmDialog(
             }
         },
         dismissButton = {
-            MinisTextButton(onClick = onDismiss) {
+            UnibotTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -294,7 +294,7 @@ fun MutationResultDialog(
         onDismissRequest = onDismiss,
         text = { Text(msg) },
         confirmButton = {
-            MinisTextButton(onClick = onDismiss) { Text("OK") }
+            UnibotTextButton(onClick = onDismiss) { Text("OK") }
         },
     )
 }

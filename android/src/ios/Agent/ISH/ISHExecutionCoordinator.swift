@@ -68,14 +68,14 @@ actor ISHExecutionCoordinator {
 
     /// Set of sessions for which the static (memory/skills/shared/external)
     /// mount layer has been initialized. The per-session 4 buckets are now
-    /// handled by MinisFsRouter's hook, not by bind_mount, so they don't
+    /// handled by UnibotFsRouter's hook, not by bind_mount, so they don't
     /// need to be re-mounted on session switch.
     private var staticMountsInitialized: Set<String> = []
 
     /// Maps linux mount paths (e.g. "/var/minis/memory") to their host
     /// persistent URLs. Holds only the static (global) mounts and external
     /// folders today. Per-session buckets are no longer in this map; use
-    /// MinisFsRouter to resolve their host paths.
+    /// UnibotFsRouter to resolve their host paths.
     private var mountedPaths: [String: URL] = [:]
 
     // MARK: - Constants
@@ -113,7 +113,7 @@ actor ISHExecutionCoordinator {
         mountedSessionId = sessionId
         ensureStaticMountsInitialized(for: sessionId)
 
-        let fsContext = MinisFsRouter.shared.context(for: sessionId)
+        let fsContext = UnibotFsRouter.shared.context(for: sessionId)
 
         defer {
             // Dequeue self. No waiters to wake — concurrent dispatch.
@@ -137,7 +137,7 @@ actor ISHExecutionCoordinator {
     }
 
     /// Called from loadSession() for UI readiness. Per-session buckets are
-    /// routed by MinisFsRouter's hook now (no bind-mount swap needed), so
+    /// routed by UnibotFsRouter's hook now (no bind-mount swap needed), so
     /// this just kicks off the one-time static mount layer and remembers
     /// the most-recently-active session for backward-compat consumers.
     func mountForSession(_ sessionId: String) {
@@ -151,7 +151,7 @@ actor ISHExecutionCoordinator {
             mountedSessionId = nil
             return
         }
-        _ = MinisFsRouter.shared.context(for: sessionId)
+        _ = UnibotFsRouter.shared.context(for: sessionId)
         ensureStaticMountsInitialized(for: sessionId)
         mountedSessionId = sessionId
     }
@@ -171,7 +171,7 @@ actor ISHExecutionCoordinator {
         // Static mounts are session-independent, but performMount needs a sid
         // to log against; once the first session has initialized them, all
         // others are no-ops. The per-session buckets are NOT touched here —
-        // they're hooked by MinisFsRouter.
+        // they're hooked by UnibotFsRouter.
         if !staticMountsInitialized.isEmpty { return }
         performMount(sessionId)
         staticMountsInitialized.insert(sessionId)
@@ -187,7 +187,7 @@ actor ISHExecutionCoordinator {
 
     /// Resolve a Linux path under /var/minis/ to its current host URL.
     /// Tries the static bind-mount table first (memory/skills/shared +
-    /// external folders), then falls back to MinisFsRouter for the per-
+    /// external folders), then falls back to UnibotFsRouter for the per-
     /// session buckets. Per-session lookups need a sessionId because the
     /// router routes by fs_context; pass it via `sessionId` for those paths.
     func hostURL(for linuxPath: String, sessionId: String? = nil) -> URL? {
@@ -201,7 +201,7 @@ actor ISHExecutionCoordinator {
             }
         }
         if let sid = sessionId ?? mountedSessionId,
-           let url = MinisFsRouter.shared.hostURL(forGuest: linuxPath, sid: sid) {
+           let url = UnibotFsRouter.shared.hostURL(forGuest: linuxPath, sid: sid) {
             return url
         }
         return nil
@@ -444,7 +444,7 @@ actor ISHExecutionCoordinator {
 
     // MARK: - Mount Logic
 
-    /// Bind-mount a session's minis directories into iSH-visible /var/minis/.
+    /// Bind-mount a session's unibot directories into iSH-visible /var/minis/.
     private func performMount(_ sid: String) {
         let mountStart = CFAbsoluteTimeGetCurrent()
         let fm = FileManager.default
@@ -462,19 +462,19 @@ actor ISHExecutionCoordinator {
         logger.info("MOUNT-DIAG performMount-entry sid=\(sid) booted=\(booted) snapshotCount=\(extSnap.count) staticInit=\(self.staticMountsInitialized.count)")
 
         // Ensure parent dirs exist in meta.db
-        ensureParentDirsInMetaDB(for: "\(AIChatViewModel.minisLinuxBaseDir)/placeholder")
-        ensureFakefsMetadata(for: AIChatViewModel.minisLinuxBaseDir, isDirectory: true)
+        ensureParentDirsInMetaDB(for: "\(AIChatViewModel.unibotLinuxBaseDir)/placeholder")
+        ensureFakefsMetadata(for: AIChatViewModel.unibotLinuxBaseDir, isDirectory: true)
 
         // Only the global (cross-session) directories are bind-mounted here.
         // The per-session buckets (offloads/attachments/workspace/browser) are
-        // routed dynamically by MinisFsRouter's path-translate hook based on
+        // routed dynamically by UnibotFsRouter's path-translate hook based on
         // the calling task's fs_context, so they don't need a static mount and
         // don't need to be swapped on session change.
         let subdirs: [(persistDir: URL, linuxDir: String)] = [
-            (AIChatViewModel.minisMemoryPersistentDir, AIChatViewModel.minisMemoryLinuxDir),
-            (AIChatViewModel.minisSkillsPersistentDir, AIChatViewModel.minisSkillsLinuxDir),
-            (AIChatViewModel.minisSharedPersistentDir, AIChatViewModel.minisSharedLinuxDir),
-            (AIChatViewModel.minisMcpServersPersistentDir, AIChatViewModel.minisMcpServersLinuxDir),
+            (AIChatViewModel.unibotMemoryPersistentDir, AIChatViewModel.unibotMemoryLinuxDir),
+            (AIChatViewModel.unibotSkillsPersistentDir, AIChatViewModel.unibotSkillsLinuxDir),
+            (AIChatViewModel.unibotSharedPersistentDir, AIChatViewModel.unibotSharedLinuxDir),
+            (AIChatViewModel.unibotMcpServersPersistentDir, AIChatViewModel.unibotMcpServersLinuxDir),
         ]
 
         for (idx, (persistDir, linuxDir)) in subdirs.enumerated() {
@@ -529,8 +529,8 @@ actor ISHExecutionCoordinator {
                     // Force-remove whatever is at hostDir (file, dir, or non-empty dir)
                     // Safety: only remove paths under data/var/minis/ to avoid accidentally
                     // deleting other fakefs directories (e.g. data/dev/) due to path bugs.
-                    let dataVarMinis = RootfsManager.shared.dataPath.appendingPathComponent("var/minis").path
-                    guard hostDir.path.hasPrefix(dataVarMinis) else {
+                    let dataVarUnibot = RootfsManager.shared.dataPath.appendingPathComponent("var/minis").path
+                    guard hostDir.path.hasPrefix(dataVarUnibot) else {
                         logger.error("MOUNT [\(idx)] SAFETY: refusing removeItem outside var/minis: \(hostDir.path)")
                         break
                     }
@@ -748,8 +748,8 @@ actor ISHExecutionCoordinator {
 
         // Ensure the parent /var/minis/mounts dir exists in meta.db so fakefs
         // can list it.
-        ensureParentDirsInMetaDB(for: "\(AIChatViewModel.minisMountsLinuxDir)/placeholder")
-        ensureFakefsMetadata(for: AIChatViewModel.minisMountsLinuxDir, isDirectory: true)
+        ensureParentDirsInMetaDB(for: "\(AIChatViewModel.unibotMountsLinuxDir)/placeholder")
+        ensureFakefsMetadata(for: AIChatViewModel.unibotMountsLinuxDir, isDirectory: true)
 
         for (idx, entry) in snapshot.enumerated() {
             logger.info("MOUNT external [\(idx)] \(entry.linuxDir) -> \(entry.hostPath) (ro=\(entry.readOnly))")

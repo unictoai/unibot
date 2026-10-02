@@ -88,7 +88,7 @@ enum SoulIconImage {
     }
 }
 
-/// [T-soul-icon-config-images] Turns whatever `minis-config set soul.icon`
+/// [T-soul-icon-config-images] Turns whatever `unibot-config set soul.icon`
 /// was given into a stored icon value, so the tool and the Settings picker
 /// end up applying the SAME rules.
 ///
@@ -147,8 +147,8 @@ enum SoulIconSource {
                 return "no file at \(p)"
             case .outsideAllowedDirs(let p):
                 return "\(p) is outside the directories this tool may read. "
-                     + "Use a minis:// URL (e.g. minis://attachments/icon.png) "
-                     + "or a path under the session's minis directories."
+                     + "Use a unibot:// URL (e.g. unibot://attachments/icon.png) "
+                     + "or a path under the session's unibot directories."
             case .badURL(let s):
                 return "couldn't parse '\(s)' as an image source"
             case .blockedHost(let h):
@@ -172,7 +172,7 @@ enum SoulIconSource {
         let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.isEmpty { return false }
         if s.hasPrefix("data:") { return true }
-        if s.hasPrefix("minis://") { return true }
+        if s.hasPrefix("unibot://") { return true }
         if s.hasPrefix("http://") || s.hasPrefix("https://") { return true }
         if s.hasPrefix("/") || s.hasPrefix("~/") { return true }
         // A bare base64 blob: long, and only base64 characters. The length
@@ -194,8 +194,8 @@ enum SoulIconSource {
         let data: Data
         if s.hasPrefix("data:") {
             data = try decodeDataURI(s)
-        } else if s.hasPrefix("minis://") {
-            data = try readMinisURL(s)
+        } else if s.hasPrefix("unibot://") {
+            data = try readUnibotURL(s)
         } else if s.hasPrefix("http://") || s.hasPrefix("https://") {
             data = try await download(s)
         } else if s.hasPrefix("/") || s.hasPrefix("~/") {
@@ -250,17 +250,17 @@ enum SoulIconSource {
         return d
     }
 
-    /// `minis://` goes through the app's own resolver, which is what enforces
+    /// `unibot://` goes through the app's own resolver, which is what enforces
     /// session scoping — this must not reach into another session's files.
-    private static func readMinisURL(_ s: String) throws -> Data {
+    private static func readUnibotURL(_ s: String) throws -> Data {
         guard let url = URL(string: s) else { throw SourceError.badURL(s) }
-        guard let fileURL = AIChatViewModel.resolveMinisURL(url) else {
+        guard let fileURL = AIChatViewModel.resolveUnibotURL(url) else {
             throw SourceError.notFound(s)
         }
         return try readFile(at: fileURL, label: s)
     }
 
-    /// A raw filesystem path is accepted only inside the minis persistent
+    /// A raw filesystem path is accepted only inside the unibot persistent
     /// tree. Everything else in the container (Keychain-adjacent plists, other
     /// apps' shared data, the rootfs) stays unreadable through this tool.
     private static func readLocalPath(_ s: String) throws -> Data {
@@ -287,15 +287,15 @@ enum SoulIconSource {
     }
 
     /// The directories a config-driven read may touch. Session-scoped dirs use
-    /// the ACTIVE session only, matching `resolveMinisURL`'s isolation rule.
+    /// the ACTIVE session only, matching `resolveUnibotURL`'s isolation rule.
     private static func allowedRoots() -> [URL] {
         var roots: [URL] = [
-            AIChatViewModel.minisSkillsPersistentDir,
-            AIChatViewModel.minisMemoryPersistentDir,
-            AIChatViewModel.minisSharedPersistentDir,
+            AIChatViewModel.unibotSkillsPersistentDir,
+            AIChatViewModel.unibotMemoryPersistentDir,
+            AIChatViewModel.unibotSharedPersistentDir,
         ]
         if let sid = AIChatViewModel.activeSessionId {
-            roots.append(AIChatViewModel.minisPersistentBase
+            roots.append(AIChatViewModel.unibotPersistentBase
                 .appendingPathComponent(sid, isDirectory: true))
         }
         return roots
@@ -648,13 +648,13 @@ enum SoulBodyLimitCheck: Equatable {
 enum SoulStore {
 
     static var fileURL: URL {
-        AIChatViewModel.minisMemoryPersistentDir.appendingPathComponent("SOUL.md")
+        AIChatViewModel.unibotMemoryPersistentDir.appendingPathComponent("SOUL.md")
     }
 
     // MARK: - Body length rules (unified token count)
     //
     // The personality body has a single hard cap of 2000 tokens, applied
-    // at every write surface (Settings UI Save button, minis-config writer,
+    // at every write surface (Settings UI Save button, unibot-config writer,
     // and the prompt-build-time fallback in `SystemPromptBuilder`).
     //
     // Counting rules — see `tokenCount(_:)`:
@@ -877,7 +877,7 @@ enum SoulStore {
 extension Notification.Name {
     /// Posted on the main thread whenever SOUL.md has been (re-)written
     /// via SoulStore. Listeners refresh derived UI state.
-    static let soulMdChanged = Notification.Name("MinisSoulMdChanged")
+    static let soulMdChanged = Notification.Name("UnibotSoulMdChanged")
 }
 
 // MARK: - System prompt composition
@@ -941,7 +941,7 @@ enum SystemPromptBuilder {
         let soulEditHint =
             "---\n" +
             "SOUL.md fields (name / icon / style / lang / body) can be edited two ways:\n" +
-            "1. Tool: call `minis-config` to propose changes (user must approve).\n" +
+            "1. Tool: call `unibot-config` to propose changes (user must approve).\n" +
             "2. UI: ask the user to go to Settings → Soul to edit directly.\n" +
             "Pick whichever the user finds easier in context. Do not say you cannot change your personality."
 

@@ -1,6 +1,6 @@
 //
 //  PhotosOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-photos`.
 //  Subcommands: list, near, albums, album, stats, export, import,
@@ -159,7 +159,7 @@ static BOOL requestPhotosAccess(NSString **outError) {
     if (!granted && outError) {
         *outError = @"Photo library access not granted. "
                      "To grant access, open Settings > Privacy & Security > Photos "
-                     "and enable Minis.";
+                     "and enable Unibot.";
     }
     return granted;
 }

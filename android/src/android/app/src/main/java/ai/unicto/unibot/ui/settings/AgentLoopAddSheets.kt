@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.components.modelEntryPickerItems
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * T185 — full-screen picker for adding model entries to the agent-loop
@@ -102,8 +102,8 @@ fun AddAgentLoopModelsScreen(
                     }
                 },
                 actions = {
-                    MinisTextButton(onClick = onBack) { Text(stringResource(R.string.common_cancel)) }
-                    MinisButton(
+                    UnibotTextButton(onClick = onBack) { Text(stringResource(R.string.common_cancel)) }
+                    UnibotButton(
                         onClick = {
                             // Add in stable order so the section renders
                             // pinned items in the order the user saw them
@@ -191,8 +191,8 @@ fun AddAgentLoopGroupsScreen(
                     }
                 },
                 actions = {
-                    MinisTextButton(onClick = onBack) { Text(stringResource(R.string.common_cancel)) }
-                    MinisButton(
+                    UnibotTextButton(onClick = onBack) { Text(stringResource(R.string.common_cancel)) }
+                    UnibotButton(
                         onClick = {
                             // Same stable-order add policy as the entries
                             // picker so the section ordering matches the

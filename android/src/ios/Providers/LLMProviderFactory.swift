@@ -1,7 +1,7 @@
 import Foundation
 
 /// Shared factory for creating LLMProvider instances from a ModelEntry.
-/// Used by both the agent loop (AIChatViewModel) and minis-model-use offload bridge.
+/// Used by both the agent loop (AIChatViewModel) and unibot-model-use offload bridge.
 @MainActor
 enum LLMProviderFactory {
 
@@ -67,11 +67,11 @@ enum LLMProviderFactory {
             return provider
         }
         // Otherwise inject the app default UA so outbound requests carry the
-        // marketing version (Minis/1.10 …) instead of URLSession's build-number
-        // default (Minis/1 CFNetwork/… Darwin/…). Don't clobber a UA another
+        // marketing version (Unibot/1.10 …) instead of URLSession's build-number
+        // default (Unibot/1 CFNetwork/… Darwin/…). Don't clobber a UA another
         // builder already set (e.g. some future provider-specific UA).
         if provider.extraHeaders["User-Agent"] == nil {
-            provider.extraHeaders["User-Agent"] = MinisUserAgent.default
+            provider.extraHeaders["User-Agent"] = UnibotUserAgent.default
         }
         return provider
     }
@@ -88,11 +88,11 @@ enum LLMProviderFactory {
         switch instance.credentialType {
         case .apiKey:
             let key = ProviderKeychainHelper.loadAPIKey(instanceId: instance.id) ?? ""
-            // No user custom UA → send the app default (Minis/<marketing>) so the
+            // No user custom UA → send the app default (Unibot/<marketing>) so the
             // SDK (which sets no UA itself) doesn't fall back to URLSession's
             // build-number default. OAuth branches below keep nil so the
             // claude-cli UA set in OAuthURLProtocol is preserved.
-            return AnthropicProvider(apiKey: key, model: model, basePath: customBase, appendV1Suffix: appendV1, customUserAgent: ua ?? MinisUserAgent.default)
+            return AnthropicProvider(apiKey: key, model: model, basePath: customBase, appendV1Suffix: appendV1, customUserAgent: ua ?? UnibotUserAgent.default)
         case .oauth:
             if let manualToken = ProviderKeychainHelper.loadOAuthString(instanceId: instance.id, account: "manual-oauth-token") {
                 return AnthropicProvider(manualToken: manualToken, model: model, basePath: customBase, appendV1Suffix: appendV1, customUserAgent: ua)

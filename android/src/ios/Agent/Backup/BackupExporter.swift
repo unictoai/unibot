@@ -578,7 +578,7 @@ actor BackupExporter {
 
             // The session's whole on-disk tree: attachments / offloads /
             // workspace / browser.
-            let dir = AIChatViewModel.minisPersistentBase
+            let dir = AIChatViewModel.unibotPersistentBase
                 .appendingPathComponent(sid, isDirectory: true)
             let r = try trees.export(root: dir, logicalPrefix: "chats/\(sid)",
                                      category: .chats, sessionId: sid)
@@ -619,7 +619,7 @@ actor BackupExporter {
     /// the App Group directory, NOT anything inside the rootfs.
     private func exportSharedFiles(trees: BackupFileTreeExporter) throws
         -> BackupManifest.CategoryStat {
-        let r = try trees.export(root: AIChatViewModel.minisSharedPersistentDir,
+        let r = try trees.export(root: AIChatViewModel.unibotSharedPersistentDir,
                                  logicalPrefix: "shared",
                                  category: .sharedFiles)
         return BackupManifest.CategoryStat(
@@ -686,7 +686,7 @@ actor BackupExporter {
     /// path: that one drops anything older than 30 days, which is correct for
     /// sync traffic and wrong for a full backup.
     private func exportMemory(dataDir: URL) throws -> BackupManifest.CategoryStat {
-        let src = AIChatViewModel.minisMemoryPersistentDir
+        let src = AIChatViewModel.unibotMemoryPersistentDir
         let dst = dataDir.appendingPathComponent("memory", isDirectory: true)
         try fm.createDirectory(at: dst, withIntermediateDirectories: true)
 

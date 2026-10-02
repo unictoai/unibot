@@ -153,7 +153,7 @@ final class AgentLiveActivityManager {
     /// DON'T tear the Live Activity down. Flip it to a "completed" resting state
     /// (checkmark + each session's last message, carousel frozen) and leave it on
     /// the Lock Screen / Dynamic Island. It's dismissed later — when the user taps
-    /// it and Minis comes to the foreground (see `dismissFinishedActivityOnForeground`).
+    /// it and Unibot comes to the foreground (see `dismissFinishedActivityOnForeground`).
     /// Falls back to a hard end if there's no prior running snapshot to complete.
     func finishActivity(lastMessages: [String: String] = [:]) async {
         guard Self.isActivityKitAvailable else { return }

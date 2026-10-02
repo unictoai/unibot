@@ -11,7 +11,7 @@ import org.junit.Test
 /**
  * [T-preflight-empty-string-allowed] Tests for `preflightValidateToolCall`.
  *
- * Mirrors iOS MinisTests/ToolPreflightTests.swift. The function is pure and
+ * Mirrors iOS UnibotTests/ToolPreflightTests.swift. The function is pure and
  * lives in ChatViewModel's companion precisely so these can run without
  * constructing a ChatViewModel.
  */

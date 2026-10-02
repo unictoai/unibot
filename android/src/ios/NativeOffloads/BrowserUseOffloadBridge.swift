@@ -1,6 +1,6 @@
 //
 //  BrowserUseOffloadBridge.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Swift bridge for BrowserTabPool, called from BrowserUseOffload.m.
 //  BrowserTabPool is Swift-only and @MainActor; this class exposes
@@ -55,7 +55,7 @@ import Foundation
         // the shell rather than silently spinning up a zombie pool.
         let exists = await ChatStore.shared.getSession(sid) != nil
         guard exists else {
-            logger.warning("minis-browser-use invoked for deleted session \(sid.prefix(8))")
+            logger.warning("unibot-browser-use invoked for deleted session \(sid.prefix(8))")
             return nil
         }
         let p = BrowserTabPool()
@@ -100,13 +100,13 @@ import Foundation
     ///
     /// When `withBase64` is false (default), any captured screenshot is
     /// persisted to that session's `/var/minis/browser/` directory and
-    /// surfaced via `image_path` + `minis_url` instead of `image_base64`.
+    /// surfaced via `image_path` + `unibot_url` instead of `image_base64`.
     /// Set `withBase64` to true only when the caller explicitly wants the
     /// raw base64 blob inline (e.g. piping to another tool).
     ///
     /// Keys on success: text, success, page_url?, image_path?,
-    /// minis_url?, image_base64?, fetched_file?, fetched_bytes?,
-    /// fetched_path?, fetched_minis_url?.
+    /// unibot_url?, image_base64?, fetched_file?, fetched_bytes?,
+    /// fetched_path?, fetched_unibot_url?.
     /// Keys on failure: text, success=false.
     @objc public static func execute(
         withJson json: String,
@@ -186,12 +186,12 @@ import Foundation
         // browser directory. We resolve the host path directly from the sid
         // captured at execute() entry instead of querying the coordinator's
         // live mount table — a concurrent UI session-switch could null that
-        // out mid-flight. `minisBrowserPersistentDir` is a pure path join
-        // against Library/MinisChat/minis/<sid>/browser/, which is exactly
+        // out mid-flight. `unibotBrowserPersistentDir` is a pure path join
+        // against Library/UnibotChat/unibot/<sid>/browser/, which is exactly
         // what /var/minis/browser/ bind-mounts to for that session.
         let browserHostDir: URL? = (sid == Self.unmountedSentinel)
             ? nil
-            : AIChatViewModel.minisBrowserPersistentDir(for: sid)
+            : AIChatViewModel.unibotBrowserPersistentDir(for: sid)
 
         // ── Screenshot / snapshot ──
         var persistedImagePath: String? = nil
@@ -202,10 +202,10 @@ import Foundation
                 let dest = hostDir.appendingPathComponent(filename)
                 do {
                     try data.write(to: dest)
-                    let linuxPath = "\(AIChatViewModel.minisBrowserLinuxDir)/\(filename)"
+                    let linuxPath = "\(AIChatViewModel.unibotBrowserLinuxDir)/\(filename)"
                     persistedImagePath = linuxPath
                     out["image_path"] = linuxPath
-                    out["minis_url"] = "minis://browser/\(filename)"
+                    out["unibot_url"] = "unibot://browser/\(filename)"
                 } catch {
                     logger.warning("Failed to persist screenshot to \(dest.path): \(error.localizedDescription)")
                 }
@@ -233,9 +233,9 @@ import Foundation
                     let dest = hostDir.appendingPathComponent(name)
                     do {
                         try data.write(to: dest)
-                        let linuxPath = "\(AIChatViewModel.minisBrowserLinuxDir)/\(name)"
+                        let linuxPath = "\(AIChatViewModel.unibotBrowserLinuxDir)/\(name)"
                         out["fetched_path"] = linuxPath
-                        out["fetched_minis_url"] = "minis://browser/\(name)"
+                        out["fetched_unibot_url"] = "unibot://browser/\(name)"
                     } catch {
                         logger.warning("Failed to persist fetched file to \(dest.path): \(error.localizedDescription)")
                     }

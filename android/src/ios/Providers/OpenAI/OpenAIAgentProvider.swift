@@ -915,15 +915,15 @@ final class OpenAIAgentProvider: AgentProvider {
         // random UUID: with no content there is no prefix to collide over, and a
         // fixed value at least lets consecutive such requests share a cache
         // entry instead of guaranteeing a miss.
-        return cacheKey(hashing: "minis-empty-conversation")
+        return cacheKey(hashing: "unibot-empty-conversation")
     }
 
-    /// `minis-<first 32 hex of SHA256>` — the shared shape for every cache key
+    /// `unibot-<first 32 hex of SHA256>` — the shared shape for every cache key
     /// this type derives.
     private static func cacheKey(hashing input: String) -> String {
         let digest = SHA256.hash(data: Data(input.utf8))
         let hex = digest.map { String(format: "%02x", $0) }.joined()
-        return "minis-\(hex.prefix(32))"
+        return "unibot-\(hex.prefix(32))"
     }
 
     // MARK: - Thinking Config
@@ -1057,7 +1057,7 @@ final class OpenAIAgentProvider: AgentProvider {
         let trace = ThinkingRuleResolver.apply(to: &body, ctx: ctx)
         // [T-thinking-rules-observability] Design §8 / OpenMinis#100: which rule actually
         // won must be inspectable, or a rule layer just replaces one hidden variable with
-        // a more complicated one. minis-config exposure is Phase 2.
+        // a more complicated one. unibot-config exposure is Phase 2.
         //
         // [T-thinking-vision-diag] `trace.logLine` now also carries `gates=[…]` whenever a
         // gate intervened, so this single INFO line answers both "which rule won" and

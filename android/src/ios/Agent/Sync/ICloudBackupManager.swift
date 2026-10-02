@@ -16,7 +16,7 @@ final class ICloudBackupManager: ObservableObject {
     static let shared = ICloudBackupManager()
 
     enum BackupCategory: String, CaseIterable, Identifiable {
-        case sessions           // minis.db + media/ + minis/
+        case sessions           // minis.db + media/ + unibot/
         case skillsAndMemories  // skills.db + skills/ + memory/
         case full               // all
 
@@ -116,17 +116,17 @@ final class ICloudBackupManager: ObservableObject {
 
     // MARK: - Local Paths
 
-    private var minisBaseURL: URL {
+    private var unibotBaseURL: URL {
         let lib = fm.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-        return lib.appendingPathComponent("MinisChat", isDirectory: true)
+        return lib.appendingPathComponent("UnibotChat", isDirectory: true)
     }
 
-    private var minisDBURL: URL { minisBaseURL.appendingPathComponent("minis.db") }
-    private var skillsDBURL: URL { minisBaseURL.appendingPathComponent("skills.db") }
-    private var mediaURL: URL { minisBaseURL.appendingPathComponent("media", isDirectory: true) }
-    private var sessionMinisURL: URL { minisBaseURL.appendingPathComponent("minis", isDirectory: true) }
-    private var skillsURL: URL { minisBaseURL.appendingPathComponent("skills", isDirectory: true) }
-    private var memoryURL: URL { minisBaseURL.appendingPathComponent("memory", isDirectory: true) }
+    private var unibotDBURL: URL { unibotBaseURL.appendingPathComponent("minis.db") }
+    private var skillsDBURL: URL { unibotBaseURL.appendingPathComponent("skills.db") }
+    private var mediaURL: URL { unibotBaseURL.appendingPathComponent("media", isDirectory: true) }
+    private var sessionUnibotURL: URL { unibotBaseURL.appendingPathComponent("unibot", isDirectory: true) }
+    private var skillsURL: URL { unibotBaseURL.appendingPathComponent("skills", isDirectory: true) }
+    private var memoryURL: URL { unibotBaseURL.appendingPathComponent("memory", isDirectory: true) }
 
     // MARK: - Backup
 
@@ -203,12 +203,12 @@ final class ICloudBackupManager: ObservableObject {
 
     private func stageSessionFiles(to dir: URL) async throws {
         // WAL checkpoint minis.db before copying
-        try walCheckpoint(dbPath: minisDBURL.path)
+        try walCheckpoint(dbPath: unibotDBURL.path)
 
         // Copy minis.db
         let dbDest = dir.appendingPathComponent("minis.db")
-        if fm.fileExists(atPath: minisDBURL.path) {
-            try fm.copyItem(at: minisDBURL, to: dbDest)
+        if fm.fileExists(atPath: unibotDBURL.path) {
+            try fm.copyItem(at: unibotDBURL, to: dbDest)
         }
 
         // Copy media/
@@ -216,9 +216,9 @@ final class ICloudBackupManager: ObservableObject {
             try fm.copyItem(at: mediaURL, to: dir.appendingPathComponent("media"))
         }
 
-        // Copy minis/ (session workspace files)
-        if fm.fileExists(atPath: sessionMinisURL.path) {
-            try fm.copyItem(at: sessionMinisURL, to: dir.appendingPathComponent("minis"))
+        // Copy unibot/ (session workspace files)
+        if fm.fileExists(atPath: sessionUnibotURL.path) {
+            try fm.copyItem(at: sessionUnibotURL, to: dir.appendingPathComponent("unibot"))
         }
     }
 
@@ -556,16 +556,16 @@ final class ICloudBackupManager: ObservableObject {
             // Close existing DB connection before replacing
             await ChatStore.shared.closeDatabase()
 
-            if fm.fileExists(atPath: minisDBURL.path) {
-                try fm.removeItem(at: minisDBURL)
+            if fm.fileExists(atPath: unibotDBURL.path) {
+                try fm.removeItem(at: unibotDBURL)
             }
             // Also remove WAL and SHM files
-            let walPath = minisDBURL.path + "-wal"
-            let shmPath = minisDBURL.path + "-shm"
+            let walPath = unibotDBURL.path + "-wal"
+            let shmPath = unibotDBURL.path + "-shm"
             try? fm.removeItem(atPath: walPath)
             try? fm.removeItem(atPath: shmPath)
 
-            try fm.copyItem(at: dbSrc, to: minisDBURL)
+            try fm.copyItem(at: dbSrc, to: unibotDBURL)
         }
 
         let mediaSrc = dir.appendingPathComponent("media")
@@ -576,12 +576,12 @@ final class ICloudBackupManager: ObservableObject {
             try fm.copyItem(at: mediaSrc, to: mediaURL)
         }
 
-        let minisSrc = dir.appendingPathComponent("minis")
-        if fm.fileExists(atPath: minisSrc.path) {
-            if fm.fileExists(atPath: sessionMinisURL.path) {
-                try fm.removeItem(at: sessionMinisURL)
+        let unibotSrc = dir.appendingPathComponent("unibot")
+        if fm.fileExists(atPath: unibotSrc.path) {
+            if fm.fileExists(atPath: sessionUnibotURL.path) {
+                try fm.removeItem(at: sessionUnibotURL)
             }
-            try fm.copyItem(at: minisSrc, to: sessionMinisURL)
+            try fm.copyItem(at: unibotSrc, to: sessionUnibotURL)
         }
     }
 

@@ -40,7 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.accessibility.AccessibilityRecoveryManager
 import ai.unicto.unibot.accessibility.UnibotAccessibilityService
 import ai.unicto.unibot.accessibility.RestrictedSettingsManager
@@ -192,7 +192,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                         iconColor = Color(0xFFFF9500),
                         title = stringResource(R.string.system_permissions_a11y_restricted_manual),
                         subtitle = stringResource(R.string.system_permissions_a11y_restricted_manual_sub),
-                        // Lands on Minis' own App info page, where the
+                        // Lands on Unibot' own App info page, where the
                         // "Allow restricted settings" item lives in the
                         // overflow menu. Reuses the existing helper, which
                         // already falls back when an OEM hides the page.
@@ -337,7 +337,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                     onDismissRequest = { showClearCorrectionConfirm = false },
                     title = { Text(stringResource(R.string.voice_correction_clear_title)) },
                     confirmButton = {
-                        MinisTextButton(onClick = {
+                        UnibotTextButton(onClick = {
                             showClearCorrectionConfirm = false
                             ai.unicto.unibot.speech.correction.VoiceCorrection
                                 .clearAllData(context)
@@ -354,7 +354,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                         }
                     },
                     dismissButton = {
-                        MinisTextButton(onClick = { showClearCorrectionConfirm = false }) {
+                        UnibotTextButton(onClick = { showClearCorrectionConfirm = false }) {
                             Text(stringResource(R.string.voice_correction_consent_not_now))
                         }
                     },

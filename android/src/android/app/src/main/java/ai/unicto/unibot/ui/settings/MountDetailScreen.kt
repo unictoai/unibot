@@ -51,7 +51,7 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.data.MountedFoldersStore
 import ai.unicto.unibot.ui.components.SectionTextField
 import kotlinx.coroutines.launch
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * Detail/edit screen for a single mounted folder. Mirrors iOS
@@ -101,7 +101,7 @@ fun MountDetailScreen(
                     }
                 },
                 actions = {
-                    MinisTextButton(
+                    UnibotTextButton(
                         enabled = canSave,
                         onClick = {
                             scope.launch {
@@ -214,7 +214,7 @@ fun MountDetailScreen(
             title = { Text(stringResource(R.string.mount_unmount_title)) },
             text = { Text(stringResource(R.string.mount_unmount_message)) },
             confirmButton = {
-                MinisTextButton(onClick = {
+                UnibotTextButton(onClick = {
                     showUnmountConfirm = false
                     scope.launch {
                         store.remove(entry.id)
@@ -228,7 +228,7 @@ fun MountDetailScreen(
                 }
             },
             dismissButton = {
-                MinisTextButton(onClick = { showUnmountConfirm = false }) {
+                UnibotTextButton(onClick = { showUnmountConfirm = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

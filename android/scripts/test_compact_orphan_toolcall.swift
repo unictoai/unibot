@@ -14,7 +14,7 @@
 //   walkBackUserTurnsBounded  — src/ios/Agent/Chat/AIChatViewModel+Compaction.swift
 //   dropOrphanedToolParts     — src/ios/Agent/Chat/AIChatViewModel+Persistence.swift
 // Keep them in sync when editing those; this file is standalone because the
-// MinisTests target has a pre-existing compile break (ToolPreflightTests), so
+// UnibotTests target has a pre-existing compile break (ToolPreflightTests), so
 // `xcodebuild test` cannot run today.
 //
 // Run:  swift scripts/test_compact_orphan_toolcall.swift

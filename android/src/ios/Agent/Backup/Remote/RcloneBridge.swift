@@ -38,7 +38,7 @@ enum RcloneBridge {
     /// Idempotent. Must run before any RPC; safe to call from anywhere.
     static func initializeIfNeeded() {
         guard !initialised else { return }
-        MinisRcloneInitialize()
+        UnibotRcloneInitialize()
         initialised = true
         applyGlobalOptions()
         logger.info("[Rclone] initialised")
@@ -46,7 +46,7 @@ enum RcloneBridge {
 
     /// rclone's defaults are tuned for a desktop batch job, not a phone.
     ///
-    /// `MinisRcloneRPC` is a BLOCKING cgo call — nothing on the Swift side can
+    /// `UnibotRcloneRPC` is a BLOCKING cgo call — nothing on the Swift side can
     /// interrupt it, so whatever rclone decides to wait for, the calling
     /// thread waits too. Out of the box that is a 300s IO timeout with 10
     /// low-level retries, i.e. a server that accepts a connection and then
@@ -118,10 +118,10 @@ enum RcloneBridge {
         let cInput = strdup(input)
         defer { free(cMethod); free(cInput) }
         var status: Int32 = 0
-        guard let raw = MinisRcloneRPC(cMethod, cInput, &status) else {
+        guard let raw = UnibotRcloneRPC(cMethod, cInput, &status) else {
             throw RPCError(status: -1, payload: "")
         }
-        defer { MinisRcloneFreeString(raw) }
+        defer { UnibotRcloneFreeString(raw) }
         let out = String(cString: raw)
         guard status == 200 else { throw RPCError(status: Int(status), payload: out) }
         guard let d = out.data(using: .utf8),
@@ -147,12 +147,12 @@ enum RcloneBridge {
         defer { free(cMethod); free(cInput) }
 
         var status: Int32 = 0
-        guard let raw = MinisRcloneRPC(cMethod, cInput, &status) else {
+        guard let raw = UnibotRcloneRPC(cMethod, cInput, &status) else {
             throw RPCError(status: -1, payload: "")
         }
         // The C string is malloc'd by Go and owned by us — free it on every
         // path, including the throwing ones.
-        defer { MinisRcloneFreeString(raw) }
+        defer { UnibotRcloneFreeString(raw) }
         let out = String(cString: raw)
 
         guard status == 200 else { throw RPCError(status: Int(status), payload: out) }

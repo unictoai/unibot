@@ -152,7 +152,7 @@
     <string name="mcp_add">Tambah Server MCP</string>
     <string name="mcp_edit">Edit Server MCP</string>
     <string name="mcp_section_servers">Server</string>
-    <string name="mcp_section_footer">Server MCP memungkinkan Agen memanggil alat eksternal melalui minis-mcp-cli. Konfigurasi disimpan di /var/minis/mcp-servers/servers.json (kompatibel dengan Claude Desktop).</string>
+    <string name="mcp_section_footer">Server MCP memungkinkan Agen memanggil alat eksternal melalui unibot-mcp-cli. Konfigurasi disimpan di /var/minis/mcp-servers/servers.json (kompatibel dengan Claude Desktop).</string>
     <string name="mcp_empty_title">Belum ada server MCP</string>
     <string name="mcp_empty_action">Tambahkan server dengan tombol +.</string>
     <string name="mcp_transport_http">HTTP</string>
@@ -287,7 +287,7 @@
     <string name="settings_section_logs">Log</string>
     <string name="settings_logs_subtitle">Lihat dan ekspor log aplikasi</string>
     <string name="settings_section_about">Tentang</string>
-    <string name="settings_about_minis">Tentang unibot</string>
+    <string name="settings_about_unibot">Tentang unibot</string>
     <string name="settings_about_subtitle">Versi dan info proyek</string>
     <string name="settings_privacy_policy">Kebijakan Privasi</string>
     <string name="settings_feedback">Masukan</string>
@@ -295,7 +295,7 @@
     <string name="settings_feedback_telegram">Masukan (Telegram)</string>
     <string name="settings_feedback_email">Masukan (Email)</string>
     <string name="about_title">Tentang</string>
-    <string name="about_minis_tagline">unibot adalah Agen di perangkat Anda yang sepenuhnya lokal dan sepenuhnya privat.</string>
+    <string name="about_unibot_tagline">unibot adalah Agen di perangkat Anda yang sepenuhnya lokal dan sepenuhnya privat.</string>
     <string name="about_links">Tautan</string>
     <string name="about_github_repository">Repositori GitHub</string>
     <string name="about_version_format">Versi %1$s (%2$s)</string>
@@ -512,7 +512,7 @@
     <string name="browser_nav_forward">Maju</string>
     <string name="browser_stop">Hentikan</string>
     <string name="browser_reload">Muat ulang</string>
-    <string name="browser_minis_browsing">%1$s sedang menjelajah</string>
+    <string name="browser_unibot_browsing">%1$s sedang menjelajah</string>
     <string name="chat_typing_indicator">%1$s sedang berpikir</string>
     <string name="read_aloud_unavailable">Gagal membacakan: tidak ada mesin suara yang dapat digunakan. Periksa pengaturan Output Suara atau pasang mesin ucapan sistem.</string>
     <string name="chat_error_stream_dropped_partial">Koneksi terputus — balasan ini mungkin tidak lengkap. Ketuk Coba Lagi untuk melanjutkan.</string>
@@ -723,8 +723,8 @@
     <string name="perm_agent_policy">Izin Agen</string>
     <string name="perm_a11y_system_ready">Layanan aktif</string>
     <string name="perm_a11y_system_disabled">Layanan belum aktif</string>
-    <string name="perm_allow_minis_config">Izinkan minis-config</string>
-    <string name="perm_minis_config_desc">Jika dinonaktifkan, Agen tidak dapat membaca atau mengubah pengaturan apa pun melalui minis-config. Riwayat perubahan di Log → Perubahan Konfigurasi tetap dapat diakses. Agen akan menerima galat permission_denied dan sebagai gantinya dapat memandu Anda lewat deep link.</string>
+    <string name="perm_allow_unibot_config">Izinkan unibot-config</string>
+    <string name="perm_unibot_config_desc">Jika dinonaktifkan, Agen tidak dapat membaca atau mengubah pengaturan apa pun melalui unibot-config. Riwayat perubahan di Log → Perubahan Konfigurasi tetap dapat diakses. Agen akan menerima galat permission_denied dan sebagai gantinya dapat memandu Anda lewat deep link.</string>
     <string name="perm_section_privacy">Privasi</string>
     <string name="perm_section_media">Media</string>
     <string name="perm_section_system">Sistem</string>
@@ -802,7 +802,7 @@
     <string name="skill_empty_title">Belum Ada Keterampilan Terpasang</string>
     <string name="skill_empty_action">Ketuk + untuk mengimpor berkas SKILL.md, .zip, atau .skill, atau jelajahi unibot Skills.</string>
     <string name="skill_import_modal_title">Impor Keterampilan</string>
-    <string name="skill_minis_skills_modal">unibot Skills</string>
+    <string name="skill_unibot_skills_modal">unibot Skills</string>
     <string name="skill_delete_confirm_title">Hapus %1$s?</string>
     <string name="skill_delete_confirm_text">Ini akan menghapus permanen keterampilan beserta berkasnya.</string>
     <string name="skill_import_sheet_title">Impor Keterampilan</string>
@@ -866,8 +866,8 @@
     <string name="storage_overview_sessions">Berkas Sesi</string>
     <string name="storage_section_sessions">Sesi</string>
     <string name="storage_no_sessions">Tidak ada sesi</string>
-    <string name="storage_section_minis_files">Berkas unibot</string>
-    <string name="storage_no_minis_files">Tidak ada berkas minis</string>
+    <string name="storage_section_unibot_files">Berkas unibot</string>
+    <string name="storage_no_unibot_files">Tidak ada berkas unibot</string>
     <string name="storage_section_media">Berkas Media</string>
     <string name="storage_no_media_files">Tidak ada berkas media</string>
     <string name="storage_clear_session_footer">Menghapus semua berkas yang dihasilkan sesi ini. Percakapannya sendiri akan tetap tersimpan.</string>
@@ -1168,7 +1168,7 @@
     <string name="settings_dynamic_island_footer">Tampilkan status Agen secara langsung pada chip status Android 16. Jika aktif, ini menggantikan overlay mengambang sehingga Anda tidak melihat dua indikator status sekaligus.</string>
     <string name="settings_dynamic_island_unsupported">Versi sistem Anda saat ini belum mendukung Live Updates (memerlukan Android 16+ dengan fitur tersebut diaktifkan).</string>
     <string name="agent_loop_section_title">Model yang Dapat Dipanggil unibot Saat Berjalan</string>
-    <string name="agent_loop_section_footer">Selama menjalankan tugas, unibot memanggil model-model ini untuk sub-tugas seperti membuat gambar atau meringkas teks — pekerjaan yang tidak dapat dilakukan modelnya sendiri. Dapat juga dipanggil dari terminal melalui minis-model-use. Hanya model inilah yang terlihat oleh Agen.</string>
+    <string name="agent_loop_section_footer">Selama menjalankan tugas, unibot memanggil model-model ini untuk sub-tugas seperti membuat gambar atau meringkas teks — pekerjaan yang tidak dapat dilakukan modelnya sendiri. Dapat juga dipanggil dari terminal melalui unibot-model-use. Hanya model inilah yang terlihat oleh Agen.</string>
     <string name="agent_loop_section_empty_hint">Belum ada model atau grup yang ditambahkan</string>
     <string name="agent_loop_section_add_models">Tambah Model</string>
     <string name="agent_loop_section_add_groups">Tambah Grup</string>
@@ -1602,7 +1602,7 @@
     <string name="webapp_pin_success">Ditambahkan ke layar beranda</string>
     <string name="webapp_source_missing_title">Berkas sumber sudah tidak ada</string>
     <string name="webapp_source_missing_body">Berkas yang mendasari pintasan ini telah dipindahkan atau dihapus.</string>
-    <string name="webapp_open_in_minis">Buka di unibot</string>
+    <string name="webapp_open_in_unibot">Buka di unibot</string>
     <string name="webapp_action_close">Tutup</string>
     <string name="webapp_action_fullscreen">Masuk layar penuh</string>
     <string name="webapp_action_exit_fullscreen">Keluar dari layar penuh</string>

@@ -55,7 +55,7 @@ class CrashFileSender : ReportSender {
 
     companion object {
         // Match LogManagementScreen's expected naming so the row sorts
-        // alongside the daily minis-YYYY-MM-DD.log files (which AppLogger
+        // alongside the daily unibot-YYYY-MM-DD.log files (which AppLogger
         // sorts by `name` descending — newest first).
         private val STAMP_FMT = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
     }

@@ -24,9 +24,9 @@ class AlarmOffloadManager(private val context: Context) {
 
     companion object {
         private const val TAG = "AlarmOffloadManager"
-        private const val PREFS_NAME = "minis_alarms_prefs"
+        private const val PREFS_NAME = "unibot_alarms_prefs"
         private const val KEY_ALARMS = "alarms_json"
-        const val CHANNEL_ID = "minis_alarms"
+        const val CHANNEL_ID = "unibot_alarms"
         private const val CHANNEL_NAME = "unibot Alarms & Timers"
 
         const val EXTRA_ALARM_ID = "alarm_id"

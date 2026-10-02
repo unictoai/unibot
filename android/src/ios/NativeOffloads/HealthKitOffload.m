@@ -1,6 +1,6 @@
 //
 //  HealthKitOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-healthkit`.
 //  Subcommands: steps, heart-rate, resting-heart-rate, vo2-max, sleep,
@@ -387,7 +387,7 @@ static BOOL requestHealthKitAccess(NSSet<HKObjectType *> *readTypes,
     if (!granted && outError) {
         NSString *reason = authError.localizedDescription ?: @"HealthKit access not granted";
         *outError = [NSString stringWithFormat:
-            @"%@. To grant access, open Settings > Health > Data Access & Devices > Minis "
+            @"%@. To grant access, open Settings > Health > Data Access & Devices > Unibot "
              "and enable the required categories.", reason];
     }
     return granted;
@@ -478,7 +478,7 @@ static BOOL saveWithAuthRetry(HKObject *sample,
 // than an error the store actively returned.
 
 // Error domain for conditions this file synthesizes rather than receives.
-static NSString *const kHKOffloadErrorDomain = @"MinisHealthKitOffload";
+static NSString *const kHKOffloadErrorDomain = @"UnibotHealthKitOffload";
 typedef NS_ENUM(NSInteger, HKOffloadErrorCode) {
     HKOffloadErrorQueryTimeout = 1,
 };
@@ -2856,7 +2856,7 @@ static int cmd_log_blood_pressure(int argc, char **argv, int stdout_fd, BOOL com
         NSString *msg = saveErr.localizedDescription ?: @"Failed to save blood-pressure correlation";
         if (authDenied) {
             msg = [NSString stringWithFormat:
-                @"%@. Open Settings > Health > Data Access & Devices > Minis "
+                @"%@. Open Settings > Health > Data Access & Devices > Unibot "
                  "and enable write access for 'Blood Pressure', then retry.", msg];
         }
         noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"log-blood-pressure",
@@ -2959,7 +2959,7 @@ static int cmd_log(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
             NSString *msg = saveErr.localizedDescription ?: @"Failed to save sample";
             if (authDenied) {
                 msg = [NSString stringWithFormat:
-                    @"%@. Open Settings > Health > Data Access & Devices > Minis "
+                    @"%@. Open Settings > Health > Data Access & Devices > Unibot "
                      "and enable write access for '%@', then retry.", msg, typeName];
             }
             noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"log",
@@ -3042,7 +3042,7 @@ static int cmd_log(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
             NSString *msg = saveErr.localizedDescription ?: @"Failed to save category sample";
             if (authDenied) {
                 msg = [NSString stringWithFormat:
-                    @"%@. Open Settings > Health > Data Access & Devices > Minis "
+                    @"%@. Open Settings > Health > Data Access & Devices > Unibot "
                      "and enable write access for '%@', then retry.", msg, typeName];
             }
             noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"log",
@@ -3237,7 +3237,7 @@ static int cmd_delete(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
         NSString *msg = deleteErr.localizedDescription ?: @"Failed to delete samples";
         if (authDenied) {
             msg = [NSString stringWithFormat:
-                @"%@. Open Settings > Health > Data Access & Devices > Minis "
+                @"%@. Open Settings > Health > Data Access & Devices > Unibot "
                  "and enable write access for '%@', then retry.", msg, typeName];
         }
         noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"delete",

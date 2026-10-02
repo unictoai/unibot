@@ -19,9 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.offload.OffloadPermissionManager
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
  * Dialog shown when an ASK_ONCE tool requests permission.
@@ -88,21 +88,21 @@ fun OffloadPermissionDialog() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // Allow in this session — happy path goes first.
-                MinisButton(
+                UnibotButton(
                     onClick = { OffloadPermissionManager.respondToRequest(OffloadPermissionManager.Response.ALLOW_SESSION) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.offload_perm_allow_session))
                 }
                 // Allow once — no caching; next call re-prompts.
-                MinisOutlinedButton(
+                UnibotOutlinedButton(
                     onClick = { OffloadPermissionManager.respondToRequest(OffloadPermissionManager.Response.ALLOW_ONCE) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.offload_perm_allow_once))
                 }
                 // Deny in this session — refuse + remember.
-                MinisTextButton(
+                UnibotTextButton(
                     onClick = { OffloadPermissionManager.respondToRequest(OffloadPermissionManager.Response.DENY_SESSION) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.textButtonColors(

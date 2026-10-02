@@ -5,7 +5,7 @@ import Foundation
 /// keyed by topic; topic names line up with the CLI subcommands.
 ///
 /// Registration is idempotent and runs once at app launch from
-/// `MinisApp.onAppear` via `ConfigRegistry.shared.registerBuiltinsIfNeeded()`.
+/// `UnibotApp.onAppear` via `ConfigRegistry.shared.registerBuiltinsIfNeeded()`.
 extension ConfigRegistry {
     @MainActor
     static func registerBuiltins(into r: ConfigRegistry) {
@@ -56,7 +56,7 @@ extension ConfigRegistry {
     // MARK: Soul — SOUL.md (persistent personality / identity file)
     //
     // Each field reads/writes one piece of SOUL.md (path:
-    // <minisMemoryPersistentDir>/SOUL.md). The four fields below mirror
+    // <unibotMemoryPersistentDir>/SOUL.md). The four fields below mirror
     // the SOUL Settings UI exactly; everything goes through SoulStore so
     // the on-disk file, the cached metadata, the chat bubble header, the
     // sidebar title, and the system-prompt builder all observe the same
@@ -121,8 +121,8 @@ extension ConfigRegistry {
 
         // [T-soul-custom-icon] [T-soul-icon-config-images] Emoji OR an image.
         //
-        // An image may be given as a data URI, bare base64, a `minis://`
-        // resource, a path inside the minis directories, or an http(s) URL.
+        // An image may be given as a data URI, bare base64, a `unibot://`
+        // resource, a path inside the unibot directories, or an http(s) URL.
         // Whatever the source, it is decoded and pushed through the SAME
         // `SoulIconImage.encode` the Settings picker uses — alpha check,
         // square crop, 96px cap, PNG — and the RESULT is stored inline.
@@ -138,14 +138,14 @@ extension ConfigRegistry {
         // data URI. See `SoulIconSource` for why.
         //
         // Reading stays summarized: a data URI is reported as `<image>` so
-        // `minis-config get` never floods the context with base64, and the
+        // `unibot-config get` never floods the context with base64, and the
         // same substitution keeps the confirmation sheet and the audit log
         // clean. Clearing (empty string) restores the default sparkle.
         r.register(ClosureField(
             path: "soul.icon",
             displayName: "Soul icon",
             // [T-soul-icon-config-images] The description IS the API doc —
-            // `minis-config topic-help soul` renders it verbatim, so every
+            // `unibot-config topic-help soul` renders it verbatim, so every
             // accepted form is spelled out with a runnable example. Claims
             // here are limited to what is actually implemented: the decodable
             // formats were checked against ImageIO on-device rather than
@@ -163,8 +163,8 @@ extension ConfigRegistry {
                 + "      data:image/png;base64,iVBORw0KGgo...\n"
                 + "      MIME may be image/png, image/jpeg, image/webp, image/gif, image/heic or image/tiff.\n"
                 + "  • bare base64 (no data: prefix) — auto-detected, e.g. iVBORw0KGgo...\n"
-                + "  • minis:// resource, e.g. minis://attachments/icon.png or minis://workspace/icon.png\n"
-                + "  • local path inside the minis directories, e.g. /var/minis/attachments/icon.png\n"
+                + "  • unibot:// resource, e.g. unibot://attachments/icon.png or unibot://workspace/icon.png\n"
+                + "  • local path inside the unibot directories, e.g. /var/minis/attachments/icon.png\n"
                 + "  • https:// URL, e.g. https://example.com/icon.png (http:// also works; "
                 + "private/loopback/link-local hosts are refused)\n"
                 + "\n"
@@ -182,16 +182,16 @@ extension ConfigRegistry {
                 + "READING — `get soul.icon` returns \"<image>\" for an image, never the base64.\n"
                 + "\n"
                 + "EXAMPLES (note the value is JSON, so the string needs its own quotes)\n"
-                + "  minis-config set soul.icon '\"⚡\"'\n"
-                + "  minis-config set soul.icon '\"minis://attachments/icon.png\"'\n"
-                + "  minis-config set soul.icon '\"https://example.com/icon.png\"'\n"
-                + "  minis-config set soul.icon '\"data:image/png;base64,iVBORw0KGgo...\"'\n"
-                + "  minis-config set soul.icon '\"\"'    # back to the default sparkle\n"
+                + "  unibot-config set soul.icon '\"⚡\"'\n"
+                + "  unibot-config set soul.icon '\"unibot://attachments/icon.png\"'\n"
+                + "  unibot-config set soul.icon '\"https://example.com/icon.png\"'\n"
+                + "  unibot-config set soul.icon '\"data:image/png;base64,iVBORw0KGgo...\"'\n"
+                + "  unibot-config set soul.icon '\"\"'    # back to the default sparkle\n"
                 + "A long data URI is easier to pass via a file. --file reads the JSON VALUE "
                 + "(a quoted string), not the raw image — write the quoted data URI to the file first:\n"
                 + "  printf '\"%s\"' \"data:image/png;base64,$(base64 -w0 icon.png)\" > /tmp/icon-value.json\n"
-                + "  minis-config set soul.icon --file /tmp/icon-value.json\n"
-                + "Simpler still: point at the file directly with minis:// or a path and skip base64 entirely.",
+                + "  unibot-config set soul.icon --file /tmp/icon-value.json\n"
+                + "Simpler still: point at the file directly with unibot:// or a path and skip base64 entirely.",
             // Wide enough for an inline base64 argument; `SoulIconSource`
             // applies the real byte/pixel limits once it knows the source
             // kind. Emoji validation below is unchanged.
@@ -429,7 +429,7 @@ extension ConfigRegistry {
                                          store: ProviderConfigStore) throws -> SessionModelSource {
         if s.hasPrefix("entry:") {
             let raw = String(s.dropFirst("entry:".count))
-            // [T-ios-minis-config-entry-id-composite] Same normalize-then-
+            // [T-ios-unibot-config-entry-id-composite] Same normalize-then-
             // validate as defaults.agentLoopEntries: entry ids are composite
             // keys now, but the agent may pass a legacy random uuid. Store the
             // normalized (current) id so the binding never carries a stale ref.
@@ -437,7 +437,7 @@ extension ConfigRegistry {
             guard !raw.isEmpty,
                   store.config.modelEntries.contains(where: { $0.id == entryId }) else {
                 throw ConfigError.invalidValue(
-                    "Unknown model entry id: \(raw) (expected {instanceId}/{modelId} composite form; run `minis-config get models` for valid entry_id values)"
+                    "Unknown model entry id: \(raw) (expected {instanceId}/{modelId} composite form; run `unibot-config get models` for valid entry_id values)"
                 )
             }
             return .directEntry(modelEntryId: entryId)
@@ -497,7 +497,7 @@ extension ConfigRegistry {
         r.register(EnvVarsCollection())
         r.register(ThinkingRulesCollection())
 
-        // [T-thinking-rules-minis-config] One `order` field per provider instance.
+        // [T-thinking-rules-unibot-config] One `order` field per provider instance.
         // These are flat fields rather than collection children because the collection
         // keys its children `<instanceId>:<ruleId>`, so `<instanceId>.order` would not
         // resolve as a child path. Registered at launch from the instances that exist
@@ -534,7 +534,7 @@ extension ConfigRegistry {
             }
         ))
 
-        // Aggregate read-only summary so `minis-config get providers`
+        // Aggregate read-only summary so `unibot-config get providers`
         // returns a useful list of configured instances. Credentials
         // (apiKey / oauthToken) are deliberately omitted — only the
         // identity / type / endpoint-config fields ship.
@@ -561,7 +561,7 @@ extension ConfigRegistry {
             }
         ))
 
-        // Aggregate read-only summary so `minis-config get models`
+        // Aggregate read-only summary so `unibot-config get models`
         // returns every model entry along with its provider context —
         // enough for the agent to find an entry_id to feed into
         // `defaults.agentLoopEntries.append`.
@@ -596,7 +596,7 @@ extension ConfigRegistry {
             }
         ))
 
-        // Aggregate read-only summary so `minis-config get envvars`
+        // Aggregate read-only summary so `unibot-config get envvars`
         // returns every env var key with its non-secret metadata. The
         // value (stored in Keychain) is never exposed; agents only see
         // the key, note, and createdAt.
@@ -639,7 +639,7 @@ extension ConfigRegistry {
             }
         ))
 
-        // Aggregate read-only summary so `minis-config get groups`
+        // Aggregate read-only summary so `unibot-config get groups`
         // returns every model group with its expanded entries. Each
         // entry is enriched with display_name + provider info so the
         // agent doesn't need to cross-reference `models` to know what
@@ -746,10 +746,10 @@ extension ConfigRegistry {
         r.register(ClosureField(
             path: "defaults.agentLoopEntries",
             displayName: "Agent loop model entries",
-            description: "Model entries available via minis-model-use. Replace with full list to set.",
+            description: "Model entries available via unibot-model-use. Replace with full list to set.",
             valueSchema: .array(.string()),
             risk: .sensitive, revertable: true,
-            // [T-ios-minis-config-entry-id-composite] Emit normalized ids so
+            // [T-ios-unibot-config-entry-id-composite] Emit normalized ids so
             // the agent never sees (and round-trips) a stale legacy uuid that
             // survived in storage from before the composite-key migration.
             // [T-ios-agentloop-dirty-data-skip] Normalize, then drop any id that
@@ -766,7 +766,7 @@ extension ConfigRegistry {
             writer: { v in
                 guard case .array(let arr) = v else { throw ConfigError.typeMismatch(expected: "array") }
                 let rawIds: [String] = arr.compactMap { if case .string(let s) = $0 { return s } else { return nil } }
-                // [T-ios-minis-config-entry-id-composite] Entry ids became
+                // [T-ios-unibot-config-entry-id-composite] Entry ids became
                 // composite keys ("{instanceId}/{modelId}"); lists written by
                 // the agent may still carry legacy random uuids (read from an
                 // un-normalized store or older notes). Normalize each ref
@@ -785,7 +785,7 @@ extension ConfigRegistry {
                 let ids = normalized.filter { valid.contains($0) }
                 let skipped = normalized.filter { !valid.contains($0) }
                 if !skipped.isEmpty {
-                    AppLogger(category: "MinisConfig").info("[MinisConfig] skipped unknown agentLoopEntries ids: \(skipped.joined(separator: ", "))")
+                    AppLogger(category: "UnibotConfig").info("[UnibotConfig] skipped unknown agentLoopEntries ids: \(skipped.joined(separator: ", "))")
                 }
                 store.agentLoopModelEntryIds = ids
             }
@@ -793,7 +793,7 @@ extension ConfigRegistry {
         r.register(ClosureField(
             path: "defaults.agentLoopGroups",
             displayName: "Agent loop groups",
-            description: "Whole groups exposed via minis-model-use.",
+            description: "Whole groups exposed via unibot-model-use.",
             valueSchema: .array(.string()),
             risk: .sensitive, revertable: true,
             // [T-ios-agentloop-dirty-data-skip] Filter unknown group ids on read.
@@ -811,7 +811,7 @@ extension ConfigRegistry {
                 let ids = rawIds.filter { valid.contains($0) }
                 let skipped = rawIds.filter { !valid.contains($0) }
                 if !skipped.isEmpty {
-                    AppLogger(category: "MinisConfig").info("[MinisConfig] skipped unknown agentLoopGroups ids: \(skipped.joined(separator: ", "))")
+                    AppLogger(category: "UnibotConfig").info("[UnibotConfig] skipped unknown agentLoopGroups ids: \(skipped.joined(separator: ", "))")
                 }
                 ProviderConfigStore.shared.agentLoopGroupIds = ids
             }
@@ -825,7 +825,7 @@ extension ConfigRegistry {
     /// [GH#101] Not simply `SyncV2Bootstrap.isEnabled`: `shouldPauseV1()`
     /// deliberately keeps v1 alive when a v2 migration has FAILED, so a user in
     /// that state is really running v1 and must not be shown v2's flags. This
-    /// mirrors the exact condition MinisApp uses to decide which engine to boot.
+    /// mirrors the exact condition UnibotApp uses to decide which engine to boot.
     @MainActor
     private static func syncV2Live() -> Bool {
         guard #available(iOS 17.0, *) else { return false }
@@ -856,7 +856,7 @@ extension ConfigRegistry {
         // The whole sync stack (CloudSyncEngine V2 + its Settings entry) is
         // iOS 17+ — ContentView doesn't even show the iCloud Sync row on
         // iOS 16. Register the same paths as UnavailableField stubs there so
-        // minis-config answers with a clear feature_unavailable instead of
+        // unibot-config answers with a clear feature_unavailable instead of
         // silently flipping cloudSync.* UserDefaults keys no engine will
         // ever read — or worse, keys a later OS upgrade would suddenly honor
         // without the user ever having seen a sync consent surface.
@@ -867,13 +867,13 @@ extension ConfigRegistry {
         // UserDefaults keys while the Settings UI and the engine that actually
         // runs (SyncCore/v2) use `cloudSync.v2.*`. The two sets diverge
         // permanently after `SyncV2Bootstrap.isEnabled` inherits v1 once, so
-        // `minis-config get sync.enabled` could report `false` while the UI
+        // `unibot-config get sync.enabled` could report `false` while the UI
         // showed "ON / Running" — and, worse, `set sync.files false` wrote a key
         // no running engine reads and still reported success. Both sides were
         // "current"; they described different subsystems.
         //
         // The fields now mirror whichever engine is actually live. v1 is NOT
-        // dead code: MinisApp starts it when v2 is off, and `shouldPauseV1()`
+        // dead code: UnibotApp starts it when v2 is off, and `shouldPauseV1()`
         // deliberately lets it keep running when a v2 migration has failed, so
         // reading v2 unconditionally would misreport state for those users.
         // `syncV2Live` is the single predicate both the reader and writer use.
@@ -1003,7 +1003,7 @@ extension ConfigRegistry {
         // The master switch surface. Agent CAN read it (so it knows why
         // it might be denied later in the session) but CAN'T write it —
         // the writer always throws. The bridge's first-line check on
-        // `MinisConfigPermissionStore.shared.enabled` will short-circuit
+        // `UnibotConfigPermissionStore.shared.enabled` will short-circuit
         // most of these calls when the switch is off; the registration
         // exists for the rare case where the agent reads while we're
         // still enabled, plus to surface the switch in topic-help.
@@ -1040,14 +1040,14 @@ extension ConfigRegistry {
         ))
 
         r.register(ClosureField(
-            path: "permissions.minisConfig.enabled",
-            displayName: "Allow minis-config",
+            path: "permissions.unibotConfig.enabled",
+            displayName: "Allow unibot-config",
             description: "Master switch. Read-only here — toggle via Settings → Permissions.",
             valueSchema: .bool,
             access: .readonly,
             risk: .destructive,
             revertable: false,
-            reader: { .bool(MinisConfigPermissionStore.shared.enabled) },
+            reader: { .bool(UnibotConfigPermissionStore.shared.enabled) },
             writer: { _ in
                 throw ConfigError.permissionDenied(
                     reason: "Master switch — toggle via Settings → Permissions only")
@@ -1396,7 +1396,7 @@ extension ConfigRegistry {
         // entirely on devices where ActivityKit doesn't work (iPad < iPadOS
         // 17, iOS-on-Mac, failed runtime probe — see
         // AgentLiveActivityManager.isLiveActivitySupported). Same gate here:
-        // where the UI hides the toggle, minis-config returns
+        // where the UI hides the toggle, unibot-config returns
         // feature_unavailable instead of flipping a switch that does nothing.
         // Routed through BackgroundKeepAliveManager (not raw UserDefaults) so
         // the didSet side effects run: OFF tears down the currently displayed

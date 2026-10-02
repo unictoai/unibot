@@ -50,9 +50,9 @@ import ai.unicto.unibot.ui.settings.PREF_APPEARANCE
 import ai.unicto.unibot.ui.settings.getAppearancePrefs
 import ai.unicto.unibot.ui.settings.fontScaleForLevel
 import ai.unicto.unibot.ui.settings.keepScreenAwakeEnabled
-import ai.unicto.unibot.ui.theme.MinisTheme
+import ai.unicto.unibot.ui.theme.UnibotTheme
 
-private const val KEY_CURRENT_CHAT_SESSION_ID = "minis.current_chat_session_id"
+private const val KEY_CURRENT_CHAT_SESSION_ID = "unibot.current_chat_session_id"
 
 class MainActivity : ComponentActivity() {
 
@@ -232,7 +232,7 @@ class MainActivity : ComponentActivity() {
         // `subsystemsInitialized` only goes true after every repository is
         // assigned, so it stays false for exactly as long as composing is
         // genuinely unsafe.
-        val minisApp = application as? UnibotApp
+        val unibotApp = application as? UnibotApp
 
         // [T-android-downgrade-compat] A database written by a NEWER build is
         // not a crash — it is a recoverable state with a specific remedy, and
@@ -240,8 +240,8 @@ class MainActivity : ComponentActivity() {
         // generic crash-share path below, which would otherwise ask the user to
         // send a bug report for something that is not a bug and offer no way
         // out.
-        if (minisApp != null &&
-            minisApp.dbVersionDecision ==
+        if (unibotApp != null &&
+            unibotApp.dbVersionDecision ==
             ai.unicto.unibot.data.db.DatabaseVersionGuard.Decision.SHOW_NEWER_DB_GUIDANCE
         ) {
             android.util.Log.w("MainActivity", "showing newer-database guidance screen")
@@ -249,7 +249,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        if (minisApp == null || !minisApp.subsystemsInitialized) {
+        if (unibotApp == null || !unibotApp.subsystemsInitialized) {
             android.util.Log.w(
                 "MainActivity",
                 "app subsystems not initialized (safeMode=" +
@@ -456,7 +456,7 @@ class MainActivity : ComponentActivity() {
         //
         // [T-android-share-launch-crash] Deliberately UNCONDITIONAL, matching
         // iOS `checkForPendingShare()` which runs on every launch
-        // (MinisApp.swift:279) rather than keying off a launch parameter.
+        // (UnibotApp.swift:279) rather than keying off a launch parameter.
         // Gating on the extra made the share unrecoverable in exactly the case
         // the OEM-crash fallback creates: when ShareReceiverActivity cannot
         // start MainActivity at all, the extra is never delivered, so a user
@@ -554,7 +554,7 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
 
-            MinisTheme(darkTheme = darkTheme, fontScale = fontScale) {
+            UnibotTheme(darkTheme = darkTheme, fontScale = fontScale) {
                 val navController = rememberNavController().also { this.navController = it }
 
                 // T166: drive `SessionActivityTracker.setPresent` /
@@ -596,12 +596,12 @@ class MainActivity : ComponentActivity() {
                     initialDeepLink = launchDeepLink,
                 )
 
-                // T-config: root-level minis-config confirm dialog.
+                // T-config: root-level unibot-config confirm dialog.
                 // Bound to ConfigConfirmationGate.pending — the gate
                 // fires whenever a CLI write is awaiting user OK. The
                 // dialog is rendered on top of any active screen, so
                 // it works regardless of where the user is when the
-                // agent triggers a change. Mirrors iOS MinisApp.swift
+                // agent triggers a change. Mirrors iOS UnibotApp.swift
                 // root-level `.sheet(item: gate.pending)`.
                 ai.unicto.unibot.ui.settings.ConfigConfirmDialogHost()
             }
@@ -780,7 +780,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             is DeepLinkAction.OpenAlarmList -> {
-                // T297: minis://views/alarm now opens the system Clock app
+                // T297: unibot://views/alarm now opens the system Clock app
                 // directly via AlarmClock.ACTION_SHOW_ALARMS — the in-app
                 // AlarmListScreen was a one-button passthrough that did the
                 // exact same thing. The android-alarm tool envelope still

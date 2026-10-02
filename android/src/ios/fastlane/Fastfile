@@ -18,8 +18,8 @@ require "tmpdir"
 
 default_platform(:ios)
 
-PROJECT = "Minis.xcodeproj".freeze
-SCHEME = "Minis".freeze
+PROJECT = "Unibot.xcodeproj".freeze
+SCHEME = "Unibot".freeze
 
 platform :ios do
   desc "Archive unibot with automatic signing and upload it to TestFlight (internal testers)"

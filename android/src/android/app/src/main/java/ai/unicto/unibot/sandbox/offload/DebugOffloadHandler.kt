@@ -16,7 +16,7 @@ import java.net.Socket
 import java.net.SocketTimeoutException
 
 /**
- * minis-debug — DEBUG-ONLY CLI wrapper for the local DebugServer JSON-RPC
+ * unibot-debug — DEBUG-ONLY CLI wrapper for the local DebugServer JSON-RPC
  * endpoint at 127.0.0.1:5321.
  *
  * Lets a user (or agent) in the PRoot shell drive the in-app debug RPC
@@ -24,7 +24,7 @@ import java.net.SocketTimeoutException
  * method registered in DebugMethodRegistry; the response envelope from
  * the server is forwarded verbatim through OffloadOutput so the standard
  * `--compact` / `-q` / `--quiet` flags work the same way as every other
- * `android-*` / `minis-*` offload.
+ * `android-*` / `unibot-*` offload.
  *
  * Registration is guarded by `BuildConfig.DEBUG` in UnibotApp.kt so the
  * Release APK contains no trace of this command.
@@ -37,7 +37,7 @@ class DebugOffloadHandler(@Suppress("UNUSED_PARAMETER") context: Context) : Nati
             return NativeOffloadResult(if (request.argv.size <= 1) 2 else 0, HELP)
         }
 
-        // Per-subcommand --help: `minis-debug ls --help` prints the same
+        // Per-subcommand --help: `unibot-debug ls --help` prints the same
         // top-level help so the user discovers the full surface either
         // way. Cheaper than per-subcommand help strings; the help text
         // already enumerates every subcommand's flags.
@@ -51,7 +51,7 @@ class DebugOffloadHandler(@Suppress("UNUSED_PARAMETER") context: Context) : Nati
         val rpc: RpcCall = try {
             buildRpcCall(sub, args)
         } catch (e: BadArgsException) {
-            return NativeOffloadResult(2, "minis-debug $sub: ${e.message}\n")
+            return NativeOffloadResult(2, "unibot-debug $sub: ${e.message}\n")
         }
 
         return try {
@@ -148,7 +148,7 @@ class DebugOffloadHandler(@Suppress("UNUSED_PARAMETER") context: Context) : Nati
             "model-use", "modelUse" -> RpcCall("debug.modelUse.exec", buildExecForwarder(rest, args))
 
             // Generic escape hatch — call any registered method directly.
-            // `minis-debug call <method> [--params '<json>']`
+            // `unibot-debug call <method> [--params '<json>']`
             "call" -> {
                 val method = rest.firstOrNull()
                     ?: throw BadArgsException("missing <method>")
@@ -161,7 +161,7 @@ class DebugOffloadHandler(@Suppress("UNUSED_PARAMETER") context: Context) : Nati
                 RpcCall(method, params)
             }
 
-            else -> throw BadArgsException("unknown subcommand '$sub' (try `minis-debug --help`)")
+            else -> throw BadArgsException("unknown subcommand '$sub' (try `unibot-debug --help`)")
         }
     }
 
@@ -294,10 +294,10 @@ class DebugOffloadHandler(@Suppress("UNUSED_PARAMETER") context: Context) : Nati
          */
         private val BOOLEAN_FLAGS = setOf("recursive", "base64")
 
-        private const val HELP = """minis-debug — CLI for the in-app DebugServer JSON-RPC (debug builds only)
+        private const val HELP = """unibot-debug — CLI for the in-app DebugServer JSON-RPC (debug builds only)
 
 Usage:
-  minis-debug <subcommand> [options]
+  unibot-debug <subcommand> [options]
 
 SUBCOMMANDS:
   discover                           List all registered RPC methods (rpc.discover)
@@ -314,7 +314,7 @@ SUBCOMMANDS:
 
 Android-only (DEBUG_ONLY_METHODS in DebugMethodRegistry):
   shizuku <argv...>                  Invoke android-shizuku-cli (debug.shizuku.exec)
-  model-use <argv...>                Invoke minis-model-use (debug.modelUse.exec)
+  model-use <argv...>                Invoke unibot-model-use (debug.modelUse.exec)
 
 Escape hatch (for any method not listed above):
   call <method> [--params '<json>']  Invoke an arbitrary registered method
@@ -326,12 +326,12 @@ GLOBAL OPTIONS:
                                      iOS-style envelope (when present)
 
 EXAMPLES:
-  minis-debug discover
-  minis-debug appInfo
-  minis-debug ls /sdcard --recursive --maxDepth 2
-  minis-debug read /etc/passwd --offset 0 --limit 100
-  minis-debug exec uname -a
-  minis-debug call debug.logs.list --params '{}'
+  unibot-debug discover
+  unibot-debug appInfo
+  unibot-debug ls /sdcard --recursive --maxDepth 2
+  unibot-debug read /etc/passwd --offset 0 --limit 100
+  unibot-debug exec uname -a
+  unibot-debug call debug.logs.list --params '{}'
 
 The handler talks to 127.0.0.1:$DEBUG_SERVER_PORT (DebugServer). If the server
 isn't running you'll see `debug_server_unreachable` — Release builds don't

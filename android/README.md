@@ -27,7 +27,7 @@ Official website: **[openminis.app](https://openminis.app)**
   <img alt="Get the APK on GitHub" height="48" src="assets/badge-android.svg" />
 </a>
 
-![Minis on iOS — deep research, chat, agent runtime, integrations, iCloud sync and granular permissions](assets/screenshots.png)
+![Unibot on iOS — deep research, chat, agent runtime, integrations, iCloud sync and granular permissions](assets/screenshots.png)
 
 ---
 
@@ -40,27 +40,27 @@ Official website: **[openminis.app](https://openminis.app)**
 | **Device integration** | Health, Calendar, Reminders, Contacts, HomeKit, Bluetooth, Clipboard, Media, Alarms and more, exposed to the agent as tools. |
 | **Browser automation** | The agent can browse and interact with the web on your behalf. |
 | **Skills & memory** | Extensible skills plus persistent memory across sessions. |
-| **Workspaces** | Organise work into separate contexts, addressable via `minis://workspace/`. |
+| **Workspaces** | Organise work into separate contexts, addressable via `unibot://workspace/`. |
 | **Native offloads** | Heavy or platform-specific work is handed to native code instead of the sandbox. |
 
 ---
 
-## What you can do with Minis
+## What you can do with Unibot
 
 A few things people actually use it for:
 
-- **Photograph a meal, log the nutrition** — Minis identifies the dishes, estimates
+- **Photograph a meal, log the nutrition** — Unibot identifies the dishes, estimates
   calories and macros, and writes them to Apple Health.
-- **Wake up to your timeline** — Shortcuts triggers Minis to fetch your X timeline,
+- **Wake up to your timeline** — Shortcuts triggers Unibot to fetch your X timeline,
   summarise it, synthesise speech, and play it as your alarm.
 - **Turn group chatter into tasks** — pull messages from a Telegram group, extract
   bugs and action items, deduplicate them, and file them into Apple Reminders.
 - **Mount your Obsidian vault** — research, clean up and write Markdown notes back
   into the vault as a normal workspace.
-- **Share anything into a calendar event** — send a page or message to Minis via the
+- **Share anything into a calendar event** — send a page or message to Unibot via the
   iOS Share Sheet and it creates the event, time and place included.
 
-**→ [OpenMinis/AwesomeMinis](https://github.com/OpenMinis/AwesomeMinis)** — a curated,
+**→ [OpenMinis/AwesomeUnibot](https://github.com/OpenMinis/AwesomeUnibot)** — a curated,
 community-contributed collection of use cases and workflows across health,
 productivity, research, finance and developer tooling.
 
@@ -73,13 +73,13 @@ references and assets — that the agent loads on demand when a request matches 
 Metadata stays in context for triggering; the body and bundled resources load only
 when the skill is actually used.
 
-Minis has its own tool system, but it does not require skills written specifically
+Unibot has its own tool system, but it does not require skills written specifically
 for it: **skills built for Claude, Codex, OpenClaw or Hermes Agent generally run in
-Minis as-is.** Skills that have been adapted to Minis' tools simply run better —
+Unibot as-is.** Skills that have been adapted to Unibot' tools simply run better —
 they can reach the Linux shell, device integrations and native offloads directly.
 
-**→ [OpenMinis/MinisSkills](https://github.com/OpenMinis/MinisSkills)** — skills
-adapted for Minis alongside ones built for it from scratch, covering TTS, search,
+**→ [OpenMinis/UnibotSkills](https://github.com/OpenMinis/UnibotSkills)** — skills
+adapted for Unibot alongside ones built for it from scratch, covering TTS, search,
 media downloads, health analysis, cloud APIs and more.
 
 ---
@@ -88,17 +88,17 @@ media downloads, health analysis, cloud APIs and more.
 
 > "the most impressive indie app I've seen in a while"
 >
-> — Federico Viticci, [**Open Minis Is the iOS Agent I Wish Siri AI Could Be**](https://www.macstories.net/reviews/open-minis-is-the-ios-agent-i-wish-siri-ai-could-be/),
+> — Federico Viticci, [**Open Unibot Is the iOS Agent I Wish Siri AI Could Be**](https://www.macstories.net/reviews/open-unibot-is-the-ios-agent-i-wish-siri-ai-could-be/),
 > MacStories (July 2026)
 
 > "在很大程度上实现甚至局部超越了 Apple Intelligence"
 >
-> — Ye Han, [**这可能是 iPhone 最强 Agent 软件，没有之一 丨Open Minis 入门指南**](https://zhuanlan.zhihu.com/p/2045570157783807562),
+> — Ye Han, [**这可能是 iPhone 最强 Agent 软件，没有之一 丨Open Unibot 入门指南**](https://zhuanlan.zhihu.com/p/2045570157783807562),
 > 知乎 / Zhihu (June 2026)
 
 > "可能是 iOS 端最强 AI Agent"
 >
-> — [**Open Minis：可能是 iOS 端最强 AI Agent**](https://www.appinn.com/open-minis/),
+> — [**Open Unibot：可能是 iOS 端最强 AI Agent**](https://www.appinn.com/open-unibot/),
 > 小众软件 / Appinn (March 2026)
 
 ---
@@ -118,7 +118,7 @@ always carries the latest APK.
 
 ## Building from source
 
-Minis ships a Linux sandbox inside the app, so the native dependencies (iSH on
+Unibot ships a Linux sandbox inside the app, so the native dependencies (iSH on
 iOS, PRoot on Android, FFmpeg, LAME) and the Alpine rootfs are **built from
 source** rather than committed as binaries.
 
@@ -133,7 +133,7 @@ cd OpenMinis
 # iOS  — order matters: FFmpeg links against LAME
 ./deps/build_lame.sh && ./deps/build_ffmpeg.sh
 ./deps/build_ish.sh && ./deps/prepare_alpine_rootfs.sh
-open src/ios/Minis.xcodeproj
+open src/ios/Unibot.xcodeproj
 
 # Android — needs NDK r28+
 ./deps/build_proot.sh && ./scripts/prepare_android_sandbox.sh
@@ -212,6 +212,6 @@ work is distributed under GPLv3. Bundled third-party licenses are listed in
 
 This repository is a mirror of a private development tree, so it **does not
 accept pull requests** — there is nowhere for them to land. Issues are the way
-to shape the product, and [AwesomeMinis](https://github.com/OpenMinis/AwesomeMinis)
-and [MinisSkills](https://github.com/OpenMinis/MinisSkills) both do take
+to shape the product, and [AwesomeUnibot](https://github.com/OpenMinis/AwesomeUnibot)
+and [UnibotSkills](https://github.com/OpenMinis/UnibotSkills) both do take
 contributions. See [CONTRIBUTING.md](CONTRIBUTING.md).

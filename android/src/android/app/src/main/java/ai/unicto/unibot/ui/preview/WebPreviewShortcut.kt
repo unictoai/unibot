@@ -14,7 +14,7 @@ import ai.unicto.unibot.logging.AppLogger
 /**
  * Helper that pins a `file:///var/minis/...` HTML preview as a launcher
  * shortcut. Clicking the shortcut from the home screen sends a
- * `minis://preview/html?path=...&title=...` deep link back to
+ * `unibot://preview/html?path=...&title=...` deep link back to
  * [MainActivity], which [ai.unicto.unibot.deeplink.DeepLinkHandler] parses
  * into [ai.unicto.unibot.deeplink.DeepLinkAction.OpenHtmlPreview]; the
  * chat layer then opens the fullscreen WebPreview.
@@ -60,9 +60,9 @@ object WebPreviewShortcut {
         // from a different session gets its own shortcut.
         val shortcutId = "html_preview_${(sessionId + resourcePath).hashCode().toUInt().toString(16)}"
 
-        // minis://session/<sessionId>/<resource-path>?title=<title>
+        // unibot://session/<sessionId>/<resource-path>?title=<title>
         val deepLink = Uri.Builder()
-            .scheme("minis")
+            .scheme("unibot")
             .authority("session")
             .path("/$sessionId$resourcePath")
             .appendQueryParameter("title", title)

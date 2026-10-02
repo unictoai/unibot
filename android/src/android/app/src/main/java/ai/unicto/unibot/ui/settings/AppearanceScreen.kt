@@ -2,7 +2,7 @@ package ai.unicto.unibot.ui.settings
 
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.AppIconRepository
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -530,7 +530,7 @@ fun AppearanceScreen(
         // unibot: not offered. The chat top bar shows the agent's name, not
         // the session title (see ChatScreen), so the "Show chat title" switch
         // has nothing left to govern. KEY_SHOW_CHAT_TITLE and its strings stay
-        // for minis-config compatibility; session titles live in the session
+        // for unibot-config compatibility; session titles live in the session
         // list and in the chat menu's "Rename chat".
 
         // -- Auto-Grouping (T-android-auto-grouping) --
@@ -602,7 +602,7 @@ fun AppearanceScreen(
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    MinisTextButton(onClick = {
+                    UnibotTextButton(onClick = {
                         chatInputLevel = 0; messageLevel = 0; appBaseLevel = 0
                         prefs.edit()
                             .putInt(KEY_FONT_CHAT_INPUT, 0)

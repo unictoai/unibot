@@ -1,6 +1,6 @@
 //
 //  SharedFolderVisibility.swift
-//  MinisApp
+//  UnibotApp
 //
 //  Shared storage for which top-level subdirs of the FileProvider
 //  (shared / skills / memory) should appear in the iOS Files app.

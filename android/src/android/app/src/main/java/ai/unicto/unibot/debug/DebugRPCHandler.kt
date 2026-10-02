@@ -180,7 +180,7 @@ class DebugRPCHandler(private val context: Context) {
             }
             // [T-android-sessions-cli-full] DEBUG-only invocation of the
             // SessionsOffloadHandler — parallels debug.modelUse.exec so test
-            // harnesses can verify minis-sessions-cli (list / search /
+            // harnesses can verify unibot-sessions-cli (list / search /
             // messages, incl. --full) end-to-end without an in-shell prompt.
             "debug.sessions.exec" -> {
                 if (!BuildConfig.DEBUG) {
@@ -188,18 +188,18 @@ class DebugRPCHandler(private val context: Context) {
                 }
                 handleSessionsExec(params)
             }
-            // [T-minis-config-provider-add] DEBUG-only invocation of the
+            // [T-unibot-config-provider-add] DEBUG-only invocation of the
             // ConfigOffloadHandler — parallels debug.modelUse.exec so test
-            // harnesses can exercise minis-config (get / set / set-batch /
+            // harnesses can exercise unibot-config (get / set / set-batch /
             // audit-*) without driving an in-shell prompt. The handler
             // re-uses the production ConfigBridge code path; we override
             // skipConfirmation under the hood via a dedicated arg the
             // production CLI never exposes.
-            "debug.minisConfig.exec" -> {
+            "debug.unibotConfig.exec" -> {
                 if (!BuildConfig.DEBUG) {
                     throw RPCException(-32601, "Method not found: $method. Call 'rpc.discover' to list available methods.")
                 }
-                handleMinisConfigExec(params)
+                handleUnibotConfigExec(params)
             }
 
             else -> throw RPCException(-32601, "Method not found: $method. Call 'rpc.discover' to list available methods.")
@@ -671,7 +671,7 @@ class DebugRPCHandler(private val context: Context) {
     private suspend fun handleSetClipboard(params: JSONObject): JSONObject {
         val text = params.optString("text")
         if (text.isEmpty()) throw RPCException(-32602, "Invalid params: 'text' is required")
-        val label = params.optString("label", "minis-debug")
+        val label = params.optString("label", "unibot-debug")
 
         // ClipboardManager.setPrimaryClip must run on a Looper thread, and the
         // write is only honoured while this app holds focus.
@@ -878,7 +878,7 @@ class DebugRPCHandler(private val context: Context) {
      * Run a command inside the PRoot sandbox for the given session and return
      * `{ output, exit_code }`. Mirrors iOS `debug.shellExecute`. Debug-only;
      * meant for integration-test harnesses that need to drive shell tools
-     * (`minis-browser-use`, `minis-open`, …) without going through the agent.
+     * (`unibot-browser-use`, `unibot-open`, …) without going through the agent.
      *
      * Params:
      *   command  (string, required) — command line to run under /bin/sh -c.
@@ -895,9 +895,9 @@ class DebugRPCHandler(private val context: Context) {
         val timeoutSec = params.optInt("timeout", 60).coerceIn(1, 900)
 
         // Mirror ChatViewModel's terminal lineCallback: scan raw lines for
-        // OSC MinisOpenURL markers before TerminalSanitizer strips them and
+        // OSC UnibotOpenURL markers before TerminalSanitizer strips them and
         // hand captured URLs to the broker so test harnesses driving
-        // `minis-open` via this RPC trigger the same in-app preview flow as
+        // `unibot-open` via this RPC trigger the same in-app preview flow as
         // real chat shell output.
         val capturedUrls = mutableListOf<String>()
         val result = try {
@@ -906,7 +906,7 @@ class DebugRPCHandler(private val context: Context) {
                 command = command,
                 timeout = timeoutSec * 1000L,
                 lineCallback = { rawLine ->
-                    val (_, urls) = ai.unicto.unibot.terminal.MinisUrlMarker.extract(rawLine)
+                    val (_, urls) = ai.unicto.unibot.terminal.UnibotUrlMarker.extract(rawLine)
                     capturedUrls.addAll(urls)
                 },
             )
@@ -914,7 +914,7 @@ class DebugRPCHandler(private val context: Context) {
             throw RPCException(-32000, "Shell execute failed: ${e.message}")
         }
         for (raw in capturedUrls) {
-            ai.unicto.unibot.terminal.MinisOpenUrlBroker.offer(raw)
+            ai.unicto.unibot.terminal.UnibotOpenUrlBroker.offer(raw)
         }
         return JSONObject()
             .put("output", result.output)
@@ -1189,7 +1189,7 @@ class DebugRPCHandler(private val context: Context) {
     /**
      * Direct invocation of [ai.unicto.unibot.sandbox.offload.ModelUseOffloadHandler]
      * for e2e harnesses. Mirrors [handleShizukuExec]; lets callers exercise the
-     * `minis-model-use` CLI without going through a real Alpine shell prompt.
+     * `unibot-model-use` CLI without going through a real Alpine shell prompt.
      * DEBUG-only.
      */
     private fun handleModelUseExec(params: JSONObject): JSONObject {
@@ -1224,7 +1224,7 @@ class DebugRPCHandler(private val context: Context) {
         val handler = ai.unicto.unibot.sandbox.offload.ModelUseOffloadHandler(context, app.providerRepository)
         val request = ai.unicto.unibot.sandbox.NativeOffloadRequest(
             pid = -1,
-            argv = listOf("minis-model-use") + finalArgv,
+            argv = listOf("unibot-model-use") + finalArgv,
             env = emptyMap(),
             cwd = "/",
             sessionId = null,
@@ -1241,7 +1241,7 @@ class DebugRPCHandler(private val context: Context) {
      * [T-android-sessions-cli-full] Direct invocation of
      * [ai.unicto.unibot.sandbox.offload.SessionsOffloadHandler] for e2e
      * harnesses. Mirrors [handleModelUseExec]; lets callers exercise the
-     * `minis-sessions-cli` CLI (list / search / messages, incl. --full)
+     * `unibot-sessions-cli` CLI (list / search / messages, incl. --full)
      * without going through a real Alpine shell prompt. DEBUG-only.
      */
     private fun handleSessionsExec(params: JSONObject): JSONObject {
@@ -1262,7 +1262,7 @@ class DebugRPCHandler(private val context: Context) {
         val handler = ai.unicto.unibot.sandbox.offload.SessionsOffloadHandler(app.chatRepository)
         val request = ai.unicto.unibot.sandbox.NativeOffloadRequest(
             pid = -1,
-            argv = listOf("minis-sessions-cli") + argvTail,
+            argv = listOf("unibot-sessions-cli") + argvTail,
             env = emptyMap(),
             cwd = "/",
             sessionId = null,
@@ -1276,7 +1276,7 @@ class DebugRPCHandler(private val context: Context) {
     }
 
     /**
-     * [T-minis-config-provider-add] DEBUG-only minis-config invocation
+     * [T-unibot-config-provider-add] DEBUG-only unibot-config invocation
      * that BYPASSES the user-confirmation gate. Targets the same code
      * path the offload CLI hits (ConfigBridge.performWriteBatch /
      * readField / auditList), so harnesses can verify add / set / get
@@ -1288,7 +1288,7 @@ class DebugRPCHandler(private val context: Context) {
      *   - subcommand=get:    `path` (string)
      *   - subcommand=audit-list: optional `limit` (int)
      */
-    private fun handleMinisConfigExec(params: JSONObject): JSONObject {
+    private fun handleUnibotConfigExec(params: JSONObject): JSONObject {
         val sub = params.optString("subcommand", "").takeIf { it.isNotEmpty() }
             ?: throw RPCException(
                 -32602,
@@ -1340,14 +1340,14 @@ class DebugRPCHandler(private val context: Context) {
                 val skip = params.optBoolean("skipConfirmation", true)
                 AppLogger.info(
                     "DebugRPC",
-                    "debug.minisConfig.exec set items=${items.length()} skipConfirmation=$skip",
+                    "debug.unibotConfig.exec set items=${items.length()} skipConfirmation=$skip",
                 )
                 // Hop to the main thread because performWriteBatch is a
                 // suspend fun that uses Dispatchers.Main internally.
                 kotlinx.coroutines.runBlocking {
                     ai.unicto.unibot.config.ConfigBridge.performWriteBatch(
                         items = items,
-                        caption = "debug.minisConfig.exec",
+                        caption = "debug.unibotConfig.exec",
                         actorRaw = "debug-rpc",
                         sessionId = null,
                         skipConfirmation = skip,
@@ -1366,7 +1366,7 @@ class DebugRPCHandler(private val context: Context) {
                 val filter = params.optString("filter", "").takeIf { it.isNotEmpty() }
                 val page = params.optInt("page", 0)
                 val pageSize = params.optInt("pageSize", 0)
-                AppLogger.info("DebugRPC", "debug.minisConfig.exec get path=$path")
+                AppLogger.info("DebugRPC", "debug.unibotConfig.exec get path=$path")
                 ai.unicto.unibot.config.ConfigBridge.readField(
                     path = path,
                     filter = filter,
@@ -1375,8 +1375,8 @@ class DebugRPCHandler(private val context: Context) {
                 )
             }
             // Discovery. Without these a caller has to know a collection's
-            // writable paths in advance; `topics` is `minis-config --help`'s
-            // index and `topic-help` is `minis-config <topic> --help`.
+            // writable paths in advance; `topics` is `unibot-config --help`'s
+            // index and `topic-help` is `unibot-config <topic> --help`.
             "topics" -> JSONObject().apply {
                 put("ok", true)
                 put("topics", ai.unicto.unibot.config.ConfigBridge.allTopics())

@@ -1,13 +1,13 @@
 //
 //  AppLocalization.swift
-//  MinisApp
+//  UnibotApp
 //
 //  [T-ios-inapp-language-string-localized] Makes the in-app language picker
 //  actually apply to every localized string, not just some of them.
 //
 //  The problem
 //  -----------
-//  `Bundle.enableLanguageOverride()` (MinisApp.swift) swizzles
+//  `Bundle.enableLanguageOverride()` (UnibotApp.swift) swizzles
 //  `Bundle.localizedString(forKey:value:table:)` so the in-app language choice
 //  is honoured without an app restart. That works for `Text("…")` and UIKit,
 //  which route through that ObjC method — but `String(localized:)` does NOT.

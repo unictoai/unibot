@@ -1,7 +1,7 @@
 import SwiftUI
 import PhotosUI
 
-/// Settings page for SOUL.md — Minis's persistent personality file.
+/// Settings page for SOUL.md — Unibot's persistent personality file.
 /// Lives between Skills and Memory in the Agent Runtime section.
 struct SoulSettingsView: View {
     @State private var name: String = SoulMetadata.default.name
@@ -574,7 +574,7 @@ private struct SoulIconEditing: ViewModifier {
         // transparency requirement was a presentation concern and moved to
         // `SoulIconView`, which clips every image to a rounded rectangle. Only
         // an undecodable image is refused here, so this path and the
-        // `minis-config` path apply exactly the same rule.
+        // `unibot-config` path apply exactly the same rule.
         switch SoulIconImage.encode(image) {
         case .success(let uri):
             await MainActor.run { icon = uri }

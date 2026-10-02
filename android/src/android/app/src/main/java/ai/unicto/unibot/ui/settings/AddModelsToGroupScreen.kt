@@ -28,8 +28,8 @@ import ai.unicto.unibot.data.model.SystemVoiceEntries
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.components.PickerModalityFilter
 import ai.unicto.unibot.ui.components.modelEntryPickerItems
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,8 +89,8 @@ fun AddModelsToGroupScreen(
                     }
                 },
                 actions = {
-                    MinisTextButton(onClick = onBack) { Text(stringResource(R.string.common_cancel)) }
-                    MinisButton(
+                    UnibotTextButton(onClick = onBack) { Text(stringResource(R.string.common_cancel)) }
+                    UnibotButton(
                         onClick = {
                             val updated = group.copy(
                                 memberEntryIds = (group.memberEntryIds + selectedIds).toMutableList()

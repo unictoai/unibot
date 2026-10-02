@@ -15,7 +15,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "AlarmReceiver"
-        private const val NOTIFICATION_GROUP = "minis_alarm_group"
+        private const val NOTIFICATION_GROUP = "unibot_alarm_group"
     }
 
     override fun onReceive(context: Context, intent: Intent) {

@@ -319,7 +319,7 @@ final class CrashReporter: NSObject, MXMetricManagerSubscriber {
     /// TweakInject, …). Detection only — no enforcement, no exit, no UI. The
     /// marker list is matched against the full image path lowercased, so both
     /// runtime-injected (/usr/lib/TweakInject/…) and repackaged-into-bundle
-    /// (Minis.app/Frameworks/SomeTweak.dylib via CydiaSubstrate) variants hit.
+    /// (Unibot.app/Frameworks/SomeTweak.dylib via CydiaSubstrate) variants hit.
     /// Cached after the first scan: the loaded-image set relevant to this
     /// check is fixed at process start.
     private static var cachedInjectedDylibs: [String]?
@@ -1074,7 +1074,7 @@ final class CrashReporter: NSObject, MXMetricManagerSubscriber {
     private func pruneOldReports() {
         let fm = FileManager.default
         let dir = crashReportsDir
-        // Only prune crash reports (crash-*.log). Running logs (minis-*.log) now
+        // Only prune crash reports (crash-*.log). Running logs (unibot-*.log) now
         // share this directory and are pruned by LoggingManager, not here.
         guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.creationDateKey])
             .filter({ $0.pathExtension == "log" && $0.lastPathComponent.hasPrefix("crash-") })

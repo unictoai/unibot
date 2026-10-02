@@ -54,7 +54,7 @@ import kotlinx.coroutines.launch
 const val OWN_KEY_DOCS = "https://github.com/unictoai/unibot/blob/main/docs/own-key.md"
 
 /** The in-app link that opens "add a provider" pre-filled for Alibaba Cloud Bailian. */
-const val OWN_KEY_DEEP_LINK = "minis://settings/providers/add?preset=bailian"
+const val OWN_KEY_DEEP_LINK = "unibot://settings/providers/add?preset=bailian"
 
 /**
  * The three ways on when the free allowance is spent (or nearly): one's own key — Alibaba

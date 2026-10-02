@@ -24,13 +24,13 @@ class Signal4RecorderWiringTest {
     }
 
     @Test
-    fun `linux to minis inside a realistic sentence is admitted as latin_phonetic`() {
+    fun `linux to unibot inside a realistic sentence is admitted as latin_phonetic`() {
         // "run linux in the sandbox" — the span is a small part of the sentence,
         // so the locality guard passes, exactly as in production.
         val sentence = "run linux in the sandbox"
         val verdict = CorrectionAdmission.judge(
             from = "linux",
-            to = "minis",
+            to = "unibot",
             normalizer = latin,
             sentenceLength = sentence.length,
         )
@@ -46,7 +46,7 @@ class Signal4RecorderWiringTest {
         // mis-hear. Signal ordering must keep this rejected.
         val verdict = CorrectionAdmission.judge(
             from = "linux",
-            to = "minis",
+            to = "unibot",
             normalizer = latin,
             sentenceLength = 5,
         )

@@ -1,8 +1,8 @@
 //
 //  ModelUseOffloadBridge.swift
-//  MinisApp
+//  UnibotApp
 //
-//  Swift bridge for minis-model-use offload — lists, searches,
+//  Swift bridge for unibot-model-use offload — lists, searches,
 //  and invokes LLM models using configured providers.
 //
 
@@ -83,7 +83,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
     ///      preferred when the model_id itself contains slashes.
     /// `entry_id` (UUID) also works but is opaque; prefer the human-readable forms.
     private static let usageHint =
-        "To invoke a model, pass `--model <model_id>` to `minis-model-use run`. " +
+        "To invoke a model, pass `--model <model_id>` to `unibot-model-use run`. " +
         "If multiple providers expose the same `model_id`, disambiguate either with " +
         "`--model <instance_label>/<model_id>` (e.g. `--model deepseek/deepseek-v4-flash`) " +
         "or with `--model <model_id> --provider <instance_label>` " +
@@ -798,7 +798,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
             let callerSid = ISHExecutionCoordinator.mountedSessionIdSnapshot ?? ""
             let attachDir: String
             if !callerSid.isEmpty {
-                attachDir = AIChatViewModel.minisAttachmentsPersistentDir(for: callerSid).path
+                attachDir = AIChatViewModel.unibotAttachmentsPersistentDir(for: callerSid).path
             } else {
                 attachDir = RootfsManager.shared.dataPath
                     .appendingPathComponent("var/minis/attachments").path
@@ -922,7 +922,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
                 return inst.label.lowercased() == pf || inst.id.lowercased() == pf
             }
             if filtered.isEmpty {
-                throw ModelUseError.modelNotFound("No provider matches --provider '\(providerFilter)'. Use 'minis-model-use list' to see provider labels.")
+                throw ModelUseError.modelNotFound("No provider matches --provider '\(providerFilter)'. Use 'unibot-model-use list' to see provider labels.")
             }
             agentEntries = filtered
         }
@@ -1040,7 +1040,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
                               let imgObj = part["image_url"] as? [String: Any],
                               let url = imgObj["url"] as? String {
                         // [T-model-use-image-url-resolution] resolveImageURL
-                        // now throws on unresolvable URLs (minis:// to a
+                        // now throws on unresolvable URLs (unibot:// to a
                         // missing file, file:// to nonexistent path, http(s)
                         // not yet supported, unknown scheme). Previously it
                         // returned nil silently, so the agent's call would
@@ -1615,7 +1615,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
         let callerSid2 = ISHExecutionCoordinator.mountedSessionIdSnapshot ?? ""
         let attachDir: String
         if !callerSid2.isEmpty {
-            attachDir = AIChatViewModel.minisAttachmentsPersistentDir(for: callerSid2).path
+            attachDir = AIChatViewModel.unibotAttachmentsPersistentDir(for: callerSid2).path
         } else {
             attachDir = RootfsManager.shared.dataPath
                 .appendingPathComponent("var/minis/attachments").path
@@ -1709,13 +1709,13 @@ private let logger = AppLogger(category: "ModelUseOffload")
     /// Supports:
     ///   - `data:<mime>;base64,...` — decode inline base64
     ///   - `file:///path` — read local file, infer MIME from extension
-    ///   - `minis://<scope>/<path>` — resolve to host storage via the
+    ///   - `unibot://<scope>/<path>` — resolve to host storage via the
     ///     per-session lookup used by the in-app image preview
     ///     (attachments, workspace, offloads, shared, skills, memory,
     ///     mounts). Active session id is inferred from the calling
     ///     agent's chat context.
     ///   - `/var/minis/<scope>/<path>` — bare Linux paths under
-    ///     `/var/minis/`, mapped to the same scopes as `minis://`.
+    ///     `/var/minis/`, mapped to the same scopes as `unibot://`.
     ///   - `/<absolute/host/path>` (other) — fall back to direct iSH
     ///     rootfs lookup.
     ///
@@ -1740,27 +1740,27 @@ private let logger = AppLogger(category: "ModelUseOffload")
             return LLMMessage.ImageAttachment(mimeType: mime, data: data)
         }
 
-        // minis:// — route through the in-app minis URL resolver so
+        // unibot:// — route through the in-app unibot URL resolver so
         // attachments/workspace/shared/etc. all work without the caller
         // knowing host paths.
-        if url.hasPrefix("minis://") {
+        if url.hasPrefix("unibot://") {
             guard let parsed = URL(string: url),
-                  let resolved = AIChatViewModel.resolveMinisURL(parsed) else {
-                throw ModelUseError.invalidInput("Could not resolve minis:// URL '\(url)' — file not found in any session scope. Try /var/minis/<scope>/<path> or file:///<host-path>.")
+                  let resolved = AIChatViewModel.resolveUnibotURL(parsed) else {
+                throw ModelUseError.invalidInput("Could not resolve unibot:// URL '\(url)' — file not found in any session scope. Try /var/minis/<scope>/<path> or file:///<host-path>.")
             }
             guard let data = FileManager.default.contents(atPath: resolved.path) else {
-                throw ModelUseError.invalidInput("minis:// URL '\(url)' resolved to \(resolved.path) but the file is unreadable")
+                throw ModelUseError.invalidInput("unibot:// URL '\(url)' resolved to \(resolved.path) but the file is unreadable")
             }
             let mime = Self.imageMimeForExtension(url)
             return LLMMessage.ImageAttachment(mimeType: mime, data: data)
         }
 
         // /var/minis/<scope>/<path> — Linux bare path equivalent of
-        // minis://<scope>/<path>. Rewrite to a minis:// URL and reuse
+        // unibot://<scope>/<path>. Rewrite to a unibot:// URL and reuse
         // the same resolver so behavior is identical.
         if url.hasPrefix("/var/minis/") {
             let stripped = String(url.dropFirst("/var/minis/".count))
-            // Split into scope + subpath. The minis URL "host" is the
+            // Split into scope + subpath. The unibot URL "host" is the
             // first path component.
             let parts = stripped.split(separator: "/", maxSplits: 1).map(String.init)
             guard !parts.isEmpty, !parts[0].isEmpty else {
@@ -1768,9 +1768,9 @@ private let logger = AppLogger(category: "ModelUseOffload")
             }
             let scope = parts[0]
             let sub = parts.count > 1 ? parts[1] : ""
-            let minisURLStr = sub.isEmpty ? "minis://\(scope)" : "minis://\(scope)/\(sub)"
-            guard let parsed = URL(string: minisURLStr),
-                  let resolved = AIChatViewModel.resolveMinisURL(parsed) else {
+            let unibotURLStr = sub.isEmpty ? "unibot://\(scope)" : "unibot://\(scope)/\(sub)"
+            guard let parsed = URL(string: unibotURLStr),
+                  let resolved = AIChatViewModel.resolveUnibotURL(parsed) else {
                 throw ModelUseError.invalidInput("Could not resolve '\(url)' — file not found in scope '\(scope)'. Check the path and that the file exists.")
             }
             guard let data = FileManager.default.contents(atPath: resolved.path) else {
@@ -1782,7 +1782,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
 
         // http(s):// — not supported. Tell the agent how to do it.
         if url.hasPrefix("http://") || url.hasPrefix("https://") {
-            throw ModelUseError.invalidInput("http(s):// image URLs are not supported by minis-model-use. Download first with `shell_execute` (curl/wget) into /var/minis/workspace/, then reference the local path.")
+            throw ModelUseError.invalidInput("http(s):// image URLs are not supported by unibot-model-use. Download first with `shell_execute` (curl/wget) into /var/minis/workspace/, then reference the local path.")
         }
 
         // file:// — keep behavior, but throw on missing.
@@ -1805,10 +1805,10 @@ private let logger = AppLogger(category: "ModelUseOffload")
                 let mime = Self.imageMimeForExtension(url)
                 return LLMMessage.ImageAttachment(mimeType: mime, data: data)
             }
-            throw ModelUseError.invalidInput("Image file not found at '\(url)'. For minis-scope files prefer /var/minis/<scope>/<path> or minis://<scope>/<path>.")
+            throw ModelUseError.invalidInput("Image file not found at '\(url)'. For unibot-scope files prefer /var/minis/<scope>/<path> or unibot://<scope>/<path>.")
         }
 
-        throw ModelUseError.invalidInput("Unsupported image_url '\(url)'. Use a data: URL, file:///host/path, /var/minis/<scope>/<path>, or minis://<scope>/<path>.")
+        throw ModelUseError.invalidInput("Unsupported image_url '\(url)'. Use a data: URL, file:///host/path, /var/minis/<scope>/<path>, or unibot://<scope>/<path>.")
     }
 
     /// Read a file given a Linux-side path. Tries the iSH rootfs data
@@ -1871,10 +1871,10 @@ private let logger = AppLogger(category: "ModelUseOffload")
     /// always matches where the bytes landed.
     ///
     /// Two host-storage shapes exist and each maps to a different guest path:
-    ///   1. Session-persistent dirs under app Library (`.../minis/<sid>/{attachments,
+    ///   1. Session-persistent dirs under app Library (`.../unibot/<sid>/{attachments,
     ///      workspace,offloads}/`). These are NOT under rootfs `dataPath`, so
     ///      `toLinuxPath` can't strip them — they're reachable in the guest only
-    ///      via the per-session symlinks `ensureMinisSymlinks` maintains
+    ///      via the per-session symlinks `ensureUnibotSymlinks` maintains
     ///      (`/var/minis/attachments` → `.../<sid>/attachments`, etc.). Map by
     ///      matching the persistent-dir prefix for THIS caller session and
     ///      substituting the corresponding `/var/minis/<name>` root, preserving
@@ -1897,12 +1897,12 @@ private let logger = AppLogger(category: "ModelUseOffload")
         // Case 1: match a session-persistent dir prefix for this caller.
         if !callerSid.isEmpty {
             let mappings: [(persistDir: String, linuxDir: String)] = [
-                (AIChatViewModel.minisAttachmentsPersistentDir(for: callerSid).path,
-                 AIChatViewModel.minisAttachmentsLinuxDir),
-                (AIChatViewModel.minisWorkspacePersistentDir(for: callerSid).path,
-                 AIChatViewModel.minisWorkspaceLinuxDir),
-                (AIChatViewModel.minisOffloadsPersistentDir(for: callerSid).path,
-                 AIChatViewModel.minisOffloadsLinuxDir),
+                (AIChatViewModel.unibotAttachmentsPersistentDir(for: callerSid).path,
+                 AIChatViewModel.unibotAttachmentsLinuxDir),
+                (AIChatViewModel.unibotWorkspacePersistentDir(for: callerSid).path,
+                 AIChatViewModel.unibotWorkspaceLinuxDir),
+                (AIChatViewModel.unibotOffloadsPersistentDir(for: callerSid).path,
+                 AIChatViewModel.unibotOffloadsLinuxDir),
             ]
             for (persistDir, linuxDir) in mappings {
                 for prefix in [persistDir, "/private" + persistDir] {
@@ -1920,7 +1920,7 @@ private let logger = AppLogger(category: "ModelUseOffload")
         // Last resort: preserve prior behavior (announce under attachments by
         // basename). Only reachable when the file is neither under dataPath nor
         // any known persistent dir — shouldn't happen for our own save paths.
-        return AIChatViewModel.minisAttachmentsLinuxDir + "/" + (filePath as NSString).lastPathComponent
+        return AIChatViewModel.unibotAttachmentsLinuxDir + "/" + (filePath as NSString).lastPathComponent
     }
 
     /// Strip MIME parameters (e.g. "audio/L16;codec=pcm;rate=24000" → "audio/L16")
@@ -2162,11 +2162,11 @@ enum ModelUseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelNotFound(let id):
-            return "Model '\(id)' not found. Use 'minis-model-use list' to see available models."
+            return "Model '\(id)' not found. Use 'unibot-model-use list' to see available models."
         case .invalidInput(let msg):
             return msg
         case .modalityNotSupported(let model, let required, let supported):
-            return "Model '\(model)' does not support \(required). Supported modalities: \(supported.joined(separator: ", ")). Use 'minis-model-use list' to find a model with the required capability."
+            return "Model '\(model)' does not support \(required). Supported modalities: \(supported.joined(separator: ", ")). Use 'unibot-model-use list' to find a model with the required capability."
         }
     }
 }

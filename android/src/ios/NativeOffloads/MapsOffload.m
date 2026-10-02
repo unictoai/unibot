@@ -1,6 +1,6 @@
 //
 //  MapsOffload.m
-//  MinisApp
+//  UnibotApp
 //
 //  Native offload handler for `apple-maps`.
 //  Subcommands: search, route, eta

@@ -79,7 +79,7 @@ internal class ScheduledNotificationStore(context: Context) {
     }
 
     companion object {
-        private const val PREFS = "minis_scheduled_notifications"
+        private const val PREFS = "unibot_scheduled_notifications"
         private const val KEY = "scheduled"
     }
 }

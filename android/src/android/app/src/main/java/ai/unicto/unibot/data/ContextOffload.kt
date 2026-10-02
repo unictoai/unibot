@@ -9,7 +9,7 @@ import java.io.File
  * the model can `file_read` them later while we replace the in-history copy
  * with a tiny `[CONTEXT OFFLOADED] ... <linux-path>` stub.
  *
- * Mirrors iOS `AIChatViewModel.minisOffloadsPersistentDir(for:)`,
+ * Mirrors iOS `AIChatViewModel.unibotOffloadsPersistentDir(for:)`,
  * `offloadContextContent(_:toolId:toolName:ext:)`, and
  * `offloadContextImage(_:toolId:mimeType:)` (AIChatViewModel.swift:6964 +
  * 7170 + 7188). Same path layout — `.../offloads/tools/<name>_<id>.<ext>` —
@@ -23,7 +23,7 @@ import java.io.File
  * required for this feature).
  */
 object ContextOffload {
-    /** Linux-side mount point — keep in lock-step with iOS `minisOffloadsLinuxDir`. */
+    /** Linux-side mount point — keep in lock-step with iOS `unibotOffloadsLinuxDir`. */
     const val LINUX_OFFLOADS_DIR = "/var/minis/offloads"
 
     /** Sentinel prefix on stub strings — the agent loop checks this to skip

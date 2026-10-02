@@ -1,6 +1,6 @@
 //
 //  AutoTouch.m
-//  MinisApp
+//  UnibotApp
 //
 //  Simulates touch events using private UIKit APIs for debug/testing.
 //

@@ -109,7 +109,7 @@ object SoulIcon {
     }
 
     /**
-     * [T-android-soul-icon-config-images] Turn a `minis-config` value into
+     * [T-android-soul-icon-config-images] Turn a `unibot-config` value into
      * bitmap bytes.
      *
      * Mirrors iOS `fe2f3ae8b`: an address is only an IMPORT SOURCE. Whatever
@@ -146,10 +146,10 @@ object SoulIcon {
                     "remote URLs aren't supported on Android — download the file first, " +
                         "then pass a path like /var/minis/attachments/icon.png",
                 )
-            v.startsWith("minis://") -> {
-                // minis://attachments/x.png -> /var/minis/attachments/x.png
-                val rest = v.removePrefix("minis://").trimStart('/')
-                if (rest.isEmpty()) Source.Unsupported("empty minis:// path")
+            v.startsWith("unibot://") -> {
+                // unibot://attachments/x.png -> /var/minis/attachments/x.png
+                val rest = v.removePrefix("unibot://").trimStart('/')
+                if (rest.isEmpty()) Source.Unsupported("empty unibot:// path")
                 else Source.LinuxPath("/var/minis/$rest")
             }
             v.startsWith("data:") -> {
@@ -170,7 +170,7 @@ object SoulIcon {
                 decodeBase64(v)?.let { Source.Bytes(it) }
                     ?: Source.Unsupported("that base64 could not be decoded")
             else -> Source.Unsupported(
-                "not an emoji, a data URI, base64, a minis:// resource or a /var/minis path",
+                "not an emoji, a data URI, base64, a unibot:// resource or a /var/minis path",
             )
         }
     }

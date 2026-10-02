@@ -59,9 +59,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.components.MinisButton
-import ai.unicto.unibot.ui.components.MinisOutlinedButton
-import ai.unicto.unibot.ui.components.MinisTextButton
+import ai.unicto.unibot.ui.components.UnibotButton
+import ai.unicto.unibot.ui.components.UnibotOutlinedButton
+import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.scheduled.ScheduledRepeatMode
 import ai.unicto.unibot.scheduled.ScheduledTargetMode
 import ai.unicto.unibot.scheduled.ScheduledTask
@@ -291,7 +291,7 @@ fun ScheduledTaskEditScreen(
                         }
                     },
                     confirmButton = {
-                        MinisTextButton(onClick = { vm.clearRunNowState() }) {
+                        UnibotTextButton(onClick = { vm.clearRunNowState() }) {
                             Text(stringResource(R.string.scheduled_task_run_now_dismiss))
                         }
                     },
@@ -305,17 +305,17 @@ fun ScheduledTaskEditScreen(
                     confirmButton = {
                         val sid = state.sessionId
                         if (sid != null) {
-                            MinisTextButton(onClick = { vm.clearRunNowState(); onOpenSession(sid) }) {
+                            UnibotTextButton(onClick = { vm.clearRunNowState(); onOpenSession(sid) }) {
                                 Text(stringResource(R.string.scheduled_task_run_now_open_session))
                             }
                         } else {
-                            MinisTextButton(onClick = { vm.clearRunNowState() }) {
+                            UnibotTextButton(onClick = { vm.clearRunNowState() }) {
                                 Text(stringResource(R.string.ok))
                             }
                         }
                     },
                     dismissButton = if (state.sessionId != null) {
-                        { MinisTextButton(onClick = { vm.clearRunNowState() }) {
+                        { UnibotTextButton(onClick = { vm.clearRunNowState() }) {
                             Text(stringResource(R.string.scheduled_task_run_now_dismiss))
                         } }
                     } else null,
@@ -327,7 +327,7 @@ fun ScheduledTaskEditScreen(
                     title = { Text(stringResource(R.string.scheduled_task_run_now_failed)) },
                     text = { Text(stringResource(R.string.scheduled_task_run_now_failed_body)) },
                     confirmButton = {
-                        MinisTextButton(onClick = { vm.clearRunNowState() }) {
+                        UnibotTextButton(onClick = { vm.clearRunNowState() }) {
                             Text(stringResource(R.string.ok))
                         }
                     },
@@ -537,16 +537,16 @@ private fun EditFormBody(
 
         HorizontalDivider()
 
-        MinisOutlinedButton(onClick = onRunNow, enabled = canRunNow, modifier = Modifier.fillMaxWidth()) {
+        UnibotOutlinedButton(onClick = onRunNow, enabled = canRunNow, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.scheduled_task_run_now))
         }
-        MinisButton(onClick = onSave, enabled = canSave, modifier = Modifier.fillMaxWidth()) {
+        UnibotButton(onClick = onSave, enabled = canSave, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.scheduled_task_save))
         }
         if (!isNew) {
-            MinisOutlinedButton(
+            UnibotOutlinedButton(
                 onClick = onDelete,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.fillMaxWidth(),
@@ -718,7 +718,7 @@ private fun SessionPickerDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { MinisTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { UnibotTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -757,7 +757,7 @@ private fun MessagePickerDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { MinisTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { UnibotTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -768,11 +768,11 @@ private fun DateDialog(initialMs: Long?, onDismiss: () -> Unit, onPick: (Long) -
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            MinisTextButton(onClick = {
+            UnibotTextButton(onClick = {
                 state.selectedDateMillis?.let { onPick(startOfLocalDay(it)) }
             }) { Text(stringResource(R.string.ok)) }
         },
-        dismissButton = { MinisTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { UnibotTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     ) {
         DatePicker(state = state)
     }

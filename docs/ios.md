@@ -20,9 +20,9 @@ iOS half was deleted when the project started and is now restored **inside that 
 than in a second subtree, is what keeps `git subtree pull` working for both platforms at once.
 
 ```
-android/src/ios/                 the Xcode project: Minis.xcodeproj, app, extensions, tests
+android/src/ios/                 the Xcode project: Unibot.xcodeproj, app, extensions, tests
 android/src/ios/Unibot/        ours: unibot Cloud client and screens (a synchronized folder
-                                 of the Minis target; drop a .swift file in, it is compiled)
+                                 of the Unibot target; drop a .swift file in, it is compiled)
 android/src/ios/fastlane/        the TestFlight lane
 android/deps/build_lame.sh       LAME → FFmpeg → iSH → Alpine rootfs → rclone, in that order
 android/deps/build_ffmpeg.sh
@@ -46,9 +46,9 @@ Applied by `python scripts/rebrand.py` (idempotent; run after every upstream pul
   `.FileProvider`), the app group `group.ai.unicto.unibot.app`, the iCloud container
   `iCloud.ai.unicto.unibot.app`, the background-task, UTType and URL-scheme ids that carry the
   bundle id. Unlike Android there is no source-package constraint on iOS, so the whole family
-  moves. The `minis://` and `minis-mcp://` schemes stay: they are upstream's contract with its
+  moves. The `unibot://` and `unibot-mcp://` schemes stay: they are upstream's contract with its
   own sandbox.
-- **Names.** Display name unibot, "Share to unibot", "unibot Files"; "Minis" → "unibot"
+- **Names.** Display name unibot, "Share to unibot", "unibot Files"; "Unibot" → "unibot"
   in Swift string literals, in `Localizable.xcstrings` (keys renamed, all nine translations
   updated) and in the Info.plist usage descriptions in every language. The OpenRouter
   `HTTP-Referer` keeps pointing at OpenMinis, as on Android: it is attribution, not identity.
@@ -81,10 +81,10 @@ git clone --recurse-submodules https://github.com/unictoai/unibot.git && cd unib
 ./deps/build_ish.sh && ./deps/prepare_alpine_rootfs.sh  # the sandbox kernel and its rootfs
 ./deps/build_rclone_ios.sh                              # Rclone.xcframework
 cp src/ios/Configs/ProviderCustomization.xcconfig.example src/ios/Configs/ProviderCustomization.xcconfig
-open src/ios/Minis.xcodeproj
+open src/ios/Unibot.xcodeproj
 ```
 
-Pick the **Minis** scheme, set your team under *Signing & Capabilities* (the project ships with an
+Pick the **Unibot** scheme, set your team under *Signing & Capabilities* (the project ships with an
 empty `DEVELOPMENT_TEAM`), build for a device: the native libraries are device-only, so the
 simulator does not link — see the troubleshooting section of BUILDING.md.
 

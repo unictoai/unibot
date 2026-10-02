@@ -455,7 +455,7 @@ fun ChatSplitScaffold(
     // centred on the seam and drag both ways, while occupying no layout width
     // at all — the panes still meet exactly at the boundary.
     // [T-android-new-chat-shortcut] Hardware-keyboard shortcuts, mirroring the
-    // two iOS already carries (MinisApp.swift ⌘N, ContentView ⌘F).
+    // two iOS already carries (UnibotApp.swift ⌘N, ContentView ⌘F).
     //
     // Handled HERE, at the root of the list/detail pair, for the same reason
     // iOS attaches ⌘F to the list's view tree: the shortcut must fire wherever
