@@ -908,4 +908,9 @@
     <string name="ub_automation_widget_tasks_desc">Your scheduled routines with their next run time. Tap a routine to edit it, tap the header for the full list.</string>
     <string name="ub_automation_approvals_section">Background approvals</string>
     <string name="ub_automation_approvals_desc">When the agent needs your yes while the app is in the background — a routine at 3 a.m. wanting to delete something — a notification with Allow and Deny buttons appears. The decision resumes the agent immediately; the app does not need to be open. Standing grants are only ever given from the in-chat approval card, never from a notification.</string>
+    <!-- P6: projects, visual context, read aloud, autofill settings rows -->
+    <string name="ub_projects_title">Projects</string>
+    <string name="ub_visual_ask_title">Ask about camera</string>
+    <string name="ub_read_aloud_title">Read aloud</string>
+    <string name="ub_autofill_title">Autofill</string>
 </resources>

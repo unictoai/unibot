@@ -50,6 +50,9 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.CameraAlt // unibot P6: visual ask row
+import androidx.compose.material.icons.outlined.RecordVoiceOver // unibot P6: read aloud row
+import androidx.compose.material.icons.outlined.AutoFixHigh // unibot P6: autofill row
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -107,6 +110,10 @@ fun SettingsScreen(
     onComputersClick: () -> Unit = {}, // unibot: Settings → Computers (the phone drives a PC)
     onCodingClick: () -> Unit = {}, // unibot: Settings → Coding agents (Cursor/Codex/Claude Code on the account's computers)
     onPairingClick: () -> Unit = {}, // P4: Settings → Pair a computer (v0.2.0)
+    onProjectsClick: () -> Unit = {}, // unibot P6: Settings → Projects (chats + files + instructions bundles)
+    onVisualAskClick: () -> Unit = {}, // unibot P6: Settings → Ask about camera (visual context)
+    onReadAloudClick: () -> Unit = {}, // unibot P6: Settings → Read aloud (spoken replies, TTS voices)
+    onAutofillClick: () -> Unit = {}, // unibot P6: Settings → Autofill (opt-in, on-device)
     onPermissionsClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
@@ -247,6 +254,9 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_memory), icon = Icons.Outlined.Psychology, onClick = onMemoryClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // unibot P6: project workspaces — chats + files + custom instructions bundles.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_projects_title), icon = Icons.Outlined.Folder, onClick = onProjectsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_sysfiles_title), icon = Icons.Outlined.Description, onClick = onSystemFilesClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_skills), icon = Icons.Outlined.Extension, onClick = onSkillsClick)
@@ -344,11 +354,20 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mount_external_folders), icon = Icons.Outlined.FolderShared, onClick = onMountedFoldersClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_backup_restore), icon = Icons.Outlined.Backup, onClick = onBackupClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // unibot P6: visual context — capture a photo and ask the chat about it.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_visual_ask_title), icon = Icons.Outlined.CameraAlt, onClick = onVisualAskClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // unibot P6: autofill from the on-device profile — off by default, opt-in.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_autofill_title), icon = Icons.Outlined.AutoFixHigh, onClick = onAutofillClick)
             }
             ai.unicto.unibot.ui.muse.MuseGap()
 
             // -- The app --
             ai.unicto.unibot.ui.muse.MuseCard {
+                // unibot P6: spoken replies — on-device TTS voices, engine status, speed.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_read_aloud_title), icon = Icons.Outlined.RecordVoiceOver, onClick = onReadAloudClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_appearance), icon = Icons.Outlined.Palette, onClick = onAppearanceClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [P1-app-lock] Biometric / device-credential gate on foreground.

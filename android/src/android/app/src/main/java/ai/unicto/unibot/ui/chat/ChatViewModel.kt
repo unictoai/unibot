@@ -10991,6 +10991,10 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         )
 
         return buildString {
+            // unibot P6 Projects: a filed chat's project instructions prepend as a
+            // labeled block — stable per project, so it sits before the cache-able prefix.
+            ai.unicto.unibot.projects.ProjectPrompt.instructionsBlock(context, sessionId)
+                ?.let { append(it).append("\n\n") }
             append(base)
             if (skillFragment != null) {
                 append("\n\n")

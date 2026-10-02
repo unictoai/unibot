@@ -668,6 +668,22 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
+
+        <!-- P6: autofill service — strictly opt-in (in-app toggle + the user
+             must also pick unibot in system autofill settings). Fills only
+             name/email/phone from the on-device profile; never saves forms,
+             never networks. Disabled by default. -->
+        <service
+            android:name=".autofill.UnibotAutofillService"
+            android:exported="true"
+            android:label="unibot Autofill"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/autofill_service_config" />
         </service>
 
     </application>
