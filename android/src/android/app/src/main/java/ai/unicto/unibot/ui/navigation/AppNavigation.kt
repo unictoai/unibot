@@ -683,6 +683,13 @@ fun AppNavigation(
                 onOpenProviders = { navController.safeNavigate(Routes.PROVIDER_LIST) },
             )
         }
+        // unibot: the fourth model — the offline LLM (llama.cpp). Opt-in
+        // downloads + route selector; also reachable from the chat model picker.
+        composable(ai.unicto.unibot.ui.local.ROUTE_ON_DEVICE_MODELS) {
+            ai.unicto.unibot.ui.local.OnDeviceModelsScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
         // unibot: unibot Cloud — sign in with a phone/e-mail code for a starter allowance,
         // and the account page (balance, sign out) behind Settings.
         composable(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) {
@@ -816,6 +823,7 @@ fun AppNavigation(
                 onSystemFilesClick = { navController.safeNavigate(ai.unicto.unibot.ui.sysfiles.ROUTE_SYSTEM_FILES) }, // unibot
                 onAvatarClick = { navController.safeNavigate(ai.unicto.unibot.ui.avatar.ROUTE_AVATAR_STUDIO) }, // unibot
                 onMediaModelsClick = { navController.safeNavigate(ai.unicto.unibot.ui.media.ROUTE_MEDIA_MODELS) }, // unibot
+                onOnDeviceModelsClick = { navController.safeNavigate(ai.unicto.unibot.ui.local.ROUTE_ON_DEVICE_MODELS) }, // unibot: offline LLM
                 onCloudClick = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // unibot
                 onHandsClick = { navController.safeNavigate(ai.unicto.unibot.ui.hands.ROUTE_HANDS) }, // unibot
                 onComputersClick = { navController.safeNavigate(ai.unicto.unibot.ui.reach.ROUTE_COMPUTERS) }, // unibot

@@ -111,6 +111,7 @@ fun SettingsScreen(
     onSystemFilesClick: () -> Unit = {}, // unibot
     onAvatarClick: () -> Unit = {}, // unibot
     onMediaModelsClick: () -> Unit = {}, // unibot: Settings → Image & video models
+    onOnDeviceModelsClick: () -> Unit = {}, // unibot: Settings → On-device models (offline LLM)
     onCloudClick: () -> Unit = {}, // unibot: Settings → unibot Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // unibot: Settings → Hands (the screen as a hand)
     onComputersClick: () -> Unit = {}, // unibot: Settings → Computers (the phone drives a PC)
@@ -242,6 +243,13 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Movie,
                     value = if (ai.unicto.unibot.media.MediaModels.imageEndpoint(context) == null) stringResource(R.string.ub_media_not_set) else null,
                     onClick = onMediaModelsClick,
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // unibot: the offline LLM — opt-in downloads, works in airplane mode.
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = "On-device models",
+                    icon = Icons.Outlined.Smartphone,
+                    onClick = onOnDeviceModelsClick,
                 )
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(
