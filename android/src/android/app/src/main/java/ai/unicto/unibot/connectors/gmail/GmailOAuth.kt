@@ -76,10 +76,19 @@ object GmailOAuth {
             val pkce = McpPkce.newPkce()
             var server: OAuthCallbackServer? = null
             try {
+                val authError = java.util.concurrent.atomic.AtomicReference<String?>(null)
                 val callback = suspendCancellableCoroutine<Pair<String, String?>?> { cont ->
-                    val srv = OAuthCallbackServer(LOOPBACK_PORT, FALLBACK_PORTS) { code, state ->
-                        if (cont.isActive) cont.resume(code to state)
-                    }
+                    val srv = OAuthCallbackServer(
+                        LOOPBACK_PORT,
+                        FALLBACK_PORTS,
+                        onCode = { code, state ->
+                            if (cont.isActive) cont.resume(code to state)
+                        },
+                        onError = { err ->
+                            authError.set(err)
+                            if (cont.isActive) cont.resume(null)
+                        },
+                    )
                     server = srv
                     srv.onExternalCancel = { if (cont.isActive) cont.resume(null) }
                     srv.start()
@@ -93,7 +102,11 @@ object GmailOAuth {
                     CustomTabsIntent.Builder().setShowTitle(true).build()
                         .launchUrl(context, Uri.parse(authUrl))
                     AppLogger.info(TAG, "[Authorize] opened Custom Tab")
-                } ?: return@withContext Result.Cancelled
+                } ?: return@withContext run {
+                    val denied = authError.get()
+                    if (denied != null) Result.Failed("Google sign-in was not approved ($denied).")
+                    else Result.Cancelled
+                }
 
                 val (code, state) = callback
                 if (state != null && state != pkce.state) {
@@ -146,8 +159,17 @@ object GmailOAuth {
             http.newCall(request).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) {
-                    AppLogger.error(TAG, "[Authorize] token exchange HTTP ${resp.code}")
-                    return Result.Failed("Google sign-in failed (${resp.code}).")
+                    // Surface Google's own error (e.g. redirect_uri_mismatch,
+                    // invalid_grant) instead of a bare status code.
+                    val detail = runCatching {
+                        val ej = JSONObject(text)
+                        listOf(ej.optString("error", ""), ej.optString("error_description", ""))
+                            .filter { it.isNotBlank() }.joinToString(": ")
+                    }.getOrDefault("")
+                    AppLogger.error(TAG, "[Authorize] token exchange HTTP ${resp.code} $detail")
+                    val msg = if (detail.isNotBlank()) "Google sign-in failed (${resp.code}): $detail"
+                    else "Google sign-in failed (${resp.code})."
+                    return Result.Failed(msg)
                 }
                 val json = JSONObject(text)
                 val access = json.optString("access_token", "")

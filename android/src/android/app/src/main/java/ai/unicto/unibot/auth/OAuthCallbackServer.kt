@@ -10,6 +10,7 @@ class OAuthCallbackServer(
     private val port: Int,
     private val fallbackPorts: List<Int> = emptyList(),
     private val onCode: (code: String, state: String?) -> Unit,
+    private val onError: ((error: String) -> Unit)? = null,
 ) {
     companion object {
         private const val TAG = "OAuthCallbackServer"
@@ -36,25 +37,28 @@ class OAuthCallbackServer(
     @Volatile var onExternalCancel: (() -> Unit)? = null
 
     fun start() {
+        // Bind synchronously so boundPort is the real port when start()
+        // returns. (Binding in the accept thread raced the auth-URL build,
+        // which could then advertise a port we didn't end up on.)
+        val portsToTry = listOf(port) + fallbackPorts
+        var bound = false
+        for (p in portsToTry) {
+            try {
+                serverSocket = ServerSocket(p)
+                boundPort = p
+                bound = true
+                break
+            } catch (e: java.net.BindException) {
+                Log.w(TAG, "Port $p in use, trying next...")
+            }
+        }
+        if (!bound) {
+            Log.e(TAG, "All ports unavailable: $portsToTry")
+            return
+        }
         running = true
         Thread {
             try {
-                val portsToTry = listOf(port) + fallbackPorts
-                var bound = false
-                for (p in portsToTry) {
-                    try {
-                        serverSocket = ServerSocket(p)
-                        boundPort = p
-                        bound = true
-                        break
-                    } catch (e: java.net.BindException) {
-                        Log.w(TAG, "Port $p in use, trying next...")
-                    }
-                }
-                if (!bound) {
-                    Log.e(TAG, "All ports unavailable: $portsToTry")
-                    return@Thread
-                }
                 Log.d(TAG, "Listening on port $boundPort")
                 while (running) {
                     val socket = serverSocket?.accept() ?: break
@@ -98,16 +102,21 @@ class OAuthCallbackServer(
                         }
 
                         // Parse GET /callback?code=xxx&state=yyy HTTP/1.1
+                        // (or ?error=access_denied when the user backs out).
+                        // Use rawQuery: URI.query is already percent-decoded,
+                        // so decoding again would mangle codes containing
+                        // encoded '+' etc.
                         val parts = requestLine.split(" ")
                         if (parts.size >= 2) {
                             val uri = URI("http://localhost${ parts[1] }")
-                            val params = uri.query?.split("&")?.associate {
+                            val params = uri.rawQuery?.split("&")?.associate {
                                 val kv = it.split("=", limit = 2)
                                 kv[0] to (if (kv.size > 1) java.net.URLDecoder.decode(kv[1], "UTF-8") else "")
                             } ?: emptyMap()
 
                             val code = params["code"]
                             val state = params["state"]
+                            val error = params["error"]
 
                             // Send response
                             val html = "<html><body><h1>Authorization complete</h1><p>You can close this tab.</p><script>window.close()</script></body></html>"
@@ -117,6 +126,12 @@ class OAuthCallbackServer(
 
                             if (code != null) {
                                 onCode(code, state)
+                                stop()
+                                return@Thread
+                            }
+                            if (error != null) {
+                                Log.w(TAG, "Authorization error: $error")
+                                onError?.invoke(error)
                                 stop()
                                 return@Thread
                             }
