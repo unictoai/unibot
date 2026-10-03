@@ -220,6 +220,31 @@ object LlamaModelManager {
         return (am?.memoryClass ?: 512) <= 256
     }
 
+    /**
+     * [v1.2 Batch F] RAM-based model recommendation for the "Recommended for
+     * your phone" card. Picks the strongest model whose RAM estimate fits
+     * comfortably inside this phone's total RAM, and returns a human RAM
+     * label (e.g. "5.8 GB") for the card's copy.
+     */
+    data class RamRecommendation(
+        val model: LlamaModel,
+        val ramLabel: String,
+    )
+
+    fun ramRecommendation(context: Context): RamRecommendation {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am?.getMemoryInfo(info)
+        val totalGb = info.totalMem / 1024.0 / 1024.0 / 1024.0
+        val model = when {
+            totalGb >= 5.5 -> modelById("qwen3-1.7b")
+            totalGb >= 3.0 -> modelById("lfm2-1.2b")
+            else -> modelById("lfm2.5-230m")
+        } ?: models[0]
+        val label = "%.1f GB".format(java.util.Locale.US, totalGb)
+        return RamRecommendation(model, label)
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var downloadJob: Job? = null
     private var activeModel: LlamaModel? = null

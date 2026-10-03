@@ -61,14 +61,29 @@ internal object LlamaCpp {
      * Streams each decoded piece through [callback] on the calling thread,
      * then returns the complete text. Stops at the end-of-generation token,
      * [maxTokens], or [nativeCancel]. Blocking — call off the UI thread.
+     *
+     * [v1.2 Batch F] Sampler parameters (temperature, top-p, top-k, repeat
+     * penalty) now flow from the per-model [SamplerSettings] the user edits
+     * on the Sampler settings screen — the native sampler chain applies
+     * them on every turn. A temperature <= 0 keeps the previous greedy path.
      */
     external fun nativeGenerate(
         handle: Long,
         prompt: String,
         maxTokens: Int,
         temperature: Float,
+        topP: Float,
+        topK: Int,
+        repeatPenalty: Float,
         callback: LlamaTokenForwarder,
     ): String
+
+    /**
+     * [v1.2 Batch F] Token counts from the most recent [nativeGenerate] on
+     * [handle], packed as `(promptTokens << 32) | generatedTokens`. Used by
+     * the benchmark screen (tokens/sec) and the context-size indicator.
+     */
+    external fun nativeLastTurnStats(handle: Long): Long
 
     /** Ask an in-flight [nativeGenerate] to stop at the next token. */
     external fun nativeCancel(handle: Long)

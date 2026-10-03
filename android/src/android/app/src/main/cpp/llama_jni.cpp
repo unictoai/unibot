@@ -21,6 +21,7 @@
 #include <jni.h>
 
 #include <atomic>
+#include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <new>
@@ -37,6 +38,11 @@ struct LlamaHandle {
     const llama_vocab *vocab = nullptr;
     std::atomic<bool> cancelled{false};
     int n_ctx = 2048;
+    // [v1.2 Batch F] Token counts from the most recent nativeGenerate, read
+    // by Kotlin via nativeLastTurnStats (benchmark tokens/sec + context
+    // indicator). Written on the generate thread, read after it returns.
+    int32_t lastPromptTokens = 0;
+    int32_t lastGenTokens = 0;
 };
 
 LlamaHandle *toHandle(jlong h) { return reinterpret_cast<LlamaHandle *>(h); }
@@ -120,7 +126,8 @@ Java_ai_unicto_unibot_local_LlamaCpp_nativeInit(
 JNIEXPORT jstring JNICALL
 Java_ai_unicto_unibot_local_LlamaCpp_nativeGenerate(
         JNIEnv *env, jclass, jlong handle, jstring prompt,
-        jint maxTokens, jfloat temperature, jobject callback) {
+        jint maxTokens, jfloat temperature, jfloat topP, jint topK,
+        jfloat repeatPenalty, jobject callback) {
     LlamaHandle *h = toHandle(handle);
     if (h == nullptr || h->ctx == nullptr || h->vocab == nullptr) {
         return env->NewStringUTF("");
@@ -163,26 +170,44 @@ Java_ai_unicto_unibot_local_LlamaCpp_nativeGenerate(
         nTokens = keep;
     }
     tokens.resize(static_cast<size_t>(nTokens));
+    // [v1.2 Batch F] Remember the prompt token count for nativeLastTurnStats.
+    h->lastPromptTokens = nTokens;
 
     llama_batch batch = llama_batch_get_one(tokens.data(), nTokens);
     if (llama_decode(h->ctx, batch) != 0) {
         return env->NewStringUTF("");
     }
 
+    // [v1.2 Batch F] Sampler chain honours the user's per-model sampler
+    // settings: repeat penalty -> top-k -> top-p -> temperature -> dist.
+    // temperature <= 0 keeps the previous greedy-only path.
     llama_sampler *sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
     if (temperature <= 0.0f) {
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
     } else {
+        if (repeatPenalty > 1.0f) {
+            llama_sampler_chain_add(
+                    sampler,
+                    llama_sampler_init_penalties(64, repeatPenalty, 0.0f, 0.0f));
+        }
+        if (topK > 0) {
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_k(topK));
+        }
+        if (topP > 0.0f && topP < 1.0f) {
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_p(topP, 1));
+        }
         llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
         llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
     }
 
     std::string out;
     std::string pending;  // bytes held back until a UTF-8 boundary
+    int32_t genCount = 0;  // [v1.2 Batch F] tokens sampled this turn
     for (int32_t i = 0; i < nMax; i++) {
         if (h->cancelled.load()) break;
         llama_token tok = llama_sampler_sample(sampler, h->ctx, -1);
         if (llama_token_is_eog(h->vocab, tok)) break;
+        genCount++;
         char piece[64];
         const int32_t nPiece = llama_token_to_piece(h->vocab, tok, piece, sizeof(piece), 0, true);
         if (nPiece > 0) {
@@ -205,7 +230,22 @@ Java_ai_unicto_unibot_local_LlamaCpp_nativeGenerate(
         emitPiece(env, callback, onToken, tail);
     }
     llama_sampler_free(sampler);
+    // [v1.2 Batch F] Tokens sampled this turn (decode iterations).
+    h->lastGenTokens = genCount;
     return env->NewStringUTF(out.c_str());
+}
+
+// [v1.2 Batch F] Packed token counts from the last nativeGenerate on this
+// handle: (promptTokens << 32) | generatedTokens. Kotlin decodes it for the
+// benchmark screen (tokens/sec) and the context-size indicator.
+JNIEXPORT jlong JNICALL
+Java_ai_unicto_unibot_local_LlamaCpp_nativeLastTurnStats(JNIEnv *, jclass, jlong handle) {
+    LlamaHandle *h = toHandle(handle);
+    if (h == nullptr) return 0;
+    const uint64_t packed =
+            (static_cast<uint64_t>(static_cast<uint32_t>(h->lastPromptTokens)) << 32) |
+            static_cast<uint64_t>(static_cast<uint32_t>(h->lastGenTokens));
+    return static_cast<jlong>(packed);
 }
 
 JNIEXPORT void JNICALL

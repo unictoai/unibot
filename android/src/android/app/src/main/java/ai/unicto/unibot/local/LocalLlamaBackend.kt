@@ -6,6 +6,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -34,6 +37,28 @@ class LocalLlamaBackend(
 
     /** Context window: small enough for the KV cache to fit low-end phones. */
     private val nCtx: Int = 2048
+
+    /**
+     * [v1.2 Batch F] The context-window size — the denominator of the
+     * context-size indicator ("312 of 2048 tokens used").
+     */
+    val contextMax: Int
+        get() = nCtx
+
+    /**
+     * [v1.2 Batch F] Token counts from the most recent [generate] on this
+     * backend (prompt tokens the model saw, reply tokens it produced).
+     * Read from the native handle right after generation returns.
+     */
+    var lastPromptTokens: Int = 0
+        private set
+    var lastGeneratedTokens: Int = 0
+        private set
+
+    /** Load the model into RAM without generating (benchmark warm-up). */
+    fun loadModel() {
+        ensureLoaded()
+    }
 
     private val nThreads: Int =
         Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
@@ -78,8 +103,7 @@ class LocalLlamaBackend(
         systemPrompt: String?,
         history: List<LlmTurn>,
         prompt: String,
-        maxTokens: Int,
-        temperature: Float,
+        samplerOverride: SamplerSettings?,
         onToken: (String) -> Unit,
     ): String = withContext(Dispatchers.IO) {
         ensureLoaded()
@@ -94,14 +118,25 @@ class LocalLlamaBackend(
                 }
             }
         }
+        // [v1.2 Batch F] Sampling comes from the user's per-model Sampler
+        // settings (or the one-turn override) — these flow into the native
+        // sampler chain on every turn.
+        val s = samplerOverride ?: SamplerSettingsStore.load(appContext, model)
         val fullPrompt = applyTemplate(model.template, systemPrompt, history, prompt)
         val raw = LlamaCpp.nativeGenerate(
             h,
             fullPrompt,
-            maxTokens,
-            temperature,
+            s.maxTokens,
+            s.temperature,
+            s.topP,
+            s.topK,
+            s.repeatPenalty,
             LlamaTokenForwarder(onToken),
         )
+        // [v1.2 Batch F] Token counts for the benchmark + context indicator.
+        val stats = LlamaCpp.nativeLastTurnStats(h)
+        lastPromptTokens = (stats ushr 32).toInt()
+        lastGeneratedTokens = stats.toInt()
         // Cooperative cancellation point after the blocking native call.
         ensureActive()
         stripStopSequences(raw).trim()
@@ -207,15 +242,40 @@ object LocalChatService {
         if (!b.isReady) {
             throw IllegalStateException(b.notReadyReason() ?: "On-device model not ready")
         }
-        b.generate(
+        // [v1.2 Batch F] Sampling (temperature, top-p/top-k, repeat
+        // penalty, max tokens) comes from the model's persisted Sampler
+        // settings, which the backend reads itself.
+        val text = b.generate(
             systemPrompt = systemPrompt,
             history = history,
             prompt = prompt,
-            maxTokens = maxTokens,
-            temperature = model.defaultTemperature,
+            samplerOverride = null,
             onToken = onToken,
         )
+        // [v1.2 Batch F] Publish token counts for the context-size
+        // indicator on the on-device model screen.
+        _lastTurnStats.value = TurnStats(
+            modelTitle = model.title,
+            promptTokens = b.lastPromptTokens,
+            generatedTokens = b.lastGeneratedTokens,
+            contextMax = b.contextMax,
+        )
+        text
     }
+
+    /**
+     * [v1.2 Batch F] Stats from the most recent on-device turn. Observed by
+     * the context-size indicator ("312 of 2048 tokens used").
+     */
+    data class TurnStats(
+        val modelTitle: String,
+        val promptTokens: Int,
+        val generatedTokens: Int,
+        val contextMax: Int,
+    )
+
+    private val _lastTurnStats = MutableStateFlow<TurnStats?>(null)
+    val lastTurnStats: StateFlow<TurnStats?> = _lastTurnStats.asStateFlow()
 
     /** True when a model is currently resident in RAM. */
     fun isModelLoaded(): Boolean = backend != null

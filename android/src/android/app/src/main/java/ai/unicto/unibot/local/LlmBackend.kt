@@ -38,6 +38,11 @@ interface LlmBackend {
      * current [prompt]. Calls [onToken] for every decoded piece (on the
      * caller's thread) and returns the full reply text.
      *
+     * Sampling is governed by the model's persisted [SamplerSettings]
+     * (temperature, top-p, top-k, repeat penalty, max tokens); pass
+     * [samplerOverride] to run one turn with different values without
+     * changing the stored settings (the benchmark screen does this).
+     *
      * Cooperative cancellation: throwing [kotlinx.coroutines.CancellationException]
      * from the caller's coroutine must stop generation promptly.
      */
@@ -45,8 +50,7 @@ interface LlmBackend {
         systemPrompt: String?,
         history: List<LlmTurn>,
         prompt: String,
-        maxTokens: Int = 1024,
-        temperature: Float = 0.7f,
+        samplerOverride: SamplerSettings? = null,
         onToken: (String) -> Unit,
     ): String
 
