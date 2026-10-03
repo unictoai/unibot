@@ -53,7 +53,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
-import ai.unicto.unibot.connectors.healthconnect.HealthConnectConnector
 import ai.unicto.unibot.connectors.homeassistant.HomeAssistantConnector
 import ai.unicto.unibot.connectors.imap.ImapSmtpConnector
 import ai.unicto.unibot.connectors.jellyfin.JellyfinConnector
@@ -89,7 +88,9 @@ fun ConnectorsV12BatchC() {
         NextcloudRow()
         JellyfinRow()
         HomeAssistantRow()
-        HealthConnectRow()
+        // [v1.2] Health Connect cut: the android.health.connect framework API
+        // usage didn't compile and can't be verified without an SDK; the 7
+        // other connectors ship. See v1.2 cut list.
         MatrixRow()
         SteamRow()
         PodcastsRow()
@@ -633,95 +634,6 @@ private fun HomeAssistantRow() {
                 Text(stringResource(R.string.v12_conn_connect))
             }
         }
-    }
-}
-
-// ------------------------------------------------------------------
-// Health Connect
-// ------------------------------------------------------------------
-
-@Composable
-private fun HealthConnectRow() {
-    val context = LocalContext.current
-    val haptics = rememberHaptic()
-    var granted by remember { mutableStateOf(HealthConnectConnector.isConnected(context)) }
-    var showRationale by remember { mutableStateOf(false) }
-    val supported = remember { HealthConnectConnector.isSupported(context) }
-
-    fun refresh() {
-        granted = HealthConnectConnector.isConnected(context)
-    }
-
-    V12RowShell(
-        icon = Icons.Filled.Favorite,
-        name = stringResource(R.string.v12_hc_name),
-        description = stringResource(R.string.v12_hc_desc),
-        connectedLabel = if (granted) stringResource(R.string.v12_hc_granted) else null,
-        onDevice = true,
-        dataAccess = stringResource(R.string.v12_hc_access),
-        onDisconnect = { /* permissions are revoked in Android Settings; nothing stored locally */ },
-        onDisconnected = { refresh() },
-        hideDisconnect = true,
-        showStoredNote = false,
-    ) {
-        if (!supported) {
-            Text(
-                stringResource(R.string.v12_hc_needs_14),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            return@V12RowShell
-        }
-        if (!granted) {
-            Text(
-                stringResource(R.string.v12_hc_not_granted),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            // Rationale first — the system screen only opens after the user
-            // has read why unibot wants the data.
-            UnibotTextButton(
-                onClick = { haptics.tap(); showRationale = true },
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                Text(stringResource(R.string.v12_hc_grant))
-            }
-        } else {
-            UnibotTextButton(
-                onClick = {
-                    haptics.tap()
-                    HealthConnectConnector.openPermissionScreen(context)
-                },
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                Text(stringResource(R.string.v12_hc_open_settings))
-            }
-        }
-    }
-
-    if (showRationale) {
-        AlertDialog(
-            onDismissRequest = { showRationale = false; refresh() },
-            title = { Text(stringResource(R.string.v12_hc_rationale_title)) },
-            text = { Text(stringResource(R.string.v12_hc_rationale)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptics.tap()
-                    showRationale = false
-                    HealthConnectConnector.openPermissionScreen(context)
-                    refresh()
-                }) {
-                    Text(stringResource(R.string.v12_hc_open_settings))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRationale = false; refresh() }) {
-                    Text(stringResource(R.string.v12_conn_cancel))
-                }
-            },
-        )
     }
 }
 
