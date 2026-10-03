@@ -76,28 +76,44 @@
 
 (function () {
 "use strict";
-    // ── Intro sound: plays once, on first visit ──
-    // Browsers block autoplay with sound, so we try immediately and fall back
-    // to the first tap/click/keypress. One play per page load, never loops.
-    try {
-      var intro = new Audio("assets/intro-sound.mp3");
-      intro.preload = "auto";
-      var played = false;
-      function playIntro() {
-        if (played) return;
-        played = true;
-        intro.play().catch(function () { /* still blocked — give up quietly */ });
-        ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
-          window.removeEventListener(ev, playIntro);
-        });
-      }
-      // Try straight away (works if the browser allows it); otherwise the
-      // first interaction unlocks it.
-      intro.play().then(function () { played = true; }).catch(function () {
-        ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
-          window.addEventListener(ev, playIntro, { once: false, passive: true });
-        });
+  // ── Intro sound: plays once per page load ──
+  // Browsers block autoplay with sound, so we try immediately and fall back
+  // to playing on the first tap/click/keypress. Only counts as played after
+  // play() actually succeeds, so a failed tap retries on the next one.
+  try {
+    var intro = new Audio("assets/intro-sound.mp3");
+    intro.preload = "auto";
+    try { intro.load(); } catch (e) {}
+    var played = false;
+    function arm() {
+      ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
+        window.addEventListener(ev, playIntro, { passive: true });
       });
-    } catch (e) { /* audio unsupported — site works fine without it */ }
-
+    }
+    function disarm() {
+      ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
+        window.removeEventListener(ev, playIntro);
+      });
+    }
+    function playIntro() {
+      if (played) return;
+      var p = null;
+      try { p = intro.play(); } catch (e) { return; }
+      if (p && p.then) {
+        p.then(function () { played = true; disarm(); })
+         .catch(function () { /* not yet — next tap retries */ });
+      } else {
+        played = true;
+        disarm();
+      }
+    }
+    var first = null;
+    try { first = intro.play(); } catch (e) { first = null; }
+    if (first && first.then) {
+      first.then(function () { played = true; })
+           .catch(function () { arm(); });
+    } else {
+      arm();
+    }
+  } catch (e) { /* audio unsupported — site works fine without it */ }
 })();
