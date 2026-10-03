@@ -524,6 +524,9 @@ class MainActivity : ComponentActivity() {
         // while inside a chat, synthesise an OpenSession deep-link so
         // the navigation stack lands on that chat instead of the
         // sessions list. T166.
+        // [v12-G] Notification quick-reply on cold start — same handling as
+        // onNewIntent; the deep-link parse below still opens the session.
+        ai.unicto.unibot.notification.QuickReplyHandler.handleIntent(this, intent)
         val explicitDeepLink = DeepLinkHandler.parse(intent?.data)
         val launchDeepLink = if (explicitDeepLink !is DeepLinkAction.Unknown) {
             explicitDeepLink
@@ -861,6 +864,10 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra("shared_content", false)) {
             ai.unicto.unibot.share.ShareCoordinator.processPendingShare(this)
         }
+        // [v12-G] Notification quick-reply: stash the typed text for the
+        // session, then fall through to the normal deep-link path so the
+        // chat opens (the reply intent carries unibot://session/<id>).
+        ai.unicto.unibot.notification.QuickReplyHandler.handleIntent(this, intent)
         handleDeepLink(intent.data)
     }
 

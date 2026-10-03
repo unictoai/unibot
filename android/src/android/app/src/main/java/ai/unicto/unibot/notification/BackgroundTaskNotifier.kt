@@ -125,6 +125,9 @@ class BackgroundTaskNotifier(
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            // [v12-G] Inline reply: the typed text is stashed for the session
+            // and sent by ChatScreen (see QuickReplyHandler).
+            .addAction(QuickReplyHandler.buildReplyAction(context, sessionId))
             .build()
 
         try {

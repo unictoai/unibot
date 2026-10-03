@@ -234,4 +234,49 @@ object ChatViewModelStore {
         )
         return t
     }
+
+    /**
+     * [v12-G] One-shot stash for notification quick-reply. The text typed in
+     * the shade is stashed here by [ai.unicto.unibot.notification.QuickReplyHandler]
+     * (via MainActivity) and drained by the target ChatScreen, which SENDS it
+     * via ChatViewModel.sendMessage. Session-addressed with the same TTL as
+     * [pendingTransfer] so a stale reply can never ambush a later session.
+     */
+    data class PendingQuickReply(
+        val targetId: String,
+        val text: String,
+        val stashedAtMs: Long = System.currentTimeMillis(),
+    )
+
+    @Volatile
+    private var pendingQuickReply: PendingQuickReply? = null
+
+    fun stashPendingQuickReply(targetId: String, text: String) {
+        pendingQuickReply = PendingQuickReply(targetId, text)
+        Log.d(TAG, "stashPendingQuickReply: target=$targetId text=${text.length}ch")
+    }
+
+    /**
+     * Drain the quick-reply slot exactly once, and only for the session it
+     * was addressed to (draft→canonical aliases resolved, like
+     * [consumePendingTransfer]).
+     */
+    fun consumePendingQuickReply(sessionId: String): PendingQuickReply? {
+        val q = pendingQuickReply ?: return null
+        if (System.currentTimeMillis() - q.stashedAtMs > STASH_TTL_MS) {
+            pendingQuickReply = null
+            Log.d(TAG, "consumePendingQuickReply: dropping stale stash (target=${q.targetId})")
+            return null
+        }
+        if (resolveKey(q.targetId) != resolveKey(sessionId)) {
+            Log.d(
+                TAG,
+                "consumePendingQuickReply: session=$sessionId is not target=${q.targetId}, leaving stash",
+            )
+            return null
+        }
+        pendingQuickReply = null
+        Log.d(TAG, "consumePendingQuickReply: target=${q.targetId} text=${q.text.length}ch")
+        return q
+    }
 }

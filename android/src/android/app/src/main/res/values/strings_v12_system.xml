@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- [v12-G] Batch G (System) strings: notification quick-reply, scheduled
+         backup, storage breakdown, battery saver. -->
+
+    <!-- Notification quick-reply -->
+    <string name="v12g_notif_quick_reply">Reply</string>
+
+    <!-- Scheduled backup -->
+    <string name="v12g_sched_backup_title">Scheduled backup</string>
+    <string name="v12g_sched_backup_subtitle">Automatic on-device backups</string>
+    <string name="v12g_sched_backup_enable">Automatic backups</string>
+    <string name="v12g_sched_backup_enable_sub">Run a full local backup on a schedule. Stays on this phone — nothing is uploaded.</string>
+    <string name="v12g_sched_backup_frequency">How often</string>
+    <string name="v12g_sched_backup_daily">Daily</string>
+    <string name="v12g_sched_backup_weekly">Weekly</string>
+    <string name="v12g_sched_backup_time">Time</string>
+    <string name="v12g_sched_backup_destination">Save to</string>
+    <string name="v12g_sched_backup_dest_private">On this phone (app storage)</string>
+    <string name="v12g_sched_backup_choose_folder">Choose folder…</string>
+    <string name="v12g_sched_backup_use_default">Use default location</string>
+    <string name="v12g_sched_backup_last_run">Last backup</string>
+    <string name="v12g_sched_backup_never">Never</string>
+    <string name="v12g_sched_backup_run_now">Back up now</string>
+    <string name="v12g_sched_backup_running">Backing up…</string>
+    <string name="v12g_sched_backup_ok">Backup finished</string>
+    <string name="v12g_sched_backup_failed">Backup failed</string>
+    <string name="v12g_sched_backup_footer">Backups are encrypted only if you set a passphrase on the Backup screen. An unencrypted package contains readable API keys and tokens — keep it somewhere only you can reach.</string>
+    <string name="v12g_sched_backup_notif_channel">Scheduled backups</string>
+    <string name="v12g_sched_backup_notif_channel_desc">Posted when an automatic backup finishes.</string>
+    <string name="v12g_sched_backup_notif_done_title">Backup complete</string>
+    <string name="v12g_sched_backup_notif_done_text">Saved %1$s to %2$s</string>
+    <string name="v12g_sched_backup_notif_fail_title">Backup failed</string>
+    <string name="v12g_sched_backup_notif_fail_text">Tap to open backup settings.</string>
+
+    <!-- Storage breakdown -->
+    <string name="v12g_storage_breakdown_title">Storage breakdown</string>
+    <string name="v12g_storage_cat_models">On-device AI models</string>
+    <string name="v12g_storage_cat_models_sub">Downloaded speech &amp; language models. Safe to remove — they download again when needed.</string>
+    <string name="v12g_storage_cat_tts">TTS voices</string>
+    <string name="v12g_storage_cat_tts_sub">Downloaded text-to-speech voices. Safe to remove — they download again when needed.</string>
+    <string name="v12g_storage_cat_db">Chats database</string>
+    <string name="v12g_storage_cat_db_sub">All chats and messages. Deleting this erases everything.</string>
+    <string name="v12g_storage_cat_media">Media</string>
+    <string name="v12g_storage_cat_media_sub">Images, files and attachments in chats.</string>
+    <string name="v12g_storage_cat_cache">Cache</string>
+    <string name="v12g_storage_cat_cache_sub">Temporary files. Safe to clear any time.</string>
+    <string name="v12g_storage_cat_app">App</string>
+    <string name="v12g_storage_cat_app_sub">The unibot app itself.</string>
+    <string name="v12g_storage_clear">Clear</string>
+    <string name="v12g_storage_details">Details</string>
+    <string name="v12g_storage_confirm_title">Clear %1$s?</string>
+    <string name="v12g_storage_confirm_models">This deletes %1$s of downloaded models. They will download again the next time you use them.</string>
+    <string name="v12g_storage_confirm_tts">This deletes %1$s of downloaded voices. They will download again the next time you use them.</string>
+    <string name="v12g_storage_confirm_cache">This clears %1$s of temporary files. Nothing you care about lives here.</string>
+    <string name="v12g_storage_cancel">Cancel</string>
+    <string name="v12g_storage_cleared">Cleared %1$s</string>
+
+    <!-- Battery saver -->
+    <string name="v12g_battery_saver_title">Battery saver</string>
+    <string name="v12g_battery_saver_on_sub">On — animations reduced, background work slowed</string>
+    <string name="v12g_battery_saver_off_sub">Reduce animations and slow background work to save battery</string>
+    <string name="v12g_battery_saver_notif_title">Battery saver is on</string>
+    <string name="v12g_battery_saver_notif_text">Animations reduced · background work slowed. Tap to change.</string>
+    <string name="v12g_battery_saver_notif_channel">Battery saver</string>
+    <string name="v12g_battery_saver_notif_channel_desc">Shows while Battery saver mode is on.</string>
+
+    <!-- System rows (SettingsScreen section, wired by coordinator) -->
+    <string name="v12g_system_section">System</string>
+    <string name="v12g_row_storage_breakdown">Storage breakdown</string>
+    <string name="v12g_row_storage_breakdown_sub">See what uses space, clear what is safe</string>
+    <string name="v12g_row_sched_backup">Scheduled backup</string>
+</resources>

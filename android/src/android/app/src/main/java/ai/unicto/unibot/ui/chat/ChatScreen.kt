@@ -834,6 +834,20 @@ fun ChatScreen(
         viewModel.markShareInjected()
     }
 
+    // [v12-G] Notification quick-reply: text typed in the shade was stashed
+    // by QuickReplyHandler (via MainActivity) addressed to this session.
+    // Drain it here and SEND it straight into the agent loop — a notification
+    // reply the user still has to press send on is a broken promise.
+    // Consumed exactly once, like the transfer above.
+    androidx.compose.runtime.LaunchedEffect(sessionId) {
+        val quick = ChatViewModelStore.consumePendingQuickReply(sessionId) ?: return@LaunchedEffect
+        ai.unicto.unibot.logging.AppLogger.info(
+            "ChatScreen",
+            "[QuickReply] sending ${quick.text.length}ch into session=$sessionId",
+        )
+        if (quick.text.isNotBlank()) viewModel.sendMessage(quick.text)
+    }
+
     // Mirrors `inputText` for the BasicTextField but tracks selection so we
     // can position the cursor (e.g. AFTER the leading "/" when the slash
     // button inserts it) — a plain String overload would reset cursor to 0
