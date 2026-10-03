@@ -1109,5 +1109,14 @@
     <string name="ub_voice_no_engine">No voice engine is available. Download the offline voice model to talk fully on-device.</string>
     <string name="ub_voice_ready">Ready</string>
     <string name="ub_voice_offline_caption">Voices are downloaded to this phone and spoken fully offline.</string>
+
+    <!-- [unibot-voice-conversation] Defaults for strings that only had
+         translations (values-de/es); every referenced string must exist in
+         the default values or R.string.* won't resolve and the build breaks. -->
+    <string name="back">Back</string>
+    <string name="mic_permission_title">Microphone permission required</string>
+    <string name="mic_permission_message">Voice input needs microphone permission. Tap Open settings to allow it for unibot.</string>
+    <string name="mic_permission_open_settings">Open settings</string>
+    <string name="mic_permission_cancel">Cancel</string>
 </resources>
 
