@@ -247,8 +247,6 @@ object Routes {
     const val SAMPLER_SETTINGS = "sampler_settings"
     /** [v1.2 Batch G] Storage usage breakdown. */
     const val STORAGE_BREAKDOWN = "storage_breakdown"
-    /** [v1.2 Batch E] Voice conversation history. */
-    const val VOICE_HISTORY = "voice_history"
     /** [v1.2 Batch B] Chat templates / prompt starters. */
     const val CHAT_TEMPLATES = "chat_templates"
     /** [v1.2 Batch B] Scheduled messages (send later). */
