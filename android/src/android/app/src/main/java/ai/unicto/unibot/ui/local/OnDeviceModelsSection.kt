@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Download as OutlinedDownload // [Wave 9b] empty-state icon
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,7 +66,10 @@ import ai.unicto.unibot.local.LlamaModel
 import ai.unicto.unibot.local.LlamaModelManager
 import ai.unicto.unibot.local.LocalCapabilities
 import ai.unicto.unibot.local.LocalChatService
+import ai.unicto.unibot.ui.components.EmptyState // [Wave 9b] no-downloads empty state
 import ai.unicto.unibot.ui.theme.ChatColors
+import ai.unicto.unibot.ui.theme.staggeredEntrance // [Wave 9b] model-list choreography
+import ai.unicto.unibot.ui.theme.successPop // [Wave 9b] download-complete celebration
 
 /**
  * The "On-device" picker section. [onDone] is called after a route change
@@ -78,6 +82,9 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
     val selected by LlamaModelManager.selectedModel.collectAsState()
     var localId by remember { mutableStateOf(LlamaModelManager.localModeModelId(ctx)) }
     var confirmDeleteId by remember { mutableStateOf<String?>(null) }
+    // [Wave 9b] "Browse models" expands the downloadable list when nothing
+    // is downloaded yet (see the empty state at the model rows below).
+    var browseExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         LlamaModelManager.loadSelection(ctx)
@@ -89,14 +96,21 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
     val haptics = ai.unicto.unibot.ui.util.rememberHaptic()
     var seenDoneIds by remember { mutableStateOf(setOf<String>()) }
     var hapticsArmed by remember { mutableStateOf(false) }
+    // [Wave 9b] Download-complete celebration: ids that flip to Done while
+    // the section is open also pop their row (successPop below). Mirrors the
+    // hapticsArmed guard — models already downloaded before opening never
+    // celebrate.
+    var justDoneIds by remember { mutableStateOf(setOf<String>()) }
     LaunchedEffect(states) {
         val nowDone = states
             .filterValues { it is LlamaModelManager.DownloadState.Done }
             .keys
         // Only buzz for completions that happen while this screen is open —
         // never for models that were already downloaded before it opened.
-        if (hapticsArmed && (nowDone - seenDoneIds).isNotEmpty()) {
+        val fresh = nowDone - seenDoneIds
+        if (hapticsArmed && fresh.isNotEmpty()) {
             haptics.success()
+            justDoneIds = fresh
         }
         seenDoneIds = nowDone
         hapticsArmed = true
@@ -263,59 +277,80 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
         }
 
         // ── Model rows ──
-        LlamaModelManager.models.forEach { model ->
-            val state = states[model.id] ?: LlamaModelManager.DownloadState.Idle
-            val downloaded = state is LlamaModelManager.DownloadState.Done
-            val isLocalActive = localId == model.id
-            LlamaModelRow(
-                model = model,
-                state = state,
-                downloaded = downloaded,
-                isLocalActive = isLocalActive,
-                isSelected = selected.id == model.id,
-                confirmDelete = confirmDeleteId == model.id,
-                onTap = {
-                    when {
-                        downloaded -> {
-                            // Route selector: flip the whole chat to this model.
-                            LlamaModelManager.setLocalMode(ctx, model)
-                            localId = model.id
-                            confirmDeleteId = null
-                            onDone()
-                        }
-                        state is LlamaModelManager.DownloadState.Failed -> {
-                            haptics.tap()
-                            LlamaModelManager.download(ctx, model)
-                        }
-                        state is LlamaModelManager.DownloadState.Paused -> {
-                            haptics.tap()
-                            LlamaModelManager.download(ctx, model)
-                        }
-                        else -> {
-                            haptics.tap()
-                            // [Wave 8] Queue when another download is active.
-                            LlamaModelManager.enqueue(ctx, model)
-                        }
-                    }
-                },
-                onPauseResume = {
-                    val s = LlamaModelManager.downloadStateOf(model)
-                    if (s is LlamaModelManager.DownloadState.Downloading) {
-                        LlamaModelManager.pause()
-                    } else {
-                        LlamaModelManager.download(ctx, model)
-                    }
-                },
-                onDelete = {
-                    if (confirmDeleteId == model.id) {
-                        LlamaModelManager.delete(ctx, model)
-                        localId = LlamaModelManager.localModeModelId(ctx)
-                        confirmDeleteId = null
-                    } else {
-                        confirmDeleteId = model.id
-                    }
-                },
+        // [Wave 9b] Nothing downloaded yet: lead with the shared branded
+        // empty state; "Browse models" expands the downloadable list inline
+        // (EmptyState's CTA already fires haptics.tap()). Once a model is
+        // downloaded — or the list was expanded — rows show directly.
+        if (!anyDownloaded && !browseExpanded) {
+            EmptyState(
+                // Icons.Outlined.Download (aliased: filled.Download is also
+                // imported in this file for the row download icons).
+                icon = OutlinedDownload,
+                title = "No on-device models",
+                hint = "Download a model to chat fully offline — your data never leaves this phone.",
+                ctaLabel = "Browse models",
+                onCta = { browseExpanded = true },
             )
+        } else {
+            // [Wave 9b] Downloadable models cascade in by index.
+            LlamaModelManager.models.forEachIndexed { index, model ->
+                val state = states[model.id] ?: LlamaModelManager.DownloadState.Idle
+                val downloaded = state is LlamaModelManager.DownloadState.Done
+                val isLocalActive = localId == model.id
+                LlamaModelRow(
+                    model = model,
+                    state = state,
+                    downloaded = downloaded,
+                    isLocalActive = isLocalActive,
+                    isSelected = selected.id == model.id,
+                    confirmDelete = confirmDeleteId == model.id,
+                    // [Wave 9b] Rows stagger in; a row whose download just
+                    // completed pops (the visual half of haptics.success()).
+                    staggerIndex = index,
+                    celebrateDownload = model.id in justDoneIds,
+                    onTap = {
+                        when {
+                            downloaded -> {
+                                // Route selector: flip the whole chat to this model.
+                                LlamaModelManager.setLocalMode(ctx, model)
+                                localId = model.id
+                                confirmDeleteId = null
+                                onDone()
+                            }
+                            state is LlamaModelManager.DownloadState.Failed -> {
+                                haptics.tap()
+                                LlamaModelManager.download(ctx, model)
+                            }
+                            state is LlamaModelManager.DownloadState.Paused -> {
+                                haptics.tap()
+                                LlamaModelManager.download(ctx, model)
+                            }
+                            else -> {
+                                haptics.tap()
+                                // [Wave 8] Queue when another download is active.
+                                LlamaModelManager.enqueue(ctx, model)
+                            }
+                        }
+                    },
+                    onPauseResume = {
+                        val s = LlamaModelManager.downloadStateOf(model)
+                        if (s is LlamaModelManager.DownloadState.Downloading) {
+                            LlamaModelManager.pause()
+                        } else {
+                            LlamaModelManager.download(ctx, model)
+                        }
+                    },
+                    onDelete = {
+                        if (confirmDeleteId == model.id) {
+                            LlamaModelManager.delete(ctx, model)
+                            localId = LlamaModelManager.localModeModelId(ctx)
+                            confirmDeleteId = null
+                        } else {
+                            confirmDeleteId = model.id
+                        }
+                    },
+                )
+            }
         }
 
         // ── Back to cloud ──
@@ -436,6 +471,11 @@ private fun LlamaModelRow(
     onTap: () -> Unit,
     onDelete: () -> Unit,
     onPauseResume: () -> Unit = {},
+    // [Wave 9b] Entrance cascade index for the downloadable-models list.
+    staggerIndex: Int = 0,
+    // [Wave 9b] True when this model's download just completed while the
+    // section is open — the row pops (visual half of haptics.success()).
+    celebrateDownload: Boolean = false,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val downloading = state is LlamaModelManager.DownloadState.Downloading
@@ -443,6 +483,10 @@ private fun LlamaModelRow(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            // [Wave 9b] Entrance cascade + download-complete pop, applied
+            // outside the clip so the whole card scales as one unit.
+            .staggeredEntrance(staggerIndex)
+            .successPop(if (celebrateDownload) Unit else null)
             .background(ChatColors.inputIconBg, RoundedCornerShape(14.dp))
             .border(
                 width = if (isLocalActive) 1.dp else 0.5.dp,

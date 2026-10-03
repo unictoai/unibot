@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed // [Wave 9b] staggered row entrance
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,6 +80,7 @@ import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.ChatBubbleOutline // [Wave 9b] empty-chats state icon
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChecklistRtl
 import androidx.compose.material.icons.outlined.Circle
@@ -181,7 +183,9 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.data.db.ChatSessionEntity
 import ai.unicto.unibot.data.db.FolderEntity
 import ai.unicto.unibot.ui.theme.ChatColors
+import ai.unicto.unibot.ui.theme.staggeredEntrance // [Wave 9b] entrance choreography
 import ai.unicto.unibot.ui.theme.unibotFabColor
+import ai.unicto.unibot.ui.util.rememberHaptic // [Wave 9b] haptic audit
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import kotlin.math.roundToInt
@@ -192,6 +196,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import ai.unicto.unibot.ui.components.UnibotTextButton
+import ai.unicto.unibot.ui.components.EmptyState // [Wave 9b] shared empty-chats state
 
 // FAB color — use shared theme values
 
@@ -563,6 +568,8 @@ fun SessionListScreen(
     // doesn't flash the "add a provider" onboarding before the real config emits.
     val configLoaded by providerRepository.configLoaded.collectAsState()
     val scope = rememberCoroutineScope()
+    // [Wave 9b] Haptic audit: FAB taps, destructive deletes/archives.
+    val haptics = rememberHaptic()
     val isDark = ChatColors.isDark
 
     // [T-android-search-focus-sticky] When the user opens search but types
@@ -818,12 +825,16 @@ fun SessionListScreen(
                                 stringResource(R.string.sessionlist_n_selected, selectedIds.size),
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
+                            // [Wave 9b] Header choreography — title fades/rises in first.
+                            modifier = Modifier.staggeredEntrance(0),
                         )
                     } else {
                         Text(
                             stringResource(R.string.app_name),
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
+                            // [Wave 9b] Header choreography — title fades/rises in first.
+                            modifier = Modifier.staggeredEntrance(0),
                         )
                     }
                 },
@@ -1032,18 +1043,48 @@ fun SessionListScreen(
                         // async config load emits. The list branch (sessions present)
                         // is intentionally NOT gated, so users with history still see
                         // it immediately without waiting on the config decode.
-                        OnboardingLanding(
-                            hasProviders = hasProviders,
-                            hasGroups = hasGroups,
-                            onAddProvider = onAddProviderClick,
-                            onSelectModels = onSelectModelsClick,
-                            onStartConversation = {
-                                scope.launch {
-                                    val sessionId = viewModel.createNewSession()
-                                    if (sessionId != null) onNewChatGuarded(sessionId)
-                                }
-                            },
-                        )
+                        //
+                        // [Wave 9b] When setup is complete but there are no chats,
+                        // the shared EmptyState replaces the landing's step-3 state:
+                        // same "New chat" CTA destination (the existing new-chat
+                        // action below), new branded feel. The 3-step landing is
+                        // kept for incomplete setup — removing it would strand
+                        // provider-less users with no way to add a provider.
+                        if (hasProviders && hasGroups) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                EmptyState(
+                                    icon = Icons.Outlined.ChatBubbleOutline,
+                                    title = "No chats yet",
+                                    hint = "Start a conversation — unibot remembers context, searches the web, and works offline.",
+                                    ctaLabel = "New chat",
+                                    onCta = {
+                                        scope.launch {
+                                            val sessionId = viewModel.createNewSession()
+                                            if (sessionId != null) onNewChatGuarded(sessionId)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .padding(horizontal = 32.dp)
+                                        .padding(bottom = 64.dp),
+                                )
+                            }
+                        } else {
+                            OnboardingLanding(
+                                hasProviders = hasProviders,
+                                hasGroups = hasGroups,
+                                onAddProvider = onAddProviderClick,
+                                onSelectModels = onSelectModelsClick,
+                                onStartConversation = {
+                                    scope.launch {
+                                        val sessionId = viewModel.createNewSession()
+                                        if (sessionId != null) onNewChatGuarded(sessionId)
+                                    }
+                                },
+                            )
+                        }
                     }
                 } else {
                     LazyColumn(
@@ -1123,7 +1164,7 @@ fun SessionListScreen(
                             // ungrouped rows stay full-bleed.
                             inFolder: Boolean = false,
                         ) {
-                            items(rows, key = { it.id }) { session ->
+                            itemsIndexed(rows, key = { _, it -> it.id }) { index, session ->
                                 val activeQuery =
                                     if (isSearchActive && searchQuery.isNotBlank()) searchQuery else ""
                                 val rowModifier = if (inFolder) {
@@ -1163,6 +1204,9 @@ fun SessionListScreen(
                                 // popping — the iOS easeInOut(0.25) equivalent
                                 // (monotonic tween on purpose; a spring's
                                 // oscillation read as jitter on iOS).
+                                // [Wave 9b] Rows also stagger in on first
+                                // entrance (index restarts per group — each
+                                // section choreographs its own cascade).
                                 Box(
                                     modifier = Modifier
                                         .animateItem(
@@ -1170,6 +1214,7 @@ fun SessionListScreen(
                                             fadeOutSpec = tween(250),
                                             placementSpec = tween(250),
                                         )
+                                        .staggeredEntrance(index)
                                         .then(rowModifier),
                                 ) {
                                 SessionItemContent(
@@ -1193,7 +1238,13 @@ fun SessionListScreen(
                                     },
                                     onMoveToGroup = { viewModel.requestGroupPicker(it) },
                                     // [Wave 8] Archive toggle for the row menu.
-                                    onArchiveToggle = { viewModel.setArchived(it, !viewModel.isArchived(it)) },
+                                    // [Wave 9b] Haptics: archiving buzzes as a
+                                    // destructive-ish act; unarchiving is a plain tap.
+                                    onArchiveToggle = { id ->
+                                        val archiving = !viewModel.isArchived(id)
+                                        if (archiving) haptics.error() else haptics.tap()
+                                        viewModel.setArchived(id, archiving)
+                                    },
                                     isArchived = viewModel.isArchived(session.id),
                                     isFiled = session.folderId != null &&
                                         session.folderId in existingFolderIds,
@@ -1390,7 +1441,10 @@ fun SessionListScreen(
                     onExport = { /* TODO: export */ },
                     onMove = { viewModel.requestGroupPickerForSelection() },
                     onDelete = { showBulkDeleteDialog = true },
-                    onArchive = { viewModel.archiveSelected(true) },
+                    onArchive = {
+                        haptics.error()
+                        viewModel.archiveSelected(true)
+                    },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             } else if (hasProviders && (sessions.isNotEmpty() || isSearchActive)) {
@@ -1406,6 +1460,7 @@ fun SessionListScreen(
                     isSearching = isSearching,
                     hasSessions = sessions.isNotEmpty() || isSearchActive,
                     onNewChat = {
+                        haptics.tap()
                         scope.launch {
                             val sessionId = viewModel.createNewSession()
                             if (sessionId != null) onNewChatGuarded(sessionId)
@@ -1449,6 +1504,7 @@ fun SessionListScreen(
             confirmText = stringResource(R.string.delete),
             isDestructive = true,
             onConfirm = {
+                haptics.error()
                 deleteTargetId?.let { viewModel.deleteSession(it) }
                 showDeleteDialog = false
                 deleteTargetId = null
@@ -1464,6 +1520,7 @@ fun SessionListScreen(
             confirmText = stringResource(R.string.delete),
             isDestructive = true,
             onConfirm = {
+                haptics.error()
                 viewModel.deleteSelected()
                 showBulkDeleteDialog = false
             },

@@ -88,6 +88,8 @@ import ai.unicto.unibot.connectors.discord.DiscordConnector
 import ai.unicto.unibot.connectors.slack.SlackConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.theme.Motion
+import ai.unicto.unibot.ui.theme.staggeredEntrance // [Wave 9b] entrance choreography
+import ai.unicto.unibot.ui.theme.successPop // [Wave 9b] connect celebration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -110,7 +112,13 @@ fun ConnectorsScreen(
         SettingsSection(
             header = stringResource(R.string.ub_connectors_section),
             footer = stringResource(R.string.ub_connectors_footer),
+            // [Wave 9b] Section (header + card) enters first; rows cascade
+            // after it via the stagger cursor reset below.
+            modifier = Modifier.staggeredEntrance(0),
         ) {
+            // [Wave 9b] Reset the entrance cascade — rows claim indices 1..N
+            // in composition order through their default staggerIndex.
+            connectorStaggerCursor = 1
             ConnectorRow(
                 logoRes = R.drawable.ic_connector_gmail,
                 name = stringResource(R.string.ub_connectors_gmail),
@@ -536,6 +544,17 @@ private fun DataAccessDisclosure(dataAccess: String) {
     }
 }
 
+/**
+ * [Wave 9b] Stagger-index cursor for the connector rows below. Every row on
+ * this screen is a direct child of the single SettingsSection, composed in
+ * call order, so each row claims the next entrance index through its default
+ * [staggerIndex] argument — no call-site changes needed. The cursor is reset
+ * at the top of the section content on every composition, keeping indices
+ * stable across recompositions (each row's entrance animation is remembered
+ * per call site regardless).
+ */
+private var connectorStaggerCursor = 0
+
 @Composable
 private fun ConnectorRow(
     logoRes: Int,
@@ -548,9 +567,14 @@ private fun ConnectorRow(
     onDisconnect: suspend (android.content.Context) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
     dataAccess: String,
+    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
+    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // [Wave 9b] Haptic audit: tap on press, success on connect, error on
+    // failures and destructive disconnects.
+    val haptics = rememberHaptic()
     var connected by remember { mutableStateOf(isConnected(context)) }
     var email by remember { mutableStateOf(accountEmail(context)) }
     var busy by remember { mutableStateOf(false) }
@@ -577,6 +601,9 @@ private fun ConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
+            // [Wave 9b] Rows cascade in by index (claimed in composition
+            // order via the default staggerIndex argument).
+            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -602,18 +629,24 @@ private fun ConnectorRow(
                         description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // [Wave 9b] The row's connected indicator — pops when a
+                    // connect lands (email flips null → value); the visual
+                    // half of the haptics.success() fired above.
+                    modifier = Modifier.successPop(email),
                 )
             }
             if (busy) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else if (connected) {
-                UnibotTextButton(onClick = { showDisconnectConfirm = true }) {
+                UnibotTextButton(onClick = { haptics.tap(); showDisconnectConfirm = true }) {
                     Text(stringResource(R.string.ub_connectors_disconnect))
                 }
             } else {
                 UnibotTextButton(onClick = {
+                    haptics.tap()
                     if (!isConfigured()) {
                         error = context.getString(R.string.ub_connectors_not_configured)
+                        haptics.error()
                         return@UnibotTextButton
                     }
                     busy = true
@@ -623,14 +656,19 @@ private fun ConnectorRow(
                             is ConnectOutcome.Ok -> {
                                 refresh()
                                 pulseTrigger++
+                                // [Wave 9b] Celebration — the visual half is the
+                                // successPop on the "Connected as" line below.
+                                haptics.success()
                             }
                             is ConnectOutcome.Cancelled ->
                                 error = context.getString(R.string.ub_connectors_cancelled)
-                            is ConnectOutcome.Failed ->
+                            is ConnectOutcome.Failed -> {
                                 error = context.getString(
                                     R.string.ub_connectors_connect_failed,
                                     r.message,
                                 )
+                                haptics.error()
+                            }
                         }
                         busy = false
                     }
@@ -658,6 +696,7 @@ private fun ConnectorRow(
             text = { Text(stringResource(R.string.ub_connectors_confirm_disconnect_named, name)) },
             confirmButton = {
                 TextButton(onClick = {
+                    haptics.error()
                     showDisconnectConfirm = false
                     scope.launch {
                         onDisconnect(context)
@@ -693,9 +732,14 @@ private fun TokenConnectorRow(
     onDisconnect: suspend (android.content.Context) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
     dataAccess: String,
+    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
+    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // [Wave 9b] Haptic audit: tap on press, success on token save, error on
+    // invalid tokens and destructive disconnects.
+    val haptics = rememberHaptic()
     var connected by remember { mutableStateOf(isConnected(context)) }
     var connectedLabel by remember { mutableStateOf(label(context)) }
     var token by remember { mutableStateOf("") }
@@ -723,6 +767,9 @@ private fun TokenConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
+            // [Wave 9b] Rows cascade in by index (claimed in composition
+            // order via the default staggerIndex argument).
+            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -748,12 +795,16 @@ private fun TokenConnectorRow(
                         description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // [Wave 9b] The row's connected indicator — pops when a
+                    // token save lands (label flips null → value); the visual
+                    // half of the haptics.success() fired above.
+                    modifier = Modifier.successPop(connectedLabel),
                 )
             }
             if (busy) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else if (connected) {
-                UnibotTextButton(onClick = { showDisconnectConfirm = true }) {
+                UnibotTextButton(onClick = { haptics.tap(); showDisconnectConfirm = true }) {
                     Text(stringResource(R.string.ub_connectors_disconnect))
                 }
             }
@@ -784,6 +835,7 @@ private fun TokenConnectorRow(
                 UnibotTextButton(
                     onClick = {
                         if (token.isBlank()) return@UnibotTextButton
+                        haptics.tap()
                         busy = true
                         error = null
                         scope.launch {
@@ -793,8 +845,12 @@ private fun TokenConnectorRow(
                                 token = ""
                                 refresh()
                                 pulseTrigger++
+                                // [Wave 9b] Celebration — the visual half is the
+                                // successPop on the "Connected as" line below.
+                                haptics.success()
                             } else {
                                 error = context.getString(R.string.ub_connectors_token_invalid)
+                                haptics.error()
                             }
                         }
                     },
@@ -829,6 +885,7 @@ private fun TokenConnectorRow(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        haptics.error()
                         scope.launch {
                             onDisconnect(context)
                             showDisconnectConfirm = false
@@ -861,8 +918,12 @@ private fun ToggleConnectorRow(
     onToggle: (android.content.Context, Boolean) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
     dataAccess: String,
+    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
+    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
+    // [Wave 9b] Haptic audit: the switch gets a toggle tick.
+    val haptics = rememberHaptic()
     var enabled by remember { mutableStateOf(isEnabled(context)) }
     // [v0.6.0-wave2] Success pulse on toggle.
     val pulseScale = remember { Animatable(1f) }
@@ -880,6 +941,9 @@ private fun ToggleConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
+            // [Wave 9b] Rows cascade in by index (claimed in composition
+            // order via the default staggerIndex argument).
+            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -907,6 +971,7 @@ private fun ToggleConnectorRow(
             androidx.compose.material3.Switch(
                 checked = enabled,
                 onCheckedChange = {
+                    haptics.toggle()
                     enabled = it
                     onToggle(context, it)
                     pulseTrigger++
@@ -929,8 +994,13 @@ private fun ToggleConnectorRow(
  * in memory on this phone only, and never uploads anything.
  */
 @Composable
-private fun WhatsAppConnectorRow() {
+private fun WhatsAppConnectorRow(
+    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
+    staggerIndex: Int = connectorStaggerCursor++,
+) {
     val context = LocalContext.current
+    // [Wave 9b] Haptic audit: the reader switch gets a toggle tick.
+    val haptics = rememberHaptic()
     var readerOn by remember { mutableStateOf(WhatsAppConnector.isListenerEnabled(context)) }
     val pulseScale = remember { Animatable(1f) }
     var pulseTrigger by remember { mutableStateOf(0) }
@@ -956,6 +1026,9 @@ private fun WhatsAppConnectorRow() {
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
+            // [Wave 9b] Rows cascade in by index (claimed in composition
+            // order via the default staggerIndex argument).
+            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -979,17 +1052,27 @@ private fun WhatsAppConnectorRow() {
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     if (readerOn) {
-                        Icon(
-                            imageVector = Icons.Outlined.Shield,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            stringResource(R.string.ub_connectors_whatsapp_private),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        // [Wave 9b] Connected badge — pops the moment the
+                        // reader row enters its enabled state (the badge only
+                        // exists in composition while readerOn, so a constant
+                        // trigger fires exactly on appearance).
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.successPop(Unit),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Shield,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                stringResource(R.string.ub_connectors_whatsapp_private),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                 }
                 Text(
@@ -1001,6 +1084,7 @@ private fun WhatsAppConnectorRow() {
             androidx.compose.material3.Switch(
                 checked = readerOn,
                 onCheckedChange = { on ->
+                    haptics.toggle()
                     if (on) {
                         WhatsAppConnector.setListenerEnabled(context, true)
                         WhatsAppConnector.requestAccess(context)
@@ -1044,9 +1128,15 @@ private fun WhatsAppConnectorRow() {
  * Feeds stay on this phone; nothing is uploaded anywhere.
  */
 @Composable
-private fun RssConnectorRow() {
+private fun RssConnectorRow(
+    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
+    staggerIndex: Int = connectorStaggerCursor++,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // [Wave 9b] Haptic audit: taps on buttons, success on feed add, error on
+    // failures and feed removal.
+    val haptics = rememberHaptic()
     var feeds by remember { mutableStateOf(RssConnector.feeds(context)) }
     var newUrl by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1071,6 +1161,9 @@ private fun RssConnectorRow() {
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
+            // [Wave 9b] Rows cascade in by index (claimed in composition
+            // order via the default staggerIndex argument).
+            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -1096,7 +1189,7 @@ private fun RssConnectorRow() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            UnibotTextButton(onClick = { expanded = !expanded }) {
+            UnibotTextButton(onClick = { haptics.tap(); expanded = !expanded }) {
                 Text(
                     if (expanded) stringResource(R.string.ub_connectors_cancel)
                     else stringResource(R.string.ub_connectors_rss_add),
@@ -1128,14 +1221,17 @@ private fun RssConnectorRow() {
                 UnibotTextButton(
                     onClick = {
                         if (newUrl.isBlank()) return@UnibotTextButton
+                        haptics.tap()
                         scope.launch {
                             val ok = RssConnector.addFeed(context, newUrl)
                             if (ok) {
                                 newUrl = ""
                                 refresh()
                                 pulseTrigger++
+                                haptics.success()
                             } else {
                                 error = context.getString(R.string.ub_connectors_token_invalid)
+                                haptics.error()
                             }
                         }
                     },
@@ -1176,6 +1272,7 @@ private fun RssConnectorRow() {
                         )
                         UnibotTextButton(
                             onClick = {
+                                haptics.error()
                                 scope.launch {
                                     RssConnector.removeFeed(context, feed)
                                     delay(50)
