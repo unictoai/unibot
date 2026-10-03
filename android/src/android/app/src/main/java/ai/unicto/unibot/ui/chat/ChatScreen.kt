@@ -7300,7 +7300,7 @@ fun ChatScreen(
                         }
                         } // unibot: send/stop
                     }
-                }
+
                 // DeepSeek-style attachment tiles under the pill —
                 // Camera / Photo / Document, toggled by the + button.
                 AnimatedVisibility(
@@ -7354,6 +7354,7 @@ fun ChatScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
+                }
                 }
             }
                 // --- Swipe-to-send floating hint (extracted helper) ---
