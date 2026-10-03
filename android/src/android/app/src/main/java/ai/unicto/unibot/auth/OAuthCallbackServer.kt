@@ -9,8 +9,8 @@ import java.net.URI
 class OAuthCallbackServer(
     private val port: Int,
     private val fallbackPorts: List<Int> = emptyList(),
-    private val onCode: (code: String, state: String?) -> Unit,
     private val onError: ((error: String) -> Unit)? = null,
+    private val onCode: (code: String, state: String?) -> Unit,
 ) {
     companion object {
         private const val TAG = "OAuthCallbackServer"
