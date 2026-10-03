@@ -22,8 +22,14 @@ object ExportPasswordStore {
     fun getPasswordIfEnabled(context: Context): String? =
         prefs(context).getString(KEY_PASSWORD, null)?.takeIf { it.isNotEmpty() }
 
-    fun setPassword(context: Context, password: String) {
-        prefs(context).edit().putString(KEY_PASSWORD, password).apply()
+    fun setPassword(context: Context, password: String): Boolean {
+        return try {
+            prefs(context).edit().putString(KEY_PASSWORD, password).apply()
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("ExportPasswordStore", "setPassword failed", e)
+            false
+        }
     }
 
     fun clear(context: Context) {

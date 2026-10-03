@@ -972,6 +972,14 @@ private fun ColumnScope.OAuthConfigSection(
             // [T-kimi-oauth] /v1 is load-bearing (…/coding/… 404s without it).
             ProviderType.kimiCode -> "https://api.kimi.com/coding/v1"
             ProviderType.openAIResponses -> "https://api.openai.com"
+            // [v1.2-free-tier] Pre-filled canonical bases.
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek -> providerType.defaultBaseUrl ?: ""
             ProviderType.antigravity,
             ProviderType.unsupported -> ""
         }
