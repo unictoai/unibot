@@ -4418,6 +4418,12 @@ fun ChatScreen(
                                 // bubble shows its own action menu (Copy /
                                 // Retry / Edit) instead of starting text
                                 // selection, matching iOS UX.
+                                // [Wave 8] Star / unstar via the long-press menu.
+                                // isStarredState refreshes on toggle so the menu
+                                // label ("Star"/"Unstar") is always correct.
+                                var isStarredState by remember(item.message.id) {
+                                    mutableStateOf(StarredMessageStore(context).isStarred(item.message.id))
+                                }
                                 UserMessageBubble(
                                 message = item.message,
                                 // [T-android-candidate-bubble-gap] extra top
@@ -4492,11 +4498,6 @@ fun ChatScreen(
                                     }
                                 },
                                 // [Wave 8] Star / unstar via the long-press menu.
-                                // isStarredState refreshes on each composition
-                                // so the menu label is correct after toggling.
-                                var isStarredState by remember(item.message.id) {
-                                    mutableStateOf(StarredMessageStore(context).isStarred(item.message.id))
-                                }
                                 onToggleStar = {
                                     val store = StarredMessageStore(context)
                                     val msg = item.message
