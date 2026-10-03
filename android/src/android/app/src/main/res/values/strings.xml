@@ -1072,7 +1072,7 @@
     <string name="common_remove">Remove</string>
     <string name="provider_detail_set_manual_bearer_token">Set Manual Bearer Token</string>
     <string name="add_provider_choose_provider">Choose Provider</string>
-    <string name="add_provider_you_can_add_multiple_instances_of_the_sa">You can add multiple instances of the same provider (e.g. work and personal accounts). OpenAI and Anthropic also work with compatible third-party endpoints — set a custom API Base URL after choosing the matching protocol.</string>
+    <string name="add_provider_you_can_add_multiple_instances_of_the_sa">You can add multiple instances of the same provider (e.g. work and personal accounts). Don\'t see your provider? Pick "OpenAI / Compatible API" and set its custom API Base URL to any OpenAI-compatible endpoint — no provider is ever truly missing.</string>
     <string name="add_provider_auth_method">Auth Method</string>
     <string name="add_provider_choose_authentication">Choose Authentication</string>
     <string name="add_provider_pick_the_auth_method_that_matches_your_a">Pick the auth method that matches your account. OAuth signs in via the provider\'s web flow; API Key uses a key from your account dashboard.</string>
@@ -1952,6 +1952,9 @@
     <string name="add_provider_subtitle_sambanova">Free tier — Llama 3.3 70B, DeepSeek R1</string>
     <string name="add_provider_subtitle_nvidia_nim">Free credits on signup — Llama, DeepSeek, Qwen</string>
     <string name="add_provider_subtitle_deepseek">Trial grant on signup — DeepSeek Chat &amp; Reasoner</string>
+    <string name="add_provider_subtitle_zai">Limited-time free GLM models — GLM-4.6 / 4.5</string>
+    <string name="add_provider_subtitle_nebius">Free credits for new accounts — Llama, Qwen, DeepSeek</string>
+    <string name="add_provider_subtitle_chutes">Free API access — decentralized open-model inference</string>
     <!-- [v1.2-free-tier] Provider detail: get-a-key button + quota honesty. -->
     <string name="provider_detail_get_free_key">Get free key</string>
     <string name="provider_detail_free_quota_note">Free limits change often — check the provider\'s docs for current quotas.</string>

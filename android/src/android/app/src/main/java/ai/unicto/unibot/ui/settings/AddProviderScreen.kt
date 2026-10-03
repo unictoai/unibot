@@ -36,6 +36,9 @@ import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.PrecisionManufacturing
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.Paragliding
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material.icons.filled.Terminal
@@ -210,6 +213,9 @@ private val providerDisplayOrder = listOf(
     ProviderType.sambaNova,
     ProviderType.nvidiaNim,
     ProviderType.deepSeek,
+    ProviderType.zai,
+    ProviderType.nebius,
+    ProviderType.chutes,
 )
 
 /**
@@ -251,6 +257,9 @@ private fun providerIcon(type: ProviderType): Pair<ImageVector, Color> = when (t
     ProviderType.sambaNova -> Icons.Default.Waves to Color(0xFF3F51B5)        // indigo
     ProviderType.nvidiaNim -> Icons.Default.PrecisionManufacturing to Color(0xFF76B900) // nvidia green
     ProviderType.deepSeek -> Icons.Default.Search to Color(0xFF7B1FA2)        // deep purple
+    ProviderType.zai -> Icons.Default.Psychology to Color(0xFF00ACC1)          // cyan — Z.AI
+    ProviderType.nebius -> Icons.Default.CloudQueue to Color(0xFF5E35B1)       // purple — Nebius
+    ProviderType.chutes -> Icons.Default.Paragliding to Color(0xFF00897B)      // teal — Chutes
     // [T-android-provider-type-parity] Types that arrive only from an iOS
     // package / newer build; never offered in addableProviderTypes, but the
     // icon helper is also used to render an already-restored instance.
@@ -281,7 +290,10 @@ private fun availableCredentials(type: ProviderType): List<ProviderCredential> {
         ProviderType.githubModels,
         ProviderType.sambaNova,
         ProviderType.nvidiaNim,
-        ProviderType.deepSeek -> listOf(ProviderCredential.apiKey)
+        ProviderType.deepSeek,
+        ProviderType.zai,
+        ProviderType.nebius,
+        ProviderType.chutes -> listOf(ProviderCredential.apiKey)
         // [T-android-provider-type-parity] Responses API instances authenticate
         // exactly like OpenAI ones (API key, or a Codex OAuth login).
         ProviderType.openAIResponses -> listOf(ProviderCredential.apiKey, ProviderCredential.oauth)
@@ -324,7 +336,10 @@ private fun ChooseProviderScreen(
                     ProviderType.githubModels,
                     ProviderType.sambaNova,
                     ProviderType.nvidiaNim,
-                    ProviderType.deepSeek -> type.displayName
+                    ProviderType.deepSeek,
+                    ProviderType.zai,
+                    ProviderType.nebius,
+                    ProviderType.chutes -> type.displayName
                     // [T-android-provider-type-parity] Fall back to the enum's
                     // own display name for types this screen doesn't curate.
                     ProviderType.openAIResponses,
@@ -348,6 +363,9 @@ private fun ChooseProviderScreen(
                     ProviderType.sambaNova -> R.string.add_provider_subtitle_sambanova
                     ProviderType.nvidiaNim -> R.string.add_provider_subtitle_nvidia_nim
                     ProviderType.deepSeek -> R.string.add_provider_subtitle_deepseek
+                    ProviderType.zai -> R.string.add_provider_subtitle_zai
+                    ProviderType.nebius -> R.string.add_provider_subtitle_nebius
+                    ProviderType.chutes -> R.string.add_provider_subtitle_chutes
                     // [T-android-provider-type-parity] Not offered for
                     // creation; reuse the OpenAI copy for the Responses API and
                     // a generic line for the undrivable types.
@@ -457,6 +475,17 @@ private fun apiKeyDescription(type: ProviderType): String = when (type) {
     ProviderType.xAI -> "Use an API key from your xAI Console (api.x.ai)"
     ProviderType.kimiCode -> "Use an API key from your Moonshot account"
     ProviderType.openAIResponses -> "Supports the OpenAI Responses API and compatible endpoints"
+    // [v1.2-free-tier] Free-tier providers: paste-a-key, no base-URL fiddling.
+    ProviderType.groq -> "Free plan, no card — get a key at console.groq.com"
+    ProviderType.cerebras -> "Free tier — get a key at cloud.cerebras.ai"
+    ProviderType.mistral -> "Experiment tier free — get a key at console.mistral.ai"
+    ProviderType.githubModels -> "Free with any GitHub account — use a GitHub token"
+    ProviderType.sambaNova -> "Free tier — get a key at cloud.sambanova.ai"
+    ProviderType.nvidiaNim -> "Free credits on signup — get a key at build.nvidia.com"
+    ProviderType.deepSeek -> "Trial grant on signup — get a key at platform.deepseek.com"
+    ProviderType.zai -> "Limited-time free models — get a key at z.ai"
+    ProviderType.nebius -> "Free credits for new accounts — get a key at studio.nebius.com"
+    ProviderType.chutes -> "Free API access — get a key at chutes.ai"
     ProviderType.antigravity,
     ProviderType.unsupported -> "This provider type is not supported on Android"
 }
@@ -469,6 +498,17 @@ private fun oauthDescription(type: ProviderType): String = when (type) {
     ProviderType.openRouter -> "Sign in with OpenRouter"
     ProviderType.kimiCode -> "Sign in with your Kimi account (Coding Plan)"
     ProviderType.openAIResponses -> "Sign in with OpenAI Codex"
+    // [v1.2-free-tier] API-key only; no OAuth flow, but the when must be exhaustive.
+    ProviderType.groq,
+    ProviderType.cerebras,
+    ProviderType.mistral,
+    ProviderType.githubModels,
+    ProviderType.sambaNova,
+    ProviderType.nvidiaNim,
+    ProviderType.deepSeek,
+    ProviderType.zai,
+    ProviderType.nebius,
+    ProviderType.chutes -> "API key only — no sign-in flow for free-tier providers"
     ProviderType.antigravity,
     ProviderType.unsupported -> "This provider type is not supported on Android"
 }
@@ -609,6 +649,9 @@ private fun ColumnScope.ApiKeyConfigSection(
         ProviderType.sambaNova -> "SambaNova API key..."
         ProviderType.nvidiaNim -> "nvapi-..."
         ProviderType.deepSeek -> "sk-..."
+        ProviderType.zai -> "Z.AI API key..."
+        ProviderType.nebius -> "Nebius API key..."
+        ProviderType.chutes -> "Chutes API key..."
         ProviderType.antigravity,
         ProviderType.unsupported -> "API Key..."
     }
@@ -792,7 +835,10 @@ private fun ColumnScope.OAuthConfigSection(
         ProviderType.githubModels,
         ProviderType.sambaNova,
         ProviderType.nvidiaNim,
-        ProviderType.deepSeek -> "Continue with API key"
+        ProviderType.deepSeek,
+        ProviderType.zai,
+        ProviderType.nebius,
+        ProviderType.chutes -> "Continue with API key"
         ProviderType.antigravity,
         ProviderType.unsupported -> "Sign in"
     }
@@ -979,7 +1025,10 @@ private fun ColumnScope.OAuthConfigSection(
             ProviderType.githubModels,
             ProviderType.sambaNova,
             ProviderType.nvidiaNim,
-            ProviderType.deepSeek -> providerType.defaultBaseUrl ?: ""
+            ProviderType.deepSeek,
+            ProviderType.zai,
+            ProviderType.nebius,
+            ProviderType.chutes -> providerType.defaultBaseUrl ?: ""
             ProviderType.antigravity,
             ProviderType.unsupported -> ""
         }

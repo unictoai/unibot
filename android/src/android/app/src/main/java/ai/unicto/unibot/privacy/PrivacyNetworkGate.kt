@@ -223,6 +223,9 @@ object PrivacyNetworkGate {
         ProviderType.sambaNova -> "api.sambanova.ai"
         ProviderType.nvidiaNim -> "integrate.api.nvidia.com"
         ProviderType.deepSeek -> "api.deepseek.com"
+        ProviderType.zai -> "api.z.ai"
+        ProviderType.nebius -> "api.studio.nebius.com"
+        ProviderType.chutes -> "llm.chutes.ai"
         else -> null
     }
 

@@ -2282,7 +2282,10 @@ class ProviderRepository(private val context: Context) {
                     ProviderType.githubModels,
                     ProviderType.sambaNova,
                     ProviderType.nvidiaNim,
-                    ProviderType.deepSeek -> OpenAIModelsApi.fetchModels(
+                    ProviderType.deepSeek,
+                    ProviderType.zai,
+                    ProviderType.nebius,
+                    ProviderType.chutes -> OpenAIModelsApi.fetchModels(
                         apiKey,
                         baseURL ?: instance.providerType.defaultBaseUrl
                             ?: "https://api.openai.com/v1",

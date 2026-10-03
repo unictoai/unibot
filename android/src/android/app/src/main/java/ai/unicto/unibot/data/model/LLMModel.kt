@@ -224,8 +224,30 @@ data class LLMModel(
             LLMModel("deepseek-reasoner", "DeepSeek Reasoner", "DeepSeek", supportsReasoning = true),
         )
 
+        // Z.AI (GLM) — https://z.ai — several models flagged "Limited-time Free"
+        val allZai = listOf(
+            LLMModel("glm-4.6", "GLM-4.6", "Z.AI"),
+            LLMModel("glm-4.5", "GLM-4.5", "Z.AI"),
+            LLMModel("glm-4.5-air", "GLM-4.5 Air", "Z.AI"),
+        )
+
+        // Nebius AI Studio — https://studio.nebius.com — free credits for new accounts
+        val allNebius = listOf(
+            LLMModel("meta-llama/Meta-Llama-3.3-70B-Instruct", "Llama 3.3 70B Instruct", "Nebius"),
+            LLMModel("Qwen/Qwen3-32B", "Qwen3 32B", "Nebius"),
+            LLMModel("deepseek-ai/DeepSeek-R1", "DeepSeek R1", "Nebius", supportsReasoning = true),
+        )
+
+        // Chutes.ai — https://chutes.ai — free API access, decentralized inference
+        val allChutes = listOf(
+            LLMModel("meta-llama-3.3-70b-instruct", "Llama 3.3 70B Instruct", "Chutes"),
+            LLMModel("qwen3-32b", "Qwen3 32B", "Chutes"),
+            LLMModel("deepseek-r1", "DeepSeek R1", "Chutes", supportsReasoning = true),
+        )
+
         val allModels = allAnthropic + allGemini + allOpenAI + allOpenRouter + allXAI + allKimi +
-            allGroq + allCerebras + allMistral + allGithubModels + allSambaNova + allNvidiaNim + allDeepSeek
+            allGroq + allCerebras + allMistral + allGithubModels + allSambaNova + allNvidiaNim + allDeepSeek +
+            allZai + allNebius + allChutes
 
         /**
          * Heuristic display-name formatter for API model ids.

@@ -1345,6 +1345,9 @@ class ModelUseOffloadHandler(
             ProviderType.sambaNova,
             ProviderType.nvidiaNim,
             ProviderType.deepSeek,
+            ProviderType.zai,
+            ProviderType.nebius,
+            ProviderType.chutes,
             // [T-android-provider-type-parity] No image-param hint for types
             // this build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported, null -> ""

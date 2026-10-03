@@ -92,6 +92,9 @@ internal object ProviderDebugMethods {
         ProviderType.sambaNova -> "https://api.sambanova.ai/v1"
         ProviderType.nvidiaNim -> "https://integrate.api.nvidia.com/v1"
         ProviderType.deepSeek -> "https://api.deepseek.com/v1"
+        ProviderType.zai -> "https://api.z.ai/api/paas/v4"
+        ProviderType.nebius -> "https://api.studio.nebius.com/v1"
+        ProviderType.chutes -> "https://llm.chutes.ai/v1"
         // [T-android-provider-type-parity] Responses API shares the OpenAI
         // host; undrivable types have no canonical base to report.
         ProviderType.openAIResponses -> "https://api.openai.com"

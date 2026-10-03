@@ -1295,6 +1295,9 @@ private fun providerDotColor(providerType: ProviderType?): Color = when (provide
     ProviderType.sambaNova -> Color(0xFF3F51B5)
     ProviderType.nvidiaNim -> Color(0xFF76B900)
     ProviderType.deepSeek -> Color(0xFF7B1FA2)
+    ProviderType.zai -> Color(0xFF00ACC1)
+    ProviderType.nebius -> Color(0xFF5E35B1)
+    ProviderType.chutes -> Color(0xFF00897B)
     // [T-android-provider-type-parity] Responses API instances are
     // OpenAI under the hood — same green dot. Undrivable types share
     // the neutral gray used for "no provider".

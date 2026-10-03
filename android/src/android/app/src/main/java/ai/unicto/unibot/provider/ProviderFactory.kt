@@ -122,7 +122,10 @@ object ProviderFactory {
             ProviderType.githubModels,
             ProviderType.sambaNova,
             ProviderType.nvidiaNim,
-            ProviderType.deepSeek -> {
+            ProviderType.deepSeek,
+            ProviderType.zai,
+            ProviderType.nebius,
+            ProviderType.chutes -> {
                 val base = basePath ?: instance.providerType.defaultBaseUrl
                     ?: "https://api.openai.com/v1"
                 OpenAIProvider(

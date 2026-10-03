@@ -34,6 +34,12 @@ enum class ProviderType(val displayName: String) {
     nvidiaNim("NVIDIA NIM"),
     /** DeepSeek — one-time trial grant on signup (not permanent). https://platform.deepseek.com */
     deepSeek("DeepSeek"),
+    /** Z.AI (GLM) — several models flagged "Limited-time Free". https://z.ai */
+    zai("Z.AI"),
+    /** Nebius AI Studio — free credits for new accounts. https://studio.nebius.com */
+    nebius("Nebius"),
+    /** Chutes.ai — free API access, decentralized inference. https://chutes.ai */
+    chutes("Chutes"),
 
     // [T-android-provider-type-parity] The cases below exist on iOS but were
     // missing here. They are declared so a cross-platform restore or sync can
@@ -85,7 +91,8 @@ enum class ProviderType(val displayName: String) {
             // openAIResponses included: it routes through the OpenAI provider
             // with the Responses endpoint forced on.
             anthropic, gemini, openAI, openRouter, xAI, kimiCode, openAIResponses,
-            groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek -> true
+            groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek,
+            zai, nebius, chutes -> true
             antigravity, unsupported -> false
         }
 
@@ -104,6 +111,9 @@ enum class ProviderType(val displayName: String) {
             sambaNova -> LLMModel.allSambaNova
             nvidiaNim -> LLMModel.allNvidiaNim
             deepSeek -> LLMModel.allDeepSeek
+            zai -> LLMModel.allZai
+            nebius -> LLMModel.allNebius
+            chutes -> LLMModel.allChutes
             // No built-in catalog for the decode-only types; models restored
             // alongside the instance still appear as custom entries.
             openAIResponses, antigravity, unsupported -> emptyList()
@@ -123,6 +133,9 @@ enum class ProviderType(val displayName: String) {
             sambaNova -> "https://api.sambanova.ai/v1"
             nvidiaNim -> "https://integrate.api.nvidia.com/v1"
             deepSeek -> "https://api.deepseek.com/v1"
+            zai -> "https://api.z.ai/api/paas/v4"
+            nebius -> "https://api.studio.nebius.com/v1"
+            chutes -> "https://llm.chutes.ai/v1"
             else -> null
         }
 
@@ -139,6 +152,9 @@ enum class ProviderType(val displayName: String) {
             sambaNova -> "https://cloud.sambanova.ai"
             nvidiaNim -> "https://build.nvidia.com"
             deepSeek -> "https://platform.deepseek.com"
+            zai -> "https://z.ai"
+            nebius -> "https://studio.nebius.com"
+            chutes -> "https://chutes.ai"
             else -> null
         }
 
@@ -148,7 +164,8 @@ enum class ProviderType(val displayName: String) {
      */
     val isFreeTier: Boolean
         get() = when (this) {
-            groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek -> true
+            groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek,
+            zai, nebius, chutes -> true
             else -> false
         }
 
