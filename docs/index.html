@@ -29,7 +29,7 @@
 <meta property="og:image:alt" content="unibot — Your AI agent. Your phone. Your rules.">
 <meta name="twitter:image" content="https://unictoai.github.io/unibot/assets/og-image.png">
 <meta name="twitter:image:alt" content="unibot — Your AI agent. Your phone. Your rules.">
-<link rel="stylesheet" href="styles.css?v=20261004c">
+<link rel="stylesheet" href="styles.css?v=20261004d">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -46,6 +46,7 @@
 </head>
 <body>
 <div class="progress" id="progress" aria-hidden="true"></div>
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
 <a class="skip" href="#top">Skip to content</a>
 
 <!-- ══════════ WELCOME ══════════ -->
@@ -54,6 +55,10 @@
     <img src="assets/logo-hd.png" alt="unibot logo" class="welcome-logo">
     <h2>Welcome to <span class="violet">unibot</span></h2>
     <p class="welcome-note">🔈 Tap OK to enter with sound</p>
+    <div class="welcome-load" aria-hidden="true">
+      <span class="load-num" id="loadNum">00</span>
+      <div class="load-bar"><i id="loadBar"></i></div>
+    </div>
     <button class="btn primary welcome-ok" id="welcomeOk">OK</button>
   </div>
 </div>
@@ -343,6 +348,6 @@
 </footer>
 
 <button class="to-top" id="toTop" aria-label="Back to top">↑</button>
-<script src="script.js?v=20261004e"></script>
+<script src="script.js?v=20261004f"></script>
 </body>
 </html>
