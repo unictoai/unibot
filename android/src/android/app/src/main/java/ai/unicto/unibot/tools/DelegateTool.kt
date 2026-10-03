@@ -72,5 +72,6 @@ object DelegateTool {
         - Work efficiently: prefer reading before writing, batch independent tool calls, keep tool output focused.
         - When the task is done (or you cannot proceed), reply with a concise summary under: ${taskTitle.ifBlank { "Result" }}
         - The summary must contain: what you did, the key findings/results (with file paths, URLs, or numbers as applicable), assumptions you made, and anything left undone with why.
+        - Never surrender after one blocked route: try at least 3 materially different approaches before reporting failure. Your summary must list what you tried (one line each) and the single easiest next step for the user.
     """.trimIndent()
 }

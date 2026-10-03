@@ -172,6 +172,10 @@ class BrowserUseManager(
     /** Deferred for awaiting navigation completion. */
     private var navigationDeferred: CompletableDeferred<Unit>? = null
 
+    /** Last main-frame navigation error, cleared on every new navigation. Surfaced to the agent in navigate-result metadata. */
+    @Volatile
+    private var lastNavigationError: String? = null
+
     /** Screenshots directory. */
     private val screenshotsDir: File by lazy {
         File(webView.context.cacheDir, "browser_screenshots").also { it.mkdirs() }
@@ -409,6 +413,7 @@ class BrowserUseManager(
                 if (request.isForMainFrame) {
                     _isLoading.value = false
                     Log.e(TAG, "Navigation error: ${error.description}")
+                    lastNavigationError = "Navigation error: ${error.description} (code ${error.errorCode})"
                     navigationDeferred?.complete(Unit)
                     navigationDeferred = null
                 }
@@ -729,6 +734,7 @@ class BrowserUseManager(
 
         val deferred = CompletableDeferred<Unit>()
         navigationDeferred = deferred
+        lastNavigationError = null
         _isLoading.value = true
 
         withContext(Dispatchers.Main) {
@@ -802,6 +808,11 @@ class BrowserUseManager(
             appendLine("  Viewport: ${effectiveVpW}x$effectiveVpH")
             if (pageW > 0 || pageH > 0) appendLine("  Page size: ${pageW}x$pageH")
             append("  Scroll position: ($scrollX, $scrollY)")
+            lastNavigationError?.let { navErr ->
+                appendLine()
+                appendLine("  Page load error: $navErr")
+                append("  Guidance: this is a network/load failure, NOT a login wall — the page did not render. Do not confuse it with a login-wall page (which loads fine but shows sign-in buttons). For a login wall, do NOT retry the same URL; pivot to the shell download ladder (yt-dlp / curl) or alternate frontends.")
+            }
         }
     }
 
