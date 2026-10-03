@@ -74,6 +74,7 @@ import ai.unicto.unibot.tools.GitHubTool
 import ai.unicto.unibot.tools.TelegramTool
 import ai.unicto.unibot.tools.YouTubeTool
 import ai.unicto.unibot.tools.CreatorTools
+import ai.unicto.unibot.tools.ReminderTools
 import ai.unicto.unibot.tools.DiscordTool
 import ai.unicto.unibot.tools.SlackTool
 import ai.unicto.unibot.tools.DriveTool
