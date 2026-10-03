@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -16,6 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import android.provider.Settings
 
 /**
  * unibot motion language — the v0.4.0 "premium feel" pass.
@@ -66,6 +70,58 @@ object Motion {
      */
     fun staggerDelay(index: Int): Int =
         (index.coerceAtLeast(0) * StaggerStepMs).coerceAtMost(StaggerMaxMs)
+
+    /**
+     * Raw system animator duration scale (1.0 = normal). 0 means the user
+     * enabled "Remove animations" in accessibility settings. No permission
+     * needed to read [Settings.Global.ANIMATOR_DURATION_SCALE].
+     */
+    fun animatorDurationScale(context: Context): Float =
+        try {
+            Settings.Global.getFloat(
+                context.contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f,
+            )
+        } catch (_: Exception) {
+            1f
+        }
+}
+
+/**
+ * True when the app should play motion: the system animator duration scale
+ * is not zero. Wave 9 uses this to gate infinite ambient loops (shimmers,
+ * breathing glows, loaders) so "Remove animations" is honoured — a
+ * quality/accessibility touch, not a feature flag.
+ */
+@Composable
+fun animationsEnabled(): Boolean {
+    val context = LocalContext.current
+    return remember { Motion.animatorDurationScale(context) != 0f }
+}
+
+/**
+ * Brief scale-pop for success moments (model download complete, reminder
+ * saved, connector connected, backup finished): snaps to 0.9 then springs
+ * back to 1.0 on [Motion.SpringSpec] every time [trigger] changes to a
+ * non-null value. Pair with `haptics.success()` at the call site — the
+ * motion is the visual half of the celebration. No-op when animations are
+ * disabled.
+ */
+@Composable
+fun Modifier.successPop(trigger: Any?): Modifier {
+    if (!animationsEnabled()) return this
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(trigger) {
+        if (trigger != null) {
+            scale.snapTo(0.9f)
+            scale.animateTo(1f, Motion.SpringSpec)
+        }
+    }
+    return this.graphicsLayer {
+        scaleX = scale.value
+        scaleY = scale.value
+    }
 }
 
 /**
@@ -80,6 +136,8 @@ object Motion {
  */
 @Composable
 fun Modifier.staggeredEntrance(index: Int): Modifier {
+    // Accessibility: when the user removed animations, content just appears.
+    if (!animationsEnabled()) return this
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val spec = tween<Float>(
