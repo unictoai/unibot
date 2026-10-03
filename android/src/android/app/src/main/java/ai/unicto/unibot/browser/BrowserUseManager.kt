@@ -423,6 +423,17 @@ class BrowserUseManager(
                 view: WebView, request: WebResourceRequest
             ): android.webkit.WebResourceResponse? {
                 val url = request.url ?: return null
+                // [v12-A] Ad/tracker blocking (opt-in, subresources only).
+                // Direct navigation to a listed host still renders the page.
+                if (!request.isForMainFrame &&
+                    ai.unicto.unibot.ui.browser.AdBlocker.isEnabled(view.context) &&
+                    ai.unicto.unibot.ui.browser.AdBlocker.shouldBlock(url.toString())
+                ) {
+                    return android.webkit.WebResourceResponse(
+                        "text/plain", "utf-8", 204, "No Content",
+                        mutableMapOf(), ByteArray(0).inputStream()
+                    )
+                }
                 // Legacy minis:// accepted too (old content may reference it).
                 if (url.scheme != "unibot" && url.scheme != "minis") return null
                 return interceptUnibotURL(url)
