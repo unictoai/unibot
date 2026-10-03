@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling>=1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -22,34 +22,34 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "openai>=1.60",
-  "pydantic>=2.7",
-  "httpx>=0.27",
-  "typer>=0.12",
-  "rich>=13.7",
-  "loguru>=0.7",
-  "cryptography>=42",
-  "tenacity>=8.3",
-  "ddgs>=9.0",
-  "beautifulsoup4>=4.12",
-  "html2text>=2024.2.26",
-  "mcp>=1.2",
-  "fastapi>=0.110",
-  "uvicorn[standard]>=0.29",
-  "qrcode>=7.4",
-  "pywebpush>=2.0",
-  "python-dateutil>=2.9",
-  "pillow>=10",
-  "pypdf>=4",
+  "openai>=3.22.1",
+  "pydantic>=2.13.5",
+  "httpx>=0.28.1",
+  "typer>=0.27.2",
+  "rich>=15.0.0",
+  "loguru>=0.7.3",
+  "cryptography>=50.0.2",
+  "tenacity>=9.1.4",
+  "ddgs>=9.16.0",
+  "beautifulsoup4>=4.15.0",
+  "html2text>=2025.4.15",
+  "mcp>=2.2.0",
+  "fastapi>=0.142.2",
+  "uvicorn[standard]>=0.54.0",
+  "qrcode>=8.2",
+  "pywebpush>=2.5.0",
+  "python-dateutil>=2.9.0.post0",
+  "pillow>=12.3.0",
+  "pypdf>=6.19.0",
   # Windows has no system time-zone database; zoneinfo (the calendar, quiet hours) needs this one
-  "tzdata>=2024.1; platform_system == 'Windows'",
+  "tzdata>=2026.4; platform_system == 'Windows'",
 ]
 
 [project.optional-dependencies]
-browser = ["playwright>=1.45"]
+browser = ["playwright>=1.63.0"]
 # this computer's screen and hands (docs/every-device.md); xdotool works without them on X11
-hands = ["mss>=9", "Pillow>=10", "pyautogui>=0.9.54", "pyperclip>=1.8"]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5", "mypy>=1.10", "httpx>=0.27", "types-python-dateutil"]
+hands = ["mss>=10.2.0", "Pillow>=10", "pyautogui>=0.9.54", "pyperclip>=1.11.0"]
+dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0", "ruff>=0.16.9", "mypy>=2.3.1", "httpx>=0.28.1", "types-python-dateutil"]
 all = ["unibot[browser,hands,dev]"]
 
 [project.scripts]
