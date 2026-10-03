@@ -70,6 +70,7 @@ class UnibotAgent:
         # before the next model call instead of waiting for the current run to finish.
         self.inbox: asyncio.Queue[str | Incoming] | None = None
         self._told_no_vision = False
+        self._vision_warned_model: str | None = None
 
     def _drain_inbox(self) -> int:
         if self.inbox is None:
@@ -328,15 +329,51 @@ class UnibotAgent:
 
     # ------------------------------------------------------------------ stuck detection
     def _is_stuck(self) -> bool:
-        assistants = [m for m in self.messages if m.role == Role.ASSISTANT][-3:]
-        if len(assistants) < 3:
+        """True when the agent is looping: the same step signature (tool name +
+        normalized args + the first 200 chars of its result) repeats 3+ times
+        inside the last 6 assistant turns."""
+        # Pair each assistant message with the tool results that followed it.
+        pairs: list[tuple[Message, list[Message]]] = []
+        pending: Message | None = None
+        results: list[Message] = []
+        for m in self.messages:
+            if m.role == Role.ASSISTANT:
+                if pending is not None:
+                    pairs.append((pending, results))
+                pending, results = m, []
+            elif m.role == Role.TOOL and pending is not None:
+                results.append(m)
+        if pending is not None:
+            pairs.append((pending, results))
+        recent = pairs[-6:]
+        if len(recent) < 3:
             return False
 
-        def sig(m: Message) -> str:
-            calls = [(tc.function.name, tc.function.arguments) for tc in (m.tool_calls or [])]
-            return json.dumps([m.content, calls], ensure_ascii=False, sort_keys=True)
+        def norm_args(args: object) -> str:
+            try:
+                text = json.dumps(args, ensure_ascii=False, sort_keys=True, default=str)
+            except Exception:  # pragma: no cover - defensive
+                text = str(args)
+            return "".join(text.split())
 
-        return len({sig(m) for m in assistants}) == 1
+        def sig(pair: tuple[Message, list[Message]]) -> str:
+            assistant, tool_results = pair
+            calls = []
+            for tc in assistant.tool_calls or []:
+                output = ""
+                for r in tool_results:
+                    if r.tool_call_id == tc.id:
+                        output = (r.content or "")[:200]
+                        break
+                calls.append((tc.function.name, norm_args(tc.function.arguments), output))
+            return json.dumps([assistant.content, calls], ensure_ascii=False, sort_keys=True)
+
+        seen: dict[str, int] = {}
+        for s in (sig(p) for p in recent):
+            seen[s] = seen.get(s, 0) + 1
+            if seen[s] >= 3:
+                return True
+        return False
 
     # ------------------------------------------------------------------ main loop
     async def run(
@@ -393,9 +430,15 @@ class UnibotAgent:
                         on_delta=self.ui.on_text_delta,
                         max_tokens=self.llm.roomier_max_tokens(),
                     )
+                model_id = getattr(getattr(self.llm, "settings", None), "model", None)
+                if model_id != self._vision_warned_model:
+                    # The model changed since the vision warning: the new model may
+                    # take images, so the one-shot warning may fire again for it.
+                    self._told_no_vision = False
                 if self.llm.vision_available is False and not self._told_no_vision:
                     if any(m.images for m in self.messages if m.role == Role.USER):
                         self._told_no_vision = True
+                        self._vision_warned_model = model_id
                         self.ui.warn(
                             "This model does not take images, so the picture was described to "
                             "it by name only. It stays in the workspace; a model with vision "
@@ -419,7 +462,15 @@ class UnibotAgent:
                         break
                     empty_replies += 1
                     if empty_replies >= 2:
-                        final = ""
+                        msg = "The model returned empty replies twice; stopping."
+                        logger.warning(msg)
+                        self.ui.warn(msg)
+                        self.audit.record("empty_replies", step=step, stopped=True)
+                        final = (
+                            "I couldn't get a usable reply from the model — it returned "
+                            "empty responses twice in a row, so I stopped. Try asking "
+                            "again or switching models."
+                        )
                         break
                     self.messages.append(
                         Message.user(

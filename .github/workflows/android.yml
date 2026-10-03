@@ -98,8 +98,12 @@ jobs:
           # CI job logs are not readable without auth; publish the failure tail
           # as an issue so it can be diagnosed.
           { echo 'assembleDebug failed. Error lines + tail:'; echo '```'; grep -E '^e:|error:|FAILED|Exception' "$RUNNER_TEMP/assemble.log" | head -40; echo '--- tail ---'; tail -c 15000 "$RUNNER_TEMP/assemble.log"; echo '```'; } | python3 .github/scripts/redact-log.py > /tmp/assemble-tail.txt || true
-          gh issue create --title "CI: assembleDebug failed on ${{ github.sha }}" \
-            --body-file /tmp/assemble-tail.txt || true
+          # Don't flood the tracker: one open issue per failure kind is enough.
+          existing=$(gh issue list --state open --search "CI: assembleDebug failed in:title" --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "${existing:-0}" -eq 0 ]; then
+            gh issue create --title "CI: assembleDebug failed on ${{ github.sha }}" \
+              --body-file /tmp/assemble-tail.txt || true
+          fi
 
       - name: Badging
         run: |

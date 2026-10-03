@@ -85,8 +85,12 @@ jobs:
           # CI job logs are not readable without auth; publish the failure tail
           # as an issue so it can be diagnosed.
           { echo 'assembleRelease failed. Tail of the Gradle log:'; echo '```'; tail -c 30000 "$RUNNER_TEMP/assemble.log" | python3 .github/scripts/redact-log.py; echo '```'; } > /tmp/assemble-tail.txt || true
-          gh issue create --title "Release ${{ github.ref_name }}: assembleRelease failed" \
-            --body-file /tmp/assemble-tail.txt || true
+          # Don't flood the tracker: one open issue per failure kind is enough.
+          existing=$(gh issue list --state open --search "assembleRelease failed in:title" --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "${existing:-0}" -eq 0 ]; then
+            gh issue create --title "Release ${{ github.ref_name }}: assembleRelease failed" \
+              --body-file /tmp/assemble-tail.txt || true
+          fi
 
       - name: Badging
         run: |

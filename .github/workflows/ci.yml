@@ -133,8 +133,12 @@ jobs:
           # CI job logs are not readable without auth; publish the failure tail
           # as an issue so it can be diagnosed.
           { echo 'pytest failed. Tail of the test log:'; echo '```'; tail -c 30000 "$RUNNER_TEMP/pytest.log" | python3 .github/scripts/redact-log.py; echo '```'; } > /tmp/pytest-tail.txt || true
-          gh issue create --title "CI: pytest failed on ${{ github.sha }}" \
-            --body-file /tmp/pytest-tail.txt || true
+          # Don't flood the tracker: one open issue per failure kind is enough.
+          existing=$(gh issue list --state open --search "CI: pytest failed in:title" --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "${existing:-0}" -eq 0 ]; then
+            gh issue create --title "CI: pytest failed on ${{ github.sha }}" \
+              --body-file /tmp/pytest-tail.txt || true
+          fi
 
       - name: Package builds and installs
         if: env.RUN == 'true' && (matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12')
