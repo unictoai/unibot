@@ -93,6 +93,15 @@ android {
         }
     }
 
+    // Both the VAD library (RealTimeCutVADLibraryForAndroid) and sherpa-onnx
+    // (via its transitive lib-onnx dependency) ship libonnxruntime.so.
+    // They're the same library (ORT's C API is stable), so first wins.
+    packaging {
+        jniLibs {
+            pickFirsts += "lib/arm64-v8a/libonnxruntime.so"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
