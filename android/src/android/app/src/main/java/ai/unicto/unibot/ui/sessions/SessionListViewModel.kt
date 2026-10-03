@@ -158,16 +158,31 @@ class SessionListViewModel(
 
     // The list to actually show: search results when searching, otherwise all sessions
     // [Wave 8] Archived sessions are filtered out unless showArchived is on.
+    // [Wave 8] folderFilterId narrows the list to one folder (null = all).
     val showArchived = MutableStateFlow(false)
+    val folderFilterId = MutableStateFlow<String?>(null)
     val archivedIds = MutableStateFlow<Set<String>>(
         uiPrefs.getStringSet("archivedSessionIds", emptySet())?.toSet() ?: emptySet(),
     )
 
     val displayedSessions: StateFlow<List<ChatSessionEntity>> = combine(
         _allSessions, searchResults, searchQuery, isSearchActive, archivedIds, showArchived,
-    ) { all, results, q, active, archived, showArch ->
-        val base = if (active && q.isNotBlank()) results else all
-        if (showArch) base.filter { it.id in archived } else base.filter { it.id !in archived }
+        folderFilterId,
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val all = args[0] as List<ChatSessionEntity>
+        @Suppress("UNCHECKED_CAST")
+        val results = args[1] as List<ChatSessionEntity>
+        val q = args[2] as String
+        val active = args[3] as Boolean
+        @Suppress("UNCHECKED_CAST")
+        val archived = args[4] as Set<String>
+        val showArch = args[5] as Boolean
+        val folderFilter = args[6] as String?
+        var base = if (active && q.isNotBlank()) results else all
+        base = if (showArch) base.filter { it.id in archived } else base.filter { it.id !in archived }
+        if (folderFilter != null) base = base.filter { it.folderId == folderFilter }
+        base
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // ─── Session groups ("folders") ────────────────────────────────────────

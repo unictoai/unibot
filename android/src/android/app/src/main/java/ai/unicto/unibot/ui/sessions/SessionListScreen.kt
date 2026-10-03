@@ -1052,6 +1052,42 @@ fun SessionListScreen(
                         // Leave space for bottom FAB row
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
                     ) {
+                        // [Wave 8] Folder filter chips — "All" + one per
+                        // folder; tapping narrows the list to that folder.
+                        // Only shown when folders exist.
+                        val folderFilterId by viewModel.folderFilterId.collectAsState()
+                        if (folders.isNotEmpty()) {
+                            item(key = "folder_filter_chips") {
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    item(key = "chip_all") {
+                                        androidx.compose.material3.FilterChip(
+                                            selected = folderFilterId == null,
+                                            onClick = { viewModel.folderFilterId.value = null },
+                                            label = { Text("All") },
+                                        )
+                                    }
+                                    items(
+                                        folders,
+                                        key = { f -> "chip_${f.id}" },
+                                    ) { folder ->
+                                        androidx.compose.material3.FilterChip(
+                                            selected = folderFilterId == folder.id,
+                                            onClick = {
+                                                viewModel.folderFilterId.value =
+                                                    if (folderFilterId == folder.id) null
+                                                    else folder.id
+                                            },
+                                            label = { Text(folder.name) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         // [v1.0-wave6] "While you were away" — surfaces
                         // scheduled-task results produced since the last
                         // foreground visit. One dismissible card, never a stack.
