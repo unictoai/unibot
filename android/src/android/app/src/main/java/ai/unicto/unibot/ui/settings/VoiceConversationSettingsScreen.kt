@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Hearing
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,6 +71,7 @@ fun VoiceConversationSettingsScreen(
     val speed by VoiceOutputState.speed.collectAsState()
     val autoListen by VoiceConversationPrefs.autoListen.collectAsState()
     val speakOnly by VoiceConversationPrefs.speakOnlyInVoiceMode.collectAsState()
+    val autoDetect by VoiceConversationPrefs.autoDetectLanguage.collectAsState()
     val voiceId by VoiceConversationPrefs.voiceId.collectAsState()
 
     Scaffold(
@@ -185,6 +187,27 @@ fun VoiceConversationSettingsScreen(
                                 checked = speakOnly,
                                 onCheckedChange = {
                                     VoiceConversationPrefs.setSpeakOnlyInVoiceMode(it)
+                                },
+                            )
+                        },
+                    )
+                    MuseRowDivider()
+                    // [unibot-voice-autodetect] On-device spoken-language
+                    // detection: switches the recognizer to the language you
+                    // actually speak, automatically.
+                    MuseRow(
+                        title = stringResource(R.string.ub_voice_auto_detect),
+                        value = stringResource(R.string.ub_voice_auto_detect_desc),
+                        onClick = {
+                            VoiceConversationPrefs.setAutoDetectLanguage(!autoDetect)
+                        },
+                        icon = Icons.Outlined.Translate,
+                        chevron = false,
+                        trailing = {
+                            Switch(
+                                checked = autoDetect,
+                                onCheckedChange = {
+                                    VoiceConversationPrefs.setAutoDetectLanguage(it)
                                 },
                             )
                         },

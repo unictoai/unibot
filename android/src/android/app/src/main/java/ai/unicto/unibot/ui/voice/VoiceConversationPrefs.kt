@@ -22,6 +22,7 @@ object VoiceConversationPrefs {
     private const val KEY_SPEAK_ONLY_IN_VOICE_MODE = "speakOnlyInVoiceMode"
     private const val KEY_VOICE_ID = "voiceId"
     private const val KEY_MIC_RATIONALE_SHOWN = "micRationaleShown"
+    private const val KEY_AUTO_DETECT_LANGUAGE = "autoDetectLanguage"
 
     /** On-device voices offered by the voice conversation UI. The actual
      *  downloads are owned by the TTS voice manager (sibling work); these
@@ -29,6 +30,9 @@ object VoiceConversationPrefs {
     val VOICES: List<VoiceOption> = listOf(
         VoiceOption("amy", "Amy"),
         VoiceOption("ryan", "Ryan"),
+        VoiceOption("lessac", "Lessac"),
+        VoiceOption("joe", "Joe"),
+        VoiceOption("alan", "Alan"),
     )
 
     data class VoiceOption(val id: String, val label: String)
@@ -49,8 +53,17 @@ object VoiceConversationPrefs {
     val speakOnlyInVoiceMode: StateFlow<Boolean> = _speakOnlyInVoiceMode.asStateFlow()
 
     private val _voiceId = MutableStateFlow<String?>(null)
-    /** Selected on-device voice id ("amy"/"ryan"); null = default. */
+    /** Selected on-device voice id ("amy"/"ryan"/"lessac"/"joe"/"alan"); null = default. */
     val voiceId: StateFlow<String?> = _voiceId.asStateFlow()
+
+    private val _autoDetectLanguage = MutableStateFlow(false)
+    /**
+     * [unibot-voice-autodetect] When true, the voice conversation watches each final
+     * transcript and switches the recognizer's language when the spoken
+     * language is confidently different ([SpokenLanguageHeuristic]). Off by
+     * default — flipping the recognizer under the user is opt-in.
+     */
+    val autoDetectLanguage: StateFlow<Boolean> = _autoDetectLanguage.asStateFlow()
 
     /** Idempotent; safe to call per composition. */
     fun init(context: Context) {
@@ -60,6 +73,7 @@ object VoiceConversationPrefs {
         _autoListen.value = sp.getBoolean(KEY_AUTO_LISTEN, true)
         _speakOnlyInVoiceMode.value = sp.getBoolean(KEY_SPEAK_ONLY_IN_VOICE_MODE, false)
         _voiceId.value = sp.getString(KEY_VOICE_ID, null)
+        _autoDetectLanguage.value = sp.getBoolean(KEY_AUTO_DETECT_LANGUAGE, false)
     }
 
     fun setAutoListen(on: Boolean) {
@@ -75,6 +89,11 @@ object VoiceConversationPrefs {
     fun setVoiceId(id: String?) {
         _voiceId.value = id
         prefs?.edit()?.putString(KEY_VOICE_ID, id)?.apply()
+    }
+
+    fun setAutoDetectLanguage(on: Boolean) {
+        _autoDetectLanguage.value = on
+        prefs?.edit()?.putBoolean(KEY_AUTO_DETECT_LANGUAGE, on)?.apply()
     }
 
     /** True once the first-entry mic rationale dialog has been shown. */

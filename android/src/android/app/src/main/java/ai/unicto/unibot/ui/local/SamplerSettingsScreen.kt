@@ -51,7 +51,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
-import ai.unicto.unibot.local.LlamaModel
 import ai.unicto.unibot.local.LlamaModelManager
 import ai.unicto.unibot.local.SamplerPresets
 import ai.unicto.unibot.local.SamplerSettings

@@ -159,6 +159,18 @@ fun VoiceConversationScreen(
     val onDevice by vm.onDeviceBadge.collectAsState()
     val autoListen by vm.autoListen.collectAsState()
 
+    // [unibot-voice-history] When the screen goes away after at least one
+    // completed voice turn, remember this session as a voice conversation.
+    // Reads the flow at dispose time — the captured compose value would be
+    // stale because turn changes don't restart this effect.
+    DisposableEffect(sessionId) {
+        onDispose {
+            if (vm.turnsCompleted.value > 0) {
+                VoiceConversationHistory.recordVoiceSession(context, sessionId)
+            }
+        }
+    }
+
     // TTS voice readiness is not a flow (the voice manager owns downloads);
     // refresh it whenever we come back to the foreground (e.g. returning
     // from the downloads screen).

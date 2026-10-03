@@ -77,6 +77,10 @@ class VoiceConversationViewModel(
     /** (what you said, what unibot said) for the most recent completed turn. */
     val lastExchange: StateFlow<Pair<String, String>?> = _lastExchange.asStateFlow()
 
+    private val _turnsCompleted = MutableStateFlow(0)
+    /** Completed voice turns this visit — drives the voice-history record. */
+    val turnsCompleted: StateFlow<Int> = _turnsCompleted.asStateFlow()
+
     /** Latest mic level 0f..1f, from [SpeechRecognitionManager.audioLevels]. */
     val audioLevel: StateFlow<Float> = SpeechRecognitionManager.audioLevels
         .map { levels -> levels.lastOrNull() ?: 0f }
@@ -328,7 +332,34 @@ class VoiceConversationViewModel(
         }
         _state.value = State.Thinking
         _partialTranscript.value = ""
+        // [unibot-voice-autodetect] First-utterance language detection: watch
+        // the transcript and move the recognizer to the spoken language.
+        maybeAutoDetectLanguage(clean)
         sendToChat(clean)
+    }
+
+    /**
+     * [unibot-voice-autodetect] When the toggle is on, run the on-device
+     * script heuristic over the final transcript and switch the recognizer
+     * locale when the spoken language is confidently different. No-ops for
+     * engines where a switch is meaningless: the provider engine is
+     * language-agnostic (auto-detects natively) and the offline whisper model
+     * is English-only.
+     */
+    private fun maybeAutoDetectLanguage(text: String) {
+        if (!VoiceConversationPrefs.autoDetectLanguage.value) return
+        val engineId = SpeechRecognitionManager.selectedEngineId.value
+        if (engineId == WHISPER_ENGINE_ID) return
+        val current = SpeechRecognitionManager.locale.value
+        val detected = ai.unicto.unibot.speech.SpokenLanguageHeuristic
+            .detectLanguage(text, current.language) ?: return
+        val supported = SpeechRecognitionManager.supportedLocales.value
+        // Only switch to a locale the engine actually supports; with an
+        // unknown list (provider engine) the recognizer ignores locale anyway.
+        val target = supported.firstOrNull { it.language == detected } ?: return
+        if (target.toLanguageTag() == current.toLanguageTag()) return
+        Log.i("VoiceConversation", "auto-detect: ${current.toLanguageTag()} -> ${target.toLanguageTag()}")
+        SpeechRecognitionManager.selectLocale(target)
     }
 
     // ─── Thinking → Speaking ─────────────────────────────────────────────
@@ -353,6 +384,7 @@ class VoiceConversationViewModel(
                 return@launch
             }
             _lastExchange.value = userText to reply
+            _turnsCompleted.value++
             // Speak the final text; sanitizer strips markdown/emoji for the ear.
             val spoken = VoiceTextSanitizer.sanitize(reply).trim()
             if (spoken.isEmpty()) {
