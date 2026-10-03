@@ -168,17 +168,7 @@ class SessionListViewModel(
     val displayedSessions: StateFlow<List<ChatSessionEntity>> = combine(
         _allSessions, searchResults, searchQuery, isSearchActive, archivedIds, showArchived,
         folderFilterId,
-    ) { args ->
-        @Suppress("UNCHECKED_CAST")
-        val all = args[0] as List<ChatSessionEntity>
-        @Suppress("UNCHECKED_CAST")
-        val results = args[1] as List<ChatSessionEntity>
-        val q = args[2] as String
-        val active = args[3] as Boolean
-        @Suppress("UNCHECKED_CAST")
-        val archived = args[4] as Set<String>
-        val showArch = args[5] as Boolean
-        val folderFilter = args[6] as String?
+    ) { all, results, q, active, archived, showArch, folderFilter ->
         var base = if (active && q.isNotBlank()) results else all
         base = if (showArch) base.filter { it.id in archived } else base.filter { it.id !in archived }
         if (folderFilter != null) base = base.filter { it.folderId == folderFilter }
