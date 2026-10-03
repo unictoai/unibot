@@ -53,6 +53,16 @@ data class LlamaModel(
     /** Default sampling temperature (per model-card guidance). */
     val defaultTemperature: Float,
     val systemPrompt: String,
+    /**
+     * [Wave 8] Estimated peak RAM in MB (weights + KV cache + runtime).
+     * Shown in the model manager so users can judge fit for their phone.
+     */
+    val ramEstimateMb: Int = 2048,
+    /**
+     * [Wave 8] Relative capability score 1-10 for smart routing: higher =
+     * better quality, slower. The Auto router picks by prompt complexity.
+     */
+    val capabilityScore: Int = 5,
 )
 
 /**
@@ -98,6 +108,8 @@ object LlamaModelManager {
             template = LlamaChatTemplate.QWEN3_CHATML,
             defaultTemperature = 0.7f,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
+            ramEstimateMb = 3800,
+            capabilityScore = 9,
         ),
         LlamaModel(
             id = "lfm2-1.2b",
@@ -109,6 +121,8 @@ object LlamaModelManager {
             template = LlamaChatTemplate.LFM2_CHATML,
             defaultTemperature = 0.3f,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
+            ramEstimateMb = 2400,
+            capabilityScore = 6,
         ),
         LlamaModel(
             id = "lfm2.5-230m",
@@ -120,6 +134,8 @@ object LlamaModelManager {
             template = LlamaChatTemplate.LFM2_CHATML,
             defaultTemperature = 0.3f,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
+            ramEstimateMb = 700,
+            capabilityScore = 3,
         ),
     )
 
@@ -130,6 +146,8 @@ object LlamaModelManager {
     sealed interface DownloadState {
         data object Idle : DownloadState
         data class Downloading(val fraction: Float) : DownloadState
+        /** [Wave 8] Paused by the user — the .part file is kept for resume. */
+        data class Paused(val fraction: Float) : DownloadState
         data object Done : DownloadState
         data class Failed(val message: String?) : DownloadState
     }
@@ -248,6 +266,7 @@ object LlamaModelManager {
                 setState(model, DownloadState.Failed(e.message))
             } finally {
                 activeModel = null
+                pumpQueue()
             }
         }
     }
@@ -257,6 +276,123 @@ object LlamaModelManager {
         downloadJob = null
         activeModel?.let { setState(it, DownloadState.Idle) }
         activeModel = null
+        pumpQueue()
+    }
+
+    /**
+     * [Wave 8] Pause the in-flight download, keeping the .part file so
+     * [download] resumes where it left off. Distinct from [cancel], which
+     * discards progress.
+     */
+    fun pause() {
+        val model = activeModel ?: return
+        val fraction = (downloadStateOf(model) as? DownloadState.Downloading)?.fraction ?: 0f
+        downloadJob?.cancel()
+        downloadJob = null
+        activeModel = null
+        setState(model, DownloadState.Paused(fraction))
+        Log.i(TAG, "llm model ${model.id} paused at ${(fraction * 100).toInt()}%")
+    }
+
+    /** [Wave 8] Queued model ids waiting for the active download to finish. */
+    private val _downloadQueue = MutableStateFlow<List<String>>(emptyList())
+    val downloadQueue: StateFlow<List<String>> = _downloadQueue.asStateFlow()
+
+    /**
+     * [Wave 8] Add [model] to the download queue, or start it immediately
+     * when nothing is downloading. Tapping download on a second model no
+     * longer no-ops — it queues.
+     */
+    fun enqueue(context: Context, model: LlamaModel) {
+        if (isDownloaded(context, model)) {
+            setState(model, DownloadState.Done)
+            return
+        }
+        val id = model.id
+        if (_downloadQueue.value.contains(id)) return
+        if (downloadJob?.isActive == true || downloadStateOf(model) is DownloadState.Downloading) {
+            _downloadQueue.value = _downloadQueue.value + id
+            Log.i(TAG, "llm model $id queued (position ${_downloadQueue.value.size})")
+        } else {
+            download(context, model)
+        }
+    }
+
+    /** Start the next queued download, if any. Called after finish/cancel. */
+    private fun pumpQueue() {
+        val nextId = _downloadQueue.value.firstOrNull() ?: return
+        _downloadQueue.value = _downloadQueue.value.drop(1)
+        // The context isn't available here; the UI layer re-issues download()
+        // via queueHeadHint. Keep the id visible for the UI to pick up.
+        _queueHeadHint.value = nextId
+    }
+
+    /**
+     * [Wave 8] Id of the model the queue wants started next, or null.
+     * The UI observes this and calls [download] with a Context.
+     */
+    private val _queueHeadHint = MutableStateFlow<String?>(null)
+    val queueHeadHint: StateFlow<String?> = _queueHeadHint.asStateFlow()
+
+    fun consumeQueueHeadHint(): String? {
+        val h = _queueHeadHint.value
+        _queueHeadHint.value = null
+        return h
+    }
+
+    /** [Wave 8] Remove [model] from the queue without starting it. */
+    fun dequeue(model: LlamaModel) {
+        _downloadQueue.value = _downloadQueue.value - model.id
+    }
+
+    // ─── Offline-first + smart routing ────────────────────────────────────
+    private const val KEY_OFFLINE_FIRST = "offline_first"
+
+    /**
+     * [Wave 8] Offline-first: when ON and at least one model is downloaded,
+     * new chats automatically route to the best downloaded on-device model
+     * instead of the cloud. The composer shows an "on-device" badge.
+     * Pure on-device preference — never uploaded.
+     */
+    fun isOfflineFirst(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_OFFLINE_FIRST, false)
+
+    fun setOfflineFirst(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_OFFLINE_FIRST, on).apply()
+        Log.i(TAG, "offline-first -> $on")
+    }
+
+    /**
+     * [Wave 8] "Auto" smart routing for the model picker. Picks the best
+     * DOWNLOADED model for [prompt] by a cheap heuristic — no model call:
+     * short + simple → smallest downloaded (fastest); long or complex
+     * (code, multi-part, "explain thoroughly") → largest downloaded.
+     * Returns null when nothing is downloaded (caller falls back to cloud).
+     */
+    fun autoRoute(context: Context, prompt: String): LlamaModel? {
+        val downloaded = models.filter { isDownloaded(context, it) }
+        if (downloaded.isEmpty()) return null
+        val text = prompt.lowercase()
+        val complexHints = listOf(
+            "code", "function", "debug", "explain", "thorough",
+            "step by step", "compare", "analyze", "essay", "report",
+        )
+        val complex = prompt.length > 600 || complexHints.any { it in text }
+        return if (complex) downloaded.maxByOrNull { it.capabilityScore }
+        else downloaded.minByOrNull { it.ramEstimateMb }
+    }
+
+    /**
+     * [Wave 8] Resolve the effective local model for a new turn: explicit
+     * local-mode selection wins; otherwise, when offline-first is on, the
+     * Auto router picks. Null = stay on cloud.
+     */
+    fun effectiveLocalModel(context: Context, prompt: String): LlamaModel? {
+        activeModel(context)?.let { return it }
+        if (!isOfflineFirst(context)) return null
+        return autoRoute(context, prompt)
     }
 
     /** Delete one model's file (frees its space) and reset its state. */

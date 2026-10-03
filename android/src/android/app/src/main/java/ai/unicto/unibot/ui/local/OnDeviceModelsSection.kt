@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
@@ -159,8 +161,105 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
             )
         }
 
+        // ── Offline-first toggle ──
+        // [Wave 8] When ON and a model is downloaded, new chats route to
+        // the best on-device model automatically (Auto smart routing).
+        var offlineFirst by remember { mutableStateOf(LlamaModelManager.isOfflineFirst(ctx)) }
+        val anyDownloaded = LlamaModelManager.models.any {
+            states[it.id] is LlamaModelManager.DownloadState.Done
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Offline-first",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "New chats automatically use the best downloaded on-device model. Nothing leaves your phone.",
+                    style = TextStyle(fontSize = 12.sp),
+                    color = ChatColors.secondaryText,
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(
+                checked = offlineFirst,
+                onCheckedChange = {
+                    offlineFirst = it
+                    LlamaModelManager.setOfflineFirst(ctx, it)
+                    haptics.toggle()
+                },
+                enabled = anyDownloaded || it,
+            )
+        }
+
         if (lowRam) {
             LowRamWarning()
+        }
+
+        // ── Auto (smart routing) row ──
+        // [Wave 8] One-tap Auto: enables offline-first and routes now.
+        if (anyDownloaded && localId == null && !offlineFirst) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ChatColors.inputIconBg, RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        haptics.tap()
+                        LlamaModelManager.setOfflineFirst(ctx, true)
+                        offlineFirst = true
+                        val pick = LlamaModelManager.autoRoute(ctx, "")
+                        if (pick != null) {
+                            LlamaModelManager.setLocalMode(ctx, pick)
+                            localId = pick.id
+                            onDone()
+                        }
+                    }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "✨ Auto (on-device)",
+                        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                        color = accent,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = "Let unibot pick the best downloaded model per question",
+                        style = TextStyle(fontSize = 11.sp),
+                        color = ChatColors.secondaryText,
+                    )
+                }
+            }
+        }
+
+        // ── Download queue ──
+        // [Wave 8] Show queued models waiting for the active download.
+        val queue by LlamaModelManager.downloadQueue.collectAsState()
+        if (queue.isNotEmpty()) {
+            Text(
+                text = "Queued: " + queue.mapNotNull { LlamaModelManager.modelById(it)?.title }
+                    .joinToString(", "),
+                style = TextStyle(fontSize = 11.sp),
+                color = ChatColors.secondaryText,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+        // When the queue head is ready, the UI (which has a Context) starts it.
+        val queueHead by LlamaModelManager.queueHeadHint.collectAsState()
+        LaunchedEffect(queueHead) {
+            queueHead?.let { id ->
+                LlamaModelManager.consumeQueueHeadHint()
+                LlamaModelManager.modelById(id)?.let { LlamaModelManager.download(ctx, it) }
+            }
         }
 
         // ── Model rows ──
@@ -188,10 +287,23 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
                             haptics.tap()
                             LlamaModelManager.download(ctx, model)
                         }
-                        else -> {
+                        state is LlamaModelManager.DownloadState.Paused -> {
                             haptics.tap()
                             LlamaModelManager.download(ctx, model)
                         }
+                        else -> {
+                            haptics.tap()
+                            // [Wave 8] Queue when another download is active.
+                            LlamaModelManager.enqueue(ctx, model)
+                        }
+                    }
+                },
+                onPauseResume = {
+                    val s = LlamaModelManager.downloadStateOf(model)
+                    if (s is LlamaModelManager.DownloadState.Downloading) {
+                        LlamaModelManager.pause()
+                    } else {
+                        LlamaModelManager.download(ctx, model)
                     }
                 },
                 onDelete = {
@@ -323,9 +435,11 @@ private fun LlamaModelRow(
     confirmDelete: Boolean,
     onTap: () -> Unit,
     onDelete: () -> Unit,
+    onPauseResume: () -> Unit = {},
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val downloading = state is LlamaModelManager.DownloadState.Downloading
+    val paused = state is LlamaModelManager.DownloadState.Paused
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -372,15 +486,49 @@ private fun LlamaModelRow(
                     style = TextStyle(fontSize = 11.sp),
                     color = ChatColors.secondaryText,
                 )
+                // [Wave 8] RAM estimate so users can judge fit for their phone.
+                Text(
+                    text = "Needs ~${model.ramEstimateMb / 1000}.${(model.ramEstimateMb % 1000) / 100} GB free RAM",
+                    style = TextStyle(fontSize = 10.sp),
+                    color = ChatColors.secondaryText.copy(alpha = 0.8f),
+                )
             }
             Spacer(modifier = Modifier.width(8.dp))
             when (state) {
                 is LlamaModelManager.DownloadState.Downloading ->
-                    Text(
-                        text = "${(state.fraction * 100).toInt()}%",
-                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
-                        color = accent,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${(state.fraction * 100).toInt()}%",
+                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                            color = accent,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(onClick = onPauseResume, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Pause,
+                                contentDescription = "Pause download",
+                                tint = ChatColors.secondaryText,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                is LlamaModelManager.DownloadState.Paused ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${(state.fraction * 100).toInt()}% paused",
+                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                            color = ChatColors.secondaryText,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(onClick = onPauseResume, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Resume download",
+                                tint = accent,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
                 is LlamaModelManager.DownloadState.Failed ->
                     Text(
                         text = "Retry",

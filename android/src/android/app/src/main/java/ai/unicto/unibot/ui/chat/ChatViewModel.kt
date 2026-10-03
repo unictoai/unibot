@@ -7070,11 +7070,21 @@ class ChatViewModel(
         // offline) instead of the cloud agent loop. Placed before the
         // provider guard so local chat works with no provider configured,
         // and before the context check (cloud context policy doesn't apply).
-        if (ai.unicto.unibot.local.LlamaModelManager.isLocalModeActive(context)) {
+        // [Wave 8] Offline-first / Auto: when no explicit local model is
+        // picked but offline-first is on, the Auto router picks the best
+        // downloaded model for this prompt.
+        val localModel = ai.unicto.unibot.local.LlamaModelManager.activeModel(context)
+            ?: ai.unicto.unibot.local.LlamaModelManager.effectiveLocalModel(context, text)
+        if (localModel != null) {
             if (_attachments.value.isNotEmpty()) {
                 _error.value =
                     "On-device chat is text-only for now — remove attachments or switch back to a cloud model."
                 return
+            }
+            // Auto-routed turns use the picked model for this turn only —
+            // set it as the local route so sendLocalMessage finds it.
+            if (ai.unicto.unibot.local.LlamaModelManager.activeModel(context) == null) {
+                ai.unicto.unibot.local.LlamaModelManager.setLocalMode(context, localModel)
             }
             sendLocalMessage(text)
             return

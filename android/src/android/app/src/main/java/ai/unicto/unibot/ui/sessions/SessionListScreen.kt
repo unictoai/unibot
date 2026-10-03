@@ -73,6 +73,9 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.ManageSearch
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.Calculate
@@ -469,6 +472,12 @@ fun SessionListScreen(
     onRootfsClick: () -> Unit = {},
     // [T-android-scheduled-tasks-design] Entry to the scheduled-tasks list.
     onScheduledTasksClick: () -> Unit = {},
+    /** [Wave 8] Open message search across all chats. */
+    onMessageSearchClick: () -> Unit = {},
+    /** [Wave 8] Open starred messages. */
+    onStarredClick: () -> Unit = {},
+    /** [Wave 8] Open chat stats. */
+    onStatsClick: () -> Unit = {},
     /**
      * [T-android-tablet-split] The session currently shown in the detail pane,
      * highlighted in the list. Non-null only in two-pane (tablet) mode — in
@@ -540,6 +549,8 @@ fun SessionListScreen(
     val isSearching by viewModel.isSearching.collectAsState()
     val searchSnippets by viewModel.searchSnippets.collectAsState()
     val isSelecting by viewModel.isSelecting.collectAsState()
+    // [Wave 8] Archived filter state for the overflow menu label.
+    val showArchivedState by viewModel.showArchived.collectAsState()
     val selectedIds by viewModel.selectedIds.collectAsState()
     val regeneratingIds by viewModel.regeneratingIds.collectAsState()
     val providerConfig by providerRepository.config.collectAsState()
@@ -879,6 +890,48 @@ fun SessionListScreen(
                                     )
                                     UnibotMenuDivider()
                                 }
+                                // [Wave 8] Chat UX entries.
+                                DropdownMenuItem(
+                                    text = { Text("Search messages") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        onMessageSearchClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.ManageSearch, contentDescription = null)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Starred messages") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        onStarredClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.StarOutline, contentDescription = null)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Chat stats") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        onStatsClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.BarChart, contentDescription = null)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (showArchivedState) "Hide archived" else "Archived chats") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        viewModel.showArchived.value = !showArchivedState
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.Inventory2, contentDescription = null)
+                                    },
+                                )
+                                UnibotMenuDivider()
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.sessionlist_shell_terminal)) },
                                     onClick = {
@@ -1101,6 +1154,9 @@ fun SessionListScreen(
                                         showDeleteDialog = true
                                     },
                                     onMoveToGroup = { viewModel.requestGroupPicker(it) },
+                                    // [Wave 8] Archive toggle for the row menu.
+                                    onArchiveToggle = { viewModel.setArchived(it, !viewModel.isArchived(it)) },
+                                    isArchived = viewModel.isArchived(session.id),
                                     isFiled = session.folderId != null &&
                                         session.folderId in existingFolderIds,
                                     isRegenerating = session.id in regeneratingIds,
@@ -1296,6 +1352,7 @@ fun SessionListScreen(
                     onExport = { /* TODO: export */ },
                     onMove = { viewModel.requestGroupPickerForSelection() },
                     onDelete = { showBulkDeleteDialog = true },
+                    onArchive = { viewModel.archiveSelected(true) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             } else if (hasProviders && (sessions.isNotEmpty() || isSearchActive)) {
@@ -1783,6 +1840,8 @@ private fun SelectionToolbar(
     /** [T-android-session-grouping] Bulk-file the selection into a group. */
     onMove: () -> Unit,
     onDelete: () -> Unit,
+    /** [Wave 8] Bulk-archive the selection. */
+    onArchive: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -1821,6 +1880,22 @@ private fun SelectionToolbar(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(stringResource(R.string.group_move_action), fontSize = 11.sp)
+            }
+        }
+
+        // [Wave 8] Archive button — filed away, not deleted.
+        UnibotTextButton(
+            onClick = onArchive,
+            enabled = selectedCount > 0,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Outlined.Inventory2,
+                    contentDescription = "Archive",
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Archive", fontSize = 11.sp)
             }
         }
 
@@ -1903,6 +1978,10 @@ private fun SessionItemContent(
     onRegenerateTitle: (String) -> Unit,
     onDuplicate: (String) -> Unit,
     onDeleteRequest: (String) -> Unit,
+    /** [Wave 8] Archive / unarchive this session. */
+    onArchiveToggle: (String) -> Unit = {},
+    /** [Wave 8] Whether this session is currently archived. */
+    isArchived: Boolean = false,
     /** [T-android-session-grouping] Opens the group picker for this session. */
     onMoveToGroup: (String) -> Unit,
     /**
@@ -2105,6 +2184,17 @@ private fun SessionItemContent(
                     },
                     leadingIcon = {
                         Icon(Icons.Default.ContentCopy, contentDescription = null)
+                    },
+                )
+                // [Wave 8] Archive / unarchive — filed away, not deleted.
+                DropdownMenuItem(
+                    text = { Text(if (isArchived) "Unarchive" else "Archive") },
+                    onClick = {
+                        showContextMenu = false
+                        onArchiveToggle(session.id)
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Outlined.Inventory2, contentDescription = null)
                     },
                 )
                 // Move to / Change Group

@@ -880,6 +880,16 @@ fun ChatSplitScaffoldRoute(
                 onTerminalClick = { navController.safeNavigate(Routes.terminal()) },
                 onRootfsClick = { navController.safeNavigate(Routes.ROOTFS_MANAGEMENT) },
                 onScheduledTasksClick = { navController.safeNavigate(Routes.SCHEDULED_TASKS) },
+                // [Wave 8] Chat UX entries.
+                onMessageSearchClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.sessions.ROUTE_MESSAGE_SEARCH)
+                },
+                onStarredClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES)
+                },
+                onStatsClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS)
+                },
                 selectedSessionId = selectedSessionId,
                 // [T-android-draft-placeholder-row] Synthetic "New Chat" row,
                 // never persisted — see the listPane param docs.
@@ -942,6 +952,13 @@ fun ChatSplitScaffoldRoute(
                     navController.safeNavigate(Routes.FILE_PREVIEW)
                 },
                 onModelGroupsClick = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+                // [Wave 8] Starred messages + chat stats leave the pair.
+                onStarredClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES)
+                },
+                onStatsClick = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS)
+                },
             )
         },
     )

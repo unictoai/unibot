@@ -727,6 +727,30 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
             )
         }
+        // [Wave 8] Chat UX: starred messages, chat stats, message search.
+        composable(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES) {
+            ai.unicto.unibot.ui.chat.StarredMessagesScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenChat = { sid ->
+                    navController.safeNavigate(ai.unicto.unibot.ui.navigation.Routes.chat(sid))
+                },
+            )
+        }
+        composable(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS) {
+            ai.unicto.unibot.ui.chat.ChatStatsScreen(
+                chatRepository = chatRepository,
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+        composable(ai.unicto.unibot.ui.sessions.ROUTE_MESSAGE_SEARCH) {
+            ai.unicto.unibot.ui.sessions.MessageSearchScreen(
+                chatRepository = chatRepository,
+                onBack = { navController.safePopBackStack() },
+                onOpenChat = { sid ->
+                    navController.safeNavigate(ai.unicto.unibot.ui.navigation.Routes.chat(sid))
+                },
+            )
+        }
         // unibot: unibot Cloud — sign in with a phone/e-mail code for a starter allowance,
         // and the account page (balance, sign out) behind Settings.
         composable(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) {

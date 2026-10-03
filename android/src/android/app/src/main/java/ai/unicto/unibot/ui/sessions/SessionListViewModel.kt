@@ -157,10 +157,17 @@ class SessionListViewModel(
     val searchSnippets = MutableStateFlow<Map<String, String>>(emptyMap())
 
     // The list to actually show: search results when searching, otherwise all sessions
+    // [Wave 8] Archived sessions are filtered out unless showArchived is on.
+    val showArchived = MutableStateFlow(false)
+    val archivedIds = MutableStateFlow<Set<String>>(
+        uiPrefs.getStringSet("archivedSessionIds", emptySet())?.toSet() ?: emptySet(),
+    )
+
     val displayedSessions: StateFlow<List<ChatSessionEntity>> = combine(
-        _allSessions, searchResults, searchQuery, isSearchActive
-    ) { all, results, q, active ->
-        if (active && q.isNotBlank()) results else all
+        _allSessions, searchResults, searchQuery, isSearchActive, archivedIds, showArchived,
+    ) { all, results, q, active, archived, showArch ->
+        val base = if (active && q.isNotBlank()) results else all
+        if (showArch) base.filter { it.id in archived } else base.filter { it.id !in archived }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // ─── Session groups ("folders") ────────────────────────────────────────
@@ -398,11 +405,38 @@ class SessionListViewModel(
         clearSelection()
     }
 
+    /**
+     * [Wave 8] Archive the current multi-selection (or unarchive when
+     * [archive] is false). Archived chats leave the main list but stay in
+     * the DB — viewable via the Archived filter. Prefs-based set, no schema
+     * change. Deleting a session also drops its archive flag.
+     */
+    fun archiveSelected(archive: Boolean = true) {
+        val ids = selectedIds.value.toList()
+        val updated = archivedIds.value.toMutableSet()
+        if (archive) updated.addAll(ids) else updated.removeAll(ids.toSet())
+        archivedIds.value = updated
+        uiPrefs.edit().putStringSet("archivedSessionIds", updated).apply()
+        clearSelection()
+    }
+
+    /** Archive / unarchive a single session (long-press menu entry point). */
+    fun setArchived(id: String, archive: Boolean) {
+        val updated = archivedIds.value.toMutableSet()
+        if (archive) updated.add(id) else updated.remove(id)
+        archivedIds.value = updated
+        uiPrefs.edit().putStringSet("archivedSessionIds", updated).apply()
+    }
+
+    fun isArchived(id: String): Boolean = archivedIds.value.contains(id)
+
     fun deleteSession(id: String) {
         viewModelScope.launch {
             chatRepository.deleteSession(id)
             ChatViewModelStore.release(id)
             ai.unicto.unibot.service.SessionBadgeStore.clear(id)
+            // [Wave 8] Drop the archive flag with the session.
+            setArchived(id, false)
         }
     }
 

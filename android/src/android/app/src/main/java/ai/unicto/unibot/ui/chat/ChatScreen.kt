@@ -45,6 +45,9 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.automirrored.filled.Article
 import kotlinx.coroutines.Dispatchers
@@ -563,6 +566,10 @@ fun ChatScreen(
     // unibot: non-null when this chat is a tab of the home shell — hamburger
     // instead of back, round kebab, big-face header on the main chat.
     ubHome: ai.unicto.unibot.ui.chat.NmHomeChrome? = null,
+    /** [Wave 8] Open the Starred messages screen. */
+    onStarredClick: () -> Unit = {},
+    /** [Wave 8] Open the Chat stats screen. */
+    onStatsClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -2962,6 +2969,33 @@ fun ChatScreen(
                                                             // badge to the right stays intrinsic.
                                                             modifier = Modifier.weight(1f, fill = false),
                                                         )
+                                                        // [Wave 8] On-device badge: when the turn routes
+                                                        // to a local llama.cpp model, show a small
+                                                        // violet "on-device" pill next to the model
+                                                        // name so offline-first routing is visible.
+                                                        val localCtx = LocalContext.current
+                                                        val isLocalRoute = remember(modelName) {
+                                                            ai.unicto.unibot.local.LlamaModelManager
+                                                                .isLocalModeActive(localCtx)
+                                                        }
+                                                        if (isLocalRoute) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .background(
+                                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                                                        CircleShape,
+                                                                    )
+                                                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                                            ) {
+                                                                Text(
+                                                                    text = "on-device",
+                                                                    fontSize = 9.sp,
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                    style = noFontPad,
+                                                                )
+                                                            }
+                                                        }
                                                         // Show the badge whenever thinking is on,
                                                         // and ALSO when it's Off but the active
                                                         // model supports deep thinking (iOS
@@ -3368,6 +3402,71 @@ fun ChatScreen(
                                     // RuntimeException from the click handler — the
                                     // uncaught-exception handler catches it and writes
                                     // a crash-<stamp>.log under filesDir/logs/.
+                                    // [Wave 8] Chat UX: export, starred, stats.
+                                    UnibotMenuDivider()
+                                    DropdownMenuItem(
+                                        text = { Text("Export as Markdown") },
+                                        onClick = {
+                                            showChatMenu = false
+                                            val msgs = viewModel.messages.value.map {
+                                                ChatExport.ExportMessage(
+                                                    role = it.role,
+                                                    text = it.content,
+                                                )
+                                            }
+                                            val title = viewModel.sessionTitle.value.ifBlank { "Chat" }
+                                            try {
+                                                ChatExport.shareMarkdown(context, title, msgs)
+                                            } catch (t: Throwable) {
+                                                ai.unicto.unibot.logging.AppLogger.warning(
+                                                    "ChatScreen",
+                                                    "export md failed: ${t.message}",
+                                                )
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Share, contentDescription = null)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Export as PDF") },
+                                        onClick = {
+                                            showChatMenu = false
+                                            val msgs = viewModel.messages.value.map {
+                                                ChatExport.ExportMessage(
+                                                    role = it.role,
+                                                    text = it.content,
+                                                )
+                                            }
+                                            val title = viewModel.sessionTitle.value.ifBlank { "Chat" }
+                                            coroutineScope.launch {
+                                                ChatExport.printToPdf(context, title, msgs)
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Starred messages") },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onStarredClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.StarOutline, contentDescription = null)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Chat stats") },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onStatsClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.BarChart, contentDescription = null)
+                                        },
+                                    )
                                     if (BuildConfig.DEBUG) {
                                         UnibotMenuDivider()
                                         DropdownMenuItem(
@@ -4391,6 +4490,24 @@ fun ChatScreen(
                                             )
                                         )
                                     }
+                                },
+                                // [Wave 8] Star / unstar via the long-press menu.
+                                onToggleStar = {
+                                    val store = StarredMessageStore(context)
+                                    val msg = item.message
+                                    val title = viewModel.sessionTitle.value.ifBlank { "Chat" }
+                                    store.toggle(
+                                        StarredMessage(
+                                            messageId = msg.id,
+                                            sessionId = sessionId,
+                                            sessionTitle = title,
+                                            preview = msg.content.take(160),
+                                            isUser = true,
+                                        )
+                                    )
+                                },
+                                isStarred = remember(item.message.id) {
+                                    StarredMessageStore(context).isStarred(item.message.id)
                                 },
                             )
                             } // close v0.4.2 entrance Box

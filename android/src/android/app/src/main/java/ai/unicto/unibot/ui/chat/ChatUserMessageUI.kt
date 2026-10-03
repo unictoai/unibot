@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -300,6 +302,9 @@ internal fun UserMessageBubble(
     onForkFromHere: (() -> Unit)? = null,
     onWithdraw: (() -> Unit)? = null,
     onPreviewFile: (Uri, String) -> Unit = { _, _ -> },
+    // [Wave 8] Star toggle. Null hides the action.
+    onToggleStar: (() -> Unit)? = null,
+    isStarred: Boolean = false,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val isQueued = message.isQueued
@@ -523,6 +528,21 @@ internal fun UserMessageBubble(
                         text = { Text(stringResource(R.string.ub_fork_from_here)) },
                         onClick = { showMenu = false; onForkFromHere() },
                         leadingIcon = { Icon(Icons.Filled.CallSplit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    )
+                }
+                // [Wave 8] Star / unstar this message. Always available —
+                // starring never mutates the turn, so no streaming gate.
+                if (onToggleStar != null) {
+                    DropdownMenuItem(
+                        text = { Text(if (isStarred) "Unstar" else "Star") },
+                        onClick = { showMenu = false; onToggleStar() },
+                        leadingIcon = {
+                            Icon(
+                                if (isStarred) Icons.Filled.Star else Icons.Default.StarOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
                     )
                 }
                 // [T-android-delete-from-here] Removes this message and every
