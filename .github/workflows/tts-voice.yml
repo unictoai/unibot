@@ -1,9 +1,9 @@
 name: TTS voice
 
 # One-time (and on-demand) publisher for unibot's on-device text-to-speech
-# voices. The app never bundles a voice in the APK — the user picks one
-# (Amy ~60 MB / Ryan ~60 MB) in Read aloud settings and it fetches the files
-# from the tts-voice-v1 GitHub release below.
+# voices. The app never bundles a voice in the APK — the user picks one in
+# Read aloud settings and it fetches the files from the tts-voice-v1 GitHub
+# release below.
 #
 # Runs when this file is pushed (so the first push publishes the voices)
 # and on manual dispatch for re-publishing.
@@ -23,6 +23,12 @@ env:
     en_US-amy-low.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx.json|3000
     en_US-ryan-medium.onnx|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx|60000000
     en_US-ryan-medium.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx.json|3000
+    en_US-lessac-medium.onnx|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx|60000000
+    en_US-lessac-medium.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json|3000
+    en_US-joe-medium.onnx|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/joe/medium/en_US-joe-medium.onnx|60000000
+    en_US-joe-medium.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/joe/medium/en_US-joe-medium.onnx.json|3000
+    en_GB-alan-medium.onnx|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx|60000000
+    en_GB-alan-medium.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx.json|3000
   # Pinned piper-phonemize wheel. Only the espeak-ng-data directory is used
   # (extracted, never installed), and its contents are identical across the
   # platform wheels — the pin exists so the tarball below stays byte-stable.
@@ -70,6 +76,9 @@ jobs:
 
           gen("tts-voice/en_US-amy-low.onnx.json", "tts-voice/en_US-amy-low.tokens.txt")
           gen("tts-voice/en_US-ryan-medium.onnx.json", "tts-voice/en_US-ryan-medium.tokens.txt")
+          gen("tts-voice/en_US-lessac-medium.onnx.json", "tts-voice/en_US-lessac-medium.tokens.txt")
+          gen("tts-voice/en_US-joe-medium.onnx.json", "tts-voice/en_US-joe-medium.tokens.txt")
+          gen("tts-voice/en_GB-alan-medium.onnx.json", "tts-voice/en_GB-alan-medium.tokens.txt")
           EOF
           wc -c tts-voice/*.tokens.txt
 
@@ -120,8 +129,14 @@ jobs:
           expected = {
               "tts-voice/en_US-amy-low.onnx": const("AMY_ONNX_BYTES"),
               "tts-voice/en_US-ryan-medium.onnx": const("RYAN_ONNX_BYTES"),
+              "tts-voice/en_US-lessac-medium.onnx": const("LESSAC_ONNX_BYTES"),
+              "tts-voice/en_US-joe-medium.onnx": const("JOE_ONNX_BYTES"),
+              "tts-voice/en_GB-alan-medium.onnx": const("ALAN_ONNX_BYTES"),
               "tts-voice/en_US-amy-low.tokens.txt": const("AMY_TOKENS_BYTES"),
               "tts-voice/en_US-ryan-medium.tokens.txt": const("RYAN_TOKENS_BYTES"),
+              "tts-voice/en_US-lessac-medium.tokens.txt": const("LESSAC_TOKENS_BYTES"),
+              "tts-voice/en_US-joe-medium.tokens.txt": const("JOE_TOKENS_BYTES"),
+              "tts-voice/en_GB-alan-medium.tokens.txt": const("ALAN_TOKENS_BYTES"),
               "tts-voice/espeak-ng-data.tar.gz": const("ESPEAK_TARBALL_BYTES"),
           }
           for path, want in expected.items():
@@ -140,10 +155,14 @@ jobs:
           gh release view tts-voice-v1 >/dev/null 2>&1 || \
             gh release create tts-voice-v1 \
               --title "On-device TTS voices v1" \
-              --notes "Piper VITS voices for unibot's on-device text-to-speech (Amy ~60 MB, Ryan ~60 MB) plus the shared espeak-ng phoneme data. Downloaded in-app only when the user picks a voice — never bundled in the APK."
+              --notes "Piper VITS voices for unibot's on-device text-to-speech (Amy, Ryan, Lessac, Joe, Alan — each ~60 MB) plus the shared espeak-ng phoneme data. Downloaded in-app only when the user picks a voice — never bundled in the APK."
           gh release upload tts-voice-v1 \
             tts-voice/en_US-amy-low.onnx tts-voice/en_US-ryan-medium.onnx \
+            tts-voice/en_US-lessac-medium.onnx tts-voice/en_US-joe-medium.onnx \
+            tts-voice/en_GB-alan-medium.onnx \
             tts-voice/en_US-amy-low.tokens.txt tts-voice/en_US-ryan-medium.tokens.txt \
+            tts-voice/en_US-lessac-medium.tokens.txt tts-voice/en_US-joe-medium.tokens.txt \
+            tts-voice/en_GB-alan-medium.tokens.txt \
             tts-voice/espeak-ng-data.tar.gz --clobber
           echo "published:"
           gh release view tts-voice-v1 --json assets -q '.assets[].name'

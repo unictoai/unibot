@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- unibot v1.2 "the 59" — Batch C (new connectors) strings.
+     Kept in their own file so other batches never touch them. -->
+<resources>
+
+    <!-- Shared -->
+    <string name="v12_conn_on_device">ON-DEVICE</string>
+    <string name="v12_conn_disconnect">Disconnect</string>
+    <string name="v12_conn_connect">Connect</string>
+    <string name="v12_conn_save">Save</string>
+    <string name="v12_conn_cancel">Cancel</string>
+    <string name="v12_conn_connected_as">Connected as %1$s</string>
+    <string name="v12_conn_disconnect_title">Disconnect?</string>
+    <string name="v12_conn_confirm_disconnect">Disconnect %1$s? Your saved credentials will be removed from this phone.</string>
+    <string name="v12_conn_failed">Couldn\'t connect: %1$s</string>
+    <string name="v12_conn_saved">Saved.</string>
+    <string name="v12_conn_token_label">Paste your token / key</string>
+    <string name="v12_conn_server_label">Server URL (https://…)</string>
+    <string name="v12_conn_username_label">Username</string>
+    <string name="v12_conn_password_label">Password / app password</string>
+    <string name="v12_conn_stored_encrypted">Stored encrypted on this phone — never leaves it except to talk to the service itself.</string>
+    <string name="v12_conn_what_access">What it can access</string>
+    <string name="v12_conn_need_url_token">Enter the server URL and token first.</string>
+    <string name="v12_conn_bad_url">That doesn\'t look like a valid https:// URL.</string>
+
+    <!-- IMAP/SMTP generic email -->
+    <string name="v12_imap_name">Email (IMAP/SMTP)</string>
+    <string name="v12_imap_desc">Read and send mail from any provider — Gmail, Outlook, Yahoo, iCloud, Fastmail or your own server.</string>
+    <string name="v12_imap_access">Reads your inbox and sends mail as you, using the account you enter. Credentials stay encrypted on this phone.</string>
+    <string name="v12_imap_provider">Provider</string>
+    <string name="v12_imap_custom">Custom…</string>
+    <string name="v12_imap_imap_host">IMAP host</string>
+    <string name="v12_imap_imap_port">Port</string>
+    <string name="v12_imap_smtp_host">SMTP host</string>
+    <string name="v12_imap_smtp_port">Port</string>
+    <string name="v12_imap_email_label">Email address</string>
+    <string name="v12_imap_app_password_hint">Tip: Gmail, Yahoo and iCloud need an app-specific password, not your normal login password.</string>
+
+    <!-- Nextcloud -->
+    <string name="v12_nc_name">Nextcloud</string>
+    <string name="v12_nc_desc">Browse, download and upload files on your own Nextcloud server via WebDAV.</string>
+    <string name="v12_nc_access">Lists, downloads and uploads files on the Nextcloud server you enter, as your user.</string>
+    <string name="v12_nc_hint">Create an app password in Nextcloud → Settings → Security → Devices &amp; sessions.</string>
+
+    <!-- Jellyfin -->
+    <string name="v12_jf_name">Jellyfin</string>
+    <string name="v12_jf_desc">Your media libraries, recently added movies/shows, and what\'s playing now.</string>
+    <string name="v12_jf_access">Reads your Jellyfin libraries, recently added items and playback state. Never touches your media files.</string>
+    <string name="v12_jf_hint">API key: Jellyfin dashboard → API Keys → New API Key.</string>
+
+    <!-- Home Assistant -->
+    <string name="v12_ha_name">Home Assistant</string>
+    <string name="v12_ha_desc">See sensor states and toggle your lights, switches and scenes.</string>
+    <string name="v12_ha_access">Reads the state of your smart-home entities and can switch lights, switches and scenes on/off.</string>
+    <string name="v12_ha_hint">Long-lived access token: Home Assistant → your profile → Security → Long-lived access tokens.</string>
+
+    <!-- Health Connect -->
+    <string name="v12_hc_name">Health Connect</string>
+    <string name="v12_hc_desc">Steps, heart rate, sleep and workouts — read only, stays on this phone.</string>
+    <string name="v12_hc_access">Reads steps, heart rate, sleep sessions and workouts from Android Health Connect. On-device only: unibot never uploads this data anywhere.</string>
+    <string name="v12_hc_rationale_title">Why does unibot want health data?</string>
+    <string name="v12_hc_rationale">unibot can answer questions like “how many steps did I take this week?” or “how did I sleep last night?”. It reads:\n\n• Steps and distance\n• Heart rate\n• Sleep sessions\n• Workouts\n\nThe data never leaves your phone — it is only read when you ask. You can revoke access any time in Android Settings → Health Connect.</string>
+    <string name="v12_hc_open_settings">Open Health Connect settings</string>
+    <string name="v12_hc_grant">Allow access</string>
+    <string name="v12_hc_granted">Health permissions granted</string>
+    <string name="v12_hc_not_granted">Permissions not granted yet</string>
+    <string name="v12_hc_needs_14">Health Connect needs Android 14 or newer. This phone runs an older version.</string>
+
+    <!-- Matrix -->
+    <string name="v12_mx_name">Matrix</string>
+    <string name="v12_mx_desc">Your Matrix rooms and DMs — read recent messages, send messages.</string>
+    <string name="v12_mx_access">Reads your joined rooms and recent messages, and can send messages as you.</string>
+    <string name="v12_mx_homeserver_label">Homeserver (https://matrix.org)</string>
+
+    <!-- Steam -->
+    <string name="v12_st_name">Steam</string>
+    <string name="v12_st_desc">Your profile, owned games and recently played games.</string>
+    <string name="v12_st_access">Reads your public Steam profile, owned games and recent playtime. Read-only.</string>
+    <string name="v12_st_steamid_label">SteamID64</string>
+    <string name="v12_st_hint">API key: steamcommunity.com/dev/apikey. Your SteamID64: steamid.io or your profile URL.</string>
+
+    <!-- Podcasts -->
+    <string name="v12_pc_name">Podcasts</string>
+    <string name="v12_pc_desc">Search podcasts and follow shows — episode lists stay on your phone.</string>
+    <string name="v12_pc_access">Searches the public iTunes podcast directory and downloads episode lists from show feeds. No account, nothing uploaded.</string>
+    <string name="v12_pc_search_hint">Search podcasts…</string>
+    <string name="v12_pc_subscribe">Follow</string>
+    <string name="v12_pc_subscribed">Following</string>
+    <string name="v12_pc_unfollow">Unfollow</string>
+    <string name="v12_pc_no_subs">No followed shows yet. Search above and tap Follow.</string>
+    <string name="v12_pc_subs_title">Followed shows</string>
+</resources>

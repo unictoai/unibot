@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch F (On-device AI): benchmark, sampler settings, presets,
+     RAM recommendation, context indicator. All user-visible copy for the
+     new on-device AI screens lives here. -->
+<resources>
+    <!-- Settings rows (wired by the coordinator) -->
+    <string name="v12_benchmark_title">Model benchmark</string>
+    <string name="v12_benchmark_sub">Measure speed on this phone</string>
+    <string name="v12_sampler_title">Sampler settings</string>
+    <string name="v12_sampler_sub">Temperature, top-p and more</string>
+
+    <!-- Model benchmark screen -->
+    <string name="v12_benchmark_screen_title">Model benchmark</string>
+    <string name="v12_benchmark_pick_model">Pick a downloaded model</string>
+    <string name="v12_benchmark_no_models">No downloaded models yet</string>
+    <string name="v12_benchmark_no_models_hint">Download a model first — the benchmark measures its real speed on this phone, fully offline.</string>
+    <string name="v12_benchmark_run">Run benchmark</string>
+    <string name="v12_benchmark_cancel">Cancel</string>
+    <string name="v12_benchmark_loading">Loading model…</string>
+    <string name="v12_benchmark_generating">Running test prompt…</string>
+    <string name="v12_benchmark_ttft">First token</string>
+    <string name="v12_benchmark_tps">Tokens / second</string>
+    <string name="v12_benchmark_tokens">Tokens generated</string>
+    <string name="v12_benchmark_prompt_tokens">Prompt tokens</string>
+    <string name="v12_benchmark_note">Fixed test prompt, same for every phone — runs fully offline, nothing leaves this device.</string>
+    <string name="v12_benchmark_failed">Benchmark failed</string>
+    <string name="v12_benchmark_offline">On-device</string>
+    <string name="v12_rating_blazing">Blazing fast</string>
+    <string name="v12_rating_fast">Fast</string>
+    <string name="v12_rating_steady">Steady</string>
+    <string name="v12_rating_slow">Slow</string>
+    <string name="v12_rating_veryslow">Very slow</string>
+    <string name="v12_benchmark_rating_hint">Speed varies by phone — private and offline either way.</string>
+
+    <!-- Sampler settings screen -->
+    <string name="v12_sampler_screen_title">Sampler settings</string>
+    <string name="v12_sampler_for_model">Settings for %1$s</string>
+    <string name="v12_sampler_presets_title">One-tap presets</string>
+    <string name="v12_preset_creative">Creative</string>
+    <string name="v12_preset_creative_desc">Wild ideas, stories and brainstorming</string>
+    <string name="v12_preset_balanced">Balanced</string>
+    <string name="v12_preset_balanced_desc">A good all-rounder for everyday chat</string>
+    <string name="v12_preset_precise">Precise</string>
+    <string name="v12_preset_precise_desc">Factual, focused and to the point</string>
+    <string name="v12_sampler_temperature">Temperature</string>
+    <string name="v12_sampler_temperature_hint">Higher is more creative, lower is more focused. 0 is fully deterministic.</string>
+    <string name="v12_sampler_topp">Top-p</string>
+    <string name="v12_sampler_topp_hint">Nucleus sampling — only the most likely tokens adding up to this probability. 1.0 turns it off.</string>
+    <string name="v12_sampler_topk">Top-k</string>
+    <string name="v12_sampler_topk_hint">Only sample from the K most likely tokens. 0 turns it off.</string>
+    <string name="v12_sampler_repeat">Repeat penalty</string>
+    <string name="v12_sampler_repeat_hint">Above 1.0 discourages the model from repeating the same words.</string>
+    <string name="v12_sampler_maxtokens">Max tokens</string>
+    <string name="v12_sampler_maxtokens_hint">The longest reply the model may write in one turn.</string>
+    <string name="v12_sampler_reset">Reset to defaults</string>
+    <string name="v12_sampler_saved_note">Saved on this phone — applies to every on-device chat with this model.</string>
+
+    <!-- RAM recommendation card -->
+    <string name="v12_recommend_title">Recommended for your phone</string>
+    <string name="v12_recommend_body">Your phone: %1$s RAM → recommended: %2$s</string>
+    <string name="v12_recommend_download">Download</string>
+    <string name="v12_recommend_use">Use</string>
+    <string name="v12_recommend_ready">Already on your phone</string>
+
+    <!-- Context size indicator -->
+    <string name="v12_context_title">Last on-device reply</string>
+    <string name="v12_context_used">%1$d of %2$d tokens used</string>
+</resources>

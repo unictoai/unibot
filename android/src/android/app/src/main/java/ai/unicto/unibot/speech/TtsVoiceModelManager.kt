@@ -41,7 +41,8 @@ data class TtsVoice(
  * Owns the optional on-device TTS voices (sherpa-onnx VITS / Piper).
  *
  * The voices are NEVER bundled in the APK. The user picks one in Read aloud
- * settings — Amy or Ryan — and it fetches the model + token list from the
+ * settings — Amy, Ryan, Lessac, Joe or Alan — and it fetches the model +
+ * token list from the
  * `tts-voice-v1` GitHub release, plus the shared `espeak-ng-data.tar.gz`
  * phoneme data (downloaded once, extracted into each voice's directory).
  * [SherpaTtsEngine] then speaks fully on-device: no API key, no account, no
@@ -67,6 +68,17 @@ object TtsVoiceModelManager {
     private const val AMY_TOKENS_BYTES = 763L
     private const val RYAN_ONNX_BYTES = 63_201_294L
     private const val RYAN_TOKENS_BYTES = 921L
+    // v1.2: three more medium-quality Piper voices, published by the same
+    // tts-voice.yml workflow. All medium voices share the VITS architecture,
+    // so their .onnx files are byte-identical in size (63,201,294). Tokens
+    // sizes were measured by running the workflow's exact generator script
+    // against the published .onnx.json files.
+    private const val LESSAC_ONNX_BYTES = 63_201_294L
+    private const val LESSAC_TOKENS_BYTES = 921L
+    private const val JOE_ONNX_BYTES = 63_201_294L
+    private const val JOE_TOKENS_BYTES = 899L
+    private const val ALAN_ONNX_BYTES = 63_201_294L
+    private const val ALAN_TOKENS_BYTES = 921L
     private const val ESPEAK_TARBALL_BYTES = 8_990_538L
     private const val ESPEAK_ASSET = "espeak-ng-data.tar.gz"
 
@@ -91,6 +103,39 @@ object TtsVoiceModelManager {
             onnxBytes = RYAN_ONNX_BYTES,
             tokensAsset = "en_US-ryan-medium.tokens.txt",
             tokensBytes = RYAN_TOKENS_BYTES,
+            sizeLabel = "~60MB",
+        ),
+        TtsVoice(
+            id = "lessac",
+            name = "Lessac",
+            detail = "US female",
+            hint = "Clear narration voice, ~60 MB",
+            onnxAsset = "en_US-lessac-medium.onnx",
+            onnxBytes = LESSAC_ONNX_BYTES,
+            tokensAsset = "en_US-lessac-medium.tokens.txt",
+            tokensBytes = LESSAC_TOKENS_BYTES,
+            sizeLabel = "~60MB",
+        ),
+        TtsVoice(
+            id = "joe",
+            name = "Joe",
+            detail = "US male",
+            hint = "Warm conversational voice, ~60 MB",
+            onnxAsset = "en_US-joe-medium.onnx",
+            onnxBytes = JOE_ONNX_BYTES,
+            tokensAsset = "en_US-joe-medium.tokens.txt",
+            tokensBytes = JOE_TOKENS_BYTES,
+            sizeLabel = "~60MB",
+        ),
+        TtsVoice(
+            id = "alan",
+            name = "Alan",
+            detail = "British male",
+            hint = "Refined British voice, ~60 MB",
+            onnxAsset = "en_GB-alan-medium.onnx",
+            onnxBytes = ALAN_ONNX_BYTES,
+            tokensAsset = "en_GB-alan-medium.tokens.txt",
+            tokensBytes = ALAN_TOKENS_BYTES,
             sizeLabel = "~60MB",
         ),
     )
