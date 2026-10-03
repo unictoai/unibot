@@ -26,6 +26,14 @@ class ScheduledTasksViewModel(private val appContext: Context) : ViewModel() {
     private val manager = ScheduledTaskManager(appContext)
     private val app get() = appContext as ai.unicto.unibot.UnibotApp
 
+    init {
+        // [v1.0-wave6] Seed the default morning-briefing routine once.
+        // Idempotent; runs off the IO dispatcher via the manager's store.
+        viewModelScope.launch(Dispatchers.IO) {
+            ai.unicto.unibot.scheduled.MorningBriefing.ensureSeeded(appContext)
+        }
+    }
+
     /**
      * [T-android-scheduled-lateinit-crash-156] True when the Application's
      * repositories are actually assigned.

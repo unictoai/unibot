@@ -10204,6 +10204,10 @@ class ChatViewModel(
             CreatorTools.TITLE_NAME -> CreatorTools.executeTitle(argsJson)
             CreatorTools.HASHTAGS_NAME -> CreatorTools.executeHashtags(argsJson)
             CreatorTools.SCRIPT_NAME -> CreatorTools.executeScript(argsJson)
+            // [v1.0-wave6] Smart reminders — ScheduledTaskManager-backed.
+            ReminderTools.REMIND_NAME -> ReminderTools.executeRemind(argsJson, context)
+            ReminderTools.LIST_NAME -> ReminderTools.executeList(argsJson, context)
+            ReminderTools.CANCEL_NAME -> ReminderTools.executeCancel(argsJson, context)
             DiscordTool.READ_NAME -> DiscordTool.executeRead(argsJson, context)
             DiscordTool.SEND_NAME -> DiscordTool.executeSend(argsJson, context)
             SlackTool.READ_NAME -> SlackTool.executeRead(argsJson, context)

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.ui.graphics.Color
 
 // [T-android-split-chat] Pure tool-label / duration / timestamp formatting
@@ -62,6 +63,8 @@ internal fun toolAccentColor(toolName: String, isDark: Boolean): Color {
         "photos_search", "photos_list_recent" -> Color(0xFFAF52DE)
         "memory_write", "memory_get" -> Color(0xFFFF2D55)
         "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
+    // [v1.0-wave6] Reminders — warm amber.
+    "remind_me", "list_reminders", "cancel_reminder" -> Color(0xFFFF9F0A)
         else -> Color(0xFF8E8E93)
     }
 }
@@ -77,6 +80,8 @@ internal fun toolIconFor(toolName: String) = when (toolName) {
     "photos_search", "photos_list_recent" -> Icons.Default.Image
     "memory_write", "memory_get" -> Icons.Default.Psychology // iOS: brain.head.profile
     "web_search" -> Icons.Default.Search               // iOS: magnifyingglass
+    // [v1.0-wave6] Reminders.
+    "remind_me", "list_reminders", "cancel_reminder" -> Icons.Outlined.Schedule
     else -> Icons.Default.Build
 }
 
@@ -91,6 +96,10 @@ internal fun toolDisplayName(toolName: String): String = when (toolName) {
     "memory_write" -> "memory"
     "memory_get" -> "memory"
     "web_search" -> "search"
+    // [v1.0-wave6] Reminders.
+    "remind_me" -> "reminder"
+    "list_reminders" -> "reminders"
+    "cancel_reminder" -> "reminder"
     // [v1.0-wave4] Creator tools.
     "clip_captions" -> "captions"
     "clip_hooks" -> "hooks"
@@ -114,6 +123,10 @@ internal fun toolTitleLabel(toolName: String): String = when (toolName) {
     "read_image" -> "unibot is reading Image"
     "memory_write", "memory_get" -> "unibot is using Memory"
     "web_search" -> "unibot is using Search"
+    // [v1.0-wave6] Reminders.
+    "remind_me" -> "unibot is setting Reminder"
+    "list_reminders" -> "unibot is listing Reminders"
+    "cancel_reminder" -> "unibot is cancelling Reminder"
     // [v1.0-wave4] Creator tools.
     "clip_captions" -> "unibot is writing Captions"
     "clip_hooks" -> "unibot is writing Hooks"

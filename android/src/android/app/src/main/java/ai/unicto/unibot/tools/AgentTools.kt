@@ -76,6 +76,9 @@ object AgentTools {
         // creator businesses (captions, hooks, replies, titles, hashtags,
         // scripts). No accounts, no network: always available.
         addAll(CreatorTools.definitions())
+        // [v1.0-wave6] Smart reminders — natural-language scheduling backed
+        // by the AlarmManager pipeline. Local-only, always available.
+        addAll(ReminderTools.definitions())
         if (memoryEnabled) {
             add(memoryWriteDefinition())
             add(memoryGetDefinition())

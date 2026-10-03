@@ -35,6 +35,12 @@ class AlarmReceiver : BroadcastReceiver() {
             } catch (t: Throwable) {
                 AppLogger.warning(TAG, "scheduled-task rescheduleAll failed: ${t.message}")
             }
+            // [v1.0-wave6] Seed the default morning-briefing routine (idempotent).
+            try {
+                ai.unicto.unibot.scheduled.MorningBriefing.ensureSeeded(context)
+            } catch (t: Throwable) {
+                AppLogger.warning(TAG, "morning-briefing seed failed: ${t.message}")
+            }
             return
         }
 

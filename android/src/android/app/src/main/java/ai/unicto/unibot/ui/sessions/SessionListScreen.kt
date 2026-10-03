@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.item
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -999,6 +1000,14 @@ fun SessionListScreen(
                         // Leave space for bottom FAB row
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
                     ) {
+                        // [v1.0-wave6] "While you were away" — surfaces
+                        // scheduled-task results produced since the last
+                        // foreground visit. One dismissible card, never a stack.
+                        item(key = "proactive_banner") {
+                            ai.unicto.unibot.ui.scheduled.ProactiveBannerCard(
+                                onOpenSession = onSessionClick,
+                            )
+                        }
                         // T25: search-active path used to flatten the list and skip
                         // section headers entirely. Now reuses the same grouped
                         // rendering — `displayedSessions` is already filtered by

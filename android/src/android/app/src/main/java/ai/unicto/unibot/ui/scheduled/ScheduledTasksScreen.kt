@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,10 +33,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.ui.settings.SettingsSwitch
+import ai.unicto.unibot.ui.theme.Motion
+import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.R
 import ai.unicto.unibot.scheduled.ScheduledRepeatMode
 import ai.unicto.unibot.scheduled.ScheduledTask
@@ -119,15 +125,49 @@ fun ScheduledTasksScreen(
                 .padding(padding),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
-            items(tasks, key = { it.id }) { task ->
-                ScheduledTaskRow(
-                    task = task,
-                    onClick = { onEditTask(task.id) },
-                    onToggle = { vm.setEnabled(task.id, it) },
-                    onEdit = { onEditTask(task.id) },
-                    onViewRuns = { onViewRuns(task.id) },
-                    onDelete = { pendingDelete = task },
-                )
+            // [v1.0-wave6] Rows stagger in on entrance; swipe left deletes
+            // (via the existing confirm dialog).
+            itemsIndexed(tasks, key = { _, it -> it.id }) { index, task ->
+                val dismissState = rememberSwipeToDismissBoxState()
+                SwipeToDismissBox(
+                    state = dismissState,
+                    modifier = Modifier.staggeredEntrance(index),
+                    backgroundContent = {
+                        val color = when (dismissState.dismissDirection) {
+                            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                            else -> Color.Transparent
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(color)
+                                .padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
+                    },
+                    enableDismissFromStartToEnd = false,
+                ) {
+                    ScheduledTaskRow(
+                        task = task,
+                        onClick = { onEditTask(task.id) },
+                        onToggle = { vm.setEnabled(task.id, it) },
+                        onEdit = { onEditTask(task.id) },
+                        onViewRuns = { onViewRuns(task.id) },
+                        onDelete = { pendingDelete = task },
+                    )
+                }
+                if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                    LaunchedEffect(task.id) {
+                        pendingDelete = task
+                        dismissState.reset()
+                    }
+                }
             }
         }
     }
