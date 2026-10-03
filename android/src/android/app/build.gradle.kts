@@ -96,9 +96,18 @@ android {
     // Both the VAD library (RealTimeCutVADLibraryForAndroid) and sherpa-onnx
     // (via its transitive lib-onnx dependency) ship libonnxruntime.so.
     // They're the same library (ORT's C API is stable), so first wins.
+    // Cover every ABI the AARs ship (the merge task sees them all).
     packaging {
         jniLibs {
             pickFirsts += "lib/arm64-v8a/libonnxruntime.so"
+            pickFirsts += "lib/armeabi-v7a/libonnxruntime.so"
+            pickFirsts += "lib/x86_64/libonnxruntime.so"
+            pickFirsts += "lib/x86/libonnxruntime.so"
+            // The VAD AAR also bundles libc++_shared.so, which duplicates the
+            // NDK one from our CMake build — prefer the NDK's (matches the
+            // toolchain llama.cpp was built with).
+            pickFirsts += "lib/arm64-v8a/libc++_shared.so"
+            pickFirsts += "lib/armeabi-v7a/libc++_shared.so"
         }
     }
 
