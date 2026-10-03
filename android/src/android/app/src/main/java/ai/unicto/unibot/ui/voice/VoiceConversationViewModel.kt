@@ -50,6 +50,12 @@ class VoiceConversationViewModel(
         data object Thinking : State
         data object Speaking : State
         data class Error(val message: String) : State
+        /**
+         * [v1.1.2] Mic permission denied (or "don't ask again"). The UI shows
+         * a graceful card with rationale + a Settings deep-link — never a raw
+         * "RECORD_AUDIO required" dead-end.
+         */
+        data object PermissionDenied : State
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
@@ -132,7 +138,9 @@ class VoiceConversationViewModel(
         conversationActive = true
         viewModelScope.launch {
             if (!ensureMicPermission()) {
-                _state.value = State.Error("Microphone permission was not granted.")
+                // [v1.1.2] Denied -> the graceful PermissionDenied card, not
+                // a dead-end error string.
+                _state.value = State.PermissionDenied
                 return@launch
             }
             // [unibot-voice-conversation] Give every engine a fresh start, then
@@ -174,12 +182,22 @@ class VoiceConversationViewModel(
     fun toggleListening() {
         when (_state.value) {
             is State.Listening -> stopConversation()
-            is State.Idle, is State.Error -> startConversation(sessionId)
+            // [v1.1.2] PermissionDenied re-runs the permission flow (the
+            // screen's launcher + rationale), not a blind retry.
+            is State.Idle, is State.Error, is State.PermissionDenied -> startConversation(sessionId)
             // Thinking/Speaking: stop the whole conversation (halts TTS and
             // drops the in-flight reply wait; the agent turn itself keeps
             // running in the shared ChatViewModel).
             is State.Thinking, is State.Speaking -> stopConversation()
         }
+    }
+
+    /**
+     * [v1.1.2] Called when the system mic-permission dialog was denied
+     * (including "don't ask again"). Shows the graceful denied card.
+     */
+    fun onPermissionDenied() {
+        _state.value = State.PermissionDenied
     }
 
     /**
@@ -215,7 +233,13 @@ class VoiceConversationViewModel(
             onError = { error: RecognitionError, message: String? ->
                 silenceJob?.cancel()
                 if (!conversationActive) return@startRecording
-                _state.value = State.Error(message ?: "Voice input failed ($error).")
+                // [v1.1.2] A runtime permission denial (e.g. revoked mid-session)
+                // lands on the graceful denied card, never a raw engine string.
+                _state.value = if (error == RecognitionError.PERMISSION_DENIED) {
+                    State.PermissionDenied
+                } else {
+                    State.Error(message ?: "Voice input failed ($error).")
+                }
             },
         )
         armSilenceFallback()

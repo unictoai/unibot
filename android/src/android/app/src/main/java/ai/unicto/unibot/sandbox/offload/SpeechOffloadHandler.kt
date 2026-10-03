@@ -379,7 +379,7 @@ class SpeechOffloadHandler(private val context: Context) : NativeOffloadHandler 
                     val msg = when (error) {
                         SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
                         SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions (RECORD_AUDIO required)"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions (microphone permission needed)"
                         SpeechRecognizer.ERROR_NETWORK -> "Network error"
                         SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
                         SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized"

@@ -1077,7 +1077,7 @@ class SystemSpeechRecognitionEngine(private val appContext: Context) : SpeechRec
         private fun errorMessage(code: Int): String = when (code) {
             SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
             SpeechRecognizer.ERROR_CLIENT -> "Client error (no recognition service?)"
-            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "RECORD_AUDIO required"
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission needed"
             SpeechRecognizer.ERROR_NETWORK -> "Network error"
             SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
             SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized"

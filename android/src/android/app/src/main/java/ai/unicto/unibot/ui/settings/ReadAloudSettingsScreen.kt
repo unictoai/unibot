@@ -385,12 +385,8 @@ private fun OnDeviceVoicesSection() {
                         ) { Text("Download") }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Size: ${voice.sizeLabel}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // [v1.1.2] Size shown once in the description line above —
+                // the redundant "Size:" line was removed.
                 if (state is TtsVoiceModelManager.DownloadState.Downloading) {
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(

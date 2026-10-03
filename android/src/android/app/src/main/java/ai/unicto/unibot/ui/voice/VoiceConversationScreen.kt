@@ -1,7 +1,12 @@
 package ai.unicto.unibot.ui.voice
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -15,6 +20,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -165,13 +171,34 @@ fun VoiceConversationScreen(
 
     VoiceConversationPrefs.init(context)
 
+    // [v1.1.2] System mic-permission dialog via ActivityResultLauncher.
+    // Denial (or "don't ask again") lands in State.PermissionDenied — a
+    // graceful card with a Settings deep-link — never a raw
+    // "RECORD_AUDIO required" dead-end.
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) vm.startConversation(sessionId)
+        else vm.onPermissionDenied()
+    }
+    fun requestMicPermission() {
+        if (
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            vm.startConversation(sessionId)
+        } else {
+            micPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
     // Mic rationale on first entry: explain the on-device story BEFORE the
     // system permission dialog appears.
     var showRationale by remember {
         mutableStateOf(!VoiceConversationPrefs.wasMicRationaleShown(context))
     }
     LaunchedEffect(sessionId) {
-        if (!showRationale) vm.startConversation(sessionId)
+        if (!showRationale) requestMicPermission()
     }
 
     // Keep the screen awake for the whole conversation.
@@ -182,7 +209,7 @@ fun VoiceConversationScreen(
             onDismissRequest = {
                 showRationale = false
                 VoiceConversationPrefs.markMicRationaleShown(context)
-                vm.startConversation(sessionId)
+                requestMicPermission()
             },
             title = { Text(stringResource(R.string.ub_voice_mic_rationale_title)) },
             text = { Text(stringResource(R.string.ub_voice_mic_rationale_body)) },
@@ -190,7 +217,7 @@ fun VoiceConversationScreen(
                 TextButton(onClick = {
                     showRationale = false
                     VoiceConversationPrefs.markMicRationaleShown(context)
-                    vm.startConversation(sessionId)
+                    requestMicPermission()
                 }) { Text(stringResource(R.string.ub_voice_mic_rationale_continue)) }
             },
         )
@@ -302,6 +329,60 @@ fun VoiceConversationScreen(
                             }
                             Spacer(Modifier.height(12.dp))
                         }
+                    }
+
+                    // [v1.1.2] Graceful mic-denied state: rationale + a deep-link
+                    // to the app's system Settings page (covers plain denial
+                    // AND "don't ask again"). Never a raw constant.
+                    if (convState is VoiceConversationViewModel.State.PermissionDenied) {
+                        MuseCard(inset = 0.dp) {
+                            Column(
+                                Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.mic_permission_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = stringResource(R.string.mic_permission_message),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    TextButton(onClick = {
+                                        micPermissionLauncher.launch(
+                                            android.Manifest.permission.RECORD_AUDIO,
+                                        )
+                                    }) {
+                                        Text(stringResource(R.string.ub_voice_retry))
+                                    }
+                                    FilledTonalButton(onClick = {
+                                        context.startActivity(
+                                            Intent(
+                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            ).apply {
+                                                data = Uri.fromParts(
+                                                    "package",
+                                                    context.packageName,
+                                                    null,
+                                                )
+                                            },
+                                        )
+                                    }) {
+                                        Text(stringResource(R.string.mic_permission_open_settings))
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
                     }
 
                     // Error card with retry.
@@ -723,5 +804,7 @@ private fun statusText(state: VoiceConversationViewModel.State): String = when (
     is VoiceConversationViewModel.State.Listening -> stringResource(R.string.ub_voice_listening)
     is VoiceConversationViewModel.State.Thinking -> stringResource(R.string.ub_voice_thinking)
     is VoiceConversationViewModel.State.Speaking -> stringResource(R.string.ub_voice_speaking)
+    // [v1.1.2] Denied card carries its own text; the orb just idles.
+    is VoiceConversationViewModel.State.PermissionDenied -> stringResource(R.string.ub_voice_idle)
     is VoiceConversationViewModel.State.Error -> stringResource(R.string.ub_voice_retry)
 }
