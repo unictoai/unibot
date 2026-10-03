@@ -44,13 +44,17 @@ object PrivacyNetworkGate {
     }
 
     /**
-     * One outbound connection: the destination host, its [Category], and
-     * when it happened (epoch millis). No path, query, headers, or body.
+     * One outbound connection: the destination host, its [Category], when it
+     * happened (epoch millis), and — [v12-D] — which connector it belongs to,
+     * when the host maps to one ([connectorFor]). Null for AI providers,
+     * update checks, and anything unattributed. No path, query, headers,
+     * or body.
      */
     data class TrafficEntry(
         val host: String,
         val category: Category,
         val timestampMs: Long,
+        val connector: String? = null,
     )
 
     /** Last 100 entries, newest last. In-memory only — never written to disk. */
@@ -93,10 +97,60 @@ object PrivacyNetworkGate {
 
     // -- recording --------------------------------------------------------------
 
+    /**
+     * [v12-D] Which connector a host belongs to, for the per-connector
+     * traffic filter. Host-substring rules, most specific first; null when
+     * the host isn't a connector's (AI providers, update checks, unknown).
+     * Shared hosts get the honest coarse label — e.g. www.googleapis.com
+     * serves Drive, YouTube and Calendar, so it's just "Google".
+     */
+    fun connectorFor(host: String): String? {
+        val h = host.lowercase()
+        // Specific Google API hosts first — www.googleapis.com serves the
+        // Drive / YouTube / Calendar connectors (coarse "Google" label is
+        // the honest one for a shared host).
+        when {
+            h.contains("gmail.googleapis.com") -> return "Gmail"
+            h.contains("photoslibrary.googleapis.com") -> return "Google Photos"
+            h.contains("tasks.googleapis.com") -> return "Google Tasks"
+            h == "www.googleapis.com" -> return "Google"
+        }
+        // AI-provider hosts are not connectors — never attribute them.
+        if (classify(host) == Category.LLM) return null
+        return when {
+            h.contains("api.notion.com") -> "Notion"
+            h.contains("reddit.com") -> "Reddit"
+            h.contains("spotify.com") -> "Spotify"
+            h.contains("api.telegram.org") -> "Telegram"
+            h.contains("discord.com") -> "Discord"
+            h.contains("slack.com") -> "Slack"
+            h == "api.github.com" || h == "github.com" || h.endsWith(".github.com") -> "GitHub"
+            h.contains("gitlab.com") -> "GitLab"
+            h.contains("api.dropboxapi.com") || h.contains("dropbox.com") -> "Dropbox"
+            h.contains("trello.com") -> "Trello"
+            h.contains("api.todoist.com") -> "Todoist"
+            h.contains("api.themoviedb.org") -> "TMDB"
+            h.contains("api.stackexchange.com") -> "Stack Overflow"
+            h.contains("open-meteo.com") -> "Weather"
+            h.contains("api.frankfurter.app") -> "Currency"
+            h.contains("api.dictionaryapi.dev") -> "Dictionary"
+            h.contains("api.mymemory.translated.net") -> "Translate"
+            h.contains("gnews.io") -> "GNews"
+            h.contains("algolia.com") || h.contains("ycombinator.com") -> "Hacker News"
+            h.contains("wikipedia.org") -> "Wikipedia"
+            h.contains("graph.microsoft.com") -> "Microsoft 365"
+            h.contains("googleapis.com") || h.contains("google.com") -> "Google"
+            h.contains("microsoftonline.com") || h.contains("microsoft.com") -> "Microsoft"
+            else -> null
+        }
+    }
+
     /** Append [host] to the in-memory ring buffer. Never throws. */
     fun record(host: String) {
         try {
-            val entry = TrafficEntry(host, classify(host), System.currentTimeMillis())
+            // [v12-D] Attribute the entry to its connector at the logging
+            // call-site, so the traffic log can filter per connector.
+            val entry = TrafficEntry(host, classify(host), System.currentTimeMillis(), connectorFor(host))
             _log.value = (_log.value + entry).takeLast(MAX_ENTRIES)
         } catch (t: Throwable) {
             Log.w(TAG, "traffic record failed: ${t.message}")

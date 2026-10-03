@@ -7,6 +7,7 @@ import ai.unicto.unibot.ui.muse.MuseCaption
 import ai.unicto.unibot.ui.muse.MuseTopAppBar
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
+import ai.unicto.unibot.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,9 +41,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -56,6 +64,19 @@ const val ROUTE_TRAFFIC_LOG = "unibot/traffic_log"
 fun TrafficLogScreen(onBack: () -> Unit) {
     val entries by PrivacyNetworkGate.log.collectAsState()
     val haptics = rememberHaptic()
+
+    // [v12-D] Per-connector filter: null = All. Built from connectors
+    // actually present in the log, so chips never promise empty sets.
+    var selectedConnector by remember { mutableStateOf<String?>(null) }
+    val connectors = remember(entries) {
+        entries.mapNotNull { it.connector }.distinct().sorted()
+    }
+    val effectiveSelection = selectedConnector?.takeIf { it in connectors }
+    val visibleEntries = if (effectiveSelection == null) {
+        entries
+    } else {
+        entries.filter { it.connector == effectiveSelection }
+    }
 
     Scaffold(
         containerColor = MuseTones.canvas,
@@ -113,8 +134,58 @@ fun TrafficLogScreen(onBack: () -> Unit) {
                             "headers, and bodies are never recorded.",
                     )
                 }
-                itemsIndexed(entries.reversed()) { index, entry ->
-                    TrafficRow(entry, index)
+                // [v12-D] Connector filter chips (All + each connector seen).
+                if (connectors.isNotEmpty()) {
+                    item {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = effectiveSelection == null,
+                                    onClick = {
+                                        haptics.tap()
+                                        selectedConnector = null
+                                    },
+                                    label = {
+                                        Text(stringResource(R.string.v12_privacy_filter_all))
+                                    },
+                                )
+                            }
+                            items(connectors) { connector ->
+                                FilterChip(
+                                    selected = effectiveSelection == connector,
+                                    onClick = {
+                                        haptics.tap()
+                                        selectedConnector = connector
+                                    },
+                                    label = { Text(connector) },
+                                )
+                            }
+                        }
+                    }
+                }
+                if (visibleEntries.isEmpty()) {
+                    // [v12-D] A filter that matches nothing (e.g. right after
+                    // Clear) gets its own honest empty state.
+                    item {
+                        EmptyState(
+                            icon = Icons.Outlined.Shield,
+                            title = stringResource(
+                                R.string.v12_privacy_no_traffic_from,
+                                effectiveSelection.orEmpty(),
+                            ),
+                            hint = stringResource(R.string.v12_privacy_no_traffic_from_hint),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                        )
+                    }
+                } else {
+                    itemsIndexed(visibleEntries.reversed()) { index, entry ->
+                        TrafficRow(entry, index)
+                    }
                 }
                 item { Spacer(Modifier.height(16.dp)) }
             }
@@ -154,8 +225,13 @@ private fun TrafficRow(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
+                // [v12-D] Per-connector attribution: "Telegram · 3 min ago".
                 Text(
-                    text = timeAgo(entry.timestampMs),
+                    text = if (entry.connector != null) {
+                        "${entry.connector} · ${timeAgo(entry.timestampMs)}"
+                    } else {
+                        timeAgo(entry.timestampMs)
+                    },
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    [v12-D] Batch D (Privacy) strings for v1.2: per-connector traffic filter,
+    app-lock entry row, and the chat-export password row.
+-->
+<resources>
+    <!-- Traffic log: connector filter -->
+    <string name="v12_privacy_filter_all">All</string>
+    <string name="v12_privacy_no_traffic_from">No traffic from %1$s</string>
+    <string name="v12_privacy_no_traffic_from_hint">Nothing from this connector has been logged yet.</string>
+
+    <!-- Settings row: app lock entry -->
+    <string name="v12_privacy_autolock_title">App lock</string>
+    <string name="v12_privacy_autolock_off">Off</string>
+    <string name="v12_privacy_autolock_on">On</string>
+
+    <!-- Settings row: chat export password -->
+    <string name="v12_privacy_export_password_title">Chat export password</string>
+    <string name="v12_privacy_export_password_set">Set</string>
+    <string name="v12_privacy_export_password_not_set">Not set</string>
+    <string name="v12_privacy_export_password_dialog_title">Protect chat exports</string>
+    <string name="v12_privacy_export_password_dialog_body">When a password is set, every chat export is encrypted with AES-256 \u2014 anyone opening the file needs the password. The password never leaves this phone.</string>
+    <string name="v12_privacy_export_password_hint">Password</string>
+    <string name="v12_privacy_export_password_confirm_hint">Confirm password</string>
+    <string name="v12_privacy_export_password_mismatch">Passwords don\u2019t match.</string>
+    <string name="v12_privacy_export_password_too_short">Use at least 4 characters.</string>
+    <string name="v12_privacy_export_password_saved">Password set \u2014 new chat exports will be encrypted.</string>
+    <string name="v12_privacy_export_password_cleared">Password removed \u2014 new exports will be plain ZIP files.</string>
+    <string name="v12_privacy_export_password_remove">Remove</string>
+    <string name="v12_privacy_export_password_remove_title">Remove export password?</string>
+    <string name="v12_privacy_export_password_remove_body">New chat exports will be plain ZIP files again. Files already exported stay encrypted.</string>
+    <string name="v12_privacy_export_password_change">Change</string>
+</resources>

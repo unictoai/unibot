@@ -83,15 +83,25 @@ object ChatExporter {
      * [Intent.ACTION_SEND]. Throws on failure; caller's coroutine scope
      * decides how to surface it. [Progress] is published to [progress] as
      * batches are written.
+     *
+     * [password] — [v12-D]: when non-blank, the archive is written as a
+     * WinZip-AES-256 encrypted zip ([AesZip]) that requires the password to
+     * open. When null/blank, the stored export password
+     * ([ExportPasswordStore], Privacy → "Chat export password") is used when
+     * set; otherwise the zip is plain, as before.
      */
     suspend fun exportToZip(
         context: Context,
         session: ChatSessionEntity,
         repository: ChatRepository,
         format: String,
+        password: String? = null,
     ): Pair<Uri, Summary> = withContext(Dispatchers.IO) {
         val isJson = format == "json"
         val ext = if (isJson) "json" else "txt"
+        // [v12-D] Resolve before streaming — keystore IO, already on IO thread.
+        val effectivePassword = password?.takeIf { it.isNotBlank() }
+            ?: ExportPasswordStore.getPasswordIfEnabled(context)
         val stagingRoot = File(context.cacheDir, "export-staging")
         val workDir = File(stagingRoot, UUID.randomUUID().toString())
         if (!workDir.mkdirs() && !workDir.isDirectory) {
@@ -101,6 +111,7 @@ object ChatExporter {
         try {
             val transcriptFile = File(workDir, "messages.$ext")
             val summary = streamTranscript(repository, session, isJson, transcriptFile)
+                .copy(passwordProtected = effectivePassword != null)
 
             val metaFile = File(workDir, "session.json")
             writeSessionMeta(metaFile, session, summary)
@@ -114,15 +125,30 @@ object ChatExporter {
             val zipFile = File(sharedDir, "${safeTitle}-${session.id.take(8)}.zip")
             if (zipFile.exists()) zipFile.delete()
 
-            ZipOutputStream(FileOutputStream(zipFile).buffered()).use { zos ->
-                zipFileEntry(zos, "messages.$ext", transcriptFile)
-                zipFileEntry(zos, "session.json", metaFile)
+            if (effectivePassword != null) {
+                // [v12-D] Encrypted archive: same members, WinZip AES-256.
+                // Still a genuine .zip — 7-Zip / WinZip open it with the password.
+                FileOutputStream(zipFile).buffered().use { raw ->
+                    AesZip.writeEncryptedZip(
+                        raw,
+                        listOf(
+                            AesZip.Entry("messages.$ext", transcriptFile.readBytes()),
+                            AesZip.Entry("session.json", metaFile.readBytes()),
+                        ),
+                        effectivePassword,
+                    )
+                }
+            } else {
+                ZipOutputStream(FileOutputStream(zipFile).buffered()).use { zos ->
+                    zipFileEntry(zos, "messages.$ext", transcriptFile)
+                    zipFileEntry(zos, "session.json", metaFile)
+                }
             }
 
             val authority = "${context.packageName}.fileprovider"
             val uri = FileProvider.getUriForFile(context, authority, zipFile)
             _progress.value = Progress.Done(uri, summary)
-            AppLogger.info(LOG_CATEGORY, "exportToZip ok: ${zipFile.absolutePath} (${zipFile.length()} bytes, ${summary.messageCount} msgs)")
+            AppLogger.info(LOG_CATEGORY, "exportToZip ok: ${zipFile.absolutePath} (${zipFile.length()} bytes, ${summary.messageCount} msgs, passwordProtected=${summary.passwordProtected})")
             uri to summary
         } catch (t: Throwable) {
             _progress.value = Progress.Failed(t)
@@ -245,6 +271,8 @@ object ChatExporter {
             put("image_attachments", summary.imageAttachments)
             put("video_attachments", summary.videoAttachments)
             put("format", summary.format)
+            // [v12-D] Inside the (possibly encrypted) archive, so no leak.
+            put("password_protected", summary.passwordProtected)
         }
         file.writeText(meta.toString(2), Charsets.UTF_8)
     }

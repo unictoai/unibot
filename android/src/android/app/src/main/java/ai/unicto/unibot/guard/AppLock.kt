@@ -33,7 +33,10 @@ object AppLock {
     private const val KEY_TIMEOUT_MINUTES = "timeout_minutes"
 
     /** Lock timeout choices, in minutes. 0 = immediately on every return. */
-    val TIMEOUT_OPTIONS = listOf(0L, 1L, 5L, 15L, 60L)
+    // [v12-D] NEVER = "never auto-lock": the toggle stays on but returning
+    // to the app never triggers the gate by itself.
+    const val NEVER_TIMEOUT_MINUTES = -1L
+    val TIMEOUT_OPTIONS = listOf(0L, 1L, 5L, 15L, 60L, NEVER_TIMEOUT_MINUTES)
 
     const val DEFAULT_TIMEOUT_MINUTES = 5L
 
@@ -91,6 +94,8 @@ object AppLock {
         if (_locked.value || promptShowing) return
         // First launch of the process is not a "return" — no lock.
         if (lastPausedAt == 0L) return
+        // [v12-D] "Never": auto-lock disabled, the gate never trips on return.
+        if (_timeoutMinutes.value == NEVER_TIMEOUT_MINUTES) return
         val timeoutMs = _timeoutMinutes.value * 60_000L
         if (System.currentTimeMillis() - lastPausedAt < timeoutMs) return
         // Without a device lock (or on API < 29) there is nothing to confirm
@@ -142,6 +147,7 @@ object AppLock {
         0L -> "Immediately"
         1L -> "After 1 minute"
         60L -> "After 1 hour"
+        NEVER_TIMEOUT_MINUTES -> "Never" // [v12-D]
         else -> "After $minutes minutes"
     }
 }
