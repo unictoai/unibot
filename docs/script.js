@@ -76,44 +76,41 @@
 
 (function () {
 "use strict";
-  // ── Intro sound: plays once per page load ──
-  // Browsers block autoplay with sound, so we try immediately and fall back
-  // to playing on the first tap/click/keypress. Only counts as played after
-  // play() actually succeeds, so a failed tap retries on the next one.
+  // ── Welcome gate: OK tap plays the intro sound and enters the site ──
+  // Browsers only allow sound after a user gesture, so the welcome overlay's
+  // OK button doubles as that gesture: one tap → sound plays → overlay fades.
   try {
+    var overlay = document.getElementById("welcome");
+    var okBtn = document.getElementById("welcomeOk");
+    if (!overlay || !okBtn) return;
     var intro = new Audio("assets/intro-sound.mp3");
     intro.preload = "auto";
     try { intro.load(); } catch (e) {}
-    var played = false;
-    function arm() {
-      ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
-        window.addEventListener(ev, playIntro, { passive: true });
-      });
+    var done = false;
+    function enter() {
+      if (done) return;
+      done = true;
+      try {
+        var p = intro.play();
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
+      overlay.classList.add("hide");
+      setTimeout(function () {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }, 500);
     }
-    function disarm() {
-      ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
-        window.removeEventListener(ev, playIntro);
-      });
-    }
-    function playIntro() {
-      if (played) return;
-      var p = null;
-      try { p = intro.play(); } catch (e) { return; }
-      if (p && p.then) {
-        p.then(function () { played = true; disarm(); })
-         .catch(function () { /* not yet — next tap retries */ });
-      } else {
-        played = true;
-        disarm();
+    okBtn.addEventListener("click", enter);
+    // Keyboard users: Enter/Space on the focused button clicks it natively,
+    // but also allow Escape to dismiss quietly.
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        if (done) return;
+        done = true;
+        overlay.classList.add("hide");
+        setTimeout(function () {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 500);
       }
-    }
-    var first = null;
-    try { first = intro.play(); } catch (e) { first = null; }
-    if (first && first.then) {
-      first.then(function () { played = true; })
-           .catch(function () { arm(); });
-    } else {
-      arm();
-    }
+    });
   } catch (e) { /* audio unsupported — site works fine without it */ }
 })();
