@@ -94,7 +94,7 @@ def test_files_get_put(tmp_path: Path) -> None:
 
 
 def test_cloud_urls() -> None:
-    assert hub_url("https://relay.example/") == "wss://cloud.unibot.cn/v1/hub"
+    assert hub_url("https://relay.example/") == "wss://relay.example/v1/hub"
     assert hub_url("http://127.0.0.1:8080") == "ws://127.0.0.1:8080/v1/hub"
     assert model_url("https://relay.example") == "https://relay.example/v1"
     assert CloudClient.recommended_model([{"id": "x"}, {"id": "qwen3.8-27b"}]) == "qwen3.8-27b"
@@ -873,6 +873,8 @@ def test_password_sign_in_and_account_management(
     monkeypatch.setattr(CloudClient, "revoke_session", fake_revoke)
     monkeypatch.setattr(CloudClient, "sign_out_all", fake_sign_out_all)
 
+    # This scenario is a deployment where cloud sign-in is required.
+    service.settings.cloud.required = True
     before = client.get("/api/cloud").json()
     assert (
         before["signed_in"] is False

@@ -350,19 +350,19 @@ def test_without_an_image_model_the_chat_says_so(settings: Settings) -> None:
 
 # ----------------------------------------------------------------------------- clips
 @pytest.mark.parametrize(
-    ("base", "host"),
+    ("base", "host", "cloud"),
     [
-        ("https://relay.example/v1", "https://relay.example"),
-        ("https://dashscope.aliyuncs.com/compatible-mode/v1", "https://dashscope.aliyuncs.com"),
-        ("https://dashscope.aliyuncs.com/api/v1", "https://dashscope.aliyuncs.com"),
+        ("https://relay.example/v1", "https://relay.example", True),
+        ("https://dashscope.aliyuncs.com/compatible-mode/v1", "https://dashscope.aliyuncs.com", False),
+        ("https://dashscope.aliyuncs.com/api/v1", "https://dashscope.aliyuncs.com", False),
     ],
 )
-def test_video_host_is_the_root_of_the_model_url(base: str, host: str) -> None:
+def test_video_host_is_the_root_of_the_model_url(base: str, host: str, cloud: bool) -> None:
     ep = Endpoint(
         base_url=base,
         api_key="k",
         image_model="i",
-        cloud="unibot" in base,
+        cloud=cloud,
         video_model="wan2.2-i2v-flash",
     )
     assert ep.video_host == host and ep.clips
