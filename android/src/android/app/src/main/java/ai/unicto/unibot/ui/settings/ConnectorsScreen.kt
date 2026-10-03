@@ -307,6 +307,9 @@ fun ConnectorsScreen(
             // [v0.7.0-wave3] WhatsApp: share (no auth) + opt-in notification reader.
             WhatsAppConnectorRow()
             RssConnectorRow()
+            // [v1.2] Batch C: 8 new connectors (IMAP/SMTP, Nextcloud, Jellyfin,
+            // Home Assistant, Health Connect, Matrix, Steam, Podcasts).
+            ai.unicto.unibot.ui.settings.ConnectorsV12BatchC()
             // [v1.0-wave7] Connector mega-batch: token rows.
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_trello,

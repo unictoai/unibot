@@ -170,6 +170,14 @@ fun SettingsScreen(
     onPrivacyDashboardClick: () -> Unit = {},
     onTrafficLogClick: () -> Unit = {},
     onPermissionAuditClick: () -> Unit = {},
+    // [v1.2] New screens. Default no-op for callers that haven't wired yet.
+    onBenchmarkClick: () -> Unit = {},
+    onSamplerClick: () -> Unit = {},
+    onChatTemplatesClick: () -> Unit = {},
+    onScheduledMessagesClick: () -> Unit = {},
+    onVoiceHistoryClick: () -> Unit = {},
+    onStorageBreakdownClick: () -> Unit = {},
+    onScheduledBackupClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var showFeedbackSheet by remember { mutableStateOf(false) }
@@ -289,6 +297,12 @@ fun SettingsScreen(
                     onClick = onOnDeviceModelsClick,
                 )
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] On-device model speed benchmark.
+                ai.unicto.unibot.ui.local.LocalAiBenchmarkRow(onClick = onBenchmarkClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Sampler settings (temperature, top-p, …) per on-device model.
+                ai.unicto.unibot.ui.local.LocalAiSamplerRow(onClick = onSamplerClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(
                     title = stringResource(R.string.settings_token_usage),
                     icon = Icons.Outlined.BarChart,
@@ -320,6 +334,12 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [P2] Compare Models: same prompt, two models, side by side.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_compare_title), icon = Icons.Outlined.CompareArrows, onClick = onCompareClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Chat templates / prompt starters.
+                ai.unicto.unibot.ui.chat.ChatTemplatesRow(onClick = onChatTemplatesClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Scheduled messages (send later).
+                ai.unicto.unibot.ui.chat.ScheduledMessagesRow(onClick = onScheduledMessagesClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -418,6 +438,15 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_backup_restore), icon = Icons.Outlined.Backup, onClick = onBackupClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Scheduled local backup (daily/weekly, on-device only).
+                ai.unicto.unibot.ui.settings.ScheduledBackupRow(onClick = onScheduledBackupClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Storage breakdown by category.
+                ai.unicto.unibot.ui.settings.StorageBreakdownRow(onClick = onStorageBreakdownClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Battery saver (reduces animations + background work).
+                ai.unicto.unibot.ui.settings.BatterySaverRow()
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // unibot P6: visual context — capture a photo and ask the chat about it.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_visual_ask_title), icon = Icons.Outlined.CameraAlt, onClick = onVisualAskClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -502,6 +531,12 @@ fun SettingsScreen(
                 )
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = "Permission audit", icon = Icons.Outlined.FactCheck, onClick = onPermissionAuditClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Auto-lock timer (incl. Never).
+                ai.unicto.unibot.ui.privacy.V12AutoLockRow(onAppLockClick = onAppLockClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Password-protect chat exports (AES-256).
+                ai.unicto.unibot.ui.privacy.V12ExportPasswordRow()
             }
             ai.unicto.unibot.ui.muse.MuseGap()
 
@@ -512,6 +547,9 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [unibot-voice-conversation] full-screen voice mode settings.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_voice_title), icon = Icons.Outlined.Mic, onClick = onVoiceConversationClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Voice conversation history.
+                ai.unicto.unibot.ui.voice.VoiceHistoryRow(onOpenVoiceHistory = onVoiceHistoryClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_appearance), icon = Icons.Outlined.Palette, onClick = onAppearanceClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()

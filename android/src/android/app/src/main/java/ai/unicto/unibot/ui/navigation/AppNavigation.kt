@@ -952,6 +952,14 @@ fun AppNavigation(
                 onPermissionAuditClick = {
                     navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_PERMISSION_AUDIT)
                 },
+                // [v1.2] New screens.
+                onBenchmarkClick = { navController.safeNavigate(Routes.MODEL_BENCHMARK) },
+                onSamplerClick = { navController.safeNavigate(Routes.SAMPLER_SETTINGS) },
+                onChatTemplatesClick = { navController.safeNavigate(Routes.CHAT_TEMPLATES) },
+                onScheduledMessagesClick = { navController.safeNavigate(Routes.SCHEDULED_MESSAGES) },
+                onVoiceHistoryClick = { navController.safeNavigate(Routes.VOICE_HISTORY) },
+                onStorageBreakdownClick = { navController.safeNavigate(Routes.STORAGE_BREAKDOWN) },
+                onScheduledBackupClick = { navController.safeNavigate(Routes.SCHEDULED_BACKUP) },
             )
         }
 

@@ -2,7 +2,7 @@ package ai.unicto.unibot.ui.local
 
 // [v1.2 Batch F] Settings rows the coordinator wires into SettingsScreen —
 // entries into the model benchmark and sampler settings screens.
-// Do NOT edit SettingsScreen.kt from this batch.
+// Converted to MuseRow for visual consistency with the settings page.
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Speed
@@ -10,7 +10,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import ai.unicto.unibot.R
-import ai.unicto.unibot.ui.settings.SettingsRow
+import ai.unicto.unibot.ui.muse.MuseRow
 
 /**
  * Row → [Routes.MODEL_BENCHMARK]: measure a downloaded model's tokens/sec
@@ -18,9 +18,9 @@ import ai.unicto.unibot.ui.settings.SettingsRow
  */
 @Composable
 fun LocalAiBenchmarkRow(onClick: () -> Unit) {
-    SettingsRow(
+    MuseRow(
         title = stringResource(R.string.v12_benchmark_title),
-        subtitle = stringResource(R.string.v12_benchmark_sub),
+        value = stringResource(R.string.v12_benchmark_sub),
         icon = Icons.Default.Speed,
         onClick = onClick,
     )
@@ -32,11 +32,10 @@ fun LocalAiBenchmarkRow(onClick: () -> Unit) {
  */
 @Composable
 fun LocalAiSamplerRow(onClick: () -> Unit) {
-    SettingsRow(
+    MuseRow(
         title = stringResource(R.string.v12_sampler_title),
-        subtitle = stringResource(R.string.v12_sampler_sub),
+        value = stringResource(R.string.v12_sampler_sub),
         icon = Icons.Default.Tune,
         onClick = onClick,
-        showDivider = false,
     )
 }
