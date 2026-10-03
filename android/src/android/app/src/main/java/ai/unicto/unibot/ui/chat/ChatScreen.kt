@@ -573,6 +573,8 @@ fun ChatScreen(
     onStarredClick: () -> Unit = {},
     /** [Wave 8] Open the Chat stats screen. */
     onStatsClick: () -> Unit = {},
+    /** [unibot-voice-conversation] Open the full-screen voice conversation. */
+    onOpenVoiceConversation: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -6953,7 +6955,13 @@ fun ChatScreen(
                                 .isEnabled.collectAsState()
                             val ttsMuted by ai.unicto.unibot.speech.VoiceOutputState
                                 .isMuted.collectAsState()
-                            val readReplies = ttsEnabled && !ttsMuted
+                            // [unibot-voice-conversation] "Speak replies only
+                            // in voice mode": when on, the chat's own
+                            // read-aloud stays silent — replies are spoken
+                            // only inside the voice conversation screen.
+                            val speakOnlyInVoiceMode by ai.unicto.unibot.ui.voice
+                                .VoiceConversationPrefs.speakOnlyInVoiceMode.collectAsState()
+                            val readReplies = ttsEnabled && !ttsMuted && !speakOnlyInVoiceMode
                             // [T-android-provider-tts-readaloud] Routes each
                             // utterance through the resolved Voice Output
                             // selection (provider TTS, system engine as
@@ -7233,7 +7241,12 @@ fun ChatScreen(
                                         sttState == ai.unicto.unibot.speech.RecognitionState.STARTING),
                                 localeBadge = null,
                                 onClick = { triggerVoiceInput() },
-                                onLongClick = { showLangSheet = true },
+                                // [unibot-voice-conversation] Long-press opens
+                                // the full-screen voice conversation. The
+                                // language picker also lives inside the inline
+                                // voice panel (Language icon), so nothing is
+                                // lost by moving it off this gesture.
+                                onLongClick = { onOpenVoiceConversation() },
                                 isVoiceActive = ai.unicto.unibot.ui.chat.voice.VoiceModePrefs.isVoiceActive,
                                 plain = ubPill, // unibot
                             )

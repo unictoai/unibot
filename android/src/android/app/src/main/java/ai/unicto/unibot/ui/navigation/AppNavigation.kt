@@ -213,6 +213,11 @@ object Routes {
     const val VISUAL_ASK = "visual_ask"
     /** unibot P6: read-aloud (spoken replies) settings. */
     const val READ_ALOUD = "read_aloud"
+    /** [unibot-voice-conversation] full-screen voice conversation for a session. */
+    const val VOICE_CONVERSATION = "voice_conversation/{sessionId}"
+    fun voiceConversation(sessionId: String) = "voice_conversation/$sessionId"
+    /** [unibot-voice-conversation] voice conversation settings. */
+    const val VOICE_SETTINGS = "voice_settings"
     /** unibot P6: autofill from the on-device profile (opt-in). */
     const val AUTOFILL = "autofill"
     fun providerDetail(instanceId: String) = "provider/$instanceId"
@@ -907,7 +912,8 @@ fun AppNavigation(
                 onCompareClick = { navController.safeNavigate(Routes.COMPARE) },
                 onProjectsClick = { navController.safeNavigate(Routes.PROJECTS) }, // unibot P6
                 onVisualAskClick = { navController.safeNavigate(Routes.VISUAL_ASK) }, // unibot P6
-                onReadAloudClick = { navController.safeNavigate(Routes.READ_ALOUD) }, // unibot P6
+                onReadAloudClick = { navController.safeNavigate(Routes.READ_ALOUD) },
+                onVoiceConversationClick = { navController.safeNavigate(Routes.VOICE_SETTINGS) }, // [unibot-voice-conversation]
                 onAutofillClick = { navController.safeNavigate(Routes.AUTOFILL) }, // unibot P6
                 // [v1.0-wave5-privacy] Privacy screens.
                 onPrivacyDashboardClick = {
@@ -991,6 +997,33 @@ fun AppNavigation(
         composable(Routes.READ_ALOUD) {
             ai.unicto.unibot.ui.settings.ReadAloudSettingsScreen(
                 onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // [unibot-voice-conversation] full-screen voice conversation for a session.
+        composable(
+            route = Routes.VOICE_CONVERSATION,
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+            ai.unicto.unibot.ui.voice.VoiceConversationScreen(
+                sessionId = sessionId,
+                chatRepository = chatRepository,
+                providerRepository = providerRepository,
+                memoryRepository = memoryRepository,
+                skillRepository = skillRepository,
+                mcpRepository = mcpRepository,
+                onBack = { navController.safePopBackStack() },
+                onOpenVoiceSettings = { navController.safeNavigate(Routes.VOICE_SETTINGS) },
+                onOpenReadAloudSettings = { navController.safeNavigate(Routes.READ_ALOUD) },
+            )
+        }
+
+        // [unibot-voice-conversation] voice conversation settings.
+        composable(Routes.VOICE_SETTINGS) {
+            ai.unicto.unibot.ui.settings.VoiceConversationSettingsScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenReadAloudSettings = { navController.safeNavigate(Routes.READ_ALOUD) },
             )
         }
 

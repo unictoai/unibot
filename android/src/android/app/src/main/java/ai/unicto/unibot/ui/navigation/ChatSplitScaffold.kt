@@ -959,6 +959,11 @@ fun ChatSplitScaffoldRoute(
                 onStatsClick = {
                     navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS)
                 },
+                // [unibot-voice-conversation] Full-screen voice mode leaves
+                // the pair like the other outer-NavHost destinations.
+                onOpenVoiceConversation = {
+                    navController.safeNavigate(Routes.voiceConversation(sessionId))
+                },
             )
         },
     )

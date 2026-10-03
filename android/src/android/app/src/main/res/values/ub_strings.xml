@@ -1080,5 +1080,34 @@
     <string name="ub_connectors_stackoverflow_desc">Search programming answers — no account</string>
     <string name="ub_connectors_qr">QR Tools</string>
     <string name="ub_connectors_qr_desc">Generate and scan QR codes on-device</string>
+
+    <!-- [unibot-voice-conversation] Voice conversation screen + settings. -->
+    <string name="ub_voice_title">Voice conversation</string>
+    <string name="ub_voice_listening">Listening…</string>
+    <string name="ub_voice_thinking">Thinking…</string>
+    <string name="ub_voice_speaking">Speaking — tap anywhere to interrupt</string>
+    <string name="ub_voice_idle">Tap the mic to start talking</string>
+    <string name="ub_voice_on_device">100% on-device</string>
+    <string name="ub_voice_auto_listen">Auto-listen</string>
+    <string name="ub_voice_auto_listen_desc">Keep the mic open between turns</string>
+    <string name="ub_voice_download_title">Download a voice to speak on-device</string>
+    <string name="ub_voice_download_body">unibot’s voice lives on your phone — no cloud, no account. Download one to hear replies out loud.</string>
+    <string name="ub_voice_download_action">Download voices</string>
+    <string name="ub_voice_you_said">You said</string>
+    <string name="ub_voice_unibot_said">unibot said</string>
+    <string name="ub_voice_last_exchange">Last exchange</string>
+    <string name="ub_voice_mic_rationale_title">Microphone stays on your phone</string>
+    <string name="ub_voice_mic_rationale_body">Voice mode listens only while this screen is open. With the offline voice engine your speech is transcribed on this phone by whisper.cpp — audio never leaves the device.</string>
+    <string name="ub_voice_mic_rationale_continue">Continue</string>
+    <string name="ub_voice_retry">Try again</string>
+    <string name="ub_voice_settings_desc">Voice settings</string>
+    <string name="ub_voice_speed">Voice speed</string>
+    <string name="ub_voice_choice">Voice</string>
+    <string name="ub_voice_choice_auto">Default</string>
+    <string name="ub_voice_speak_only_title">Speak replies only in voice mode</string>
+    <string name="ub_voice_speak_only_desc">When on, the chat’s read-aloud stays silent and replies are spoken only here.</string>
+    <string name="ub_voice_no_engine">No voice engine is available. Download the offline voice model to talk fully on-device.</string>
+    <string name="ub_voice_ready">Ready</string>
+    <string name="ub_voice_offline_caption">Voices are downloaded to this phone and spoken fully offline.</string>
 </resources>
 

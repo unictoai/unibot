@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.FrontHand
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Mic // [unibot-voice-conversation]
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
@@ -136,6 +137,7 @@ fun SettingsScreen(
     onProjectsClick: () -> Unit = {}, // unibot P6: Settings → Projects (chats + files + instructions bundles)
     onVisualAskClick: () -> Unit = {}, // unibot P6: Settings → Ask about camera (visual context)
     onReadAloudClick: () -> Unit = {}, // unibot P6: Settings → Read aloud (spoken replies, TTS voices)
+    onVoiceConversationClick: () -> Unit = {}, // [unibot-voice-conversation] Settings → Voice conversation
     onAutofillClick: () -> Unit = {}, // unibot P6: Settings → Autofill (opt-in, on-device)
     onPermissionsClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
@@ -507,6 +509,9 @@ fun SettingsScreen(
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(4)) {
                 // unibot P6: spoken replies — on-device TTS voices, engine status, speed.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_read_aloud_title), icon = Icons.Outlined.RecordVoiceOver, onClick = onReadAloudClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [unibot-voice-conversation] full-screen voice mode settings.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_voice_title), icon = Icons.Outlined.Mic, onClick = onVoiceConversationClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_appearance), icon = Icons.Outlined.Palette, onClick = onAppearanceClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()

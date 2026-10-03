@@ -22,10 +22,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.Mic // [unibot-voice-conversation]
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon // [unibot-voice-conversation]
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -522,6 +524,20 @@ private fun TabHeader(
                             text = { Text(stringResource(R.string.ub_coding_title)) },
                             onClick = { menu = false; navController.safeNavigate(ai.unicto.unibot.ui.coding.ROUTE_CODING) },
                         )
+                        // [unibot-voice-conversation] Second entry point: the
+                        // flagship voice mode for the current chat session.
+                        // (Local copy: delegated vars don't smart-cast.)
+                        val voiceSessionId = chatSessionId
+                        if (voiceSessionId != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.ub_voice_title)) },
+                                leadingIcon = { Icon(Icons.Outlined.Mic, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    navController.safeNavigate(Routes.voiceConversation(voiceSessionId))
+                                },
+                            )
+                        }
                     }
                     when (tab) {
                         HomeTab.GOALS -> {
