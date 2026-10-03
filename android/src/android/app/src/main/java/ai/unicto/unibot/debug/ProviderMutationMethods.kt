@@ -212,6 +212,14 @@ internal object ProviderMutationMethods {
             ProviderType.openRouter -> "https://openrouter.ai/api/v1"
             ProviderType.xAI -> "https://api.x.ai/v1"
             ProviderType.kimiCode -> "https://api.kimi.com/coding/v1"
+            // [v1.2-free-tier] Free-tier canonical bases.
+            ProviderType.groq -> "https://api.groq.com/openai/v1"
+            ProviderType.cerebras -> "https://api.cerebras.ai/v1"
+            ProviderType.mistral -> "https://api.mistral.ai/v1"
+            ProviderType.githubModels -> "https://models.github.ai/inference"
+            ProviderType.sambaNova -> "https://api.sambanova.ai/v1"
+            ProviderType.nvidiaNim -> "https://integrate.api.nvidia.com/v1"
+            ProviderType.deepSeek -> "https://api.deepseek.com/v1"
             ProviderType.antigravity, ProviderType.unsupported -> ""
         }
         val probeURL = when (instance.providerType) {
@@ -224,6 +232,14 @@ internal object ProviderMutationMethods {
             ProviderType.xAI -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
             // Kimi Coding: OpenAI-compatible /models under /coding/v1.
             ProviderType.kimiCode -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
+            // [v1.2-free-tier] OpenAI-compatible /v1/models.
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
             // No probe endpoint for a type this build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported -> baseURL
         }
@@ -245,6 +261,14 @@ internal object ProviderMutationMethods {
             ProviderType.xAI -> if (!key.isNullOrEmpty()) builder.header("Authorization", "Bearer $key")
             // Kimi Coding: OpenAI-compat bearer (OAuth access token or key).
             ProviderType.kimiCode -> if (!key.isNullOrEmpty()) builder.header("Authorization", "Bearer $key")
+            // [v1.2-free-tier] OpenAI-compat Bearer <redacted>
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek -> if (!key.isNullOrEmpty()) builder.header("Authorization", "Bearer $key")
             // [T-android-provider-type-parity] No auth scheme known for a type
             // this build cannot drive; the probe will simply fail.
             ProviderType.antigravity, ProviderType.unsupported -> { /* no auth */ }

@@ -84,6 +84,14 @@ internal object ProviderDebugMethods {
         ProviderType.openRouter -> "https://openrouter.ai/api/v1"
         ProviderType.xAI -> "https://api.x.ai/v1"
         ProviderType.kimiCode -> "https://api.kimi.com/coding/v1"
+        // [v1.2-free-tier] Free-tier canonical bases.
+        ProviderType.groq -> "https://api.groq.com/openai/v1"
+        ProviderType.cerebras -> "https://api.cerebras.ai/v1"
+        ProviderType.mistral -> "https://api.mistral.ai/v1"
+        ProviderType.githubModels -> "https://models.github.ai/inference"
+        ProviderType.sambaNova -> "https://api.sambanova.ai/v1"
+        ProviderType.nvidiaNim -> "https://integrate.api.nvidia.com/v1"
+        ProviderType.deepSeek -> "https://api.deepseek.com/v1"
         // [T-android-provider-type-parity] Responses API shares the OpenAI
         // host; undrivable types have no canonical base to report.
         ProviderType.openAIResponses -> "https://api.openai.com"

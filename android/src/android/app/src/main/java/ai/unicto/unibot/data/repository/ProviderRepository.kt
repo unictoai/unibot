@@ -2273,6 +2273,21 @@ class ProviderRepository(private val context: Context) {
                         baseURL ?: "${ai.unicto.unibot.auth.KimiDeviceFlow.CODING_API_BASE}/v1",
                         customUserAgent = instance.customUserAgent,
                     )
+                    // [v1.2-free-tier] Free-tier providers: OpenAI-compatible
+                    // /v1/models. The base is pre-filled in AddProviderScreen
+                    // but stays editable, so prefer the instance's own URL.
+                    ProviderType.groq,
+                    ProviderType.cerebras,
+                    ProviderType.mistral,
+                    ProviderType.githubModels,
+                    ProviderType.sambaNova,
+                    ProviderType.nvidiaNim,
+                    ProviderType.deepSeek -> OpenAIModelsApi.fetchModels(
+                        apiKey,
+                        baseURL ?: instance.providerType.defaultBaseUrl
+                            ?: "https://api.openai.com/v1",
+                        customUserAgent = instance.customUserAgent,
+                    )
                     // [T-android-provider-type-parity] No models endpoint to
                     // query for a type this build cannot drive; the instance
                     // keeps whatever entries the restore brought with it.
@@ -2402,6 +2417,15 @@ class ProviderRepository(private val context: Context) {
             ProviderType.openRouter -> "https://openrouter.ai/api/v1"
             ProviderType.xAI -> "https://api.x.ai/v1"
             ProviderType.kimiCode -> "${ai.unicto.unibot.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
+            // [v1.2-free-tier] Free-tier providers — their canonical hosts.
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek -> instance.providerType.defaultBaseUrl
+                ?: "https://api.openai.com/v1"
             // No canonical host for a type this build cannot drive. Callers
             // reaching here have already exhausted effectiveBaseURL.
             ProviderType.antigravity, ProviderType.unsupported -> "https://api.openai.com/v1"

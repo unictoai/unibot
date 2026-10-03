@@ -1943,6 +1943,18 @@
     <string name="voice_correction_cleared">Voice correction data cleared</string>
     <string name="voice_provider_system">System</string>
     <string name="add_provider_subtitle_kimi">Kimi Coding Plan — sign in with your Kimi account</string>
+    <!-- [v1.2-free-tier] Free-tier provider picker subtitles + badge. -->
+    <string name="add_provider_free_tier_badge">FREE TIER</string>
+    <string name="add_provider_subtitle_groq">Free plan, no card — blazing-fast Llama &amp; Qwen</string>
+    <string name="add_provider_subtitle_cerebras">Free tier ~1M tokens/day — Llama, Qwen, GPT-OSS</string>
+    <string name="add_provider_subtitle_mistral">Experiment tier free, no card — Mistral Large &amp; Codestral</string>
+    <string name="add_provider_subtitle_github_models">Free with any GitHub account — GPT-4o mini, Llama, DeepSeek</string>
+    <string name="add_provider_subtitle_sambanova">Free tier — Llama 3.3 70B, DeepSeek R1</string>
+    <string name="add_provider_subtitle_nvidia_nim">Free credits on signup — Llama, DeepSeek, Qwen</string>
+    <string name="add_provider_subtitle_deepseek">Trial grant on signup — DeepSeek Chat &amp; Reasoner</string>
+    <!-- [v1.2-free-tier] Provider detail: get-a-key button + quota honesty. -->
+    <string name="provider_detail_get_free_key">Get free key</string>
+    <string name="provider_detail_free_quota_note">Free limits change often — check the provider\'s docs for current quotas.</string>
     <string name="kimi_login_title">Sign in with Kimi Code</string>
     <string name="kimi_login_instructions">Open the verification page and enter this code to authorize unibot:</string>
     <string name="kimi_login_copy_code">Copy code</string>

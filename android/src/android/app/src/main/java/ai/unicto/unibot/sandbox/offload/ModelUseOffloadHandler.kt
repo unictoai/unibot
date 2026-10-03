@@ -1337,6 +1337,14 @@ class ModelUseOffloadHandler(
             // xAI (Grok) / Kimi Coding have no image-output models in the
             // current catalog — fall through to empty hint like Anthropic.
             ProviderType.anthropic, ProviderType.xAI, ProviderType.kimiCode,
+            // [v1.2-free-tier] Text-first free tiers — no image models.
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek,
             // [T-android-provider-type-parity] No image-param hint for types
             // this build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported, null -> ""

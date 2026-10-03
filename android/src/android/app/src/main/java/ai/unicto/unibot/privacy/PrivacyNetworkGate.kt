@@ -215,6 +215,14 @@ object PrivacyNetworkGate {
         ProviderType.openRouter -> "openrouter.ai"
         ProviderType.xAI -> "api.x.ai"
         ProviderType.kimiCode -> "api.kimi.com"
+        // [v1.2-free-tier] Official hosts for the free-tier providers.
+        ProviderType.groq -> "api.groq.com"
+        ProviderType.cerebras -> "api.cerebras.ai"
+        ProviderType.mistral -> "api.mistral.ai"
+        ProviderType.githubModels -> "models.github.ai"
+        ProviderType.sambaNova -> "api.sambanova.ai"
+        ProviderType.nvidiaNim -> "integrate.api.nvidia.com"
+        ProviderType.deepSeek -> "api.deepseek.com"
         else -> null
     }
 

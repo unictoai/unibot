@@ -16,6 +16,25 @@ enum class ProviderType(val displayName: String) {
     // name-based (ProviderCredential.valueOf), so appending is migration-safe.
     kimiCode("Kimi Code"),
 
+    // [v1.2-free-tier] First-class free-tier providers. All are
+    // OpenAI-compatible (/v1/chat/completions) and take a pasted API key —
+    // no manual base-URL fiddling. Appended (never inserted), so the
+    // name-based DB round-trip stays migration-safe.
+    /** Groq — free plan, no card. https://console.groq.com */
+    groq("Groq"),
+    /** Cerebras — free tier ~1M tokens/day. https://cloud.cerebras.ai */
+    cerebras("Cerebras"),
+    /** Mistral — Experiment tier free, no card. https://console.mistral.ai */
+    mistral("Mistral"),
+    /** GitHub Models — free with any GitHub account. https://github.com/marketplace/models */
+    githubModels("GitHub Models"),
+    /** SambaNova — free tier. https://cloud.sambanova.ai */
+    sambaNova("SambaNova"),
+    /** NVIDIA NIM — free credits on signup. https://build.nvidia.com */
+    nvidiaNim("NVIDIA NIM"),
+    /** DeepSeek — one-time trial grant on signup (not permanent). https://platform.deepseek.com */
+    deepSeek("DeepSeek"),
+
     // [T-android-provider-type-parity] The cases below exist on iOS but were
     // missing here. They are declared so a cross-platform restore or sync can
     // DECODE them: without a case, kotlinx.serialization throws on the unknown
@@ -65,7 +84,8 @@ enum class ProviderType(val displayName: String) {
         get() = when (this) {
             // openAIResponses included: it routes through the OpenAI provider
             // with the Responses endpoint forced on.
-            anthropic, gemini, openAI, openRouter, xAI, kimiCode, openAIResponses -> true
+            anthropic, gemini, openAI, openRouter, xAI, kimiCode, openAIResponses,
+            groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek -> true
             antigravity, unsupported -> false
         }
 
@@ -77,9 +97,59 @@ enum class ProviderType(val displayName: String) {
             openRouter -> LLMModel.allOpenRouter
             xAI -> LLMModel.allXAI
             kimiCode -> LLMModel.allKimi
+            groq -> LLMModel.allGroq
+            cerebras -> LLMModel.allCerebras
+            mistral -> LLMModel.allMistral
+            githubModels -> LLMModel.allGithubModels
+            sambaNova -> LLMModel.allSambaNova
+            nvidiaNim -> LLMModel.allNvidiaNim
+            deepSeek -> LLMModel.allDeepSeek
             // No built-in catalog for the decode-only types; models restored
             // alongside the instance still appear as custom entries.
             openAIResponses, antigravity, unsupported -> emptyList()
+        }
+
+    /**
+     * [v1.2-free-tier] Default base URL for the free-tier providers.
+     * Pre-filled in AddProviderScreen (still editable). Null for types
+     * with their own endpoint logic.
+     */
+    val defaultBaseUrl: String?
+        get() = when (this) {
+            groq -> "https://api.groq.com/openai/v1"
+            cerebras -> "https://api.cerebras.ai/v1"
+            mistral -> "https://api.mistral.ai/v1"
+            githubModels -> "https://models.github.ai/inference"
+            sambaNova -> "https://api.sambanova.ai/v1"
+            nvidiaNim -> "https://integrate.api.nvidia.com/v1"
+            deepSeek -> "https://api.deepseek.com/v1"
+            else -> null
+        }
+
+    /**
+     * [v1.2-free-tier] Signup URL for the free-tier providers, shown as a
+     * "Get free key" button on the provider detail screen. Null for others.
+     */
+    val signupUrl: String?
+        get() = when (this) {
+            groq -> "https://console.groq.com"
+            cerebras -> "https://cloud.cerebras.ai"
+            mistral -> "https://console.mistral.ai"
+            githubModels -> "https://github.com/marketplace/models"
+            sambaNova -> "https://cloud.sambanova.ai"
+            nvidiaNim -> "https://build.nvidia.com"
+            deepSeek -> "https://platform.deepseek.com"
+            else -> null
+        }
+
+    /**
+     * [v1.2-free-tier] True for the free-tier providers — shows a FREE TIER
+     * badge in the provider picker.
+     */
+    val isFreeTier: Boolean
+        get() = when (this) {
+            groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek -> true
+            else -> false
         }
 
     companion object {

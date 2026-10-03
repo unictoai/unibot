@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -219,6 +221,28 @@ fun ProviderDetailScreen(
                             keyVisible = false
                         },
                     )
+                }
+            }
+        }
+
+        // [v1.2-free-tier] Free-tier providers: "Get free key" button opening
+        // the signup page + honest quota note.
+        val signupUrl = instance.providerType.signupUrl
+        if (signupUrl != null && !isOAuthProvider) {
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+            SettingsSection(
+                header = stringResource(R.string.provider_detail_get_free_key),
+                footer = stringResource(R.string.provider_detail_free_quota_note),
+            ) {
+                SettingsCardBlock {
+                    androidx.compose.material3.Button(
+                        onClick = { uriHandler.openUri(signupUrl) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(stringResource(R.string.provider_detail_get_free_key))
+                    }
                 }
             }
         }

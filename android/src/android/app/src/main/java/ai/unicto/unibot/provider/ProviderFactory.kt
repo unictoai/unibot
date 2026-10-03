@@ -113,6 +113,24 @@ object ProviderFactory {
                     ),
                 )
             }
+            // [v1.2-free-tier] Free-tier providers: all OpenAI-compatible.
+            // The base URL is pre-filled from ProviderType.defaultBaseUrl in
+            // AddProviderScreen but stays editable; honor a custom override.
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek -> {
+                val base = basePath ?: instance.providerType.defaultBaseUrl
+                    ?: "https://api.openai.com/v1"
+                OpenAIProvider(
+                    apiKey = apiKey,
+                    model = model,
+                    basePath = base,
+                )
+            }
             ProviderType.xAI -> {
                 // xAI exposes an OpenAI-compatible /v1/chat/completions
                 // endpoint at api.x.ai/v1. Two credential modes:

@@ -103,6 +103,14 @@ object VoiceProviderFactory {
 
             // [T-kimi-oauth] Kimi Coding Plan serves no voice models.
             ProviderType.kimiCode -> null
+            // [v1.2-free-tier] Text-first free tiers — no voice endpoints.
+            ProviderType.groq,
+            ProviderType.cerebras,
+            ProviderType.mistral,
+            ProviderType.githubModels,
+            ProviderType.sambaNova,
+            ProviderType.nvidiaNim,
+            ProviderType.deepSeek -> null
             // [T-android-provider-type-parity] No voice support for types this
             // build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported -> null

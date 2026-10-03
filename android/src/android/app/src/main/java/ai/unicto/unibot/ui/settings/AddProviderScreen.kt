@@ -26,11 +26,18 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.PrecisionManufacturing
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.outlined.GraphicEq
@@ -195,17 +202,55 @@ private val providerDisplayOrder = listOf(
     ProviderType.xAI,
     ProviderType.kimiCode,
     ProviderType.openRouter,
+    // [v1.2-free-tier] Free-tier providers, grouped after OpenRouter.
+    ProviderType.groq,
+    ProviderType.cerebras,
+    ProviderType.mistral,
+    ProviderType.githubModels,
+    ProviderType.sambaNova,
+    ProviderType.nvidiaNim,
+    ProviderType.deepSeek,
 )
 
+/**
+ * [v1.2-free-tier] Small "FREE TIER" pill shown on free-tier provider rows
+ * in the picker.
+ */
+@Composable
+private fun FreeTierBadge() {
+    Box(
+        modifier = Modifier
+            .background(
+                color = Color(0xFF4CAF50).copy(alpha = 0.15f),
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.add_provider_free_tier_badge),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF4CAF50),
+            maxLines = 1,
+        )
+    }
+}
+
 /** Icon and color per provider type, matching iOS SF Symbols. */
-private fun providerIcon(type: ProviderType): Pair<ImageVector, Color> = when (type) {
-    ProviderType.openAI -> Icons.Default.Hub to Color(0xFF4CAF50)           // green
+private fun providerIcon(type: ProviderType): Pair<ImageVector, Color> = when (type) {    ProviderType.openAI -> Icons.Default.Hub to Color(0xFF4CAF50)           // green
     ProviderType.anthropic -> Icons.Default.AutoAwesome to Color(0xFFAB47BC) // purple
     ProviderType.gemini -> Icons.Default.Diamond to Color(0xFF42A5F5)        // blue
     ProviderType.openRouter -> Icons.Default.AltRoute to Color(0xFF00BCD4)    // cyan
     ProviderType.xAI -> Icons.Default.FlashOn to Color(0xFFFF7043)           // orange — Grok visual cue
     // [T-kimi-oauth] Indigo — matches iOS's Kimi accent.
     ProviderType.kimiCode -> Icons.Default.Terminal to Color(0xFF5C6BC0)
+    // [v1.2-free-tier] Free-tier providers.
+    ProviderType.groq -> Icons.Default.Bolt to Color(0xFFF44336)              // red — Groq speed cue
+    ProviderType.cerebras -> Icons.Default.Memory to Color(0xFFFF9800)        // orange — chip cue
+    ProviderType.mistral -> Icons.Default.Air to Color(0xFFFFC107)            // amber — Mistral wind cue
+    ProviderType.githubModels -> Icons.Default.Code to Color(0xFF9E9E9E)      // grey — GitHub cue
+    ProviderType.sambaNova -> Icons.Default.Waves to Color(0xFF3F51B5)        // indigo
+    ProviderType.nvidiaNim -> Icons.Default.PrecisionManufacturing to Color(0xFF76B900) // nvidia green
+    ProviderType.deepSeek -> Icons.Default.Search to Color(0xFF7B1FA2)        // deep purple
     // [T-android-provider-type-parity] Types that arrive only from an iOS
     // package / newer build; never offered in addableProviderTypes, but the
     // icon helper is also used to render an already-restored instance.
@@ -229,6 +274,14 @@ private fun availableCredentials(type: ProviderType): List<ProviderCredential> {
         // [T-kimi-oauth] Primary target is the Coding Plan device-code
         // sign-in; a manual Moonshot API key remains available.
         ProviderType.kimiCode -> listOf(ProviderCredential.oauth, ProviderCredential.apiKey)
+        // [v1.2-free-tier] Free-tier providers: paste-a-key only.
+        ProviderType.groq,
+        ProviderType.cerebras,
+        ProviderType.mistral,
+        ProviderType.githubModels,
+        ProviderType.sambaNova,
+        ProviderType.nvidiaNim,
+        ProviderType.deepSeek -> listOf(ProviderCredential.apiKey)
         // [T-android-provider-type-parity] Responses API instances authenticate
         // exactly like OpenAI ones (API key, or a Codex OAuth login).
         ProviderType.openAIResponses -> listOf(ProviderCredential.apiKey, ProviderCredential.oauth)
@@ -264,6 +317,14 @@ private fun ChooseProviderScreen(
                     ProviderType.openRouter -> "OpenRouter"
                     ProviderType.xAI -> "xAI (Grok)"
                     ProviderType.kimiCode -> "Kimi Code"
+                    // [v1.2-free-tier] Display names come from the enum.
+                    ProviderType.groq,
+                    ProviderType.cerebras,
+                    ProviderType.mistral,
+                    ProviderType.githubModels,
+                    ProviderType.sambaNova,
+                    ProviderType.nvidiaNim,
+                    ProviderType.deepSeek -> type.displayName
                     // [T-android-provider-type-parity] Fall back to the enum's
                     // own display name for types this screen doesn't curate.
                     ProviderType.openAIResponses,
@@ -279,6 +340,14 @@ private fun ChooseProviderScreen(
                     ProviderType.openRouter -> R.string.add_provider_subtitle_openrouter
                     ProviderType.xAI -> R.string.add_provider_subtitle_xai
                     ProviderType.kimiCode -> R.string.add_provider_subtitle_kimi
+                    // [v1.2-free-tier] Free tiers — honest one-liners.
+                    ProviderType.groq -> R.string.add_provider_subtitle_groq
+                    ProviderType.cerebras -> R.string.add_provider_subtitle_cerebras
+                    ProviderType.mistral -> R.string.add_provider_subtitle_mistral
+                    ProviderType.githubModels -> R.string.add_provider_subtitle_github_models
+                    ProviderType.sambaNova -> R.string.add_provider_subtitle_sambanova
+                    ProviderType.nvidiaNim -> R.string.add_provider_subtitle_nvidia_nim
+                    ProviderType.deepSeek -> R.string.add_provider_subtitle_deepseek
                     // [T-android-provider-type-parity] Not offered for
                     // creation; reuse the OpenAI copy for the Responses API and
                     // a generic line for the undrivable types.
@@ -294,6 +363,10 @@ private fun ChooseProviderScreen(
                     iconColor = iconColor,
                     onClick = { onSelect(type) },
                     showDivider = index < providerDisplayOrder.size - 1,
+                    // [v1.2-free-tier] FREE TIER badge on the free-tier rows.
+                    trailing = if (type.isFreeTier) {
+                        { FreeTierBadge() }
+                    } else null,
                 )
             }
         }
@@ -444,7 +517,10 @@ private fun ConfigureProviderScreen(
         if (!labelEdited) label = defaultLabel
     }
     var apiKey by remember { mutableStateOf("") }
-    var customBaseURL by remember { mutableStateOf(voiceTemplate?.baseURL ?: "") }
+    // [v1.2-free-tier] Pre-fill the free-tier base URL (still editable).
+    var customBaseURL by remember {
+        mutableStateOf(voiceTemplate?.baseURL ?: (providerType.defaultBaseUrl ?: ""))
+    }
 
     SettingsScaffold(
         title = stringResource(R.string.add_provider_configure_provider, providerType.displayName),
@@ -525,6 +601,14 @@ private fun ColumnScope.ApiKeyConfigSection(
         ProviderType.xAI -> "xai-..."
         ProviderType.kimiCode -> "sk-..."
         ProviderType.openAIResponses -> "sk-..."
+        // [v1.2-free-tier] Free-tier key formats.
+        ProviderType.groq -> "gsk_..."
+        ProviderType.cerebras -> "csk-..."
+        ProviderType.mistral -> "Mistral API key..."
+        ProviderType.githubModels -> "ghp_... / GitHub token..."
+        ProviderType.sambaNova -> "SambaNova API key..."
+        ProviderType.nvidiaNim -> "nvapi-..."
+        ProviderType.deepSeek -> "sk-..."
         ProviderType.antigravity,
         ProviderType.unsupported -> "API Key..."
     }
@@ -558,7 +642,8 @@ private fun ColumnScope.ApiKeyConfigSection(
             ProviderType.gemini -> "https://generativelanguage.googleapis.com/v1beta"
             ProviderType.anthropic -> "https://api.anthropic.com"
             ProviderType.openAI -> "https://api.openai.com"
-            else -> "https://api.example.com"
+            // [v1.2-free-tier] Pre-filled above; shown here as the placeholder.
+            else -> providerType.defaultBaseUrl ?: "https://api.example.com"
         }
         // T-mimo-anthropic-endpoint-android: Anthropic third-party
         // compatible services (e.g. Mimo) frequently host the Anthropic

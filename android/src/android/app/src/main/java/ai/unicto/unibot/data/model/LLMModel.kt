@@ -171,7 +171,61 @@ data class LLMModel(
 
         val allKimi = listOf(kimiK3, kimiK2)
 
-        val allModels = allAnthropic + allGemini + allOpenAI + allOpenRouter + allXAI + allKimi
+        // [v1.2-free-tier] Free-tier provider catalogs. Seeds/fallbacks —
+        // lineups rotate, so refreshModels replaces these after the first
+        // successful /v1/models fetch. Kept minimal and non-speculative.
+
+        // Groq — https://console.groq.com/models
+        val allGroq = listOf(
+            LLMModel("llama-3.3-70b-versatile", "Llama 3.3 70B Versatile", "Groq"),
+            LLMModel("llama-3.1-8b-instant", "Llama 3.1 8B Instant", "Groq"),
+            LLMModel("qwen/qwen3-32b", "Qwen3 32B", "Groq"),
+            LLMModel("openai/gpt-oss-120b", "GPT OSS 120B", "Groq", supportsReasoning = true),
+        )
+
+        // Cerebras — https://inference-docs.cerebras.ai
+        val allCerebras = listOf(
+            LLMModel("llama-3.3-70b", "Llama 3.3 70B", "Cerebras"),
+            LLMModel("qwen-3-32b", "Qwen3 32B", "Cerebras"),
+            LLMModel("gpt-oss-120b", "GPT OSS 120B", "Cerebras", supportsReasoning = true),
+        )
+
+        // Mistral — https://docs.mistral.ai
+        val allMistral = listOf(
+            LLMModel("mistral-large-2411", "Mistral Large 24.11", "Mistral"),
+            LLMModel("codestral-2501", "Codestral 25.01", "Mistral"),
+            LLMModel("mistral-small-2501", "Mistral Small 25.01", "Mistral"),
+        )
+
+        // GitHub Models — https://github.com/marketplace/models
+        val allGithubModels = listOf(
+            LLMModel("openai/gpt-4o-mini", "GPT-4o Mini", "GitHub Models"),
+            LLMModel("meta/Llama-3.3-70B-Instruct", "Llama 3.3 70B Instruct", "GitHub Models"),
+            LLMModel("deepseek/DeepSeek-V3-0324", "DeepSeek V3", "GitHub Models", supportsReasoning = true),
+        )
+
+        // SambaNova — https://community.sambanova.ai
+        val allSambaNova = listOf(
+            LLMModel("Meta-Llama-3.3-70B-Instruct", "Llama 3.3 70B Instruct", "SambaNova"),
+            LLMModel("DeepSeek-R1", "DeepSeek R1", "SambaNova", supportsReasoning = true),
+            LLMModel("Qwen3-32B", "Qwen3 32B", "SambaNova"),
+        )
+
+        // NVIDIA NIM — https://build.nvidia.com
+        val allNvidiaNim = listOf(
+            LLMModel("meta/llama-3.3-70b-instruct", "Llama 3.3 70B Instruct", "NVIDIA NIM"),
+            LLMModel("deepseek-ai/deepseek-r1", "DeepSeek R1", "NVIDIA NIM", supportsReasoning = true),
+            LLMModel("qwen/qwen3-32b", "Qwen3 32B", "NVIDIA NIM"),
+        )
+
+        // DeepSeek — https://api-docs.deepseek.com (trial grant, not permanent)
+        val allDeepSeek = listOf(
+            LLMModel("deepseek-chat", "DeepSeek Chat", "DeepSeek"),
+            LLMModel("deepseek-reasoner", "DeepSeek Reasoner", "DeepSeek", supportsReasoning = true),
+        )
+
+        val allModels = allAnthropic + allGemini + allOpenAI + allOpenRouter + allXAI + allKimi +
+            allGroq + allCerebras + allMistral + allGithubModels + allSambaNova + allNvidiaNim + allDeepSeek
 
         /**
          * Heuristic display-name formatter for API model ids.
