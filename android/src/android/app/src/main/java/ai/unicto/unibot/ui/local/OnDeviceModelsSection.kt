@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -282,8 +283,8 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
         // downloaded — or the list was expanded — rows show directly.
         if (!anyDownloaded && !browseExpanded) {
             EmptyState(
-                // Icons.Outlined.Download (aliased: filled.Download is also
-                // imported in this file for the row download icons).
+                // Outlined set (filled.Download is also imported for the
+                // row icons; both usages stay qualified so they coexist).
                 icon = Icons.Outlined.Download,
                 title = "No on-device models",
                 hint = "Download a model to chat fully offline — your data never leaves this phone.",
