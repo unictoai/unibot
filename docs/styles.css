@@ -296,3 +296,37 @@ footer p { color: var(--muted); font-size: 14px; margin-top: 12px; }
 .welcome-card h2 { margin: 0 0 8px; font-size: 1.5rem; }
 .welcome-note { color: var(--muted, #9a9aa5); margin: 0 0 22px; font-size: 1rem; }
 .welcome-ok { border: 0; cursor: pointer; font-size: 1.05rem; padding: 12px 54px; }
+
+/* ── Intro choreography: 9s movie synced to the welcome sound ── */
+@keyframes introUp {
+  from { opacity: 0; transform: translateY(36px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes introPop {
+  0% { opacity: 0; transform: scale(.85); }
+  60% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes introDrop {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes introGlow {
+  0%, 100% { box-shadow: 0 0 22px rgba(124, 58, 237, .35); }
+  50% { box-shadow: 0 0 58px rgba(124, 58, 237, .8); }
+}
+body.intro .nav { animation: introDrop .7s cubic-bezier(.2,.9,.3,1.15) .35s both; }
+body.intro .hero-copy .pill { animation: introPop .6s ease .8s both; }
+body.intro .hero-copy h1 { animation: introUp .8s ease 1.3s both; }
+body.intro .hero-copy .sub { animation: introUp .8s ease 2.7s both; }
+body.intro .hero-btns .btn.primary { animation: introPop .55s ease 3.4s both, introGlow 1.8s ease-in-out 7.4s 2; }
+body.intro .hero-btns .btn.ghost { animation: introPop .55s ease 3.65s both; }
+body.intro .hero-copy .fine { animation: introUp .7s ease 4.1s both; }
+body.intro .hero-phone { animation: introUp 1s ease 4.6s both; }
+body.intro .scroll-hint { animation: introPop .6s ease 6.2s both, bob 2s ease-in-out 7s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  body.intro .nav, body.intro .hero-copy .pill, body.intro .hero-copy h1,
+  body.intro .hero-copy .sub, body.intro .hero-btns .btn,
+  body.intro .hero-copy .fine, body.intro .hero-phone,
+  body.intro .scroll-hint { animation: none; }
+}

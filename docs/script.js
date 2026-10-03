@@ -87,9 +87,22 @@
     intro.preload = "auto";
     try { intro.load(); } catch (e) {}
     var done = false;
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function heroRevealed() {
+      document.querySelectorAll(".hero .reveal").forEach(function (el) {
+        el.classList.add("in");
+      });
+    }
+    function endIntro() {
+      document.body.classList.remove("intro");
+      heroRevealed();
+    }
     function enter() {
       if (done) return;
       done = true;
+      // Start the 9s choreography in sync with the sound.
+      if (!reduced) document.body.classList.add("intro");
+      heroRevealed();
       try {
         var p = intro.play();
         if (p && p.catch) p.catch(function () {});
@@ -98,6 +111,13 @@
       setTimeout(function () {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       }, 500);
+      // Hand control back to the scroll-reveal system when the sound ends
+      // (or after 9.5s as a backstop).
+      intro.addEventListener("ended", function onEnd() {
+        intro.removeEventListener("ended", onEnd);
+        endIntro();
+      });
+      setTimeout(endIntro, 9500);
     }
     okBtn.addEventListener("click", enter);
     // Keyboard users: Enter/Space on the focused button clicks it natively,
