@@ -38,6 +38,15 @@ Download the APK from [the latest release](https://github.com/unictoai/unibot/re
 
 Any OpenAI-compatible endpoint works: OpenAI, Anthropic, DeepSeek, OpenRouter, xAI, Alibaba Bailian, Moonshot, Zhipu — or your own vLLM / Ollama box on the local network. Add more under Settings → Providers.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/assets/screenshot-chat.jpg" width="280" alt="unibot new chat screen with Think and Search pills">
+  &nbsp;&nbsp;
+  <img src="docs/assets/screenshot-settings-hd.jpg" width="280" alt="unibot settings — connectors, privacy, on-device models">
+</p>
+<p align="center"><a href="https://unictoai.github.io/unibot/">unictoai.github.io/unibot</a> — the full tour</p>
+
 ## What's new in unibot
 
 - **v0.1.0** — the first unibot release: full rebrand (new name, violet theme, new icon), bring-your-own-key onboarding with no account, update checks against this repo, and signed release APKs built by GitHub Actions.
