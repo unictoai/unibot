@@ -107,7 +107,6 @@ fun ModelBenchmarkScreen(onBack: () -> Unit) {
     var selectedId by remember { mutableStateOf(downloadedModels.firstOrNull()?.id) }
     var running by remember { mutableStateOf(false) }
     var stageRes by remember { mutableStateOf<Int?>(null) }
-    var replyPreview by remember { mutableStateOf("") }
     var result by remember { mutableStateOf<BenchmarkResult?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
@@ -122,7 +121,6 @@ fun ModelBenchmarkScreen(onBack: () -> Unit) {
         running = true
         result = null
         error = null
-        replyPreview = ""
         stageRes = R.string.v12_benchmark_loading
         job = scope.launch(Dispatchers.IO) {
             val backend = LocalLlamaBackend(appCtx, model)
@@ -260,8 +258,7 @@ fun ModelBenchmarkScreen(onBack: () -> Unit) {
                                     selectedId = model.id
                                     result = null
                                     error = null
-                                    replyPreview = ""
-                                }
+                                                            }
                             },
                             label = { Text(model.title) },
                             modifier = if (animated) Modifier.staggeredEntrance(index) else Modifier,

@@ -146,6 +146,23 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
             color = ChatColors.secondaryText,
         )
 
+        // [v12-F] Batch F: RAM-based model recommendation card ("Your phone:
+        // X GB RAM → recommended: <model>") plus the last on-device turn's
+        // context usage (tokens used of the 2048-token window).
+        RecommendedModelCard(
+            onDownload = { model ->
+                haptics.tap()
+                LlamaModelManager.enqueue(ctx, model)
+            },
+            onUse = { model ->
+                haptics.tap()
+                LlamaModelManager.setLocalMode(ctx, model)
+                localId = model.id
+                onDone()
+            },
+        )
+        LastTurnContextRow()
+
         // ── Web search toggle ──
         var webSearch by remember { mutableStateOf(LocalCapabilities.isWebSearchEnabled(ctx)) }
         Row(
