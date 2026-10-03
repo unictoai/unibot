@@ -330,3 +330,45 @@ body.intro .scroll-hint { animation: introPop .6s ease 6.2s both, bob 2s ease-in
   body.intro .hero-copy .fine, body.intro .hero-phone,
   body.intro .scroll-hint { animation: none; }
 }
+
+/* ── Scroll progress ── */
+.progress {
+  position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+  background: linear-gradient(90deg, var(--violet-deep), var(--violet));
+  z-index: 120; box-shadow: 0 0 12px rgba(167, 139, 250, .7);
+}
+
+/* ── Active nav link ── */
+.nav-links a.active { color: var(--text); position: relative; }
+.nav-links a.active::after {
+  content: ""; position: absolute; left: 50%; bottom: -8px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--violet); transform: translateX(-50%);
+  box-shadow: 0 0 8px var(--violet);
+}
+
+/* ── 3D tilt stage for the hero phone ── */
+.hero-phone { perspective: 1100px; }
+.hero-phone .phone {
+  transition: transform .18s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* ── Back to top ── */
+.to-top {
+  position: fixed; right: 22px; bottom: 22px; z-index: 110;
+  width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(167,139,250,.4);
+  background: rgba(20, 20, 28, .9); color: var(--violet); font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: translateY(16px); pointer-events: none;
+  transition: opacity .35s var(--ease), transform .35s var(--ease), border-color .25s;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover { border-color: var(--violet); box-shadow: 0 0 24px rgba(124, 58, 237, .4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-phone .phone { transition: none; }
+  .to-top { transition: none; }
+}
