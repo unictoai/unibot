@@ -188,7 +188,8 @@ Java_ai_unicto_unibot_local_LlamaCpp_nativeGenerate(
         if (repeatPenalty > 1.0f) {
             llama_sampler_chain_add(
                     sampler,
-                    llama_sampler_init_penalties(64, repeatPenalty, 0.0f, 0.0f));
+                    llama_sampler_init_penalties(
+                        llama_vocab_n_tokens(h->vocab), 64, repeatPenalty, 0.0f, 0.0f));
         }
         if (topK > 0) {
             llama_sampler_chain_add(sampler, llama_sampler_init_top_k(topK));
