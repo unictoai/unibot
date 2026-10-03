@@ -247,6 +247,8 @@ object Routes {
     const val SAMPLER_SETTINGS = "sampler_settings"
     /** [v1.2 Batch G] Storage usage breakdown. */
     const val STORAGE_BREAKDOWN = "storage_breakdown"
+    /** [v12-G] Scheduled local backup settings. */
+    const val SCHEDULED_BACKUP = "scheduled_backup"
     /** [v1.2 Batch B] Chat templates / prompt starters. */
     const val CHAT_TEMPLATES = "chat_templates"
     /** [v1.2 Batch B] Scheduled messages (send later). */
@@ -1953,5 +1955,18 @@ fun AppNavigation(
         // [v12-anchor-D] Privacy screens (Batch D)
         // [v12-anchor-E] Voice screens (Batch E)
         // [v12-anchor-G] System screens (Batch G)
+        // [v12-G] Storage breakdown: per-category usage with safe clear actions.
+        composable(Routes.STORAGE_BREAKDOWN) {
+            ai.unicto.unibot.ui.settings.StorageBreakdownScreen(
+                onBack = { navController.safePopBackStack() },
+                onStorageDetails = { navController.safeNavigate(Routes.STORAGE) },
+            )
+        }
+        // [v12-G] Scheduled local backup settings (daily/weekly, on-device only).
+        composable(Routes.SCHEDULED_BACKUP) {
+            ai.unicto.unibot.ui.settings.ScheduledBackupScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
     }
 }
