@@ -1,0 +1,18 @@
+unibot is the private, open-source AI agent for Android. No account, no subscription, zero trackers — free forever under GPL-3.0.
+
+YOUR KEY, YOUR RULES
+Bring your own API key from any provider (OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek and more). The app talks directly to the provider you choose — keys stay encrypted on your phone and never leave it. No middleman server, no relay.
+
+OR GO FULLY OFFLINE
+Download a language model and chat with zero network — airplane mode works. Your words never leave your pocket.
+
+31 CONNECTORS
+Gmail, Drive, Calendar, GitHub, Telegram, YouTube, Discord, Spotify, Notion, Reddit, WhatsApp, Trello, Todoist, GitLab, Dropbox, OneDrive, Google Tasks, weather, currency, Wikipedia, Hacker News, dictionary, translate, Stack Overflow, TMDB, news, QR tools, RSS, Photos, Outlook.
+
+AN AGENT, NOT A CHATBOT
+Web search built into chat with tappable sources. Encrypted long-term memory. Scheduled agents and morning briefings. Creator studio with YouTube dashboard, title optimizer, captions and hashtags.
+
+PRIVACY YOU CAN VERIFY
+Privacy dashboard, local-only kill-switch, and a network traffic log showing every connection the app makes. Chat lock, auto-delete, auto-clear clipboard, permission audit. Don't trust the claims — check them.
+
+Free forever. ~40 MB. Android 8.0+. Built by one developer, tested on a real phone.

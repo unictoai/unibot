@@ -1,0 +1,2 @@
+- Fixed Google sign-in failing with error 400 during OAuth login
+- Fixed a compile issue in the OAuth callback handler
