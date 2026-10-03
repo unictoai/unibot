@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
@@ -37,6 +38,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -62,6 +64,7 @@ import ai.unicto.unibot.browser.UserAgentProfile
 import ai.unicto.unibot.logging.AppLogger
 import kotlinx.coroutines.launch
 import ai.unicto.unibot.ui.components.UnibotTextButton
+import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.bringIntoViewOnFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,6 +118,9 @@ fun BrowserSettingsSheet(
 
     // Cookie filter (mirrors iOS `.searchable("Filter by domain")`).
     var cookieFilterText by remember { mutableStateOf("") }
+
+    // v1.2: ad/tracker blocking toggle (on-device list, no downloads).
+    var adBlockEnabled by remember { mutableStateOf(AdBlocker.isEnabled(context)) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -216,6 +222,51 @@ fun BrowserSettingsSheet(
                 }) {
                     Text(stringResource(R.string.browser_settings_apply))
                 }
+            }
+
+            Spacer(Modifier.height(20.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+
+            // ── Ad & tracker blocking (v1.2) ──
+            // On-device curated host list (AdBlocker) — nothing is
+            // downloaded and the choice stays in app preferences. The
+            // enforcement hook lives in the browser backend's
+            // WebViewClient.shouldInterceptRequest (see AdBlocker KDoc).
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .staggeredEntrance(0),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.Block,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.browser_settings_adblock_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        stringResource(R.string.browser_settings_adblock_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Switch(
+                    checked = adBlockEnabled,
+                    onCheckedChange = {
+                        adBlockEnabled = it
+                        AdBlocker.setEnabled(context, it)
+                    },
+                )
             }
 
             Spacer(Modifier.height(20.dp))

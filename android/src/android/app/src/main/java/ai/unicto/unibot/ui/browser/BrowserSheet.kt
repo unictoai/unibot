@@ -33,15 +33,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,6 +89,7 @@ import ai.unicto.unibot.browser.BrowserHistoryStore
 import ai.unicto.unibot.browser.BrowserTabPool
 import ai.unicto.unibot.browser.UserAgentProfile
 import ai.unicto.unibot.ui.chat.StandardChatSheet
+import ai.unicto.unibot.ui.theme.animationsEnabled
 import kotlinx.coroutines.launch
 
 /**
@@ -112,6 +123,32 @@ fun BrowserSheet(
     // [T-android-browser-download-ux] Downloads panel + badge state.
     var showDownloads by remember { mutableStateOf(false) }
     val downloadEntries by tabPool.downloads.collectAsState()
+
+    // v1.2 Batch A (browser power-ups) state.
+    var showBookmarks by remember { mutableStateOf(false) }
+    var showSaveBookmark by remember { mutableStateOf(false) }
+    var showReadingMode by remember { mutableStateOf(false) }
+    var findActive by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var askLoading by remember { mutableStateOf(false) }
+    var pullProgress by remember { mutableFloatStateOf(0f) }
+    val bookmarkStore = remember { BrowserBookmarkStore.getInstance(context) }
+    var bookmarkTick by remember { mutableStateOf(0) }
+    val bookmarked = remember(currentURL, bookmarkTick) {
+        currentURL.isNotBlank() && bookmarkStore.isBookmarked(currentURL)
+    }
+    // Per-tab desktop/mobile site toggle (v1.2): reads the tab's live
+    // WebView UA — not the pool's global profile — so each tab keeps its
+    // own mode until the global setting overrides it.
+    val desktopUaString = UserAgentProfile.DESKTOP_CHROME.userAgentString
+    var desktopMode by remember(selectedTabId) {
+        mutableStateOf(
+            selectedTab?.manager?.webView?.settings?.userAgentString == desktopUaString
+        )
+    }
+
+    // Find-in-page belongs to one tab's WebView; switching tabs closes it.
+    LaunchedEffect(selectedTabId) { findActive = false }
 
     val accent = MaterialTheme.colorScheme.primary
     val secondaryBg = MaterialTheme.colorScheme.surfaceContainer
@@ -288,6 +325,33 @@ fun BrowserSheet(
                             )
                         }
                     }
+                    // v1.2: bookmark star — filled when the current URL is
+                    // saved; tap to save (folder picker) or remove.
+                    if (currentURL.isNotBlank()) {
+                        IconButton(
+                            onClick = {
+                                if (bookmarked) {
+                                    bookmarkStore.removeBookmarkForUrl(currentURL)
+                                    bookmarkTick++
+                                } else {
+                                    showSaveBookmark = true
+                                }
+                            },
+                            enabled = !isAgentBusy,
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(
+                                if (bookmarked) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                contentDescription = stringResource(
+                                    if (bookmarked) R.string.browser_bookmark_remove
+                                    else R.string.browser_bookmark_toggle
+                                ),
+                                tint = if (bookmarked) accent
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
                 }
             }
 
@@ -296,6 +360,14 @@ fun BrowserSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(2.dp),
+                )
+            }
+
+            // v1.2: find-in-page bar, wired to the selected tab's WebView.
+            if (findActive && selectedTab != null) {
+                BrowserFindBar(
+                    webView = selectedTab.manager.webView,
+                    onClose = { findActive = false },
                 )
             }
 
@@ -317,6 +389,11 @@ fun BrowserSheet(
                     BrowserWebView(
                         webView = selectedTab.manager.webView,
                         modifier = Modifier.fillMaxSize(),
+                        // v1.2: pull-to-refresh — downward drag from the top
+                        // of the page. Observes only; page scroll unaffected.
+                        pullToRefreshEnabled = !isAgentBusy,
+                        onPullProgress = { pullProgress = it },
+                        onPullRelease = { selectedTab.manager.reload() },
                     )
                 } else {
                     Box(
@@ -337,6 +414,51 @@ fun BrowserSheet(
                         accent = accent,
                         onTakeover = { tabPool.releaseAllTabs() },
                     )
+                }
+
+                // v1.2: pull-to-refresh indicator — follows the finger while
+                // pulling, hides on release (the reload progress bar takes
+                // over). Honors the remove-animations setting.
+                if (pullProgress > 0.02f && animationsEnabled()) {
+                    CircularProgressIndicator(
+                        progress = { pullProgress.coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 10.dp)
+                            .size(30.dp),
+                        strokeWidth = 3.dp,
+                        color = accent,
+                    )
+                }
+
+                // v1.2: "Ask unibot" extraction in flight.
+                if (askLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.25f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = accent,
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                stringResource(R.string.browser_ask_unibot_reading),
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -437,6 +559,93 @@ fun BrowserSheet(
                         onClick = { selectedTab?.manager?.reload() },
                     )
                 }
+                // v1.2: overflow menu — reading mode, find in page,
+                // per-tab desktop/mobile toggle, bookmarks, Ask unibot.
+                Box {
+                    ToolbarIcon(
+                        icon = Icons.Filled.MoreVert,
+                        contentDesc = stringResource(R.string.browser_menu_more),
+                        enabled = !isAgentBusy,
+                        onClick = { showMoreMenu = true },
+                    )
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                    ) {
+                        val pageLoaded = currentURL.isNotEmpty() && !isAgentBusy
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.browser_reading_mode)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.MenuBook, contentDescription = null)
+                            },
+                            enabled = pageLoaded,
+                            onClick = { showMoreMenu = false; showReadingMode = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.browser_find_in_page)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Search, contentDescription = null)
+                            },
+                            enabled = pageLoaded,
+                            onClick = { showMoreMenu = false; findActive = true },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (desktopMode) R.string.browser_mobile_site
+                                        else R.string.browser_desktop_site
+                                    )
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    if (desktopMode) Icons.Filled.PhoneAndroid
+                                    else Icons.Filled.Computer,
+                                    contentDescription = null,
+                                )
+                            },
+                            enabled = pageLoaded,
+                            onClick = {
+                                showMoreMenu = false
+                                val nextDesktop = !desktopMode
+                                desktopMode = nextDesktop
+                                // Per-tab UA switch: bypasses the pool's
+                                // global setUserAgentFromUI so other tabs
+                                // keep their mode.
+                                selectedTab?.manager?.setUserAgent(
+                                    if (nextDesktop) UserAgentProfile.DESKTOP_CHROME
+                                    else UserAgentProfile.MOBILE_CHROME,
+                                    null,
+                                )
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.browser_menu_bookmarks)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Folder, contentDescription = null)
+                            },
+                            onClick = { showMoreMenu = false; showBookmarks = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.browser_ask_unibot)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Chat, contentDescription = null)
+                            },
+                            enabled = pageLoaded && !askLoading,
+                            onClick = {
+                                showMoreMenu = false
+                                val wv = selectedTab?.manager?.webView
+                                if (wv == null) return@DropdownMenuItem
+                                askLoading = true
+                                BrowserAskUnibot.askAboutPage(wv, pageTitle, currentURL) {
+                                    askLoading = false
+                                    onDismiss()
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
     }
@@ -470,6 +679,42 @@ fun BrowserSheet(
         BrowserSettingsSheet(
             tabPool = tabPool,
             onDismiss = { showSettings = false },
+        )
+    }
+
+    // v1.2 Batch A: bookmarks manager.
+    if (showBookmarks) {
+        BrowserBookmarksSheet(
+            store = bookmarkStore,
+            onNavigate = { url ->
+                selectedTab?.manager?.loadURL(url)
+                showBookmarks = false
+            },
+            onDismiss = { showBookmarks = false },
+        )
+    }
+
+    // v1.2 Batch A: save-bookmark dialog from the address-bar star.
+    val tabForSave = selectedTab
+    if (showSaveBookmark && tabForSave != null && currentURL.isNotBlank()) {
+        BrowserSaveBookmarkDialog(
+            store = bookmarkStore,
+            url = currentURL,
+            initialTitle = pageTitle,
+            onDismiss = { showSaveBookmark = false },
+            onSaved = {
+                showSaveBookmark = false
+                bookmarkTick++
+            },
+        )
+    }
+
+    // v1.2 Batch A: reading mode.
+    val tabForReading = selectedTab
+    if (showReadingMode && tabForReading != null) {
+        BrowserReadingModeSheet(
+            webView = tabForReading.manager.webView,
+            onDismiss = { showReadingMode = false },
         )
     }
 }
