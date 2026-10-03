@@ -205,6 +205,10 @@ section { scroll-margin-top: 76px; }
 .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 10px; }
 .phone.shot { width: 100%; max-width: 290px; }
 .phones.two { grid-template-columns: repeat(2, 1fr); max-width: 660px; margin-left: auto; margin-right: auto; }
+.phones.one { grid-template-columns: 1fr; max-width: 340px; margin-left: auto; margin-right: auto; }
+.phone.shot.wide { max-width: 340px; }
+.logo { display: inline-flex; align-items: center; gap: 10px; }
+.logo-img { width: 32px; height: 32px; border-radius: 8px; }
 /* Real device screenshots inside the phone frame — the shot already includes
    the phone status bar, so no CSS notch is drawn over it. */
 .realshot { display: block; width: 100%; height: auto; border-radius: 28px; }
