@@ -3924,6 +3924,11 @@ class ChatViewModel(
         // before the @-mention combine subscribes to it.
         PromptLibraryStore.ensureInit(context)
         loadSession()
+        // [v12-B] Chat templates: a template tap stages starter text keyed by
+        // the fresh draft id just before navigation creates this VM. Consume
+        // it once so the composer opens prefilled; a consumed entry never
+        // re-applies on VM re-creation.
+        ChatStarterPrefill.consume(sessionId)?.let { setInputText(it) }
         // [T-session-paused-badge-active-false-positive] Drive the session-list
         // PAUSED badge directly off canResume — the authoritative "this session
         // is interrupted (tap Resume)" flag. This is the single chokepoint over

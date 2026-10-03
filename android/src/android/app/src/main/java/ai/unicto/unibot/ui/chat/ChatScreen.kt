@@ -123,6 +123,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Error
@@ -3481,6 +3482,56 @@ fun ChatScreen(
                                         },
                                         leadingIcon = {
                                             Icon(Icons.Default.PictureAsPdf, contentDescription = null)
+                                        },
+                                    )
+                                    // [v12-B] Chat power: styled HTML + plain TXT
+                                    // export alongside Markdown/PDF.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.v12_chat_export_html)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            val msgs = viewModel.messages.value.map {
+                                                ChatExport.ExportMessage(
+                                                    role = it.role,
+                                                    text = it.content,
+                                                )
+                                            }
+                                            val title = viewModel.sessionTitle.value.ifBlank { "Chat" }
+                                            try {
+                                                ChatExportV12.shareHtml(context, title, msgs)
+                                            } catch (t: Throwable) {
+                                                ai.unicto.unibot.logging.AppLogger.warning(
+                                                    "ChatScreen",
+                                                    "export html failed: ${t.message}",
+                                                )
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Code, contentDescription = null)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.v12_chat_export_txt)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            val msgs = viewModel.messages.value.map {
+                                                ChatExport.ExportMessage(
+                                                    role = it.role,
+                                                    text = it.content,
+                                                )
+                                            }
+                                            val title = viewModel.sessionTitle.value.ifBlank { "Chat" }
+                                            try {
+                                                ChatExportV12.shareTxt(context, title, msgs)
+                                            } catch (t: Throwable) {
+                                                ai.unicto.unibot.logging.AppLogger.warning(
+                                                    "ChatScreen",
+                                                    "export txt failed: ${t.message}",
+                                                )
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Description, contentDescription = null)
                                         },
                                     )
                                     DropdownMenuItem(

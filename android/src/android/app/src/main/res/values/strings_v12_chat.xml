@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch B (Chat power): chat templates, scheduled messages, export formats. -->
+<resources>
+    <!-- Chat templates -->
+    <string name="v12_chat_templates_title">Chat templates</string>
+    <string name="v12_chat_templates_subtitle">Start from a proven prompt</string>
+    <string name="v12_chat_templates_hint">Pick a template to open a new chat with it prefilled. Edit it freely before sending.</string>
+    <string name="v12_chat_templates_cat_all">All</string>
+    <string name="v12_chat_templates_cat_writing">Writing</string>
+    <string name="v12_chat_templates_cat_coding">Coding</string>
+    <string name="v12_chat_templates_cat_planning">Planning</string>
+    <string name="v12_chat_templates_cat_fun">Fun</string>
+
+    <!-- Scheduled messages -->
+    <string name="v12_scheduled_messages_title">Scheduled messages</string>
+    <string name="v12_scheduled_messages_subtitle">Send later, automatically</string>
+    <string name="v12_scheduled_messages_compose_hint">Write it now — unibot sends it into the chat at the time you pick, even if the app is closed.</string>
+    <string name="v12_scheduled_messages_field_message">Message</string>
+    <string name="v12_scheduled_messages_message_hint">What should unibot send?</string>
+    <string name="v12_scheduled_messages_field_date">Date</string>
+    <string name="v12_scheduled_messages_field_time">Time</string>
+    <string name="v12_scheduled_messages_field_chat">Send into</string>
+    <string name="v12_scheduled_messages_new_chat">New chat</string>
+    <string name="v12_scheduled_messages_pick_chat">Pick a chat</string>
+    <string name="v12_scheduled_messages_schedule">Schedule</string>
+    <string name="v12_scheduled_messages_past_error">Pick a time in the future.</string>
+    <string name="v12_scheduled_messages_empty_error">Write the message first.</string>
+    <string name="v12_scheduled_messages_pick_chat_error">Choose which chat to send into.</string>
+    <string name="v12_scheduled_messages_failed">Couldn\u2019t schedule \u2014 try again.</string>
+    <string name="v12_scheduled_messages_pending">Scheduled</string>
+    <string name="v12_scheduled_messages_delivered">Delivered</string>
+    <string name="v12_scheduled_messages_none">No scheduled messages</string>
+    <string name="v12_scheduled_messages_none_hint">Messages you schedule show up here until they are sent.</string>
+    <string name="v12_scheduled_messages_delete">Delete</string>
+    <string name="v12_scheduled_messages_open_chat">Open chat</string>
+
+    <!-- Export formats -->
+    <string name="v12_chat_export_html">Export as HTML</string>
+    <string name="v12_chat_export_txt">Export as TXT</string>
+</resources>
