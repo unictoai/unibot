@@ -21,7 +21,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--violet); text-decoration: none; }
-.violet { color: var(--violet); }
+.violet {
+  background: linear-gradient(100deg, #c4b5fd, #a78bfa 30%, #7c3aed 55%, #a78bfa 80%, #c4b5fd);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: violetFlow 7s ease-in-out infinite;
+}
+@keyframes violetFlow {
+  0%, 100% { background-position: 0% 0; }
+  50% { background-position: 100% 0; }
+}
 section { scroll-margin-top: 76px; }
 
 /* ── Nav ── */
@@ -240,7 +250,7 @@ footer p { color: var(--muted); font-size: 14px; margin-top: 12px; }
 .made { font-size: 15px !important; }
 
 /* ── Reveal on scroll ── */
-.reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+.reveal { opacity: 0; transform: translateY(30px) scale(.985); transition: opacity .8s var(--ease), transform .8s var(--ease); }
 .reveal.in { opacity: 1; transform: none; }
 
 /* ── Responsive ── */
@@ -371,6 +381,9 @@ body.intro .scroll-hint { animation: introPop .6s ease 6.2s both, bob 2s ease-in
 @media (prefers-reduced-motion: reduce) {
   .hero-phone .phone { transition: none; }
   .to-top { transition: none; }
+  .violet { animation: none; background: none; color: var(--violet); -webkit-text-fill-color: currentcolor; }
+  .power::before { display: none; }
+  .power:hover { transform: none; }
 }
 
 /* ── Accessibility: skip link + visible focus ── */
@@ -393,3 +406,30 @@ body.intro .scroll-hint { animation: introPop .6s ease 6.2s both, bob 2s ease-in
 @media (max-width: 520px) {
   .phones.four { grid-template-columns: 1fr; max-width: 300px; margin-left: auto; margin-right: auto; }
 }
+@media (max-width: 900px) {
+  .powers { grid-template-columns: 1fr; }
+}
+
+/* ── Superpowers deep-dive ── */
+.powers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.power {
+  position: relative; overflow: hidden;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 30px 28px;
+  transition: transform .35s var(--ease), border-color .35s, box-shadow .35s;
+}
+.power:hover {
+  transform: translateY(-6px);
+  border-color: rgba(167, 139, 250, .55);
+  box-shadow: 0 24px 60px rgba(124, 58, 237, .2);
+}
+.power::before {
+  content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease;
+  background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(124, 58, 237, .17), transparent 65%);
+  pointer-events: none;
+}
+.power:hover::before { opacity: 1; }
+.power .num { font-size: 13px; font-weight: 800; letter-spacing: 3px; color: var(--violet); }
+.power h3 { font-size: 21px; margin: 10px 0 10px; letter-spacing: -.5px; position: relative; }
+.power p { color: var(--muted); font-size: 15px; position: relative; }

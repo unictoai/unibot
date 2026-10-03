@@ -252,3 +252,54 @@
     btn.addEventListener("mouseleave", function () { btn.style.transform = ""; });
   });
 })();
+
+/* ── Next-level motion: header parallax + card spotlight ──
+   Parallax uses the CSS `translate` property (not `transform`) so it
+   composes with the scroll-reveal transforms instead of fighting them.
+   Everything here is transform/opacity-only and fully reduced-motion gated. */
+(function () {
+"use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) return;
+
+  // ── Scroll-driven parallax on section headers + ledes ──
+  var parallaxEls = document.querySelectorAll(".section h2, .section .lede");
+  var ticking = false;
+  function parallax() {
+    ticking = false;
+    var vh = window.innerHeight;
+    parallaxEls.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.bottom < -80 || r.top > vh + 80) {
+        if (el.style.translate) el.style.translate = "";
+        return; // off-screen: park it
+      }
+      // -1 (top edge) … +1 (bottom edge) → gentle ±18px drift
+      var p = (r.top + r.height / 2 - vh / 2) / (vh / 2);
+      var y = Math.max(-1, Math.min(1, p)) * -18;
+      el.style.translate = "0 " + y.toFixed(1) + "px";
+    });
+  }
+  function requestParallax() {
+    if (!ticking) { ticking = true; requestAnimationFrame(parallax); }
+  }
+  window.addEventListener("scroll", requestParallax, { passive: true });
+  window.addEventListener("resize", requestParallax);
+  requestParallax();
+
+  // ── Cursor spotlight follows the pointer across superpower cards ──
+  if (window.matchMedia("(pointer: fine)").matches) {
+    document.querySelectorAll(".power").forEach(function (card) {
+      var raf = null;
+      card.addEventListener("mousemove", function (ev) {
+        if (raf) return;
+        raf = requestAnimationFrame(function () {
+          raf = null;
+          var r = card.getBoundingClientRect();
+          card.style.setProperty("--mx", (ev.clientX - r.left).toFixed(0) + "px");
+          card.style.setProperty("--my", (ev.clientY - r.top).toFixed(0) + "px");
+        });
+      });
+    });
+  }
+})();
