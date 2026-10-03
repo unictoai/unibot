@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -102,6 +103,7 @@ import kotlin.math.sin
  * voices" card while no TTS voice is on the phone; bottom mic toggle +
  * auto-listen switch. Tapping anywhere while unibot speaks interrupts it.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoiceConversationScreen(
     sessionId: String,
@@ -639,7 +641,7 @@ private fun VoiceOrb(
                     for (i in 0 until bars) {
                         val angle = (i * 360f / bars) * (Math.PI / 180f)
                         val sample = levels.getOrNull((i * levels.size / bars).coerceAtMost(levels.size - 1)) ?: 0f
-                        val barLen = (5.dp + sample * 26.dp).toPx()
+                        val barLen = (5.dp + 26.dp * sample).toPx()
                         val dir = Offset(cos(angle).toFloat(), sin(angle).toFloat())
                         drawLine(
                             color = violet.copy(alpha = 0.75f),

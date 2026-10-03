@@ -407,6 +407,7 @@ fun UnibotHome(
                                     onOpenDrawer = { openDrawer() },
                                     navController = navController,
                                     mainSessionId = mainSessionId,
+                                    chatSessionId = chatSessionId,
                                 )
                             }
                             when (page) {
@@ -489,6 +490,7 @@ private fun TabHeader(
     onOpenDrawer: () -> Unit,
     navController: NavHostController,
     mainSessionId: String?,
+    chatSessionId: String?,
 ) {
     var menu by remember { mutableStateOf(false) }
     MuseHeader(

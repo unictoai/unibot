@@ -142,12 +142,12 @@ class VoiceConversationViewModel(
             // phones the offline path was built for.
             SpeechRecognitionManager.clearDegradationAndRefresh()
             val engines = SpeechRecognitionManager.availableEngines()
-            val systemOk = engines.any { it.id == SYSTEM_ENGINE_ID && it.isAvailable.value }
+            val systemOk = engines.any { it.id == SYSTEM_ENGINE_ID && it.isAvailable }
             val whisper = engines.firstOrNull { it.id == WHISPER_ENGINE_ID }
-            if (!systemOk && whisper != null && whisper.isAvailable.value) {
+            if (!systemOk && whisper != null && whisper.isAvailable) {
                 SpeechRecognitionManager.selectEngine(WHISPER_ENGINE_ID)
             }
-            if (SpeechRecognitionManager.availableEngines().none { it.isAvailable.value }) {
+            if (SpeechRecognitionManager.availableEngines().none { it.isAvailable }) {
                 _state.value = State.Error(
                     "No voice engine is available. Download the offline voice model to talk on-device.",
                 )
