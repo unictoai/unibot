@@ -384,3 +384,12 @@ body.intro .scroll-hint { animation: introPop .6s ease 6.2s both, bob 2s ease-in
 :focus-visible {
   outline: 2px solid var(--violet); outline-offset: 3px; border-radius: 6px;
 }
+
+/* ── 4-shot gallery ── */
+.phones.four { grid-template-columns: repeat(4, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) {
+  .phones.four { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .phones.four { grid-template-columns: 1fr; max-width: 300px; margin-left: auto; margin-right: auto; }
+}
