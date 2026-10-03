@@ -193,7 +193,7 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
                     LlamaModelManager.setOfflineFirst(ctx, it)
                     haptics.toggle()
                 },
-                enabled = anyDownloaded || it,
+                enabled = anyDownloaded || offlineFirst,
             )
         }
 
