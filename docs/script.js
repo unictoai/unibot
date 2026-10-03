@@ -73,3 +73,31 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 })();
+
+(function () {
+"use strict";
+    // ── Intro sound: plays once, on first visit ──
+    // Browsers block autoplay with sound, so we try immediately and fall back
+    // to the first tap/click/keypress. One play per page load, never loops.
+    try {
+      var intro = new Audio("assets/intro-sound.mp3");
+      intro.preload = "auto";
+      var played = false;
+      function playIntro() {
+        if (played) return;
+        played = true;
+        intro.play().catch(function () { /* still blocked — give up quietly */ });
+        ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
+          window.removeEventListener(ev, playIntro);
+        });
+      }
+      // Try straight away (works if the browser allows it); otherwise the
+      // first interaction unlocks it.
+      intro.play().then(function () { played = true; }).catch(function () {
+        ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
+          window.addEventListener(ev, playIntro, { once: false, passive: true });
+        });
+      });
+    } catch (e) { /* audio unsupported — site works fine without it */ }
+
+})();
