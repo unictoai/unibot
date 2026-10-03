@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch H — home-screen widget strings (QuickAsk mic + Recent-chats widget). -->
+<resources>
+    <string name="ub_widget_mic_desc">Start voice chat</string>
+
+    <string name="ub_widget_recent_chats_label">Recent chats</string>
+    <string name="ub_widget_recent_chats_desc">Your latest unibot conversations at a glance</string>
+    <string name="ub_widget_recent_chats_header">Recent chats</string>
+    <string name="ub_widget_recent_chats_empty">No chats yet</string>
+    <string name="ub_widget_recent_chats_empty_hint">Ask unibot something to start chatting</string>
+    <string name="ub_widget_recent_chats_new">New chat</string>
+    <string name="ub_widget_recent_chats_refresh">Refresh recent chats</string>
+</resources>

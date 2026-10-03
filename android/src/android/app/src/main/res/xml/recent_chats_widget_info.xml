@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch H — "Recent chats" home-screen widget (medium, ~3x3). -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="200dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="3"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_recent_chats"
+    android:previewLayout="@layout/widget_recent_chats"
+    android:description="@string/ub_widget_recent_chats_desc"
+    android:widgetCategory="home_screen"
+    android:resizeMode="horizontal|vertical" />

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch H — "Recent chats" widget. Header (tap = open app, refresh button)
+     + up to 4 recent-chat rows added in code. Text colors follow the system
+     theme via framework attributes; the violet dot is the brand accent. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="10dp"
+    android:background="@drawable/widget_recent_bg">
+
+    <LinearLayout
+        android:id="@+id/widget_recent_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/ub_widget_recent_chats_header"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/widget_recent_refresh"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/widget_ic_refresh"
+            android:scaleType="center"
+            android:contentDescription="@string/ub_widget_recent_chats_refresh" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_recent_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+</LinearLayout>

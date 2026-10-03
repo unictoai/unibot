@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.widget.RemoteViews
 import ai.unicto.unibot.R
 
@@ -16,6 +17,12 @@ import ai.unicto.unibot.R
  * both open [QuickAskActivity], a small translucent sheet with a real
  * text field. Sending fires `unibot://ask?text=...`, which prefills the
  * main chat's composer — never auto-sends.
+ *
+ * v1.2 Batch H — added a mic button: it fires the existing
+ * `unibot://action/voice_chat` deep link, which opens a fresh draft chat
+ * with the voice input mic auto-triggered (DeepLinkHandler.NewVoiceChat →
+ * DeepLinkCoordinator.ChatAction.START_VOICE). The text-field + send
+ * behavior is unchanged.
  */
 class QuickAskWidgetProvider : AppWidgetProvider() {
 
@@ -35,6 +42,22 @@ class QuickAskWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_ask_field, pending)
             views.setOnClickPendingIntent(R.id.widget_ask_send, pending)
+
+            val voiceIntent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("unibot://action/voice_chat"),
+            ).apply {
+                setPackage(context.packageName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val voicePending = PendingIntent.getActivity(
+                context,
+                1,
+                voiceIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.widget_ask_mic, voicePending)
+
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
