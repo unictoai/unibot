@@ -81,6 +81,22 @@ import ai.unicto.unibot.tools.DriveTool
 import ai.unicto.unibot.tools.CalendarTool
 import ai.unicto.unibot.tools.SpotifyTool
 import ai.unicto.unibot.tools.NotionTool
+import ai.unicto.unibot.tools.TrelloTool
+import ai.unicto.unibot.tools.TodoistTool
+import ai.unicto.unibot.tools.GitLabTool
+import ai.unicto.unibot.tools.TmdbTool
+import ai.unicto.unibot.tools.GNewsTool
+import ai.unicto.unibot.tools.DropboxTool
+import ai.unicto.unibot.tools.OneDriveTool
+import ai.unicto.unibot.tools.GTasksTool
+import ai.unicto.unibot.tools.WeatherTool
+import ai.unicto.unibot.tools.CurrencyTool
+import ai.unicto.unibot.tools.WikiTool
+import ai.unicto.unibot.tools.HnTool
+import ai.unicto.unibot.tools.DictionaryTool
+import ai.unicto.unibot.tools.TranslateTool
+import ai.unicto.unibot.tools.StackOverflowTool
+import ai.unicto.unibot.tools.QrTool
 import ai.unicto.unibot.tools.OutlookTool
 import ai.unicto.unibot.tools.PhotosTool
 import ai.unicto.unibot.tools.RedditTool
@@ -1377,6 +1393,23 @@ class ChatViewModel(
             photosConnected = PhotosTool.isConnected(context),
             whatsappInstalled = WhatsAppTool.isShareAvailable(context),
             whatsappListenerEnabled = WhatsAppTool.isListenerEnabled(context),
+            // [v1.0-wave7] Connector mega-batch.
+            trelloConnected = TrelloTool.isConnected(context),
+            todoistConnected = TodoistTool.isConnected(context),
+            gitlabConnected = GitLabTool.isConnected(context),
+            tmdbConnected = TmdbTool.isConnected(context),
+            gnewsConnected = GNewsTool.isConnected(context),
+            dropboxConnected = DropboxTool.isConnected(context),
+            onedriveConnected = OneDriveTool.isConnected(context),
+            gtasksConnected = GTasksTool.isConnected(context),
+            weatherConnected = WeatherTool.isConnected(context),
+            currencyConnected = CurrencyTool.isConnected(context),
+            wikiConnected = WikiTool.isConnected(context),
+            hnConnected = HnTool.isConnected(context),
+            dictionaryConnected = DictionaryTool.isConnected(context),
+            translateConnected = TranslateTool.isConnected(context),
+            stackoverflowConnected = StackOverflowTool.isConnected(context),
+            qrConnected = QrTool.isConnected(context),
             // [v0.5.0-agentic-core] Real web_search tool for the agent loop.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )
@@ -10218,6 +10251,39 @@ class ChatViewModel(
             SpotifyTool.CONTROL_NAME -> SpotifyTool.executeControl(argsJson, context)
             SpotifyTool.PLAYLISTS_NAME -> SpotifyTool.executePlaylists(argsJson, context)
             NotionTool.SEARCH_NAME -> NotionTool.executeSearch(argsJson, context)
+            // [v1.0-wave7] Connector mega-batch.
+            TrelloTool.BOARDS -> TrelloTool.executeBoards(argsJson, context)
+            TrelloTool.LISTS -> TrelloTool.executeLists(argsJson, context)
+            TrelloTool.ADD_CARD -> TrelloTool.executeAddCard(argsJson, context)
+            TodoistTool.TASKS -> TodoistTool.executeTasks(argsJson, context)
+            TodoistTool.ADD -> TodoistTool.executeAdd(argsJson, context)
+            TodoistTool.COMPLETE -> TodoistTool.executeComplete(argsJson, context)
+            GitLabTool.PROJECTS -> GitLabTool.executeProjects(argsJson, context)
+            GitLabTool.ISSUES -> GitLabTool.executeIssues(argsJson, context)
+            TmdbTool.SEARCH -> TmdbTool.executeSearch(argsJson, context)
+            TmdbTool.TRENDING -> TmdbTool.executeTrending(argsJson, context)
+            GNewsTool.TOP -> GNewsTool.executeTop(argsJson, context)
+            GNewsTool.SEARCH -> GNewsTool.executeSearch(argsJson, context)
+            DropboxTool.LIST -> DropboxTool.executeList(argsJson, context)
+            DropboxTool.SEARCH -> DropboxTool.executeSearch(argsJson, context)
+            OneDriveTool.LIST -> OneDriveTool.executeList(argsJson, context)
+            OneDriveTool.SEARCH -> OneDriveTool.executeSearch(argsJson, context)
+            GTasksTool.LISTS -> GTasksTool.executeLists(argsJson, context)
+            GTasksTool.LIST -> GTasksTool.executeList(argsJson, context)
+            GTasksTool.ADD -> GTasksTool.executeAdd(argsJson, context)
+            WeatherTool.NOW -> WeatherTool.executeNow(argsJson, context)
+            WeatherTool.FORECAST -> WeatherTool.executeForecast(argsJson, context)
+            CurrencyTool.CONVERT -> CurrencyTool.executeConvert(argsJson, context)
+            CurrencyTool.RATES -> CurrencyTool.executeRates(argsJson, context)
+            WikiTool.SEARCH -> WikiTool.executeSearch(argsJson, context)
+            WikiTool.SUMMARY -> WikiTool.executeSummary(argsJson, context)
+            HnTool.TOP -> HnTool.executeTop(argsJson, context)
+            HnTool.SEARCH -> HnTool.executeSearch(argsJson, context)
+            DictionaryTool.DEFINE -> DictionaryTool.executeDefine(argsJson, context)
+            TranslateTool.TRANSLATE -> TranslateTool.executeTranslate(argsJson, context)
+            StackOverflowTool.SEARCH -> StackOverflowTool.executeSearch(argsJson, context)
+            QrTool.GENERATE -> QrTool.executeGenerate(argsJson, context)
+            QrTool.DECODE -> QrTool.executeDecode(argsJson, context)
             NotionTool.READ_NAME -> NotionTool.executeRead(argsJson, context)
             NotionTool.APPEND_NAME -> NotionTool.executeAppend(argsJson, context)
             RedditTool.SEARCH_NAME -> RedditTool.executeSearch(argsJson, context)
@@ -10306,6 +10372,23 @@ class ChatViewModel(
             photosConnected = PhotosTool.isConnected(context),
             whatsappInstalled = WhatsAppTool.isShareAvailable(context),
             whatsappListenerEnabled = WhatsAppTool.isListenerEnabled(context),
+            // [v1.0-wave7] Connector mega-batch.
+            trelloConnected = TrelloTool.isConnected(context),
+            todoistConnected = TodoistTool.isConnected(context),
+            gitlabConnected = GitLabTool.isConnected(context),
+            tmdbConnected = TmdbTool.isConnected(context),
+            gnewsConnected = GNewsTool.isConnected(context),
+            dropboxConnected = DropboxTool.isConnected(context),
+            onedriveConnected = OneDriveTool.isConnected(context),
+            gtasksConnected = GTasksTool.isConnected(context),
+            weatherConnected = WeatherTool.isConnected(context),
+            currencyConnected = CurrencyTool.isConnected(context),
+            wikiConnected = WikiTool.isConnected(context),
+            hnConnected = HnTool.isConnected(context),
+            dictionaryConnected = DictionaryTool.isConnected(context),
+            translateConnected = TranslateTool.isConnected(context),
+            stackoverflowConnected = StackOverflowTool.isConnected(context),
+            qrConnected = QrTool.isConnected(context),
             // [v0.5.0-agentic-core] Workers can search the web too.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
         )

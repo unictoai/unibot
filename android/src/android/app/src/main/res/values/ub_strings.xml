@@ -1035,5 +1035,45 @@
     <string name="ub_connectors_rss_url_label">Feed URL</string>
     <string name="ub_connectors_rss_empty">No feeds yet — add one above.</string>
     <string name="ub_connectors_rss_remove">Remove</string>
+    <!-- [v1.0-wave7] connector mega-batch -->
+    <string name="ub_connectors_trello">Trello</string>
+    <string name="ub_connectors_trello_desc">Boards, lists and cards</string>
+    <string name="ub_connectors_trello_hint">Get your key at trello.com/app-key, generate a token, and paste as key:token (one line).</string>
+    <string name="ub_connectors_todoist">Todoist</string>
+    <string name="ub_connectors_todoist_desc">Tasks, add and complete</string>
+    <string name="ub_connectors_todoist_hint">Create a token at Todoist → Settings → Integrations → Developer, and paste it.</string>
+    <string name="ub_connectors_gitlab">GitLab</string>
+    <string name="ub_connectors_gitlab_desc">Projects and issues</string>
+    <string name="ub_connectors_gitlab_hint">Create a personal access token at gitlab.com → Preferences → Access Tokens (read_api), and paste it.</string>
+    <string name="ub_connectors_tmdb">TMDB</string>
+    <string name="ub_connectors_tmdb_desc">Movies and shows search + trending</string>
+    <string name="ub_connectors_tmdb_hint">Get a free v3 API key at themoviedb.org → Settings → API, and paste it.</string>
+    <string name="ub_connectors_gnews">News</string>
+    <string name="ub_connectors_gnews_desc">Top headlines and search (GNews free tier)</string>
+    <string name="ub_connectors_gnews_hint">Get a free API key at gnews.io (100 requests/day), and paste it.</string>
+    <string name="ub_connectors_dropbox">Dropbox</string>
+    <string name="ub_connectors_dropbox_desc">Browse and search your files</string>
+    <string name="ub_connectors_dropbox_hint">Needs the unibot Dropbox app key (publisher setup).</string>
+    <string name="ub_connectors_onedrive">OneDrive</string>
+    <string name="ub_connectors_onedrive_desc">Browse and search your files</string>
+    <string name="ub_connectors_onedrive_hint">Needs the unibot Microsoft app registration (publisher setup).</string>
+    <string name="ub_connectors_gtasks">Google Tasks</string>
+    <string name="ub_connectors_gtasks_desc">Task lists via your Google account</string>
+    <string name="ub_connectors_weather">Weather</string>
+    <string name="ub_connectors_weather_desc">Current weather and forecasts — no account</string>
+    <string name="ub_connectors_currency">Currency</string>
+    <string name="ub_connectors_currency_desc">Convert money and check rates — no account</string>
+    <string name="ub_connectors_wiki">Wikipedia</string>
+    <string name="ub_connectors_wiki_desc">Search articles and summaries — no account</string>
+    <string name="ub_connectors_hn">Hacker News</string>
+    <string name="ub_connectors_hn_desc">Front page and search — no account</string>
+    <string name="ub_connectors_dictionary">Dictionary</string>
+    <string name="ub_connectors_dictionary_desc">Word definitions — no account</string>
+    <string name="ub_connectors_translate">Translate</string>
+    <string name="ub_connectors_translate_desc">Translate text free — no account</string>
+    <string name="ub_connectors_stackoverflow">Stack Overflow</string>
+    <string name="ub_connectors_stackoverflow_desc">Search programming answers — no account</string>
+    <string name="ub_connectors_qr">QR Tools</string>
+    <string name="ub_connectors_qr_desc">Generate and scan QR codes on-device</string>
 </resources>
 

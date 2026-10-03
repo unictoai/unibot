@@ -56,6 +56,23 @@ object AgentTools {
         photosConnected: Boolean = false,
         whatsappInstalled: Boolean = false,
         whatsappListenerEnabled: Boolean = false,
+        // [v1.0-wave7] Connector mega-batch.
+        trelloConnected: Boolean = false,
+        todoistConnected: Boolean = false,
+        gitlabConnected: Boolean = false,
+        tmdbConnected: Boolean = false,
+        gnewsConnected: Boolean = false,
+        dropboxConnected: Boolean = false,
+        onedriveConnected: Boolean = false,
+        gtasksConnected: Boolean = false,
+        weatherConnected: Boolean = false,
+        currencyConnected: Boolean = false,
+        wikiConnected: Boolean = false,
+        hnConnected: Boolean = false,
+        dictionaryConnected: Boolean = false,
+        translateConnected: Boolean = false,
+        stackoverflowConnected: Boolean = false,
+        qrConnected: Boolean = false,
         // [v0.5.0-agentic-core] Live web search (keyless DuckDuckGo). Off
         // when the user disables it in Settings — the model then can't even
         // attempt the call.
@@ -135,6 +152,55 @@ object AgentTools {
         }
         if (whatsappListenerEnabled) {
             addAll(WhatsAppTool.recentDefinitions())
+        }
+        // [v1.0-wave7] Connector mega-batch.
+        if (trelloConnected) {
+            addAll(TrelloTool.definitions())
+        }
+        if (todoistConnected) {
+            addAll(TodoistTool.definitions())
+        }
+        if (gitlabConnected) {
+            addAll(GitLabTool.definitions())
+        }
+        if (tmdbConnected) {
+            addAll(TmdbTool.definitions())
+        }
+        if (gnewsConnected) {
+            addAll(GNewsTool.definitions())
+        }
+        if (dropboxConnected) {
+            addAll(DropboxTool.definitions())
+        }
+        if (onedriveConnected) {
+            addAll(OneDriveTool.definitions())
+        }
+        if (gtasksConnected) {
+            addAll(GTasksTool.definitions())
+        }
+        if (weatherConnected) {
+            addAll(WeatherTool.definitions())
+        }
+        if (currencyConnected) {
+            addAll(CurrencyTool.definitions())
+        }
+        if (wikiConnected) {
+            addAll(WikiTool.definitions())
+        }
+        if (hnConnected) {
+            addAll(HnTool.definitions())
+        }
+        if (dictionaryConnected) {
+            addAll(DictionaryTool.definitions())
+        }
+        if (translateConnected) {
+            addAll(TranslateTool.definitions())
+        }
+        if (stackoverflowConnected) {
+            addAll(StackOverflowTool.definitions())
+        }
+        if (qrConnected) {
+            addAll(QrTool.definitions())
         }
     }
 

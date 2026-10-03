@@ -42,21 +42,39 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ai.unicto.unibot.connectors.calendar.CalendarConnector
+import ai.unicto.unibot.connectors.currency.CurrencyConnector
+import ai.unicto.unibot.connectors.dictionary.DictionaryConnector
 import ai.unicto.unibot.connectors.drive.DriveConnector
+import ai.unicto.unibot.connectors.dropbox.DropboxConnector
+import ai.unicto.unibot.connectors.dropbox.DropboxOAuth
 import ai.unicto.unibot.connectors.github.GitHubConnector
+import ai.unicto.unibot.connectors.gitlab.GitLabConnector
 import ai.unicto.unibot.connectors.gmail.GmailOAuth
 import ai.unicto.unibot.connectors.gmail.GmailStore
+import ai.unicto.unibot.connectors.gnews.GNewsConnector
 import ai.unicto.unibot.connectors.google.GoogleOAuth
+import ai.unicto.unibot.connectors.gtasks.GTasksConnector
+import ai.unicto.unibot.connectors.hn.HnConnector
 import ai.unicto.unibot.connectors.notion.NotionConnector
+import ai.unicto.unibot.connectors.onedrive.OneDriveConnector
+import ai.unicto.unibot.connectors.onedrive.OneDriveOAuth
 import ai.unicto.unibot.connectors.outlook.OutlookConnector
 import ai.unicto.unibot.connectors.outlook.OutlookOAuth
 import ai.unicto.unibot.connectors.photos.PhotosConnector
+import ai.unicto.unibot.connectors.qr.QrConnector
 import ai.unicto.unibot.connectors.reddit.RedditConnector
 import ai.unicto.unibot.connectors.rss.RssConnector
 import ai.unicto.unibot.connectors.spotify.SpotifyConnector
 import ai.unicto.unibot.connectors.spotify.SpotifyOAuth
+import ai.unicto.unibot.connectors.stackoverflow.StackOverflowConnector
 import ai.unicto.unibot.connectors.telegram.TelegramConnector
+import ai.unicto.unibot.connectors.tmdb.TmdbConnector
+import ai.unicto.unibot.connectors.todoist.TodoistConnector
+import ai.unicto.unibot.connectors.translate.TranslateConnector
+import ai.unicto.unibot.connectors.trello.TrelloConnector
+import ai.unicto.unibot.connectors.weather.WeatherConnector
 import ai.unicto.unibot.connectors.whatsapp.WhatsAppConnector
+import ai.unicto.unibot.connectors.wiki.WikiConnector
 import ai.unicto.unibot.connectors.youtube.YouTubeConnector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Shield
@@ -281,6 +299,183 @@ fun ConnectorsScreen(
             // [v0.7.0-wave3] WhatsApp: share (no auth) + opt-in notification reader.
             WhatsAppConnectorRow()
             RssConnectorRow()
+            // [v1.0-wave7] Connector mega-batch: token rows.
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_trello,
+                name = stringResource(R.string.ub_connectors_trello),
+                description = stringResource(R.string.ub_connectors_trello_desc),
+                hint = stringResource(R.string.ub_connectors_trello_hint),
+                isConnected = { ctx -> TrelloConnector.isConnected(ctx) },
+                label = { ctx -> TrelloConnector.store.label(ctx) },
+                onSave = { ctx, combined ->
+                    val i = combined.indexOf(':')
+                    if (i <= 0) null
+                    else TrelloConnector.connect(ctx, combined.substring(0, i), combined.substring(i + 1))
+                },
+                onDisconnect = { ctx -> TrelloConnector.disconnect(ctx) },
+                dataAccess = "Boards, lists and cards you can see",
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_todoist,
+                name = stringResource(R.string.ub_connectors_todoist),
+                description = stringResource(R.string.ub_connectors_todoist_desc),
+                hint = stringResource(R.string.ub_connectors_todoist_hint),
+                isConnected = { ctx -> TodoistConnector.isConnected(ctx) },
+                label = { ctx -> TodoistConnector.store.label(ctx) },
+                onSave = { ctx, token -> TodoistConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> TodoistConnector.disconnect(ctx) },
+                dataAccess = "Read, add and complete tasks",
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_gitlab,
+                name = stringResource(R.string.ub_connectors_gitlab),
+                description = stringResource(R.string.ub_connectors_gitlab_desc),
+                hint = stringResource(R.string.ub_connectors_gitlab_hint),
+                isConnected = { ctx -> GitLabConnector.isConnected(ctx) },
+                label = { ctx -> GitLabConnector.store.label(ctx) },
+                onSave = { ctx, token -> GitLabConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> GitLabConnector.disconnect(ctx) },
+                dataAccess = "Projects and issues you can see",
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_tmdb,
+                name = stringResource(R.string.ub_connectors_tmdb),
+                description = stringResource(R.string.ub_connectors_tmdb_desc),
+                hint = stringResource(R.string.ub_connectors_tmdb_hint),
+                isConnected = { ctx -> TmdbConnector.isConnected(ctx) },
+                label = { ctx -> TmdbConnector.store.label(ctx) },
+                onSave = { ctx, token -> TmdbConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> TmdbConnector.disconnect(ctx) },
+                dataAccess = "Public movie/TV catalog",
+            )
+            TokenConnectorRow(
+                logoRes = R.drawable.ic_connector_gnews,
+                name = stringResource(R.string.ub_connectors_gnews),
+                description = stringResource(R.string.ub_connectors_gnews_desc),
+                hint = stringResource(R.string.ub_connectors_gnews_hint),
+                isConnected = { ctx -> GNewsConnector.isConnected(ctx) },
+                label = { ctx -> GNewsConnector.store.label(ctx) },
+                onSave = { ctx, token -> GNewsConnector.connect(ctx, token) },
+                onDisconnect = { ctx -> GNewsConnector.disconnect(ctx) },
+                dataAccess = "Headlines via your free key",
+            )
+            // [v1.0-wave7] OAuth rows.
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_dropbox,
+                name = stringResource(R.string.ub_connectors_dropbox),
+                description = stringResource(R.string.ub_connectors_dropbox_desc),
+                isConnected = { ctx -> DropboxConnector.isConnected(ctx) },
+                accountEmail = { ctx -> DropboxConnector.store.accountEmail(ctx) },
+                isConfigured = { DropboxConnector.isConfigured() },
+                onConnect = { ctx ->
+                    when (val r = DropboxConnector.authorize(ctx)) {
+                        is DropboxOAuth.Result.Success -> ConnectOutcome.Ok
+                        is DropboxOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is DropboxOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> DropboxConnector.disconnect(ctx) },
+                dataAccess = "Read your files (read-only)",
+            )
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_onedrive,
+                name = stringResource(R.string.ub_connectors_onedrive),
+                description = stringResource(R.string.ub_connectors_onedrive_desc),
+                isConnected = { ctx -> OneDriveConnector.isConnected(ctx) },
+                accountEmail = { ctx -> OneDriveConnector.store.accountEmail(ctx) },
+                isConfigured = { OneDriveConnector.isConfigured() },
+                onConnect = { ctx ->
+                    when (val r = OneDriveConnector.authorize(ctx)) {
+                        is OneDriveOAuth.Result.Success -> ConnectOutcome.Ok
+                        is OneDriveOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is OneDriveOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> OneDriveConnector.disconnect(ctx) },
+                dataAccess = "Read your files (read-only)",
+            )
+            ConnectorRow(
+                logoRes = R.drawable.ic_connector_gtasks,
+                name = stringResource(R.string.ub_connectors_gtasks),
+                description = stringResource(R.string.ub_connectors_gtasks_desc),
+                isConnected = { ctx -> GTasksConnector.isConnected(ctx) },
+                accountEmail = { ctx -> GTasksConnector.store.accountEmail(ctx) },
+                isConfigured = { true },
+                onConnect = { ctx ->
+                    when (val r = GTasksConnector.authorize(ctx)) {
+                        is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
+                        is GoogleOAuth.Result.Cancelled -> ConnectOutcome.Cancelled
+                        is GoogleOAuth.Result.Failed -> ConnectOutcome.Failed(r.message)
+                    }
+                },
+                onDisconnect = { ctx -> GTasksConnector.disconnect(ctx) },
+                dataAccess = "Read and add tasks",
+            )
+            // [v1.0-wave7] No-account toggle rows.
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_weather,
+                name = stringResource(R.string.ub_connectors_weather),
+                description = stringResource(R.string.ub_connectors_weather_desc),
+                isEnabled = { ctx -> WeatherConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> WeatherConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public weather data — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_currency,
+                name = stringResource(R.string.ub_connectors_currency),
+                description = stringResource(R.string.ub_connectors_currency_desc),
+                isEnabled = { ctx -> CurrencyConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> CurrencyConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public exchange rates — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_wiki,
+                name = stringResource(R.string.ub_connectors_wiki),
+                description = stringResource(R.string.ub_connectors_wiki_desc),
+                isEnabled = { ctx -> WikiConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> WikiConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public articles — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_hn,
+                name = stringResource(R.string.ub_connectors_hn),
+                description = stringResource(R.string.ub_connectors_hn_desc),
+                isEnabled = { ctx -> HnConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> HnConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public stories — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_dictionary,
+                name = stringResource(R.string.ub_connectors_dictionary),
+                description = stringResource(R.string.ub_connectors_dictionary_desc),
+                isEnabled = { ctx -> DictionaryConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> DictionaryConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public definitions — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_translate,
+                name = stringResource(R.string.ub_connectors_translate),
+                description = stringResource(R.string.ub_connectors_translate_desc),
+                isEnabled = { ctx -> TranslateConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> TranslateConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Free translation tier — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_stackoverflow,
+                name = stringResource(R.string.ub_connectors_stackoverflow),
+                description = stringResource(R.string.ub_connectors_stackoverflow_desc),
+                isEnabled = { ctx -> StackOverflowConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> StackOverflowConnector.setEnabled(ctx, enabled) },
+                dataAccess = "Public Q&A — no account",
+            )
+            ToggleConnectorRow(
+                logoRes = R.drawable.ic_connector_qr,
+                name = stringResource(R.string.ub_connectors_qr),
+                description = stringResource(R.string.ub_connectors_qr_desc),
+                isEnabled = { ctx -> QrConnector.isEnabled(ctx) },
+                onToggle = { ctx, enabled -> QrConnector.setEnabled(ctx, enabled) },
+                dataAccess = "On-device only — no network",
+            )
         }
     }
 }
