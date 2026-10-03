@@ -90,6 +90,8 @@ import ai.unicto.unibot.ui.components.UnibotOutlinedButton
 import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.settings.SettingsScaffold
 import ai.unicto.unibot.ui.settings.SettingsSection
+import ai.unicto.unibot.ui.theme.successPop
+import ai.unicto.unibot.ui.util.rememberHaptic
 
 /**
  * [T-backup-primary-action] Shared content for the two primary actions —
@@ -228,6 +230,32 @@ private fun BackupTab(
     val destinations by vm.destinations.collectAsState()
     val historyRecords by vm.historyRecords.collectAsState()
     val lastResult by vm.lastResult.collectAsState()
+
+    // [Wave 9c] Haptics for the backup tab's primary actions.
+    val haptics = rememberHaptic()
+
+    // [Wave 9c] Backup-complete celebration: haptics.success() the moment a
+    // run this visit watched finishes fully delivered, haptics.error() when
+    // it finished with delivery issues (the "look at this" case). The card
+    // itself pops via successPop on the just-finished section below.
+    //
+    // Gated on `sawRunning`: the tab restores the previous visit's result
+    // before clearSettledSuccess() drops settled successes, so "result
+    // present" alone can't distinguish a fresh finish from a restored one.
+    var sawRunning by remember { mutableStateOf(false) }
+    var prevResult by remember { mutableStateOf<BackupViewModel.RunResult?>(null) }
+    LaunchedEffect(running) { if (running) sawRunning = true }
+    LaunchedEffect(lastResult) {
+        val r = lastResult
+        // The completion path sets _lastResult before it flips _isRunning
+        // back to false, so fire on the result transition itself — keying on
+        // !running would miss the only null→non-null emission.
+        if (r != null && prevResult == null && sawRunning) {
+            if (r.allDelivered) haptics.success() else haptics.error()
+            sawRunning = false
+        }
+        prevResult = r
+    }
 
     // Re-read destinations every time this tab appears: the user may have just
     // added one via "Manage Destinations…" and navigated back, and a stale
@@ -389,6 +417,9 @@ private fun BackupTab(
         // stays a control. Same reasoning, and the same shape, as iOS.
         UnibotButton(
             onClick = {
+                // [Wave 9c] Haptic tick on the primary backup action —
+                // both starting and stopping a run.
+                haptics.tap()
                 if (running) vm.stopExport()
                 else vm.startExport(passphrase.takeIf { encrypt })
             },
@@ -466,6 +497,9 @@ private fun BackupTab(
             SettingsSection(
                 header = stringResource(R.string.backup_ready),
                 footer = backupResultFooter(r),
+                // [Wave 9c] Celebration pop when a fresh result lands — the
+                // visual half of the haptics.success() fired above.
+                modifier = Modifier.successPop(lastResult),
             ) {
                 DetailValueRow(
                     label = stringResource(R.string.backup_history_size),
@@ -753,6 +787,9 @@ private fun RestoreTab(
     val error by vm.errorText.collectAsState()
     val restoreProgress by vm.restoreProgress.collectAsState()
 
+    // [Wave 9c] Haptics for the restore tab's primary actions.
+    val haptics = rememberHaptic()
+
     // Which destination the user is browsing for a package to restore from.
     var browsing by remember {
         mutableStateOf<ai.unicto.unibot.backup.remote.RcloneRemoteStore.Remote?>(null)
@@ -933,7 +970,11 @@ private fun RestoreTab(
 
     Column(Modifier.padding(16.dp)) {
         UnibotButton(
-            onClick = { vm.startRestore(passphrase.takeIf { p.manifest.encryption != null }) },
+            // [Wave 9c] Haptic tick on starting a restore.
+            onClick = {
+                haptics.tap()
+                vm.startRestore(passphrase.takeIf { p.manifest.encryption != null })
+            },
             enabled = !running && restoreSelected.isNotEmpty(),
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -982,7 +1023,12 @@ private fun RestoreTab(
             }
         }
         UnibotOutlinedButton(
-            onClick = { vm.cancelRestore(); onPassphraseChange("") },
+            // [Wave 9c] Haptic tick — abandoning the picked package.
+            onClick = {
+                haptics.tap()
+                vm.cancelRestore()
+                onPassphraseChange("")
+            },
             enabled = !running,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         ) { Text(stringResource(R.string.backup_choose_different)) }
@@ -1002,6 +1048,8 @@ private fun RestoreReport(
     report: ai.unicto.unibot.backup.BackupImporter.Report,
     onDone: () -> Unit,
 ) {
+    // [Wave 9c] Haptic tick on dismissing the restore report.
+    val haptics = rememberHaptic()
     SettingsSection(header = stringResource(R.string.backup_restore_complete)) {
         Column(Modifier.padding(16.dp)) {
             InfoLine(stringResource(R.string.backup_report_restored), report.totalImported.toString())
@@ -1080,7 +1128,13 @@ private fun RestoreReport(
     }
 
     Column(Modifier.padding(16.dp)) {
-        UnibotButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+        UnibotButton(
+            onClick = {
+                haptics.tap()
+                onDone()
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(stringResource(R.string.backup_done))
         }
     }
@@ -1353,6 +1407,10 @@ private fun ServerPackagePicker(
     val running by vm.isRunning.collectAsState()
     val status by vm.statusText.collectAsState()
 
+    // [Wave 9c] Haptic tick when kicking off a server-package download
+    // (the first step of a server restore).
+    val haptics = rememberHaptic()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(remote.name) },
@@ -1373,7 +1431,11 @@ private fun ServerPackagePicker(
                                     ),
                                 )
                             },
-                            onClick = { vm.downloadServerPackage(pkg, remote); onDismiss() },
+                            onClick = {
+                                haptics.tap()
+                                vm.downloadServerPackage(pkg, remote)
+                                onDismiss()
+                            },
                         )
                     }
                 }

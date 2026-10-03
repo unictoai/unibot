@@ -274,6 +274,7 @@ import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
 import ai.unicto.unibot.ui.components.UnibotTextButton
+import ai.unicto.unibot.ui.util.rememberHaptic
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -376,6 +377,9 @@ internal fun InputCircleButton(
     plain: Boolean = false, // unibot: bare glyph, no disc (Muse's composer pill)
     content: @Composable () -> Unit,
 ) {
+    // [Wave 9c] Haptic tick on every tap — covers the attach (+), slash (/)
+    // and other composer circle buttons at once, at their single choke point.
+    val haptics = rememberHaptic()
     Box(
         modifier = Modifier
             .size(38.dp)
@@ -385,7 +389,7 @@ internal fun InputCircleButton(
                     .border(0.5.dp, ChatColors.inputIconBorder, CircleShape),
             )
             .clip(CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(onClick = { haptics.tap(); onClick() }),
         contentAlignment = Alignment.Center,
     ) {
         content()
@@ -411,6 +415,9 @@ internal fun MicButton(
     isVoiceActive: Boolean = false,
     plain: Boolean = false, // unibot: bare glyph, no disc (Muse's composer pill)
 ) {
+    // [Wave 9c] Haptic tick on mic tap (long-press keeps the system gesture
+    // feedback only, so the two don't stack).
+    val haptics = rememberHaptic()
     val bg = if (isRecording) Color.Red.copy(alpha = 0.15f)
              else if (plain) Color.Transparent
              else ChatColors.inputIconBg
@@ -424,7 +431,7 @@ internal fun MicButton(
             .border(0.5.dp, borderColor, CircleShape)
             .clip(CircleShape)
             .combinedClickable(
-                onClick = onClick,
+                onClick = { haptics.tap(); onClick() },
                 onLongClick = onLongClick,
             ),
         contentAlignment = Alignment.Center,

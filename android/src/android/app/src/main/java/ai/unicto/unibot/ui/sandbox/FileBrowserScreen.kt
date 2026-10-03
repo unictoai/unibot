@@ -47,7 +47,6 @@ import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ai.unicto.unibot.ui.components.SkeletonList
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -141,12 +141,15 @@ fun FileBrowserScreen(
             // Content
             when {
                 state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    // [Wave 9c] Skeleton rows while the directory listing
+                    // loads — the screen already has the shape of the file
+                    // list instead of a bare spinner.
+                    SkeletonList(
+                        count = 8,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
                 }
 
                 state.isEmpty -> {

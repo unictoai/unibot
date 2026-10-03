@@ -244,7 +244,6 @@ import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -273,6 +272,7 @@ import ai.unicto.unibot.data.repository.MemoryRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.browser.BrowserSheet
 import ai.unicto.unibot.ui.theme.ChatColors
+import ai.unicto.unibot.ui.util.rememberHaptic
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
 /**
@@ -312,6 +312,9 @@ internal fun ModelPickerSheet(
     onEditGroups: (() -> Unit)? = null,
 ) {
     val openTime = remember { System.nanoTime() }
+
+    // [Wave 9c] Haptic tick on every model/group selection.
+    val haptics = rememberHaptic()
 
     LaunchedEffect(Unit) {
         AppLogger.info("ModelPicker", "[ModelPicker] open triggered")
@@ -600,7 +603,7 @@ internal fun ModelPickerSheet(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(groupShape)
-                                        .clickable { onSelectGroup(group.id) }
+                                        .clickable { haptics.tap(); onSelectGroup(group.id) }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -807,7 +810,7 @@ internal fun ModelPickerSheet(
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .clickable { onSelectGroupEntry(group.id, entry.id) }
+                                                    .clickable { haptics.tap(); onSelectGroupEntry(group.id, entry.id) }
                                                     .padding(start = 48.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
                                                 verticalAlignment = Alignment.CenterVertically,
                                             ) {
@@ -990,7 +993,7 @@ internal fun ModelPickerSheet(
                                                 .fillMaxWidth()
                                                 .heightIn(min = 48.dp)
                                                 .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-                                                .clickable { onSelectEntry(displayEntry.id) }
+                                                .clickable { haptics.tap(); onSelectEntry(displayEntry.id) }
                                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
@@ -1117,7 +1120,7 @@ internal fun ModelPickerSheet(
                                                 .fillMaxWidth()
                                                 .heightIn(min = 48.dp)
                                                 .clip(rowShape)
-                                                .clickable { onSelectEntry(entry.id) }
+                                                .clickable { haptics.tap(); onSelectEntry(entry.id) }
                                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {

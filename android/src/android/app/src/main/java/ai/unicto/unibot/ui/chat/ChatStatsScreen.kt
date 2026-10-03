@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.repository.ChatRepository
+import ai.unicto.unibot.ui.components.SkeletonList
 import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
@@ -92,13 +92,14 @@ fun ChatStatsScreen(
     ) { padding ->
         val s = stats
         if (s == null) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
+            // [Wave 9c] Skeleton stat cards while the on-device aggregates
+            // compute — the screen already has the shape of the stats grid
+            // instead of a bare spinner.
+            SkeletonList(
+                count = 5,
+                modifier = Modifier.fillMaxSize().padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding)

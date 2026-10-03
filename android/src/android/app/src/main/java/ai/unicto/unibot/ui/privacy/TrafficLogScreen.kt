@@ -1,6 +1,7 @@
 package ai.unicto.unibot.ui.privacy
 
 import ai.unicto.unibot.privacy.PrivacyNetworkGate
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.muse.MuseCaption
 import ai.unicto.unibot.ui.muse.MuseTopAppBar
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -87,35 +86,17 @@ fun TrafficLogScreen(onBack: () -> Unit) {
         },
     ) { padding ->
         if (entries.isEmpty()) {
-            Column(
+            // [Wave 9c] Shared EmptyState — the brand medallion + stagger,
+            // replacing the hand-rolled icon+text column.
+            EmptyState(
+                icon = Icons.Outlined.Shield,
+                title = "No traffic logged",
+                hint = "Every connection this app makes will appear here.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Shield,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(56.dp),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "No connections logged yet",
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "Every connection this app makes is recorded here — " +
-                        "host and category only. Memory only, never saved to disk.",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
