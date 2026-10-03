@@ -67,7 +67,7 @@ object TtsVoiceModelManager {
     private const val AMY_TOKENS_BYTES = 763L
     private const val RYAN_ONNX_BYTES = 63_201_294L
     private const val RYAN_TOKENS_BYTES = 921L
-    private const val ESPEAK_TARBALL_BYTES = 8_990_545L
+    private const val ESPEAK_TARBALL_BYTES = 8_990_538L
     private const val ESPEAK_ASSET = "espeak-ng-data.tar.gz"
 
     val voices: List<TtsVoice> = listOf(

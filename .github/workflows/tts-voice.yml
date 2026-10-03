@@ -86,12 +86,18 @@ jobs:
           z.extractall("tts-voice/espeak-stage", names)
           print(f"extracted {len(names)} espeak-ng-data entries")
           EOF
+          # Normalize modes: the wheel's stored permission bits interact with
+          # the runner's umask on extraction, which would change the tar
+          # headers (and the gzipped size) from run to run. Fixed modes keep
+          # the tarball byte-identical everywhere.
           # Deterministic tar: sorted entries, fixed mtime/owner, GNU format;
           # gzip -n strips filename+mtime from the gzip header. The resulting
           # byte size is hardcoded as ESPEAK_TARBALL_BYTES in
           # TtsVoiceModelManager.kt (and verified by the next step), so keep
           # this exact command — any change alters the published bytes.
           cd tts-voice/espeak-stage/piper_phonemize
+          find espeak-ng-data -type d -exec chmod 755 {} +
+          find espeak-ng-data -type f -exec chmod 644 {} +
           tar --sort=name --mtime='2000-01-01' --owner=0 --group=0 --numeric-owner \
             --format=gnu -cf - espeak-ng-data | gzip -n > ../../espeak-ng-data.tar.gz
           cd ../../..
