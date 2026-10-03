@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from unibot import __version__, prompts
-from unibot.agent import Incoming, MuseAgent
+from unibot.agent import Incoming, UnibotAgent
 from unibot.app import UnibotApp
 from unibot.avatar import AvatarStudio
 from unibot.bridge.server import Bridge
@@ -260,7 +260,7 @@ class Thread:
     created_at: str
     updated_at: str
     timeline: Timeline
-    agent: MuseAgent
+    agent: UnibotAgent
     inbox: asyncio.Queue[str | Incoming] = field(default_factory=asyncio.Queue)
     worker: asyncio.Task[None] | None = None
     stopping: bool = False
@@ -601,7 +601,7 @@ class MuseService:
             if ev.get("type") in ("browser", "hands") and ev.get("status") == "live":
                 timeline.update(ev["id"], status="done")
         session_file = self.threads_dir / f"{thread_id}.session.json"
-        agent = MuseAgent(
+        agent = UnibotAgent(
             settings=self.settings,
             llm=self.app.llm,
             tools=self.app.tools,

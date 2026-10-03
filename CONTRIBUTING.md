@@ -1,6 +1,6 @@
 # Contributing to unibot
 
-unibot is a friendly fork of [unibot](https://github.com/unictoai/unibot) (itself building on [OpenMinis](https://github.com/OpenMinis/OpenMinis)), rebranded and refocused on bring-your-own-key. GPL-3.0-or-later — see [LICENSE](LICENSE) and [NOTICE](NOTICE); by contributing you agree your contribution is licensed the same way.
+unibot is an open-source personal AI agent for Android (building on [OpenMinis](https://github.com/OpenMinis/OpenMinis) for the on-device runtime), refocused on bring-your-own-key. GPL-3.0-or-later — see [LICENSE](LICENSE) and [NOTICE](NOTICE); by contributing you agree your contribution is licensed the same way.
 
 ## How to help
 

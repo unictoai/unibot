@@ -735,7 +735,7 @@ async def test_phone_task_tool_reports_the_outcome(settings: Settings):
 
 
 async def test_prompt_puts_the_screen_on_the_last_rung(settings: Settings):
-    from unibot.agent.core import MuseAgent
+    from unibot.agent.core import UnibotAgent
     from unibot.tools import Terminate, ToolCollection
 
     link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
@@ -744,7 +744,7 @@ async def test_prompt_puts_the_screen_on_the_last_rung(settings: Settings):
     operator, _ = make_operator(settings, link, MockLLM([]), ui)
     tools = ToolCollection(Terminate(), PhoneTask(link=link, operator=operator))
     audit = AuditLog(settings.audit_file)
-    agent = MuseAgent(settings, MockLLM([]), tools, make_sentinel(settings, ui), ui, audit)
+    agent = UnibotAgent(settings, MockLLM([]), tools, make_sentinel(settings, ui), ui, audit)
     system = agent.build_system_prompt("hi")
     assert "The user's phone is connected: Pixel (android)." in system
     assert "Four rungs, lowest first" in system and "(4) the phone's screen" in system

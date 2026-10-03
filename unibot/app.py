@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from unibot import prompts
-from unibot.agent import MuseAgent
+from unibot.agent import UnibotAgent
 from unibot.calendar import CalendarFeeds
 from unibot.computer.link import ComputerLink
 from unibot.config import LLMSettings, Settings
@@ -123,7 +123,7 @@ class UnibotApp:
                 on_event=getattr(ui, "on_hands", None),
             )
         self.tools = self._build_tools()
-        self.agent = MuseAgent(
+        self.agent = UnibotAgent(
             settings=settings,
             llm=self.llm,
             tools=self.tools,

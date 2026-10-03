@@ -96,7 +96,7 @@ adds the hub, the Cloud account and the hands to it.
 
 ```
    unibot serve  ─ FastAPI + WebSocket, 127.0.0.1:8787 ─┬─ web/ (React) in a browser or on the phone
-      │ MuseAgent · Sentinel · tools                        ├─ desktop/app (Electron window, tray, stage overlay)
+      │ UnibotAgent · Sentinel · tools                        ├─ desktop/app (Electron window, tray, stage overlay)
       │ unibot/hub  ── wss://…/v1/hub ── the other devices └─ unibot chat (terminal)
       │ unibot/computer ── mss + pyautogui: the screen as a hand
       └ unibot/cloud ── the unibot Cloud account (e-mail code → key → models + hub)

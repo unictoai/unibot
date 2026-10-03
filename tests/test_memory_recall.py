@@ -21,7 +21,7 @@ import pytest
 from fastapi.testclient import TestClient
 from openai import AsyncOpenAI
 
-from unibot.agent import MuseAgent
+from unibot.agent import UnibotAgent
 from unibot.config import LLMSettings, MemorySettings, Settings, apply_app_settings
 from unibot.llm import MockLLM
 from unibot.memory import Embedder, MemoryIndex, MemoryStore
@@ -352,7 +352,7 @@ async def test_agent_recalls_by_meaning_into_the_prompt(settings: Settings, fake
     ui = HeadlessUI()
     audit = AuditLog(settings.audit_file)
     llm = MockLLM([LLMResponse(content="Sure — drafting to Bob.")])
-    agent = MuseAgent(
+    agent = UnibotAgent(
         settings,
         llm,
         ToolCollection(Terminate(), Recall(store=memory)),
@@ -386,7 +386,7 @@ async def test_agent_survives_a_recall_error(settings: Settings, monkeypatch: py
     ui = HeadlessUI()
     audit = AuditLog(settings.audit_file)
     llm = MockLLM([LLMResponse(content="ok")])
-    agent = MuseAgent(
+    agent = UnibotAgent(
         settings,
         llm,
         ToolCollection(Terminate()),

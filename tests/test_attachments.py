@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from openai import AsyncOpenAI
 from PIL import Image
 
-from unibot.agent import Incoming, MuseAgent
+from unibot.agent import Incoming, UnibotAgent
 from unibot.config import LLMSettings, Settings, apply_app_settings
 from unibot.llm import MockLLM
 from unibot.llm import openai_chat as chat_mod
@@ -278,7 +278,7 @@ async def test_agent_message_with_attachments(settings: Settings):
     ui = HeadlessUI()
     audit = AuditLog(settings.audit_file)
     llm = MockLLM([LLMResponse(content="Got them.")])
-    agent = MuseAgent(
+    agent = UnibotAgent(
         settings,
         llm,
         ToolCollection(Terminate()),
@@ -314,7 +314,7 @@ async def test_agent_tells_the_user_once_when_pictures_cannot_be_seen(settings: 
     audit = AuditLog(settings.audit_file)
     llm = MockLLM([LLMResponse(content="ok"), LLMResponse(content="ok again")])
     llm.vision_available = False  # what the provider sets after a refusal
-    agent = MuseAgent(
+    agent = UnibotAgent(
         settings,
         llm,
         ToolCollection(Terminate()),

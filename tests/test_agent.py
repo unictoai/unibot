@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from unibot.agent import MuseAgent
+from unibot.agent import UnibotAgent
 from unibot.config import Settings
 from unibot.goals import GoalStore
 from unibot.llm import MockLLM
@@ -43,7 +43,7 @@ def make_agent(
     audit = AuditLog(settings.audit_file)
     sentinel = Sentinel(settings.sentinel, audit, ui)
     llm = MockLLM(script)
-    agent = MuseAgent(settings, llm, tools, sentinel, ui, audit, memory=memory, goals=goals)
+    agent = UnibotAgent(settings, llm, tools, sentinel, ui, audit, memory=memory, goals=goals)
     return agent, llm, ui, memory, goals
 
 

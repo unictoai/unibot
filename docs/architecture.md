@@ -7,7 +7,7 @@ This page maps behaviour to source files. Read it before changing the agent loop
 ```mermaid
 sequenceDiagram
     participant U as You (app / terminal)
-    participant A as MuseAgent
+    participant A as UnibotAgent
     participant L as LLM
     participant S as Sentinel
     participant T as Tool
@@ -26,7 +26,7 @@ sequenceDiagram
     A-->>U: final summary
 ```
 
-`MuseAgent.run()` builds the system prompt once per turn (profile, language rule, relevant memories, active goals), then loops: ask the model, hand each tool call to `Sentinel.guard()`, append results, stop when the model calls `terminate` or replies without tools. Messages that arrive mid-turn (from the app) are folded in before the next model call. Stuck detection fires when the same call repeats without progress; `max_steps` forces a wrap-up.
+`UnibotAgent.run()` builds the system prompt once per turn (profile, language rule, relevant memories, active goals), then loops: ask the model, hand each tool call to `Sentinel.guard()`, append results, stop when the model calls `terminate` or replies without tools. Messages that arrive mid-turn (from the app) are folded in before the next model call. Stuck detection fires when the same call repeats without progress; `max_steps` forces a wrap-up.
 
 ## Source map
 
@@ -55,7 +55,7 @@ Anything that can show the agent to a person implements `unibot/ui.py::UI`: text
 
 ## Threads in the app
 
-`MuseService` keeps one `MuseAgent` per thread, each with its own conversation and worker task, all sharing the memory and goals stores, the vault and the audit log. The main thread is the long conversation; side chats are separate threads; background goal passes run in their own thread and post a summary to the main one. A `contextvar` tells `WebUI` which thread a callback belongs to.
+`MuseService` keeps one `UnibotAgent` per thread, each with its own conversation and worker task, all sharing the memory and goals stores, the vault and the audit log. The main thread is the long conversation; side chats are separate threads; background goal passes run in their own thread and post a summary to the main one. A `contextvar` tells `WebUI` which thread a callback belongs to.
 
 ## Extension points
 

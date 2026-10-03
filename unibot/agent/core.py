@@ -34,7 +34,7 @@ class Incoming:
         self.files = files or []
 
 
-class MuseAgent:
+class UnibotAgent:
     def __init__(
         self,
         settings: Settings,
@@ -546,4 +546,4 @@ class MuseAgent:
             self.messages = repaired
 
 
-__all__ = ["MuseAgent"]
+__all__ = ["UnibotAgent"]
