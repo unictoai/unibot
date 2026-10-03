@@ -159,7 +159,7 @@ fun StarredMessagesScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
-                    imageVector = StarOutline,
+                    imageVector = Icons.Filled.StarOutline,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                     modifier = Modifier.size(48.dp),

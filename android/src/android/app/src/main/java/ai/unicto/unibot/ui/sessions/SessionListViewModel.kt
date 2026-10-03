@@ -169,19 +169,18 @@ class SessionListViewModel(
     )
 
     val displayedSessions: StateFlow<List<ChatSessionEntity>> = combine(
-        _allSessions, searchResults, searchQuery, isSearchActive, archivedIds, showArchived,
+        // Base: search results when searching, otherwise all sessions.
+        combine(_allSessions, searchResults, searchQuery, isSearchActive) { all, results, q, active ->
+            if (active && q.isNotBlank()) results else all
+        },
+        archivedIds,
+        showArchived,
         folderFilterId,
-    ) { all: List<ChatSessionEntity>,
-        results: List<ChatSessionEntity>,
-        q: String,
-        active: Boolean,
-        archived: Set<String>,
-        showArch: Boolean,
-        folderFilter: String? ->
-        var base = if (active && q.isNotBlank()) results else all
-        base = if (showArch) base.filter { it.id in archived } else base.filter { it.id !in archived }
-        if (folderFilter != null) base = base.filter { it.folderId == folderFilter }
-        base
+    ) { base, archived, showArch, folderFilter ->
+        var filtered = if (showArch) base.filter { it.id in archived }
+        else base.filter { it.id !in archived }
+        if (folderFilter != null) filtered = filtered.filter { it.folderId == folderFilter }
+        filtered
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // ─── Session groups ("folders") ────────────────────────────────────────
