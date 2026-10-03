@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.voice
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -42,6 +43,13 @@ import kotlinx.coroutines.withTimeout
 class VoiceConversationViewModel(
     private val chatViewModel: ChatViewModel,
     private val ensureMicPermission: suspend () -> Boolean,
+    /**
+     * [v1.1.2] Synchronous "is the mic actually usable" probe (runtime grant
+     * + AppOps). Lets the error path tell a *bogus* engine permission failure
+     * (broken recognition service on ROMs with no real speech service)
+     * apart from a genuinely missing grant.
+     */
+    private val hasMicPermission: () -> Boolean,
 ) : ViewModel() {
 
     sealed interface State {
@@ -54,6 +62,12 @@ class VoiceConversationViewModel(
         // a graceful card with rationale + a Settings deep-link — never a raw
         // "RECORD_AUDIO required" dead-end.
         data object PermissionDenied : State
+        /**
+         * [v1.1.2] No speech-to-text model on the phone (and no usable system
+         * engine). The UI shows a download card with real progress — the
+         * recovery action, not just an error string.
+         */
+        data object NoSttModel : State
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
@@ -116,10 +130,11 @@ class VoiceConversationViewModel(
         fun factory(
             chatViewModel: ChatViewModel,
             ensureMicPermission: suspend () -> Boolean,
+            hasMicPermission: () -> Boolean,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                VoiceConversationViewModel(chatViewModel, ensureMicPermission) as T
+                VoiceConversationViewModel(chatViewModel, ensureMicPermission, hasMicPermission) as T
         }
     }
 
@@ -154,9 +169,9 @@ class VoiceConversationViewModel(
                 SpeechRecognitionManager.selectEngine(WHISPER_ENGINE_ID)
             }
             if (SpeechRecognitionManager.availableEngines().none { it.isAvailable }) {
-                _state.value = State.Error(
-                    "No voice engine is available. Download the offline voice model to talk on-device.",
-                )
+                // [v1.1.2] Dedicated state (not a bare Error string) so the UI
+                // can offer the real recovery: downloading the offline model.
+                _state.value = State.NoSttModel
                 return@launch
             }
             startListening()
@@ -181,8 +196,10 @@ class VoiceConversationViewModel(
         when (_state.value) {
             is State.Listening -> stopConversation()
             // [v1.1.2] PermissionDenied re-runs the permission flow (the
-            // screen's launcher + rationale), not a blind retry.
-            is State.Idle, is State.Error, is State.PermissionDenied -> startConversation(sessionId)
+            // screen's launcher + rationale), not a blind retry. NoSttModel
+            // re-probes engines (a download may have finished elsewhere).
+            is State.Idle, is State.Error, is State.PermissionDenied, is State.NoSttModel ->
+                startConversation(sessionId)
             // Thinking/Speaking: stop the whole conversation (halts TTS and
             // drops the in-flight reply wait; the agent turn itself keeps
             // running in the shared ChatViewModel).
@@ -231,6 +248,25 @@ class VoiceConversationViewModel(
                 if (!conversationActive) return@startRecording
                 // [v1.1.2] A runtime permission denial (e.g. revoked mid-session)
                 // lands on the graceful denied card, never a raw engine string.
+                // BUT: when the app verifiably holds the mic permission, a
+                // PERMISSION_DENIED from the engine is a *bogus* failure — the
+                // recognition service itself is broken (seen on ROMs with no
+                // real speech service, which also lie on the availability
+                // probe). The engine already degraded itself; fall over to the
+                // next engine instead of sending the user to Settings for a
+                // permission they already granted.
+                if (error == RecognitionError.PERMISSION_DENIED && hasMicPermission()) {
+                    Log.w(
+                        "VoiceConversation",
+                        "engine reported PERMISSION_DENIED with mic granted — trying fallback engine",
+                    )
+                    if (tryFallbackEngine()) return@startRecording
+                    _state.value = State.Error(
+                        "The system voice service isn't working on this phone. " +
+                            "Download the offline voice model below to talk on-device instead.",
+                    )
+                    return@startRecording
+                }
                 _state.value = if (error == RecognitionError.PERMISSION_DENIED) {
                     State.PermissionDenied
                 } else {
@@ -243,6 +279,23 @@ class VoiceConversationViewModel(
 
     @Volatile
     private var lastSpeechAt: Long = 0L
+
+    /**
+     * [v1.1.2] Switch to the next available engine after the current one
+     * failed spuriously, then restart listening. Returns false when there is
+     * nothing to fall back to. Loop-safe: the failed engine already marked
+     * itself degraded, and we only ever move to a *different* engine.
+     */
+    private fun tryFallbackEngine(): Boolean {
+        val current = SpeechRecognitionManager.selectedEngineId.value
+        val next = SpeechRecognitionManager.availableEngines()
+            .firstOrNull { it.isAvailable && it.id != current }
+            ?: return false
+        Log.i("VoiceConversation", "falling back from engine $current to ${next.id}")
+        SpeechRecognitionManager.selectEngine(next.id)
+        startListening()
+        return true
+    }
 
     /**
      * 1.5 s silence fallback: the engines auto-finalize on silence, but the

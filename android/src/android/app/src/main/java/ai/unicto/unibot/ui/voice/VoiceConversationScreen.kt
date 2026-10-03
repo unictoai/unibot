@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.Settings as SystemSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -47,6 +48,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -85,6 +87,7 @@ import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.offload.OffloadPermissionManager
 import ai.unicto.unibot.speech.SherpaTtsEngine
+import ai.unicto.unibot.speech.WhisperModelManager
 import ai.unicto.unibot.speech.SpeechRecognitionManager
 import ai.unicto.unibot.status.KeepAwake
 import ai.unicto.unibot.ui.chat.ChatViewModel
@@ -142,6 +145,9 @@ fun VoiceConversationScreen(
         factory = VoiceConversationViewModel.factory(
             chatViewModel = chatViewModel,
             ensureMicPermission = { ensureVoiceMicPermission(context) },
+            // [v1.1.2] Lets the VM tell a bogus engine permission failure
+            // apart from a genuinely missing grant.
+            hasMicPermission = { isMicUsable(context) },
         ),
     )
 
@@ -407,11 +413,27 @@ fun VoiceConversationScreen(
                         Spacer(Modifier.height(12.dp))
                     }
 
+                    // [v1.1.2] No speech-to-text model on the phone: the real
+                    // recovery is downloading the offline model right here,
+                    // with live progress — not just an error string.
+                    if (convState is VoiceConversationViewModel.State.NoSttModel) {
+                        SttModelDownloadCard(
+                            onDownloaded = { vm.startConversation(sessionId) },
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+
                     // Download-voices prompt while no TTS voice is on the phone.
                     if (!ttsReady) {
                         MuseCard(inset = 0.dp) {
                             Row(
-                                modifier = Modifier.padding(16.dp),
+                                // [v1.1.2] fillMaxWidth: without it the weighted
+                                // Column measures its Text at intrinsic (unwrapped)
+                                // width on some densities and the body gets
+                                // clipped mid-sentence at the card edge.
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
@@ -542,6 +564,98 @@ private fun OnDeviceBadge() {
     }
 }
 
+/**
+ * [v1.1.2] The recovery card for [VoiceConversationViewModel.State.NoSttModel]:
+ * downloads the offline whisper model right here with live progress, then
+ * fires [onDownloaded] so the conversation starts immediately. Reuses
+ * [WhisperModelManager] — the same models the chat voice panel offers.
+ */
+@Composable
+private fun SttModelDownloadCard(onDownloaded: () -> Unit) {
+    val context = LocalContext.current
+    val model by WhisperModelManager.selectedModel.collectAsState()
+    val states by WhisperModelManager.downloadStates.collectAsState()
+
+    LaunchedEffect(Unit) { WhisperModelManager.loadSelection(context) }
+
+    val dlState = states[model.id] ?: WhisperModelManager.DownloadState.Idle
+    // The manager auto-selects on success; watch for Done to kick off.
+    LaunchedEffect(dlState) {
+        if (dlState is WhisperModelManager.DownloadState.Done) onDownloaded()
+    }
+
+    MuseCard(inset = 0.dp) {
+        Column(
+            Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.voice_panel_no_engine_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.voice_panel_no_engine_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(12.dp))
+            when (dlState) {
+                is WhisperModelManager.DownloadState.Downloading -> {
+                    val fraction = (dlState as WhisperModelManager.DownloadState.Downloading).fraction
+                    LinearProgressIndicator(
+                        progress = { fraction.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "${model.title} · ${model.sizeLabel} · ${(fraction * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(onClick = { WhisperModelManager.cancel() }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+                is WhisperModelManager.DownloadState.Failed -> {
+                    Text(
+                        text = (dlState as WhisperModelManager.DownloadState.Failed).message
+                            ?: stringResource(R.string.ub_voice_download_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    FilledTonalButton(onClick = { WhisperModelManager.download(context, model) }) {
+                        Text(stringResource(R.string.ub_voice_retry))
+                    }
+                }
+                else -> {
+                    FilledTonalButton(onClick = { WhisperModelManager.download(context, model) }) {
+                        Icon(
+                            Icons.Outlined.Download,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(
+                                R.string.ub_voice_download_model_action,
+                                model.title,
+                                model.sizeLabel,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun MicToggleButton(
     convState: VoiceConversationViewModel.State,
@@ -638,6 +752,22 @@ private fun VoiceOrb(
         label = "speak",
     )
 
+    // [v1.1.2] Smooth morph between states: the orb eases into each state's
+    // energy level instead of snapping when the conversation moves
+    // idle → listening → thinking → speaking → error.
+    val targetEnergy = when (convState) {
+        is VoiceConversationViewModel.State.Listening -> 1.12f
+        is VoiceConversationViewModel.State.Speaking -> 1.08f
+        is VoiceConversationViewModel.State.Thinking -> 1.04f
+        is VoiceConversationViewModel.State.Error -> 0.94f
+        else -> 1f
+    }
+    val energy by animateFloatAsState(
+        targetValue = if (animated) targetEnergy else 1f,
+        animationSpec = tween(600, easing = FastOutSlowInEasing),
+        label = "energy",
+    )
+
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
         val cy = size.height / 2f
@@ -688,7 +818,7 @@ private fun VoiceOrb(
         )
 
         // Core orb with a radial violet gradient.
-        val orbScale = breatheScale * when (convState) {
+        val orbScale = breatheScale * energy * when (convState) {
             is VoiceConversationViewModel.State.Listening -> 1f + audioLevel * 0.22f
             is VoiceConversationViewModel.State.Speaking -> if (animated) 1f + speakPulse * 0.07f else 1f
             else -> 1f
@@ -762,6 +892,29 @@ private fun VoiceOrb(
     }
 }
 
+/**
+ * [v1.1.2] True only when the mic is actually usable right now: the runtime
+ * permission is granted AND AppOps isn't blocking capture (e.g. the system
+ * mic privacy toggle in quick settings). Catches the "granted but still
+ * broken" case where the dialog said yes yet recording can't start.
+ */
+fun isMicUsable(context: Context): Boolean {
+    if (
+        ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) !=
+        PackageManager.PERMISSION_GRANTED
+    ) return false
+    return try {
+        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        appOps.checkOpNoThrow(
+            android.app.AppOpsManager.OPSTR_RECORD_AUDIO,
+            android.os.Process.myUid(),
+            context.packageName,
+        ) == android.app.AppOpsManager.MODE_ALLOWED
+    } catch (_: Exception) {
+        true // Can't ask AppOps — trust the runtime grant.
+    }
+}
+
 // ─── Mic permission ───────────────────────────────────────────────────────
 
 /**
@@ -804,7 +957,8 @@ private fun statusText(state: VoiceConversationViewModel.State): String = when (
     is VoiceConversationViewModel.State.Listening -> stringResource(R.string.ub_voice_listening)
     is VoiceConversationViewModel.State.Thinking -> stringResource(R.string.ub_voice_thinking)
     is VoiceConversationViewModel.State.Speaking -> stringResource(R.string.ub_voice_speaking)
-    // [v1.1.2] Denied card carries its own text; the orb just idles.
+    // [v1.1.2] Denied / no-model cards carry their own text; the orb just idles.
     is VoiceConversationViewModel.State.PermissionDenied -> stringResource(R.string.ub_voice_idle)
+    is VoiceConversationViewModel.State.NoSttModel -> stringResource(R.string.ub_voice_idle)
     is VoiceConversationViewModel.State.Error -> stringResource(R.string.ub_voice_retry)
 }

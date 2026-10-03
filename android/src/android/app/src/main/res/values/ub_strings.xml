@@ -1117,6 +1117,8 @@
     <string name="ub_voice_download_title">Download a voice to speak on-device</string>
     <string name="ub_voice_download_body">unibot’s voice lives on your phone — no cloud, no account. Download one to hear replies out loud.</string>
     <string name="ub_voice_download_action">Download voices</string>
+    <string name="ub_voice_download_failed">Download failed — check your connection and try again.</string>
+    <string name="ub_voice_download_model_action">Download %1$s (%2$s)</string>
     <string name="ub_voice_you_said">You said</string>
     <string name="ub_voice_unibot_said">unibot said</string>
     <string name="ub_voice_last_exchange">Last exchange</string>
