@@ -50,11 +50,9 @@ class VoiceConversationViewModel(
         data object Thinking : State
         data object Speaking : State
         data class Error(val message: String) : State
-        /**
-         * [v1.1.2] Mic permission denied (or "don't ask again"). The UI shows
-         * a graceful card with rationale + a Settings deep-link — never a raw
-         * "RECORD_AUDIO required" dead-end.
-         */
+        // [v1.1.2] Mic permission denied (or "don't ask again"). The UI shows
+        // a graceful card with rationale + a Settings deep-link — never a raw
+        // "RECORD_AUDIO required" dead-end.
         data object PermissionDenied : State
     }
 
@@ -192,10 +190,8 @@ class VoiceConversationViewModel(
         }
     }
 
-    /**
-     * [v1.1.2] Called when the system mic-permission dialog was denied
-     * (including "don't ask again"). Shows the graceful denied card.
-     */
+    // [v1.1.2] Called when the system mic-permission dialog was denied
+    // (including "don't ask again"). Shows the graceful denied card.
     fun onPermissionDenied() {
         _state.value = State.PermissionDenied
     }
