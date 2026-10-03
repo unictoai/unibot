@@ -1936,6 +1936,22 @@ fun AppNavigation(
         // own anchor line. Do not move or reuse another batch's anchor.
         // (Batch F already wired its own anchor near the on-device screens.)
         // [v12-anchor-B] Chat power screens (Batch B)
+        composable(Routes.CHAT_TEMPLATES) {
+            ai.unicto.unibot.ui.chat.ChatTemplatesScreen(
+                onBack = { navController.safePopBackStack() },
+                onTemplateChosen = { draftSessionId ->
+                    navController.safeNavigate(Routes.chat(draftSessionId))
+                },
+            )
+        }
+        composable(Routes.SCHEDULED_MESSAGES) {
+            ai.unicto.unibot.ui.chat.ScheduledMessagesScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenSession = { sessionId ->
+                    navController.safeNavigate(Routes.chat(sessionId))
+                },
+            )
+        }
         // [v12-anchor-D] Privacy screens (Batch D)
         // [v12-anchor-E] Voice screens (Batch E)
         // [v12-anchor-G] System screens (Batch G)

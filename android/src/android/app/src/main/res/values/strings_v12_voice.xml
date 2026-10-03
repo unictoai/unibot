@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch E (Voice): voice conversation history, STT auto-detect language. -->
+<resources>
+    <!-- Voice history -->
+    <string name="ub_voice_history_title">Voice history</string>
+    <string name="ub_voice_history_row_desc">Past voice conversations</string>
+    <string name="ub_voice_history_empty_title">No voice conversations yet</string>
+    <string name="ub_voice_history_empty_body">Conversations you have over voice are listed here, so you can pick them back up in chat.</string>
+    <string name="ub_voice_history_untitled">Untitled conversation</string>
+
+    <!-- Relative time for history rows -->
+    <string name="ub_voice_time_just_now">Just now</string>
+    <string name="ub_voice_time_min_ago">%1$d min ago</string>
+    <string name="ub_voice_time_hr_ago">%1$d hr ago</string>
+    <string name="ub_voice_time_yesterday">Yesterday</string>
+
+    <!-- STT auto-detect language (voice settings) -->
+    <string name="ub_voice_auto_detect">Auto-detect language</string>
+    <string name="ub_voice_auto_detect_desc">Detect the spoken language from your words and switch the recognizer automatically. The offline model is English-only.</string>
+</resources>
