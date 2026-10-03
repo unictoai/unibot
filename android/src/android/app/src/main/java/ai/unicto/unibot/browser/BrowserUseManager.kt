@@ -50,7 +50,7 @@ class BrowserUseManager(
 ) {
     companion object {
         private const val TAG = "BrowserUseManager"
-        private const val NAVIGATION_TIMEOUT_MS = 30_000L
+        private const val NAVIGATION_TIMEOUT_MS = 45_000L
         private const val SCREENSHOT_QUALITY = 80        // Explicit screenshot action (iOS: 0.8)
         private const val SNAPSHOT_QUALITY = 70          // Auto-snapshot after visual-change actions (iOS: 0.7)
         private const val DEFAULT_DOM_STABLE_TIMEOUT_MS = 5_000
