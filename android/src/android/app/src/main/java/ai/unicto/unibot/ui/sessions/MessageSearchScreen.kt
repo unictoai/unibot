@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.data.repository.MessageSearchMatch
-import ai.unicto.unibot.ui.muse.MuseTones
+import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 import kotlinx.coroutines.Job

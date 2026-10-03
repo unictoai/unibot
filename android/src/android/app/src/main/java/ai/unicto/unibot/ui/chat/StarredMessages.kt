@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ai.unicto.unibot.ui.muse.MuseTones
+import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 import kotlinx.serialization.Serializable
@@ -159,7 +159,7 @@ fun StarredMessagesScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Default.StarOutline,
+                    imageVector = StarOutline,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                     modifier = Modifier.size(48.dp),

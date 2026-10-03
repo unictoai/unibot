@@ -159,6 +159,9 @@ class SessionListViewModel(
     // The list to actually show: search results when searching, otherwise all sessions
     // [Wave 8] Archived sessions are filtered out unless showArchived is on.
     // [Wave 8] folderFilterId narrows the list to one folder (null = all).
+    // [Wave 8] uiPrefs declared here (before use) — SharedPreferences for
+    // archived ids, collapsed folders, etc.
+    private val uiPrefs = context.getSharedPreferences("session_list_ui", Context.MODE_PRIVATE)
     val showArchived = MutableStateFlow(false)
     val folderFilterId = MutableStateFlow<String?>(null)
     val archivedIds = MutableStateFlow<Set<String>>(
@@ -168,7 +171,13 @@ class SessionListViewModel(
     val displayedSessions: StateFlow<List<ChatSessionEntity>> = combine(
         _allSessions, searchResults, searchQuery, isSearchActive, archivedIds, showArchived,
         folderFilterId,
-    ) { all, results, q, active, archived, showArch, folderFilter ->
+    ) { all: List<ChatSessionEntity>,
+        results: List<ChatSessionEntity>,
+        q: String,
+        active: Boolean,
+        archived: Set<String>,
+        showArch: Boolean,
+        folderFilter: String? ->
         var base = if (active && q.isNotBlank()) results else all
         base = if (showArch) base.filter { it.id in archived } else base.filter { it.id !in archived }
         if (folderFilter != null) base = base.filter { it.folderId == folderFilter }
@@ -196,7 +205,6 @@ class SessionListViewModel(
      * exists to prevent. (getStringSet's return value must be copied, never
      * mutated in place.)
      */
-    private val uiPrefs = context.getSharedPreferences("session_list_ui", Context.MODE_PRIVATE)
     val collapsedFolderIds = MutableStateFlow<Set<String>>(
         uiPrefs.getStringSet("collapsedFolderIds", emptySet())?.toSet() ?: emptySet(),
     )

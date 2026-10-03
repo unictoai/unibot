@@ -538,7 +538,7 @@ internal fun UserMessageBubble(
                         onClick = { showMenu = false; onToggleStar() },
                         leadingIcon = {
                             Icon(
-                                if (isStarred) Icons.Filled.Star else Icons.Default.StarOutline,
+                                if (isStarred) Star else StarOutline,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
                             )

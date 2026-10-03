@@ -39,7 +39,7 @@ object ChatExport {
         return buildString {
             appendLine("# $title")
             appendLine()
-            appendLine("_Exported from unibot · $date_")
+            appendLine("_Exported from unibot · ${date}_")
             appendLine()
             for (m in messages) {
                 if (m.text.isBlank()) continue

@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,7 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.repository.ChatRepository
-import ai.unicto.unibot.ui.muse.MuseTones
+import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import kotlinx.coroutines.Dispatchers
@@ -258,9 +259,7 @@ private suspend fun computeStats(
 ): ChatStats {
     return try {
         // First emission of the sessions flow.
-        val sessionList = kotlinx.coroutines.flow.first(
-            chatRepository.observeSessions(),
-        )
+        val sessionList = chatRepository.observeSessions().first()
         var totalMessages = 0
         var totalWords = 0
         var userMessages = 0

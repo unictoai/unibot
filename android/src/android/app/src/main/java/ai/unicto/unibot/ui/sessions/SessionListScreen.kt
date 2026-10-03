@@ -660,6 +660,8 @@ fun SessionListScreen(
     val collapsedFolderIds by viewModel.collapsedFolderIds.collectAsState()
     val folderMemberCounts by viewModel.folderMemberCounts.collectAsState()
     val groupPickerRequest by viewModel.groupPickerRequest.collectAsState()
+    // [Wave 8] Folder filter chip selection.
+    val folderFilterId by viewModel.folderFilterId.collectAsState()
     // While searching, group cards are suppressed: padding a result set with
     // every non-matching group is noise, not structure.
     val showFolderBlock = !isSearchActive || searchQuery.isBlank()
@@ -1055,7 +1057,7 @@ fun SessionListScreen(
                         // [Wave 8] Folder filter chips — "All" + one per
                         // folder; tapping narrows the list to that folder.
                         // Only shown when folders exist.
-                        val folderFilterId by viewModel.folderFilterId.collectAsState()
+                        // (folderFilterId collected in the outer @Composable scope.)
                         if (folders.isNotEmpty()) {
                             item(key = "folder_filter_chips") {
                                 androidx.compose.foundation.lazy.LazyRow(
