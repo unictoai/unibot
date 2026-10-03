@@ -3035,8 +3035,20 @@ fun ChatScreen(
                             }
                         }
 
-                        // Right: "..." and its menu.
+                        // Right: voice + "..." and its menu.
                         Box(modifier = Modifier.padding(end = 4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // [v1.1.1] Dedicated voice-mode entry: the
+                                // composer mic long-press was undiscoverable.
+                                // Tapping opens the full-screen voice
+                                // conversation (mic rationale + voice-download
+                                // prompt live there on first entry).
+                                ai.unicto.unibot.ui.home.MuseRoundButton(
+                                    icon = Icons.Default.Mic,
+                                    contentDescription = stringResource(R.string.ub_voice_title),
+                                    onClick = { onOpenVoiceConversation() },
+                                    modifier = Modifier.padding(end = 4.dp),
+                                )
                                 // unibot: Muse's round "•••" when hosted in the home shell.
                                 if (ubHome != null) {
                                     ai.unicto.unibot.ui.home.MuseRoundButton(
@@ -3051,6 +3063,7 @@ fun ChatScreen(
                                     contentDescription = "More",
                                     onClick = { showChatMenu = true },
                                 )
+                            }
                                 UnibotMenu(
                                     expanded = showChatMenu,
                                     onDismissRequest = { showChatMenu = false },
@@ -3077,6 +3090,22 @@ fun ChatScreen(
                                         },
                                         leadingIcon = {
                                             Icon(Icons.Outlined.Forum, contentDescription = null)
+                                        },
+                                    )
+                                    // [v1.1.1] Voice conversation — discoverable
+                                    // entry next to New Chat (the composer mic
+                                    // long-press was missed by users). The
+                                    // voice screen itself shows the mic
+                                    // rationale and voice-download prompt on
+                                    // first entry.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ub_voice_title)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onOpenVoiceConversation()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Mic, contentDescription = null)
                                         },
                                     )
                                     // [P1-incognito] New incognito chat — a

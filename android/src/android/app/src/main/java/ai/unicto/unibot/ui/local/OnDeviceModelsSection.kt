@@ -239,12 +239,18 @@ fun OnDeviceModelsSection(onDone: () -> Unit = {}) {
                     }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // [v1.1.1] Column, not Row: the subtitle is long and used to
+                // greedily consume the full row width, starving the weighted
+                // title down to ~0dp so it wrapped one letter per line
+                // (vertical text). Stacked layout can never do that.
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
                     Text(
                         text = "✨ Auto (on-device)",
                         style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
                         color = accent,
-                        modifier = Modifier.weight(1f),
                     )
                     Text(
                         text = "Let unibot pick the best downloaded model per question",

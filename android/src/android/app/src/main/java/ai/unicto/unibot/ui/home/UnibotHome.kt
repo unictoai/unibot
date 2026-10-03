@@ -365,6 +365,13 @@ fun UnibotHome(
                                 navController.safeNavigate(Routes.FILE_PREVIEW)
                             },
                             onModelGroupsClick = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+                            // [v1.1.1] These were default no-ops: "Chat stats",
+                            // "Starred messages" and the voice-mode mic
+                            // long-press all silently did nothing on the home
+                            // chat. Wire them like ChatSplitScaffold does.
+                            onStarredClick = { navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES) },
+                            onStatsClick = { navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS) },
+                            onOpenVoiceConversation = { navController.safeNavigate(Routes.voiceConversation(sid)) },
                             ubHome = NmHomeChrome(isMainChat = isMainChat, onOpenDrawer = { openDrawer() }),
                         )
                     }
