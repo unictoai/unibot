@@ -218,6 +218,8 @@ object Routes {
     fun voiceConversation(sessionId: String) = "voice_conversation/$sessionId"
     /** [unibot-voice-conversation] voice conversation settings. */
     const val VOICE_SETTINGS = "voice_settings"
+    /** [unibot-voice-history] past voice conversations. */
+    const val VOICE_HISTORY = "voice_history"
     /** unibot P6: autofill from the on-device profile (opt-in). */
     const val AUTOFILL = "autofill"
     fun providerDetail(instanceId: String) = "provider/$instanceId"
@@ -239,6 +241,18 @@ object Routes {
     fun modelEntryDetail(instanceId: String, entryId: String) =
         "model_entry/${android.net.Uri.encode(instanceId)}/${android.net.Uri.encode(entryId)}"
     fun addCustomModel(instanceId: String) = "add_custom_model/$instanceId"
+    /** [v1.2 Batch F] On-device model speed benchmark. */
+    const val MODEL_BENCHMARK = "model_benchmark"
+    /** [v1.2 Batch F] Sampler settings (temperature, top-p, top-k, repeat penalty, max tokens). */
+    const val SAMPLER_SETTINGS = "sampler_settings"
+    /** [v1.2 Batch G] Storage usage breakdown. */
+    const val STORAGE_BREAKDOWN = "storage_breakdown"
+    /** [v1.2 Batch E] Voice conversation history. */
+    const val VOICE_HISTORY = "voice_history"
+    /** [v1.2 Batch B] Chat templates / prompt starters. */
+    const val CHAT_TEMPLATES = "chat_templates"
+    /** [v1.2 Batch B] Scheduled messages (send later). */
+    const val SCHEDULED_MESSAGES = "scheduled_messages"
 }
 
 /** Holder for file preview navigation state (not serializable via nav args). */
@@ -700,6 +714,19 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
             )
         }
+        // [v12-anchor-F] On-device AI screens (Batch F). (The v1.2 scaffold's
+        // anchor lines were dropped in the v1.2 merge; this re-creates Batch
+        // F's anchor exactly where its screens live.)
+        composable(Routes.MODEL_BENCHMARK) {
+            ai.unicto.unibot.ui.local.ModelBenchmarkScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+        composable(Routes.SAMPLER_SETTINGS) {
+            ai.unicto.unibot.ui.local.SamplerSettingsScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
         // unibot v0.5.0: "remember that …" fact memories (encrypted on-device).
         composable(ai.unicto.unibot.ui.settings.ROUTE_FACT_MEMORIES) {
             ai.unicto.unibot.ui.settings.FactMemoriesScreen(
@@ -1024,6 +1051,17 @@ fun AppNavigation(
             ai.unicto.unibot.ui.settings.VoiceConversationSettingsScreen(
                 onBack = { navController.safePopBackStack() },
                 onOpenReadAloudSettings = { navController.safeNavigate(Routes.READ_ALOUD) },
+            )
+        }
+
+        // [unibot-voice-history] v1.2 Batch E: past voice conversations.
+        composable(Routes.VOICE_HISTORY) {
+            ai.unicto.unibot.ui.voice.VoiceHistoryScreen(
+                chatRepository = chatRepository,
+                onBack = { navController.safePopBackStack() },
+                onOpenChat = { sessionId ->
+                    navController.safeNavigate(Routes.chat(sessionId))
+                },
             )
         }
 
@@ -1894,5 +1932,12 @@ fun AppNavigation(
                 },
             )
         }
+        // v1.2 anchors — each batch appends its composable() blocks AFTER its
+        // own anchor line. Do not move or reuse another batch's anchor.
+        // (Batch F already wired its own anchor near the on-device screens.)
+        // [v12-anchor-B] Chat power screens (Batch B)
+        // [v12-anchor-D] Privacy screens (Batch D)
+        // [v12-anchor-E] Voice screens (Batch E)
+        // [v12-anchor-G] System screens (Batch G)
     }
 }

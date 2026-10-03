@@ -101,6 +101,16 @@
          doesn't unblock the call — the permission does. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
+    <!-- v1.2: Health Connect connector — granular health permissions.
+         Requested at runtime via HealthConnectClient permission flow;
+         declared here so the permission controller can grant them. -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+
     <!-- [T-android-privileged-backend] AXManager only pushes its binder to
          apps whose requestedPermissions list contains one of three sentinels
          (see AxManager BinderSender#sendBinder). Without one of these
@@ -546,6 +556,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/tasks_widget_info" />
+        </receiver>
+
+        <!-- v1.2 Batch H: recent-chats medium widget. -->
+        <receiver
+            android:name=".widget.RecentChatsWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ai.unicto.unibot.SESSIONS_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/recent_chats_widget_info" />
         </receiver>
 
         <!-- v0.2.0 P3: the Tasker / Automate / MacroDroid intent API —
