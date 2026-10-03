@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,7 +36,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.data.repository.MessageSearchMatch
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
@@ -123,7 +124,7 @@ fun MessageSearchScreen(
             ai.unicto.unibot.ui.muse.MuseTopAppBar(
                 title = { Text("Search messages") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { haptics.tap(); onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -155,6 +156,7 @@ fun MessageSearchScreen(
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = {
+                            haptics.tap()
                             query = ""
                             runSearch("")
                         }) {
@@ -170,23 +172,14 @@ fun MessageSearchScreen(
             )
             Spacer(Modifier.size(12.dp))
             if (searched && results.isEmpty() && !searching) {
-                Column(
+                // [v1.0-wave9a] Shared branded empty state. The pre-search
+                // (not-yet-searched) state stays the plain empty list as-is.
+                EmptyState(
+                    icon = Icons.Outlined.Search,
+                    title = "No results",
+                    hint = "Try different keywords — search looks through all your chats.",
                     modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        text = "No messages match",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = "Try different words — search looks inside message text.",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                )
             } else {
                 // Group by chat, newest chat first.
                 val grouped = results.groupBy { it.sessionId }

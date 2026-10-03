@@ -2,6 +2,7 @@ package ai.unicto.unibot.ui.settings
 
 import ai.unicto.unibot.local.FactMemory
 import ai.unicto.unibot.local.FactMemoryStore
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
@@ -70,7 +71,7 @@ fun FactMemoriesScreen(onBack: () -> Unit) {
             ai.unicto.unibot.ui.muse.MuseTopAppBar(
                 title = { Text("Saved memories") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { haptics.tap(); onBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -81,33 +82,17 @@ fun FactMemoriesScreen(onBack: () -> Unit) {
         },
     ) { padding ->
         if (facts.isEmpty()) {
-            Column(
+            // [v1.0-wave9a] Shared branded empty state replaces the
+            // hand-rolled icon+text column.
+            EmptyState(
+                icon = Icons.Default.Psychology,
+                title = "Nothing memorized yet",
+                hint = "In any chat, say \"remember that …\" and I'll keep it here — encrypted, only on this phone.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Psychology,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(48.dp),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Nothing memorized yet",
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "In any chat, say \"remember that …\" and I'll keep it here — encrypted, only on this phone.",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -150,7 +135,8 @@ fun FactMemoriesScreen(onBack: () -> Unit) {
                         Spacer(Modifier.width(8.dp))
                         IconButton(
                             onClick = {
-                                haptics.tap()
+                                // Destructive: "Forget" removes the fact permanently.
+                                haptics.error()
                                 if (store.delete(fact.id)) {
                                     facts = store.getAll()
                                 }

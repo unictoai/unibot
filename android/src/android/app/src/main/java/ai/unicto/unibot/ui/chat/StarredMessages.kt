@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.ui.home.MuseTones
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 import kotlinx.serialization.Serializable
@@ -142,7 +143,7 @@ fun StarredMessagesScreen(
             ai.unicto.unibot.ui.muse.MuseTopAppBar(
                 title = { Text("Starred messages") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { haptics.tap(); onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -150,34 +151,17 @@ fun StarredMessagesScreen(
         },
     ) { padding ->
         if (stars.isEmpty()) {
-            Column(
+            // [v1.0-wave9a] Shared branded empty state replaces the
+            // hand-rolled icon+text column.
+            EmptyState(
+                icon = Icons.Filled.StarOutline,
+                title = "No starred messages",
+                hint = "Long-press any message in a chat and tap Star to pin it here.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.StarOutline,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(48.dp),
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "No starred messages",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "Long-press any message in a chat and tap Star to pin it here.",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -229,7 +213,8 @@ fun StarredMessagesScreen(
                         }
                         IconButton(
                             onClick = {
-                                haptics.tap()
+                                // Destructive: removing a star permanently deletes the bookmark.
+                                haptics.error()
                                 store.remove(star.messageId)
                                 stars = store.getAll()
                             },

@@ -56,9 +56,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.settings.SettingsSwitch
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
+import ai.unicto.unibot.ui.util.rememberHaptic
 import ai.unicto.unibot.R
 import ai.unicto.unibot.scheduled.ScheduledRepeatMode
 import ai.unicto.unibot.scheduled.ScheduledTask
@@ -88,6 +90,7 @@ fun ScheduledTasksScreen(
     )
     val tasks by vm.tasks.collectAsState()
     var pendingDelete by remember { mutableStateOf<ScheduledTask?>(null) }
+    val haptics = rememberHaptic()
 
     Scaffold(
         topBar = {
@@ -100,7 +103,7 @@ fun ScheduledTasksScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { haptics.tap(); onBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),
@@ -110,13 +113,28 @@ fun ScheduledTasksScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { onEditTask(null) }, shape = CircleShape) {
+            FloatingActionButton(
+                onClick = { haptics.tap(); onEditTask(null) },
+                shape = CircleShape,
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.scheduled_task_new))
             }
         },
     ) { padding ->
         if (tasks.isEmpty()) {
-            EmptyState(padding)
+            // [v1.0-wave9a] Shared branded empty state (glow medallion +
+            // shimmer); CTA opens the same add-task editor as the FAB.
+            EmptyState(
+                icon = Icons.Outlined.Schedule,
+                title = stringResource(R.string.scheduled_tasks_empty),
+                hint = "Tasks you schedule will run on their own — briefings, reminders, routines.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(32.dp),
+                ctaLabel = stringResource(R.string.scheduled_task_new),
+                onCta = { onEditTask(null) },
+            )
             return@Scaffold
         }
         LazyColumn(
@@ -155,11 +173,11 @@ fun ScheduledTasksScreen(
                 ) {
                     ScheduledTaskRow(
                         task = task,
-                        onClick = { onEditTask(task.id) },
-                        onToggle = { vm.setEnabled(task.id, it) },
+                        onClick = { haptics.tap(); onEditTask(task.id) },
+                        onToggle = { haptics.toggle(); vm.setEnabled(task.id, it) },
                         onEdit = { onEditTask(task.id) },
                         onViewRuns = { onViewRuns(task.id) },
-                        onDelete = { pendingDelete = task },
+                        onDelete = { haptics.error(); pendingDelete = task },
                     )
                 }
                 if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
@@ -180,6 +198,7 @@ fun ScheduledTasksScreen(
             text = { Text(stringResource(R.string.scheduled_task_delete_body, toDelete.label)) },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = {
+                    haptics.error()
                     vm.delete(toDelete.id)
                     pendingDelete = null
                 }) {
@@ -192,32 +211,6 @@ fun ScheduledTasksScreen(
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun EmptyState(padding: PaddingValues) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .padding(32.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Outlined.Schedule,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.scheduled_tasks_empty),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-        }
     }
 }
 
