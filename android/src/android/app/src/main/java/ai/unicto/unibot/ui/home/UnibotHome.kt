@@ -87,6 +87,8 @@ import ai.unicto.unibot.ui.ideas.IdeasTab
 import ai.unicto.unibot.ui.library.LibraryTab
 import ai.unicto.unibot.ui.onboarding.FirstRunSetup
 import ai.unicto.unibot.ui.onboarding.FirstRunSetupScreen
+import ai.unicto.unibot.ui.onboarding.OnboardingTour
+import ai.unicto.unibot.ui.onboarding.OnboardingTourScreen
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -468,16 +470,45 @@ fun UnibotHome(
     ) { current ->
         when (current) {
             HomePhase.LOADING -> ColdStartBrand()
-            HomePhase.SETUP -> FirstRunSetupScreen(
-                agentName = agentName,
-                signedIn = signedIn == true,
-                hasGroups = hasGroups,
-                onSignIn = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
-                onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
-                onSelectModels = { navController.safeNavigate(Routes.ONBOARDING_MODELS) },
-                onStart = { FirstRunSetup.markDone(context); setupDone = true },
-                onSettings = { navController.safeNavigate(Routes.SETTINGS) },
-            )
+            HomePhase.SETUP -> {
+                // v1.1.2 onboarding tour: a 60-second guided first run, shown only on a fresh
+                // install and only once (flagged on completion or skip). It wraps the setup
+                // below — the provider key and on-device model screens are the existing ones,
+                // reached by navigation; when the tour ends the old flow resumes past its own
+                // welcome page (source marked chosen) at models/hands/meet.
+                var tourDismissed by remember { mutableStateOf(false) }
+                val tourShow = remember(tourDismissed, hasProviders, sessions, setupDone) {
+                    !tourDismissed && sessions != null &&
+                        OnboardingTour.shouldShow(context, hasProviders, sessions!!.isNotEmpty(), setupDone)
+                }
+                if (tourShow) {
+                    OnboardingTourScreen(
+                        onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+                        onOffline = { navController.safeNavigate(ai.unicto.unibot.ui.local.ROUTE_ON_DEVICE_MODELS) },
+                        onSendPrompt = { text ->
+                            FirstRunSetup.markSourceChosen(context)
+                            pendingPrefill = text // fires once the main chat's ViewModel exists
+                            OnboardingTour.markSeen(context)
+                            tourDismissed = true
+                        },
+                        onSkip = { OnboardingTour.markSeen(context); tourDismissed = true },
+                        onFinish = {
+                            FirstRunSetup.markSourceChosen(context)
+                            OnboardingTour.markSeen(context)
+                            tourDismissed = true
+                        },
+                    )
+                } else FirstRunSetupScreen(
+                    agentName = agentName,
+                    signedIn = signedIn == true,
+                    hasGroups = hasGroups,
+                    onSignIn = { navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
+                    onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+                    onSelectModels = { navController.safeNavigate(Routes.ONBOARDING_MODELS) },
+                    onStart = { FirstRunSetup.markDone(context); setupDone = true },
+                    onSettings = { navController.safeNavigate(Routes.SETTINGS) },
+                )
+            }
             HomePhase.HOME -> homeShell()
         }
     }

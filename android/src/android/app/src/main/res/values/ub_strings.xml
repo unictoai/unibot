@@ -586,6 +586,30 @@
     <string name="ub_welcome_skip">Skip for now</string>
     <string name="ub_welcome_hands_fine_print">Everything else works without these. They live under Settings → Hands whenever you want them.</string>
     <string name="ub_welcome_meet_fine_print">Before anything it cannot take back — deleting, sending, paying — it stops and asks you first.</string>
+
+    <!-- v1.1.2: the 60-second guided first run (fresh installs only) -->
+    <string name="ub_tour_skip">Skip</string>
+    <string name="ub_tour_get_started">Get started</string>
+    <string name="ub_tour_continue">Continue</string>
+    <string name="ub_tour_title">Meet unibot</string>
+    <string name="ub_tour_pitch">Your private AI agent — your phone, your rules.</string>
+    <string name="ub_tour_choice_title">How should unibot think?</string>
+    <string name="ub_tour_choice_sub">Pick one to start — you can change it any time in Settings.</string>
+    <string name="ub_tour_key_title">Paste API key</string>
+    <string name="ub_tour_key_body">Smarter cloud models with your own provider key.</string>
+    <string name="ub_tour_offline_title">Try offline</string>
+    <string name="ub_tour_offline_body">Private on-device models — smaller, works without internet.</string>
+    <string name="ub_tour_chat_title">Say your first hello</string>
+    <string name="ub_tour_chat_sub">A fresh chat is waiting. Tap the chip and I will take it from there.</string>
+    <string name="ub_tour_chat_chip">Say hello 👋</string>
+    <string name="ub_tour_chat_button">Open chat</string>
+    <string name="ub_tour_done_title">You are set!</string>
+    <string name="ub_tour_done_sub">unibot is yours now. Three things worth knowing:</string>
+    <string name="ub_tour_tip_voice">Talk hands-free — tap the mic in any chat for voice mode.</string>
+    <string name="ub_tour_tip_connectors">Connect your apps — 31 connectors wait in Settings.</string>
+    <string name="ub_tour_tip_private">Private by design — your keys and chats never leave this phone.</string>
+    <string name="ub_tour_start_chatting">Start chatting</string>
+
     <string name="ub_cloud_title">unibot Cloud</string>
     <string name="ub_cloud_signin_title">Sign in to a relay</string>
     <string name="ub_cloud_signin_subtitle">unibot runs no sign-in service of its own. If you run your own relay (docs/cloud.md), enter its URL below — then a code to your phone or inbox, or your relay password.</string>
