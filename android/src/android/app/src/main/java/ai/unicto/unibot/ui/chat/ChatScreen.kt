@@ -16,8 +16,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -135,6 +137,7 @@ import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.Terminal
@@ -948,6 +951,8 @@ fun ChatScreen(
     // AIChatView.showThinkingLevelSheet.
     var showThinkingLevelSheet by remember { mutableStateOf(false) }
     var showAttachMenu by remember { mutableStateOf(false) }
+    // DeepSeek-style: + toggles the Camera/Photo/Document tiles under the pill.
+    var showAttachTiles by remember { mutableStateOf(false) }
     var showChatMenu by remember { mutableStateOf(false) }
     var showSkillsSheet by remember { mutableStateOf(false) }
     // [T-mcp-integration-android] MCPs-in-Session sheet visibility.
@@ -6639,10 +6644,29 @@ fun ChatScreen(
                                 )
                             }
                         }
-                    } else if (!ubPill) ubTextField(Modifier.fillMaxWidth())
+                    } else {
+                        // DeepSeek-style pill: the field owns a full-width row;
+                        // the row below is the Think/Search + actions control row.
+                        ubTextField(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = if (ubPill) 12.dp else 0.dp),
+                        )
+                    }
+
+                    // DeepSeek-style pill state for the control row.
+                    val thinkingLevelState by viewModel.thinkingLevel.collectAsState()
+                    val thinkingSupported = viewModel.currentModelSupportsReasoning
+                    val thinkingOn = thinkingLevelState.isEnabled && thinkingSupported
+                    var webSearchOn by remember {
+                        mutableStateOf(
+                            ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
+                        )
+                    }
 
                     // Button row below text field (iOS layout: + / ... mic send)
-                    // unibot: in the pill this is THE row — "+", the field, mic/send.
+                    // unibot pill: DeepSeek-style control row — Think / Search
+                    // pills on the left, attach toggle + mic/send on the right.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -6650,132 +6674,153 @@ fun ChatScreen(
                             // mic/send icon-button column up with the
                             // attachment row + textfield + Move-to popup.
                             .padding(
-                                horizontal = if (ubPill) 6.dp else 12.dp,
-                                vertical = if (ubPill) 4.dp else 10.dp,
+                                horizontal = if (ubPill) 8.dp else 12.dp,
+                                vertical = if (ubPill) 6.dp else 10.dp,
                             ),
-                        verticalAlignment = if (ubPill) Alignment.Bottom else Alignment.CenterVertically,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Left: + button (iOS: 34×34 circle, secondary bg)
-                        Box {
+                        if (ubPill) {
+                            // DeepSeek-style control row: Think / Search pills,
+                            // then the attach toggle. Mic/send stay on the right.
+                            if (thinkingSupported) {
+                                ComposerModePill(
+                                    text = stringResource(R.string.ub_composer_think),
+                                    icon = Icons.Default.Psychology,
+                                    active = thinkingOn,
+                                    onClick = {
+                                        val newLevel = if (thinkingOn) ThinkingLevel.OFF else ThinkingLevel.MEDIUM
+                                        viewModel.setThinkingLevel(newLevel)
+                                    },
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            ComposerModePill(
+                                text = stringResource(R.string.ub_composer_search),
+                                icon = Icons.Default.Public,
+                                active = webSearchOn,
+                                onClick = {
+                                    webSearchOn = !webSearchOn
+                                    ai.unicto.unibot.local.LocalCapabilities.setWebSearchEnabled(context, webSearchOn)
+                                },
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            // Attach toggle: DeepSeek-style Camera / Photo /
+                            // Document tiles under the pill.
                             InputCircleButton(
-                                onClick = { showAttachMenu = true },
-                                plain = ubPill, // unibot: a bare glyph inside the pill
+                                onClick = { showAttachTiles = !showAttachTiles },
+                                plain = true, // unibot: a bare glyph inside the pill
                             ) {
                                 Icon(
-                                    Icons.Default.Add,
+                                    if (showAttachTiles) Icons.Default.Close else Icons.Default.Add,
                                     contentDescription = "Attach",
-                                    tint = if (ubPill) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(if (ubPill) 24.dp else 20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp),
                                 )
                             }
-                            UnibotMenu(
-                                expanded = showAttachMenu,
-                                onDismissRequest = { showAttachMenu = false },
-                            ) {
-                                // unibot: the "/" button has no seat in the pill,
-                                // so the slash commands open from here (typing "/"
-                                // still opens them inline).
-                                if (ubPill) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            // Left: + button (iOS: 34×34 circle, secondary bg)
+                            Box {
+                                InputCircleButton(
+                                    onClick = { showAttachMenu = true },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Attach",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                                UnibotMenu(
+                                    expanded = showAttachMenu,
+                                    onDismissRequest = { showAttachMenu = false },
+                                ) {
+                                    // iOS parity: Take Photo / Choose Photos & Videos / Add File
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.ub_attach_commands)) },
-                                        leadingIcon = { Icon(Icons.Default.Terminal, contentDescription = null) },
+                                        text = { Text(stringResource(R.string.chat_attach_take_photo)) },
+                                        leadingIcon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
                                         onClick = {
                                             showAttachMenu = false
-                                            viewModel.setInputText(viewModel.showSlashMenuOverInput(inputText))
-                                            try { inputFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
+                                            val granted = ContextCompat.checkSelfPermission(
+                                                context,
+                                                android.Manifest.permission.CAMERA,
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (granted) {
+                                                launchCamera()
+                                            } else {
+                                                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                            }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_attach_choose_photos_videos)) },
+                                        leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
+                                        onClick = {
+                                            showAttachMenu = false
+                                            mediaPickerLauncher.launch(
+                                                androidx.activity.result.PickVisualMediaRequest(
+                                                    ActivityResultContracts.PickVisualMedia.ImageAndVideo,
+                                                ),
+                                            )
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chat_attach_add_file)) },
+                                        leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
+                                        onClick = {
+                                            showAttachMenu = false
+                                            // OpenMultipleDocuments takes a mime-
+                                            // type array; "*/*" stays the wildcard.
+                                            filePickerLauncher.launch(arrayOf("*/*"))
                                         },
                                     )
                                 }
-                                // iOS parity: Take Photo / Choose Photos & Videos / Add File
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.chat_attach_take_photo)) },
-                                    leadingIcon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
-                                    onClick = {
-                                        showAttachMenu = false
-                                        val granted = ContextCompat.checkSelfPermission(
-                                            context,
-                                            android.Manifest.permission.CAMERA,
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                        if (granted) {
-                                            launchCamera()
-                                        } else {
-                                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                                        }
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.chat_attach_choose_photos_videos)) },
-                                    leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
-                                    onClick = {
-                                        showAttachMenu = false
-                                        mediaPickerLauncher.launch(
-                                            androidx.activity.result.PickVisualMediaRequest(
-                                                ActivityResultContracts.PickVisualMedia.ImageAndVideo,
-                                            ),
-                                        )
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.chat_attach_add_file)) },
-                                    leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
-                                    onClick = {
-                                        showAttachMenu = false
-                                        // OpenMultipleDocuments takes a mime-
-                                        // type array; "*/*" stays the wildcard.
-                                        filePickerLauncher.launch(arrayOf("*/*"))
-                                    },
-                                )
                             }
-                        }
-
-                        if (ubPill) {
-                            ubTextField(Modifier.weight(1f)) // unibot: the field between the buttons
-                        } else {
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Left: "/" slash command button (iOS: italic /, bold)
-                        InputCircleButton(onClick = {
-                            if (viewModel.showSlashMenu.value) {
-                                viewModel.setInputText(viewModel.dismissSlashMenu(inputText))
-                            } else {
-                                viewModel.setInputText(viewModel.showSlashMenuOverInput(inputText))
-                            }
-                        }) {
-                            Text(
-                                "/",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontStyle = FontStyle.Italic,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        // T187: Exit Edit Mode pill, only while editingMessageId
-                        // is non-null. Tap clears the edit flag + composer text
-                        // without truncating history. iOS parity:
-                        // AIChatView.swift L1586 editExitButton.
-                        // (unibot: editingId is read once, above the text field.)
-                        if (editingId != null) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = ChatColors.inputBg,
-                                modifier = Modifier.clickable {
-                                    viewModel.cancelEdit()
-                                    viewModel.setInputText("")
-                                },
-                            ) {
+
+                            // Left: "/" slash command button (iOS: italic /, bold)
+                            InputCircleButton(onClick = {
+                                if (viewModel.showSlashMenu.value) {
+                                    viewModel.setInputText(viewModel.dismissSlashMenu(inputText))
+                                } else {
+                                    viewModel.setInputText(viewModel.showSlashMenuOverInput(inputText))
+                                }
+                            }) {
                                 Text(
-                                    text = stringResource(R.string.chat_edit_exit_button),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = ChatColors.secondaryText,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    "/",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontStyle = FontStyle.Italic,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                        }
 
-                        Spacer(modifier = Modifier.weight(1f))
-                        } // unibot: end of the two-row layout's left group
+                            // T187: Exit Edit Mode pill, only while editingMessageId
+                            // is non-null. Tap clears the edit flag + composer text
+                            // without truncating history. iOS parity:
+                            // AIChatView.swift L1586 editExitButton.
+                            // (unibot: editingId is read once, above the text field.)
+                            if (editingId != null) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = ChatColors.inputBg,
+                                    modifier = Modifier.clickable {
+                                        viewModel.cancelEdit()
+                                        viewModel.setInputText("")
+                                    },
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.chat_edit_exit_button),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = ChatColors.secondaryText,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+                        } // unibot: end of the control row's left group
 
                         // Right: Mic button — only renders when a speech engine
                         // is actually available on this device (handles the
@@ -7254,6 +7299,60 @@ fun ChatScreen(
                             )
                         }
                         } // unibot: send/stop
+                    }
+                }
+                // DeepSeek-style attachment tiles under the pill —
+                // Camera / Photo / Document, toggled by the + button.
+                AnimatedVisibility(
+                    visible = ubPill && showAttachTiles,
+                    enter = expandVertically(),
+                    exit = shrinkVertically(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        AttachTile(
+                            label = stringResource(R.string.ub_attach_camera),
+                            icon = Icons.Default.CameraAlt,
+                            onClick = {
+                                showAttachTiles = false
+                                val granted = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.CAMERA,
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (granted) {
+                                    launchCamera()
+                                } else {
+                                    cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                        AttachTile(
+                            label = stringResource(R.string.ub_attach_photo),
+                            icon = Icons.Default.PhotoLibrary,
+                            onClick = {
+                                showAttachTiles = false
+                                mediaPickerLauncher.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageAndVideo,
+                                    ),
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                        AttachTile(
+                            label = stringResource(R.string.ub_attach_document),
+                            icon = Icons.Default.Description,
+                            onClick = {
+                                showAttachTiles = false
+                                filePickerLauncher.launch(arrayOf("*/*"))
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
             }

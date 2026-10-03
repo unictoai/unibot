@@ -354,7 +354,12 @@
     <string name="ub_appearance_header_model_footer">Muse shows only the name. Turn this on to see the model group and provider · model under it; tap them to switch. Off, the model is under ••• → Model and in Settings.</string>
     <string name="ub_chat_menu_model">Model</string>
     <string name="ub_attach_commands">Commands</string>
-    <string name="ub_composer_placeholder">Message</string>
+    <string name="ub_composer_placeholder">Type a message or hold to speak</string>
+    <string name="ub_composer_think">Think</string>
+    <string name="ub_composer_search">Search</string>
+    <string name="ub_attach_camera">Camera</string>
+    <string name="ub_attach_photo">Photo</string>
+    <string name="ub_attach_document">Document</string>
 
     <!-- 0.1.9 · Portrait -->
     <string name="ub_appearance_section_avatar_size">Avatar size</string>
