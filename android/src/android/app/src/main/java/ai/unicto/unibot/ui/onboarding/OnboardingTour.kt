@@ -83,7 +83,9 @@ import ai.unicto.unibot.ui.theme.staggeredEntrance
  *
  * Shown once, ever: a persistent flag is set on completion or skip, and the tour
  * only ever qualifies on a fresh install (install time ≈ update time), so users
- * upgrading from an earlier version never see it.
+ * upgrading from an earlier version never see it. Finishing the tour also marks
+ * the legacy setup's source step chosen, so [FirstRunSetupScreen] resumes at
+ * models/hands/meet instead of showing its own welcome page again.
  */
 object OnboardingTour {
     private const val PREFS = "unibot"
