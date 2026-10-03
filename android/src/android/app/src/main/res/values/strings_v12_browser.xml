@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2 Batch A (browser power-ups): user-facing strings for tabs polish,
+     bookmarks, reading mode, find-in-page, ad blocking, desktop/mobile
+     toggle, pull-to-refresh, Ask unibot, and history search. -->
+<resources>
+    <!-- Overflow menu -->
+    <string name="browser_menu_more">More options</string>
+    <string name="browser_menu_bookmarks">Bookmarks</string>
+
+    <!-- Bookmarks -->
+    <string name="browser_bookmarks_title">Bookmarks</string>
+    <string name="browser_bookmark_toggle">Bookmark this page</string>
+    <string name="browser_bookmark_remove">Remove bookmark</string>
+    <string name="browser_bookmark_save_title">Save bookmark</string>
+    <string name="browser_bookmark_save">Save</string>
+    <string name="browser_bookmarks_empty">No bookmarks yet</string>
+    <string name="browser_bookmarks_empty_hint">Tap the star in the address bar to save a page here.</string>
+    <string name="browser_bookmarks_all">All</string>
+    <string name="browser_bookmarks_new_folder">New folder</string>
+    <string name="browser_bookmarks_folder_name">Folder name</string>
+    <string name="browser_bookmarks_rename_folder">Rename folder</string>
+    <string name="browser_bookmarks_delete_folder">Delete folder</string>
+    <string name="browser_bookmarks_delete_folder_confirm">Delete “%1$s”? Its bookmarks move back to All.</string>
+    <string name="browser_bookmarks_delete">Delete</string>
+    <string name="browser_bookmarks_rename">Rename</string>
+    <string name="browser_bookmarks_remove">Remove</string>
+    <string name="browser_bookmarks_done">Done</string>
+    <string name="browser_bookmarks_move_to">Move to…</string>
+    <string name="browser_bookmarks_no_folder">No folder</string>
+    <string name="browser_bookmarks_open">Open</string>
+
+    <!-- Reading mode -->
+    <string name="browser_reading_mode">Reading mode</string>
+    <string name="browser_reading_mode_loading">Preparing reading view…</string>
+    <string name="browser_reading_mode_empty">Couldn’t find an article on this page.</string>
+    <string name="browser_reading_mode_close">Close reading view</string>
+
+    <!-- Find in page -->
+    <string name="browser_find_in_page">Find in page</string>
+    <string name="browser_find_hint">Find in page</string>
+    <string name="browser_find_close">Close find</string>
+    <string name="browser_find_next">Next match</string>
+    <string name="browser_find_prev">Previous match</string>
+
+    <!-- Ad / tracker blocking -->
+    <string name="browser_settings_adblock_title">Block ads &amp; trackers</string>
+    <string name="browser_settings_adblock_desc">Stops known ad and tracker hosts from loading. The list lives in the app — nothing is downloaded, and the choice stays on this device.</string>
+
+    <!-- Desktop / mobile site toggle -->
+    <string name="browser_desktop_site">Desktop site</string>
+    <string name="browser_mobile_site">Mobile site</string>
+
+    <!-- Pull to refresh -->
+    <string name="browser_pull_to_refresh_hint">Release to refresh</string>
+
+    <!-- Ask unibot about this page -->
+    <string name="browser_ask_unibot">Ask unibot about this page</string>
+    <string name="browser_ask_unibot_reading">Reading page…</string>
+</resources>
