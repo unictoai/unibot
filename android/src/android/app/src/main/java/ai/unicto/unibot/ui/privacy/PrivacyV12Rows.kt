@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.privacy
 import android.widget.Toast
 import ai.unicto.unibot.R
 import ai.unicto.unibot.guard.AppLock
+import ai.unicto.unibot.share.ExportPasswordStore
 import ai.unicto.unibot.ui.muse.MuseRow
 import ai.unicto.unibot.ui.util.rememberHaptic
 import androidx.compose.foundation.layout.Column

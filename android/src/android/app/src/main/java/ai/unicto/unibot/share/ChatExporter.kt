@@ -72,6 +72,8 @@ object ChatExporter {
         val imageAttachments: Int,
         val videoAttachments: Int,
         val estimatedBytes: Long,
+        // [v12-D] True when the zip was written with WinZip AES-256.
+        val passwordProtected: Boolean = false,
     )
 
     private val _progress = MutableStateFlow<Progress>(Progress.Idle)

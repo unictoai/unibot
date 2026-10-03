@@ -785,6 +785,14 @@ private fun ColumnScope.OAuthConfigSection(
         ProviderType.xAI -> "Sign in with xAI"
         ProviderType.kimiCode -> "Sign in with Kimi Code"
         ProviderType.openAIResponses -> "Sign in with OpenAI"
+        // [v1.2-free-tier] API-key only; label unused but when must be exhaustive.
+        ProviderType.groq,
+        ProviderType.cerebras,
+        ProviderType.mistral,
+        ProviderType.githubModels,
+        ProviderType.sambaNova,
+        ProviderType.nvidiaNim,
+        ProviderType.deepSeek -> "Continue with API key"
         ProviderType.antigravity,
         ProviderType.unsupported -> "Sign in"
     }
