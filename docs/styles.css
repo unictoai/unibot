@@ -256,3 +256,12 @@ footer p { color: var(--muted); font-size: 14px; margin-top: 12px; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .btn:hover, .card:hover, .tile:hover, .why-card:hover { transform: none; }
 }
+
+/* Real connector logos (Simple Icons, white on brand-tinted tile) */
+.tile img.tlogo { width: 42px; height: 42px; border-radius: 13px; padding: 9px; box-sizing: border-box; }
+.tile.c1 img.tlogo { background: rgba(234,67,53,.16); }
+.tile.c2 img.tlogo { background: rgba(66,133,244,.16); }
+.tile.c3 img.tlogo { background: rgba(251,188,4,.14); }
+.tile.c4 img.tlogo { background: rgba(52,168,83,.15); }
+.tile.c5 img.tlogo { background: rgba(167,139,250,.15); }
+.tile.c6 img.tlogo { background: rgba(236,72,153,.14); }
