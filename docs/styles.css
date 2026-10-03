@@ -208,7 +208,7 @@ section { scroll-margin-top: 76px; }
 .phones.one { grid-template-columns: 1fr; max-width: 340px; margin-left: auto; margin-right: auto; }
 .phone.shot.wide { max-width: 340px; }
 .logo { display: inline-flex; align-items: center; gap: 10px; }
-.logo-img { width: 32px; height: 32px; border-radius: 8px; }
+.logo-img { width: 42px; height: 42px; border-radius: 10px; }
 /* Real device screenshots inside the phone frame — the shot already includes
    the phone status bar, so no CSS notch is drawn over it. */
 .realshot { display: block; width: 100%; height: auto; border-radius: 28px; }
