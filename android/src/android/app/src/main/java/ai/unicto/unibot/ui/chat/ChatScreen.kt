@@ -4492,11 +4492,16 @@ fun ChatScreen(
                                     }
                                 },
                                 // [Wave 8] Star / unstar via the long-press menu.
+                                // isStarredState refreshes on each composition
+                                // so the menu label is correct after toggling.
+                                var isStarredState by remember(item.message.id) {
+                                    mutableStateOf(StarredMessageStore(context).isStarred(item.message.id))
+                                }
                                 onToggleStar = {
                                     val store = StarredMessageStore(context)
                                     val msg = item.message
                                     val title = viewModel.sessionTitle.value.ifBlank { "Chat" }
-                                    store.toggle(
+                                    isStarredState = store.toggle(
                                         StarredMessage(
                                             messageId = msg.id,
                                             sessionId = sessionId,
@@ -4506,9 +4511,7 @@ fun ChatScreen(
                                         )
                                     )
                                 },
-                                isStarred = remember(item.message.id) {
-                                    StarredMessageStore(context).isStarred(item.message.id)
-                                },
+                                isStarred = isStarredState,
                             )
                             } // close v0.4.2 entrance Box
                             } // close UserBubble SideEffect + UserMessageBubble block
