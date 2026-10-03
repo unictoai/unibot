@@ -41,6 +41,12 @@ class AlarmReceiver : BroadcastReceiver() {
             } catch (t: Throwable) {
                 AppLogger.warning(TAG, "morning-briefing seed failed: ${t.message}")
             }
+            // [v12-G] Re-arm the scheduled local backup (idempotent).
+            try {
+                ai.unicto.unibot.backup.ScheduledBackup.rescheduleIfEnabled(context)
+            } catch (t: Throwable) {
+                AppLogger.warning(TAG, "scheduled-backup reschedule failed: ${t.message}")
+            }
             return
         }
 

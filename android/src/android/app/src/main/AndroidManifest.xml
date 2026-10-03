@@ -532,6 +532,11 @@
             android:name=".scheduled.ScheduledTaskAlarmReceiver"
             android:exported="false" />
 
+        <!-- v1.2 Batch G: scheduled local backup alarm receiver. -->
+        <receiver
+            android:name=".backup.ScheduledBackupReceiver"
+            android:exported="false" />
+
         <!-- v0.2.0 P3: home-screen widgets. Exported=false per the
              AppWidgetProvider contract — the system delivers APPWIDGET_UPDATE
              to the explicit component; the custom ROUTINES_CHANGED action is
