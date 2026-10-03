@@ -285,6 +285,14 @@ dependencies {
     // note in `ndk`; we ship arm64-v8a only.
     implementation("com.github.helloooideeeeea:RealTimeCutVADLibraryForAndroid:1.0.5@aar")
 
+    // sherpa-onnx JNI (TTS only: OfflineTts/VITS). The Maven Central AAR
+    // ships libsherpa-onnx-jni.so with full TTS JNI support and the espeak-ng
+    // phonemizer compiled in — but its classes.jar has NO TTS Kotlin classes,
+    // so com.k2fsa.sherpa.onnx.Tts.kt is a hand port of the official bindings
+    // (field names must match exactly; the native side reads them
+    // reflectively). Ships arm64-v8a only, like the VAD lib above.
+    implementation("com.bihe0832.android:lib-sherpa-onnx:6.25.21")
+
     // rclone, via its official gomobile binding, for backup destinations
     // (SMB / WebDAV / SFTP / S3 / FTP). Build it with
     // `deps/build_rclone_android.sh` — the .aar is a build artifact under

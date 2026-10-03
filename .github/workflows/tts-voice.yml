@@ -1,0 +1,143 @@
+name: TTS voice
+
+# One-time (and on-demand) publisher for unibot's on-device text-to-speech
+# voices. The app never bundles a voice in the APK — the user picks one
+# (Amy ~60 MB / Ryan ~60 MB) in Read aloud settings and it fetches the files
+# from the tts-voice-v1 GitHub release below.
+#
+# Runs when this file is pushed (so the first push publishes the voices)
+# and on manual dispatch for re-publishing.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/tts-voice.yml"]
+
+permissions:
+  contents: write
+
+env:
+  # file|upstream-url|min-bytes — one per line.
+  HF_SPECS: |
+    en_US-amy-low.onnx|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx|60000000
+    en_US-amy-low.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx.json|3000
+    en_US-ryan-medium.onnx|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx|60000000
+    en_US-ryan-medium.onnx.json|https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx.json|3000
+  # Pinned piper-phonemize wheel. Only the espeak-ng-data directory is used
+  # (extracted, never installed), and its contents are identical across the
+  # platform wheels — the pin exists so the tarball below stays byte-stable.
+  PIPER_WHEEL_URL: https://files.pythonhosted.org/packages/b8/b7/a8fc2584d509ca36d5713693d675a88f80e4c3725e16a8c7ff1451f0ba99/piper_phonemize-1.1.0-cp311-cp311-manylinux_2_28_x86_64.whl
+
+jobs:
+  publish:
+    name: publish TTS voices
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download voice files from HuggingFace
+        run: |
+          set -euo pipefail
+          mkdir -p tts-voice
+          while IFS='|' read -r file url min_bytes; do
+            [ -z "$file" ] && continue
+            echo "downloading $file ..."
+            curl -sSL --retry 3 -o "tts-voice/$file" "$url"
+            bytes=$(stat -c%s "tts-voice/$file")
+            echo "  $bytes bytes"
+            if [ "$bytes" -lt "$min_bytes" ]; then
+              echo "file too small ($bytes bytes) — refusing to publish" >&2
+              exit 1
+            fi
+          done <<< "$HF_SPECS"
+
+      - name: Generate tokens.txt from phoneme_id_map
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import json
+
+          def gen(json_file, out_file):
+              with open(json_file) as f:
+                  meta = json.load(f)
+              pim = meta["phoneme_id_map"]
+              # one "phoneme id" per line (e.g. "_ 0"), sorted by id
+              pairs = sorted(((ids[0], ph) for ph, ids in pim.items()), key=lambda p: p[0])
+              with open(out_file, "w", encoding="utf-8") as f:
+                  for i, ph in pairs:
+                      f.write(f"{ph} {i}\n")
+
+          gen("tts-voice/en_US-amy-low.onnx.json", "tts-voice/en_US-amy-low.tokens.txt")
+          gen("tts-voice/en_US-ryan-medium.onnx.json", "tts-voice/en_US-ryan-medium.tokens.txt")
+          EOF
+          wc -c tts-voice/*.tokens.txt
+
+      - name: Build deterministic espeak-ng-data.tar.gz
+        run: |
+          set -euo pipefail
+          mkdir -p tts-voice/espeak-stage
+          curl -sSL --retry 3 -o tts-voice/espeak-stage/piper.whl "$PIPER_WHEEL_URL"
+          python3 - <<'EOF'
+          import zipfile
+          z = zipfile.ZipFile("tts-voice/espeak-stage/piper.whl")
+          names = [n for n in z.namelist() if n.startswith("piper_phonemize/espeak-ng-data/")]
+          assert names, "espeak-ng-data not found in wheel"
+          z.extractall("tts-voice/espeak-stage", names)
+          print(f"extracted {len(names)} espeak-ng-data entries")
+          EOF
+          # Deterministic tar: sorted entries, fixed mtime/owner, GNU format;
+          # gzip -n strips filename+mtime from the gzip header. The resulting
+          # byte size is hardcoded as ESPEAK_TARBALL_BYTES in
+          # TtsVoiceModelManager.kt (and verified by the next step), so keep
+          # this exact command — any change alters the published bytes.
+          cd tts-voice/espeak-stage/piper_phonemize
+          tar --sort=name --mtime='2000-01-01' --owner=0 --group=0 --numeric-owner \
+            --format=gnu -cf - espeak-ng-data | gzip -n > ../../espeak-ng-data.tar.gz
+          cd ../../..
+          ls -la tts-voice/espeak-ng-data.tar.gz
+
+      - name: Verify sizes match the app's hardcoded constants
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import os
+          import re
+          kt = "android/src/android/app/src/main/java/ai/unicto/unibot/speech/TtsVoiceModelManager.kt"
+          src = open(kt).read()
+
+          def const(name):
+              m = re.search(rf"{name}\s*=\s*([0-9_]+)L", src)
+              assert m, f"constant {name} not found in TtsVoiceModelManager.kt"
+              return int(m.group(1).replace("_", ""))
+
+          expected = {
+              "tts-voice/en_US-amy-low.onnx": const("AMY_ONNX_BYTES"),
+              "tts-voice/en_US-ryan-medium.onnx": const("RYAN_ONNX_BYTES"),
+              "tts-voice/en_US-amy-low.tokens.txt": const("AMY_TOKENS_BYTES"),
+              "tts-voice/en_US-ryan-medium.tokens.txt": const("RYAN_TOKENS_BYTES"),
+              "tts-voice/espeak-ng-data.tar.gz": const("ESPEAK_TARBALL_BYTES"),
+          }
+          for path, want in expected.items():
+              got = os.path.getsize(path)
+              status = "OK" if got == want else "MISMATCH"
+              print(f"{status}: {path} = {got} (app expects {want})", flush=True)
+              assert got == want, f"{path}: built {got} bytes but app expects {want}"
+          print("all published sizes match the app's constants")
+          EOF
+
+      - name: Publish to tts-voice-v1 release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view tts-voice-v1 >/dev/null 2>&1 || \
+            gh release create tts-voice-v1 \
+              --title "On-device TTS voices v1" \
+              --notes "Piper VITS voices for unibot's on-device text-to-speech (Amy ~60 MB, Ryan ~60 MB) plus the shared espeak-ng phoneme data. Downloaded in-app only when the user picks a voice — never bundled in the APK."
+          gh release upload tts-voice-v1 \
+            tts-voice/en_US-amy-low.onnx tts-voice/en_US-ryan-medium.onnx \
+            tts-voice/en_US-amy-low.tokens.txt tts-voice/en_US-ryan-medium.tokens.txt \
+            tts-voice/espeak-ng-data.tar.gz --clobber
+          echo "published:"
+          gh release view tts-voice-v1 --json assets -q '.assets[].name'
