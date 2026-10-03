@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.Settings
+import android.provider.Settings as SystemSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -367,7 +367,7 @@ fun VoiceConversationScreen(
                                     FilledTonalButton(onClick = {
                                         context.startActivity(
                                             Intent(
-                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                SystemSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                             ).apply {
                                                 data = Uri.fromParts(
                                                     "package",
