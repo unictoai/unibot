@@ -43,12 +43,10 @@ import kotlinx.coroutines.withTimeout
 class VoiceConversationViewModel(
     private val chatViewModel: ChatViewModel,
     private val ensureMicPermission: suspend () -> Boolean,
-    /**
-     * [v1.1.2] Synchronous "is the mic actually usable" probe (runtime grant
-     * + AppOps). Lets the error path tell a *bogus* engine permission failure
-     * (broken recognition service on ROMs with no real speech service)
-     * apart from a genuinely missing grant.
-     */
+        // [v1.2] Synchronous "is the mic actually usable" probe (runtime grant
+    // + AppOps). Lets the error path tell a *bogus* engine permission failure
+    // (broken recognition service on ROMs with no real speech service)
+    // apart from a genuinely missing grant.
     private val hasMicPermission: () -> Boolean,
 ) : ViewModel() {
 
@@ -62,11 +60,9 @@ class VoiceConversationViewModel(
         // a graceful card with rationale + a Settings deep-link — never a raw
         // "RECORD_AUDIO required" dead-end.
         data object PermissionDenied : State
-        /**
-         * [v1.1.2] No speech-to-text model on the phone (and no usable system
-         * engine). The UI shows a download card with real progress — the
-         * recovery action, not just an error string.
-         */
+                // [v1.2] No speech-to-text model on the phone (and no usable system
+        // engine). The UI shows a download card with real progress — the
+        // recovery action, not just an error string.
         data object NoSttModel : State
     }
 
@@ -169,7 +165,7 @@ class VoiceConversationViewModel(
                 SpeechRecognitionManager.selectEngine(WHISPER_ENGINE_ID)
             }
             if (SpeechRecognitionManager.availableEngines().none { it.isAvailable }) {
-                // [v1.1.2] Dedicated state (not a bare Error string) so the UI
+                // [v1.2] Dedicated state (not a bare Error string) so the UI
                 // can offer the real recovery: downloading the offline model.
                 _state.value = State.NoSttModel
                 return@launch
@@ -246,7 +242,7 @@ class VoiceConversationViewModel(
             onError = { error: RecognitionError, message: String? ->
                 silenceJob?.cancel()
                 if (!conversationActive) return@startRecording
-                // [v1.1.2] A runtime permission denial (e.g. revoked mid-session)
+                // [v1.2] A runtime permission denial (e.g. revoked mid-session)
                 // lands on the graceful denied card, never a raw engine string.
                 // BUT: when the app verifiably holds the mic permission, a
                 // PERMISSION_DENIED from the engine is a *bogus* failure — the
@@ -280,12 +276,10 @@ class VoiceConversationViewModel(
     @Volatile
     private var lastSpeechAt: Long = 0L
 
-    /**
-     * [v1.1.2] Switch to the next available engine after the current one
-     * failed spuriously, then restart listening. Returns false when there is
-     * nothing to fall back to. Loop-safe: the failed engine already marked
-     * itself degraded, and we only ever move to a *different* engine.
-     */
+        // [v1.2] Switch to the next available engine after the current one
+    // failed spuriously, then restart listening. Returns false when there is
+    // nothing to fall back to. Loop-safe: the failed engine already marked
+    // itself degraded, and we only ever move to a *different* engine.
     private fun tryFallbackEngine(): Boolean {
         val current = SpeechRecognitionManager.selectedEngineId.value
         val next = SpeechRecognitionManager.availableEngines()

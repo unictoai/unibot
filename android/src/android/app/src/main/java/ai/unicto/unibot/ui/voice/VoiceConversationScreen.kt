@@ -145,7 +145,7 @@ fun VoiceConversationScreen(
         factory = VoiceConversationViewModel.factory(
             chatViewModel = chatViewModel,
             ensureMicPermission = { ensureVoiceMicPermission(context) },
-            // [v1.1.2] Lets the VM tell a bogus engine permission failure
+            // [v1.2] Lets the VM tell a bogus engine permission failure
             // apart from a genuinely missing grant.
             hasMicPermission = { isMicUsable(context) },
         ),
@@ -413,7 +413,7 @@ fun VoiceConversationScreen(
                         Spacer(Modifier.height(12.dp))
                     }
 
-                    // [v1.1.2] No speech-to-text model on the phone: the real
+                    // [v1.2] No speech-to-text model on the phone: the real
                     // recovery is downloading the offline model right here,
                     // with live progress — not just an error string.
                     if (convState is VoiceConversationViewModel.State.NoSttModel) {
@@ -427,7 +427,7 @@ fun VoiceConversationScreen(
                     if (!ttsReady) {
                         MuseCard(inset = 0.dp) {
                             Row(
-                                // [v1.1.2] fillMaxWidth: without it the weighted
+                                // [v1.2] fillMaxWidth: without it the weighted
                                 // Column measures its Text at intrinsic (unwrapped)
                                 // width on some densities and the body gets
                                 // clipped mid-sentence at the card edge.
@@ -564,12 +564,10 @@ private fun OnDeviceBadge() {
     }
 }
 
-/**
- * [v1.1.2] The recovery card for [VoiceConversationViewModel.State.NoSttModel]:
- * downloads the offline whisper model right here with live progress, then
- * fires [onDownloaded] so the conversation starts immediately. Reuses
- * [WhisperModelManager] — the same models the chat voice panel offers.
- */
+// [v1.2] The recovery card for [VoiceConversationViewModel.State.NoSttModel]:
+// downloads the offline whisper model right here with live progress, then
+// fires [onDownloaded] so the conversation starts immediately. Reuses
+// [WhisperModelManager] — the same models the chat voice panel offers.
 @Composable
 private fun SttModelDownloadCard(onDownloaded: () -> Unit) {
     val context = LocalContext.current
@@ -752,7 +750,7 @@ private fun VoiceOrb(
         label = "speak",
     )
 
-    // [v1.1.2] Smooth morph between states: the orb eases into each state's
+    // [v1.2] Smooth morph between states: the orb eases into each state's
     // energy level instead of snapping when the conversation moves
     // idle → listening → thinking → speaking → error.
     val targetEnergy = when (convState) {
@@ -892,12 +890,10 @@ private fun VoiceOrb(
     }
 }
 
-/**
- * [v1.1.2] True only when the mic is actually usable right now: the runtime
- * permission is granted AND AppOps isn't blocking capture (e.g. the system
- * mic privacy toggle in quick settings). Catches the "granted but still
- * broken" case where the dialog said yes yet recording can't start.
- */
+// [v1.2] True only when the mic is actually usable right now: the runtime
+// permission is granted AND AppOps isn't blocking capture (e.g. the system
+// mic privacy toggle in quick settings). Catches the "granted but still
+// broken" case where the dialog said yes yet recording can't start.
 fun isMicUsable(context: Context): Boolean {
     if (
         ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) !=
@@ -957,7 +953,7 @@ private fun statusText(state: VoiceConversationViewModel.State): String = when (
     is VoiceConversationViewModel.State.Listening -> stringResource(R.string.ub_voice_listening)
     is VoiceConversationViewModel.State.Thinking -> stringResource(R.string.ub_voice_thinking)
     is VoiceConversationViewModel.State.Speaking -> stringResource(R.string.ub_voice_speaking)
-    // [v1.1.2] Denied / no-model cards carry their own text; the orb just idles.
+    // [v1.2] Denied / no-model cards carry their own text; the orb just idles.
     is VoiceConversationViewModel.State.PermissionDenied -> stringResource(R.string.ub_voice_idle)
     is VoiceConversationViewModel.State.NoSttModel -> stringResource(R.string.ub_voice_idle)
     is VoiceConversationViewModel.State.Error -> stringResource(R.string.ub_voice_retry)
