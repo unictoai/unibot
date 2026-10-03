@@ -207,7 +207,9 @@ object NextcloudConnector {
                 }
             }
             while (event != XmlPullParser.END_DOCUMENT) {
-                val n = p.name?.lowercase().orEmpty()
+                // Nextcloud prefixes tags with "d:" (DAV:); strip it since
+                // namespace processing is off.
+                val n = p.name?.substringAfter(':')?.lowercase().orEmpty()
                 when (event) {
                     XmlPullParser.START_TAG -> {
                         when (n) {

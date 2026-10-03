@@ -84,6 +84,8 @@
     <string name="v12_pc_desc">Search podcasts and follow shows — episode lists stay on your phone.</string>
     <string name="v12_pc_access">Searches the public iTunes podcast directory and downloads episode lists from show feeds. No account, nothing uploaded.</string>
     <string name="v12_pc_search_hint">Search podcasts…</string>
+    <string name="v12_pc_search">Search</string>
+    <string name="v12_pc_shows_count">%1$d shows</string>
     <string name="v12_pc_subscribe">Follow</string>
     <string name="v12_pc_subscribed">Following</string>
     <string name="v12_pc_unfollow">Unfollow</string>
