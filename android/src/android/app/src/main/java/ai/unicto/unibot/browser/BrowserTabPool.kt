@@ -35,6 +35,8 @@ class BrowserTabPool(private val context: Context) {
         private const val TAG = "BrowserTabPool"
         private const val MAX_TABS = 3
         private const val IDLE_CHECK_INTERVAL_MS = 60_000L  // 60 seconds
+        /** [v12-G] Battery-saver eviction tick: 5 minutes instead of 60s. */
+        private const val BATTERY_SAVER_IDLE_CHECK_MS = 300_000L
         /** Default idle timeout — matches iOS BrowserTabPool.idleTimeout (15 minutes). */
         const val DEFAULT_IDLE_TIMEOUT_MINUTES = 15
         /** SharedPreferences key for the user-configurable idle timeout. */
@@ -220,7 +222,15 @@ class BrowserTabPool(private val context: Context) {
         // Start idle tab eviction timer (60-second interval, matching iOS)
         evictionJob = evictionScope.launch {
             while (isActive) {
-                delay(IDLE_CHECK_INTERVAL_MS)
+                // [v12-G] Battery saver: slow the background eviction sweep
+                // (60s → 5min). Fewer wakeups; eviction semantics unchanged.
+                delay(
+                    if (ai.unicto.unibot.ui.settings.BatterySaverStore.isEnabled(context)) {
+                        BATTERY_SAVER_IDLE_CHECK_MS
+                    } else {
+                        IDLE_CHECK_INTERVAL_MS
+                    },
+                )
                 withContext(Dispatchers.Main) { evictIdleTabs() }
             }
         }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import ai.unicto.unibot.ui.settings.BatterySaverStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.io.File
@@ -229,7 +230,9 @@ fun rememberSystemResourceMonitor(active: Boolean): SystemResourceMonitor {
         monitor.sampleOnce(context)
         tick++
         while (isActive) {
-            delay(2000)
+            // [v12-G] Battery saver: sample every 10s instead of 2s — the
+            // overlay stays live, just less chatty.
+            delay(if (BatterySaverStore.isEnabled(context)) 10_000L else 2_000L)
             monitor.sampleOnce(context)
             tick++
         }

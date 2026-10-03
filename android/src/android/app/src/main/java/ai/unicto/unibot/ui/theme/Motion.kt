@@ -11,6 +11,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,7 +98,14 @@ object Motion {
 @Composable
 fun animationsEnabled(): Boolean {
     val context = LocalContext.current
-    return remember { Motion.animatorDurationScale(context) != 0f }
+    // [v12-G] Battery saver extends the "Remove animations" accessibility
+    // gate: when the saver is on, motion is off app-wide (ambient loops,
+    // entrances, success pops — everything behind this gate).
+    remember(context) { ai.unicto.unibot.ui.settings.BatterySaverStore.ensureLoaded(context) }
+    val batterySaver by ai.unicto.unibot.ui.settings.BatterySaverStore.enabled.collectAsState()
+    return remember(batterySaver) {
+        Motion.animatorDurationScale(context) != 0f && !batterySaver
+    }
 }
 
 /**
