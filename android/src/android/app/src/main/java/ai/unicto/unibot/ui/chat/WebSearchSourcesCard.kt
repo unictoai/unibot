@@ -5,6 +5,9 @@ import ai.unicto.unibot.ui.components.SkeletonLine
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +23,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,12 +70,21 @@ internal fun WebSearchSourcesCard(
         block.toolStatus == ToolBlockStatus.STREAMING ||
         block.toolStatus == ToolBlockStatus.PENDING
     val results = if (isRunning) emptyList() else parseSearchBlock(block.content)
+    // Collapsed into a bar by default; tap to expand. While the search is
+    // still running the body stays visible (live shimmer feedback).
+    var expanded by remember { mutableStateOf(false) }
+    val showBody = expanded || isRunning
+    val haptics = rememberHaptic()
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(enabled = !isRunning) {
+                haptics.tap()
+                expanded = !expanded
+            }
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -91,37 +109,75 @@ internal fun WebSearchSourcesCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-        Spacer(Modifier.height(8.dp))
-        if (isRunning) {
-            // Skeleton shimmer while results load (matches the SEARCHING stage).
-            repeat(3) { i ->
-                SkeletonLine(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                )
-                if (i < 2) Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.weight(1f))
+            if (!isRunning && !expanded && results.isNotEmpty()) {
+                // Collapsed bar: a peek at the source domains.
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    results.take(5).forEach { result ->
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(domainColor(domainOf(result.url)), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(10.dp),
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
             }
-        } else if (results.isEmpty()) {
-            Text(
-                text = "No sources returned.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            val urlClick = LocalMarkdownUrlClickHandler.current
-            val haptics = rememberHaptic()
-            results.forEachIndexed { index, result ->
-                SourceRow(
-                    result = result,
-                    index = index,
-                    onClick = {
-                        haptics.tap()
-                        urlClick?.invoke(result.url)
-                    },
+            if (!isRunning) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse sources" else "Expand sources",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
                 )
-                if (index < results.lastIndex) Spacer(Modifier.height(4.dp))
+            }
+        }
+        AnimatedVisibility(
+            visible = showBody,
+            enter = expandVertically(),
+            exit = shrinkVertically(),
+        ) {
+            Column {
+                Spacer(Modifier.height(8.dp))
+                if (isRunning) {
+                    // Skeleton shimmer while results load (matches the SEARCHING stage).
+                    repeat(3) { i ->
+                        SkeletonLine(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                        )
+                        if (i < 2) Spacer(Modifier.height(2.dp))
+                    }
+                } else if (results.isEmpty()) {
+                    Text(
+                        text = "No sources returned.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    val urlClick = LocalMarkdownUrlClickHandler.current
+                    results.forEachIndexed { index, result ->
+                        SourceRow(
+                            result = result,
+                            index = index,
+                            onClick = {
+                                haptics.tap()
+                                urlClick?.invoke(result.url)
+                            },
+                        )
+                        if (index < results.lastIndex) Spacer(Modifier.height(4.dp))
+                    }
+                }
             }
         }
     }
