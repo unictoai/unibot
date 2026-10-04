@@ -100,6 +100,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.AppShortcut
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -427,7 +429,11 @@ internal fun AssistantMessageView(message: ChatMessage, onRetry: (() -> Unit)? =
 
         // Inline error banner (iOS: red exclamation + error text + Retry button)
         if (message.error != null) {
-            InlineErrorBanner(error = message.error, onRetry = onRetry)
+            InlineErrorBanner(
+                error = message.error,
+                onRetry = onRetry,
+                isRequestTooLarge = message.errorKind == ERROR_KIND_REQUEST_TOO_LARGE,
+            )
         }
     }
 }
@@ -461,9 +467,18 @@ internal fun BoundsTrackedBlock(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun InlineErrorBanner(error: String, onRetry: (() -> Unit)? = null) {
+internal fun InlineErrorBanner(
+    error: String,
+    onRetry: (() -> Unit)? = null,
+    // [T-android-v124-413] When true, the card shows the 413 recovery actions
+    // ("New chat" / "Change model") instead of the Retry pill — retrying the
+    // same oversized history would 413 again.
+    isRequestTooLarge: Boolean = false,
+    onNewChat: (() -> Unit)? = null,
+    onChangeModel: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 4.dp)
@@ -482,44 +497,78 @@ internal fun InlineErrorBanner(error: String, onRetry: (() -> Unit)? = null) {
                 },
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = Color(0xFFFF3B30),
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = error,
+                color = Color(0xFFFF3B30),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                maxLines = if (isRequestTooLarge) 5 else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (onRetry != null && !isRequestTooLarge) {
+                Spacer(modifier = Modifier.width(8.dp))
+                ErrorPillButton(
+                    icon = Icons.Default.Refresh,
+                    text = stringResource(R.string.chat_longpress_retry),
+                    onClick = onRetry,
+                )
+            }
+        }
+        if (isRequestTooLarge && (onNewChat != null || onChangeModel != null)) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onNewChat != null) {
+                    ErrorPillButton(
+                        icon = Icons.Default.Add,
+                        text = "New chat",
+                        onClick = onNewChat,
+                    )
+                }
+                if (onChangeModel != null) {
+                    ErrorPillButton(
+                        icon = Icons.Default.SwapHoriz,
+                        text = "Change model",
+                        onClick = onChangeModel,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Small red pill button used inside [InlineErrorBanner]. */
+@Composable
+private fun ErrorPillButton(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xFFFF3B30).copy(alpha = 0.15f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Default.Error,
+            imageVector = icon,
             contentDescription = null,
             tint = Color(0xFFFF3B30),
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(10.dp),
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = error,
-            color = Color(0xFFFF3B30),
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        if (onRetry != null) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(0xFFFF3B30).copy(alpha = 0.15f))
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = 10.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
-                    tint = Color(0xFFFF3B30),
-                    modifier = Modifier.size(10.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.chat_longpress_retry), color = Color(0xFFFF3B30), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text, color = Color(0xFFFF3B30), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

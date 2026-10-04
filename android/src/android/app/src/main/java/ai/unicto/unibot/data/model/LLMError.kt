@@ -4,6 +4,16 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
     class InvalidApiKey(val detail: String = "") : LLMError(if (detail.isBlank()) "Invalid API key" else "Invalid API key: $detail")
     class NetworkError(cause: Throwable) : LLMError("Network error: ${cause.message}", cause)
     class ProviderError(val detail: String) : LLMError("Provider error: $detail")
+    /**
+     * [T-android-v124-413] HTTP 413 — the request (usually a long agent
+     * history with thinking blocks + tool calls) exceeds the model's quota.
+     * Kept as its own class (NOT a ProviderError) so the chat can render a
+     * friendly card with recovery actions instead of the raw "[413]" text,
+     * and so group-fallback never silently switches models on it — the user
+     * picks "New chat" or "Change model" explicitly.
+     */
+    class RequestTooLarge(val detail: String = "") :
+        LLMError(if (detail.isBlank()) "Request too large" else "Request too large: $detail")
     class DecodingError(cause: Throwable) : LLMError("Decoding error: ${cause.message}", cause)
     class RateLimited : LLMError("Rate limited — please try again later")
     class TransientError(val detail: String) : LLMError("Transient error: $detail")
@@ -25,6 +35,7 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
             is RateLimited -> "Rate limited"
             is InvalidApiKey -> "Invalid API key"
             is ProviderError -> "Provider error"
+            is RequestTooLarge -> "Request too large"
             is TransientError -> "Transient error"
             is NetworkError -> "Network error"
             is DecodingError -> "Decoding error"

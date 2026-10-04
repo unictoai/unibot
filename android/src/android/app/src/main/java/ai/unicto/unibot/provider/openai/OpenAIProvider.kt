@@ -3497,6 +3497,20 @@ class OpenAIProvider private constructor(
         // for the chat's card before the generic mapping drops the body.
         ai.unicto.unibot.cloud.AllowanceSignal.noteHttpError(statusCode, body)
         if (statusCode == 429) return LLMError.RateLimited()
+        // [T-android-v124-413] 413 (request too large — usually an agent
+        // history that outgrew the model's quota) gets its own error class so
+        // the chat renders a friendly recovery card instead of raw "[413]".
+        if (statusCode == 413) {
+            val detail = try {
+                val json = JSONObject(body)
+                val error = json.optJSONObject("error")
+                val errorMessage = error?.safeOptString("message", "") ?: body
+                "[$statusCode] $errorMessage"
+            } catch (_: Exception) {
+                "HTTP $statusCode: ${body.take(500)}"
+            }
+            return LLMError.RequestTooLarge(detail)
+        }
 
         val message = try {
             val json = JSONObject(body)

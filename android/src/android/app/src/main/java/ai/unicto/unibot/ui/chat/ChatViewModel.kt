@@ -6041,7 +6041,7 @@ class ChatViewModel(
                 } catch (e: Exception) {
                     AppLogger.error(TAG_STREAM, "$label runAgentLoop EXCEPTION ${e.javaClass.simpleName}: ${e.message}")
                     Log.e(TAG, "Agent loop error ($label)", e)
-                    setInlineError(e.message ?: "Unknown error")
+                    setInlineError(e)
                     // T298: flag the upcoming setInactive() so the
                     // background completion notifier renders the ❌
                     // variant instead of a clean success.
@@ -6641,7 +6641,7 @@ class ChatViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Agent loop (queued-drain) error", e)
-                setInlineError(e.message ?: "Unknown error")
+                setInlineError(e)
                 break
             }
         }
@@ -7367,7 +7367,7 @@ class ChatViewModel(
                     } catch (e: Exception) {
                         AppLogger.error(TAG_STREAM, "send runAgentLoop EXCEPTION ${e.javaClass.simpleName}: ${e.message}")
                         Log.e(TAG, "Agent loop error (all fallbacks exhausted)", e)
-                        setInlineError(e.message ?: "Unknown error")
+                        setInlineError(e)
                         // T298: completion notifier should show the ❌ variant.
                         SessionActivityTracker.markStreamError(activeSessionId)
                     } finally {
@@ -7652,7 +7652,7 @@ class ChatViewModel(
      *  true at runAgentLoop ~4015) leaves the "unibot is thinking" indicator
      *  on screen even though streaming is over. The flag is per-message and
      *  is not implicitly cleared by isStreaming=false. */
-    private fun setInlineError(errorText: String) {
+    private fun setInlineError(errorText: String, errorKind: String? = null) {
         // [T-error-persist-android] Never let an empty/blank error string reach
         // the banner. The UI gate is `message.error?.let { … }` — a non-null ""
         // would render an EMPTY error banner, and (now that errors persist) it
@@ -7672,6 +7672,7 @@ class ChatViewModel(
             val msg = msgs[lastAssistantIdx]
             msgs[lastAssistantIdx] = msg.copy(
                 error = safeError,
+                errorKind = errorKind,
                 isStreaming = false,
                 isAwaitingModelResponse = false,
             )
@@ -7697,6 +7698,28 @@ class ChatViewModel(
     }
 
     /**
+     * [T-android-v124-413] Throwable overload: detects [LLMError.RequestTooLarge]
+     * (walking the cause chain — callbackFlow wraps throws) and renders the
+     * friendly recovery card with the current model + provider names baked in,
+     * instead of the raw "[413]" text. Every other error behaves exactly as
+     * before (same `e.message` fallback).
+     */
+    private fun setInlineError(error: Throwable) {
+        val llmError = unwrapFlowException(error) as? ai.unicto.unibot.data.model.LLMError
+        if (llmError is ai.unicto.unibot.data.model.LLMError.RequestTooLarge) {
+            val provider = currentProvider
+            val modelName = provider?.model?.displayName ?: "this model"
+            val providerName = provider?.name ?: "the provider"
+            setInlineError(
+                friendlyRequestTooLargeText(modelName, providerName),
+                ERROR_KIND_REQUEST_TOO_LARGE,
+            )
+        } else {
+            setInlineError(error.message ?: "Unknown error")
+        }
+    }
+
+    /**
      * Show a transient error on the last assistant message while keeping isStreaming=true
      * so the "thinking" indicator and streaming UI stay intact during auto-retry countdowns.
      * Mirrors iOS streamWithAutoRetry: `chatMessage?.error = desc` without dropping the loop.
@@ -7717,7 +7740,7 @@ class ChatViewModel(
         if (lastAssistantIdx < 0) return
         val msg = msgs[lastAssistantIdx]
         if (msg.error == null) return
-        msgs[lastAssistantIdx] = msg.copy(error = null)
+        msgs[lastAssistantIdx] = msg.copy(error = null, errorKind = null)
         _messages.value = msgs
         // [T-error-persist-android] Clear the persisted sticker too, so a
         // recovered turn doesn't resurrect the error banner on the next reload.
@@ -7943,7 +7966,7 @@ class ChatViewModel(
                     } catch (e: Exception) {
                         AppLogger.error(TAG_STREAM, "retryLast runAgentLoop EXCEPTION ${e.javaClass.simpleName}: ${e.message}")
                         Log.e(TAG, "Agent loop error (retryLast)", e)
-                        setInlineError(e.message ?: "Unknown error")
+                        setInlineError(e)
                         // T298: completion notifier should show the ❌ variant.
                         SessionActivityTracker.markStreamError(activeSessionId)
                     } finally {
@@ -11113,7 +11136,7 @@ class ChatViewModel(
             val canonicalIdx = canonical.indexOfLast { it.id == id }
             if (canonicalIdx >= 0 && canonical[canonicalIdx].error != null) {
                 val updated = canonical.toMutableList()
-                updated[canonicalIdx] = canonical[canonicalIdx].copy(error = null)
+                updated[canonicalIdx] = canonical[canonicalIdx].copy(error = null, errorKind = null)
                 _messages.value = updated
             }
             return
@@ -12831,7 +12854,7 @@ Media downloads (video/audio from a link) — follow this ladder in order:
                     } catch (e: Exception) {
                         AppLogger.error(TAG_STREAM, "resumeQueueAfterCancel drain EXCEPTION ${e.javaClass.simpleName}: ${e.message}")
                         Log.e(TAG, "Queued drain error (resumeQueueAfterCancel)", e)
-                        setInlineError(e.message ?: "Unknown error")
+                        setInlineError(e)
                     } finally {
                         AppLogger.info(TAG_STREAM, "resumeQueueAfterCancel streamJob FINALLY enter")
                         // [T-android-overlay-reply-status-34599] Surface
@@ -13116,7 +13139,7 @@ Media downloads (video/audio from a link) — follow this ladder in order:
                     } catch (e: Exception) {
                         AppLogger.error(TAG_STREAM, "resume runAgentLoop EXCEPTION ${e.javaClass.simpleName}: ${e.message}")
                         Log.e(TAG, "Agent loop error (resume)", e)
-                        setInlineError(e.message ?: "Unknown error")
+                        setInlineError(e)
                     } finally {
                         AppLogger.info(TAG_STREAM, "resume streamJob FINALLY enter")
                         // [T-android-overlay-reply-status-34599] Surface

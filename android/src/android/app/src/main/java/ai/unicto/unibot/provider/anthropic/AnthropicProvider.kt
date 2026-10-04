@@ -1059,6 +1059,9 @@ class AnthropicProvider(
     private fun mapHttpError(statusCode: Int, body: String): LLMError {
         if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
         if (statusCode == 429) return LLMError.RateLimited()
+        // [T-android-v124-413] Own error class so the chat shows the friendly
+        // recovery card instead of the raw status text.
+        if (statusCode == 413) return LLMError.RequestTooLarge("HTTP 413: ${body.take(500)}")
 
         val message = try {
             val json = JSONObject(body)

@@ -176,11 +176,13 @@ data class LLMModel(
         // successful /v1/models fetch. Kept minimal and non-speculative.
 
         // Groq — https://console.groq.com/models
+        // NOTE: llama-3.3-70b-versatile + llama-3.1-8b-instant were
+        // decommissioned 2026-08-16 — do NOT re-add them. Live free-tier
+        // chat lineup (Oct 2026): gpt-oss-120b/20b, qwen3.6-27b.
         val allGroq = listOf(
-            LLMModel("llama-3.3-70b-versatile", "Llama 3.3 70B Versatile", "Groq"),
-            LLMModel("llama-3.1-8b-instant", "Llama 3.1 8B Instant", "Groq"),
-            LLMModel("qwen/qwen3-32b", "Qwen3 32B", "Groq"),
             LLMModel("openai/gpt-oss-120b", "GPT OSS 120B", "Groq", supportsReasoning = true),
+            LLMModel("openai/gpt-oss-20b", "GPT OSS 20B", "Groq"),
+            LLMModel("qwen/qwen3.6-27b", "Qwen3.6 27B", "Groq"),
         )
 
         // Cerebras — https://inference-docs.cerebras.ai

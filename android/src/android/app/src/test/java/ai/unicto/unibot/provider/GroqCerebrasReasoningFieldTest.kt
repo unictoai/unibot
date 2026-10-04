@@ -46,8 +46,8 @@ class GroqCerebrasReasoningFieldTest {
 
     /** A reasoning-capable model, so the echo gate would otherwise be ON. */
     private val reasoningModel = LLMModel(
-        id = "llama-3.3-70b-versatile",
-        displayName = "Llama 3.3 70B",
+        id = "openai/gpt-oss-120b",
+        displayName = "GPT OSS 120B",
         provider = "CPA",
         supportsReasoning = true,
     )

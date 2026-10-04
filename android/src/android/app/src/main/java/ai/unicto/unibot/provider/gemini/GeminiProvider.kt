@@ -536,6 +536,9 @@ class GeminiProvider(
     private fun mapHttpError(statusCode: Int, body: String): LLMError {
         if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
         if (statusCode == 429) return LLMError.RateLimited()
+        // [T-android-v124-413] Own error class so the chat shows the friendly
+        // recovery card instead of the raw status text.
+        if (statusCode == 413) return LLMError.RequestTooLarge("HTTP $statusCode: ${body.take(200)}")
         val message = "Gemini API error $statusCode: ${body.take(200)}"
         val transientCodes = setOf(500, 502, 503, 504, 529)
         if (statusCode in transientCodes) return LLMError.TransientError(message)

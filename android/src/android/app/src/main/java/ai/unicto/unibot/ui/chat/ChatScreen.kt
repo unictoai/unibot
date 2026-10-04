@@ -4846,10 +4846,16 @@ fun ChatScreen(
                             }
                             is FlatChatItem.AssistantError -> InlineErrorBanner(
                                 error = item.error,
-                                onRetry = {
+                                // [T-android-v124-413] No Retry on a 413 — re-sending the
+                                // same oversized history 413s again. The card offers
+                                // New chat / Change model instead.
+                                onRetry = if (item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE) null else ({
                                     coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                     safeMutate { viewModel.retryLast() }
-                                },
+                                }),
+                                isRequestTooLarge = item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE,
+                                onNewChat = { onNewChat() },
+                                onChangeModel = { showModelPicker = true },
                             )
                             // [P2-branching] Sibling pager + regenerate/fork
                             // row under the assistant turn. UI lives in

@@ -479,7 +479,7 @@ internal sealed class FlatChatItem {
         override val contentType = "typing"
     }
 
-    data class AssistantError(val messageId: String, val error: String) : FlatChatItem() {
+    data class AssistantError(val messageId: String, val error: String, val errorKind: String? = null) : FlatChatItem() {
         override val key = "error:$messageId"
         override val contentType = "error"
     }
@@ -851,7 +851,7 @@ internal fun buildFlatChatItems(
 
         // Inline error banner
         message.error?.let {
-            out.add(dedupe(FlatChatItem.AssistantError(message.id, it)))
+            out.add(dedupe(FlatChatItem.AssistantError(message.id, it, message.errorKind)))
         }
 
         // [P2-branching] Action row under every settled assistant turn:

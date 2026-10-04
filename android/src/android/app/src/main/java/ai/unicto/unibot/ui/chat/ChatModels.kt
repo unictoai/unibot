@@ -1,5 +1,23 @@
 package ai.unicto.unibot.ui.chat
 
+/**
+ * [T-android-v124-413] Machine-readable kind for [ChatMessage.errorKind] —
+ * marks an HTTP 413 (request too large) so the banner can render the friendly
+ * recovery card (New chat / Change model) instead of the raw error text.
+ */
+const val ERROR_KIND_REQUEST_TOO_LARGE = "request_too_large"
+
+/**
+ * [T-android-v124-413] Human sentence for a 413, with the model + provider
+ * filled in. Never exposes the raw "[413]" code as primary text.
+ */
+internal fun friendlyRequestTooLargeText(modelName: String, providerName: String): String {
+    val model = modelName.ifBlank { "this model" }
+    val provider = providerName.ifBlank { "the provider" }
+    return "This conversation is too long for $model on $provider's free tier — " +
+        "it can't fit the whole history. Your messages are safe."
+}
+
 // [T-android-split-chat] Chat data models extracted verbatim from
 // ChatViewModel.kt: StreamingDelta, ChatMessage, QueuedPrompt,
 // ToolBlockStatus, SlashCommand, AssistantBlock. Full import block copied
@@ -128,6 +146,11 @@ data class ChatMessage(
     // to the chat's current thinking level at render time.
     val thinkingLevel: ai.unicto.unibot.data.model.ThinkingLevel? = null,
     val error: String? = null,
+    // [T-android-v124-413] Machine-readable error kind, set alongside [error]
+    // when the failure needs special UI (recovery actions). Currently only
+    // [ERROR_KIND_REQUEST_TOO_LARGE]. In-memory only — not persisted to the DB;
+    // after a reload the banner falls back to the (friendly) text + Retry.
+    val errorKind: String? = null,
     // Queued user prompt awaiting injection into the running agent loop.
     // Mirrors iOS ChatMessage.isQueued / queuedPromptId.
     val isQueued: Boolean = false,
