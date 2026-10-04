@@ -102,6 +102,21 @@ const val ERROR_KIND_MODEL_NOT_FOUND = "model_not_found"
 const val ERROR_KIND_OUTPUT_LIMIT = "output_limit_exceeded"
 
 /**
+ * [T-android-v127-provider-name] Resolve the provider name for the friendly
+ * error cards. The provider INSTANCE's user-visible label ("Groq") wins; the
+ * provider type name ("OpenAI") is only a fallback for when the instance
+ * label is unknown. Using the type name directly is what printed "OpenAI's
+ * free tier" on cards for requests that actually went to Groq.
+ */
+internal fun resolveCardProviderName(instanceLabel: String?, providerTypeName: String?): String {
+    val label = instanceLabel?.trim().orEmpty()
+    if (label.isNotBlank()) return label
+    val typeName = providerTypeName?.trim().orEmpty()
+    if (typeName.isNotBlank()) return typeName
+    return "the provider"
+}
+
+/**
  * [T-android-v124-413] Human sentence for a 413, with the model + provider
  * filled in. Never exposes the raw "[413]" code as primary text.
  */

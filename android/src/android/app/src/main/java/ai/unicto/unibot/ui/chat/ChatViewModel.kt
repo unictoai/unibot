@@ -7753,7 +7753,7 @@ class ChatViewModel(
         if (llmError is ai.unicto.unibot.data.model.LLMError.RequestTooLarge) {
             val provider = currentProvider
             val modelName = provider?.model?.displayName ?: "this model"
-            val providerName = provider?.name ?: "the provider"
+            val providerName = resolveCardProviderName(_providerName.value, provider?.name)
             setInlineError(
                 friendlyRequestTooLargeText(modelName, providerName),
                 ERROR_KIND_REQUEST_TOO_LARGE,
@@ -7766,7 +7766,7 @@ class ChatViewModel(
             val modelId = llmError.modelId.ifBlank { provider?.model?.id.orEmpty() }
             val modelName = provider?.model?.displayName?.ifBlank { modelId }
                 ?: modelId.ifBlank { "this model" }
-            val providerName = provider?.name ?: "the provider"
+            val providerName = resolveCardProviderName(_providerName.value, provider?.name)
             setInlineError(
                 friendlyModelNotFoundText(modelName, providerName),
                 ERROR_KIND_MODEL_NOT_FOUND,
@@ -7777,7 +7777,7 @@ class ChatViewModel(
             // retrying the same oversized value 400s again.
             val provider = currentProvider
             val modelName = provider?.model?.displayName ?: "this model"
-            val providerName = provider?.name ?: "the provider"
+            val providerName = resolveCardProviderName(_providerName.value, provider?.name)
             setInlineError(
                 friendlyOutputLimitText(modelName, providerName, llmError.limit),
                 ERROR_KIND_OUTPUT_LIMIT,

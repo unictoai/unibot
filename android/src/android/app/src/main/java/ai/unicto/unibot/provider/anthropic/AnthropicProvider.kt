@@ -1062,9 +1062,15 @@ class AnthropicProvider(
         )
     }
 
-    private fun mapHttpError(statusCode: Int, body: String): LLMError {
+    internal fun mapHttpError(statusCode: Int, body: String): LLMError {
         if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
         if (statusCode == 429) return LLMError.RateLimited()
+        // [T-android-v127-413-output-limit] A 413 whose BODY is about the
+        // output-token budget → OutputLimitExceeded (accurate card); pure
+        // 413s (no token language) keep the "too long" card below.
+        if (statusCode == 413 && isOutputLimitBody(body)) {
+            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}")
+        }
         // [T-android-v124-413] Own error class so the chat shows the friendly
         // recovery card instead of the raw status text.
         if (statusCode == 413) return LLMError.RequestTooLarge("HTTP 413: ${body.take(500)}")

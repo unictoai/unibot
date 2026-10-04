@@ -3501,12 +3501,23 @@ class OpenAIProvider private constructor(
         )
     }
 
-    private fun mapHttpError(statusCode: Int, body: String): LLMError {
+    internal fun mapHttpError(statusCode: Int, body: String): LLMError {
         if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
         // unibot: the relay's "allowance used up" is a 429 with a structured body; keep it
         // for the chat's card before the generic mapping drops the body.
         ai.unicto.unibot.cloud.AllowanceSignal.noteHttpError(statusCode, body)
         if (statusCode == 429) return LLMError.RateLimited()
+        // [T-android-v127-413-output-limit] A 413 whose BODY is about the
+        // output-token budget (Groq answers 413, not 400, for an oversized
+        // max_completion_tokens) → OutputLimitExceeded, so the user gets the
+        // accurate card. Pure 413s (no token language) keep the
+        // "conversation too long" card below.
+        if (statusCode == 413 && ai.unicto.unibot.data.model.isOutputLimitBody(body)) {
+            return LLMError.OutputLimitExceeded(
+                ai.unicto.unibot.data.model.extractOutputLimit(body),
+                "[$statusCode] ${body.take(300)}",
+            )
+        }
         // [T-android-v124-413] 413 (request too large — usually an agent
         // history that outgrew the model's quota) gets its own error class so
         // the chat renders a friendly recovery card instead of raw "[413]".

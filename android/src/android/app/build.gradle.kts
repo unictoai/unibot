@@ -59,8 +59,8 @@ android {
         applicationId = "ai.unicto.unibot"
         minSdk = 26
         targetSdk = 35
-        versionCode = 44
-        versionName = "1.2.6"
+        versionCode = 45
+        versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
