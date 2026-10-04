@@ -170,4 +170,79 @@ class HealOutputLimitsTest {
         assertEquals("openai/gpt-oss-20b", h.liveConfig.modelEntries[0].baseModel.id)
         assertEquals("qwen/qwen3.6-27b", h.liveConfig.modelEntries[1].baseModel.id)
     }
+
+    // ── [T-android-v129-custom-instance-hint] Second heal pass ──────────
+
+    /** Groq added as a *custom* OpenAI-type instance — the user's setup. */
+    private fun customGroqInstance() = ProviderInstance(
+        id = "custom-1",
+        label = "My Groq",
+        providerType = ProviderType.openAI,
+        credentialType = ProviderCredential.apiKey,
+        customBaseURL = "https://api.groq.com/openai/v1",
+    )
+
+    @Test
+    fun `v127 resolver skips custom instances, v129 host-aware resolver covers them`() {
+        val custom = customGroqInstance()
+        assertNull(defaultHealHintResolver(custom))
+        assertEquals("groq", hostAwareHealHintResolver(custom))
+        // Built-in free-tier instances keep working under both resolvers.
+        assertEquals("groq", defaultHealHintResolver(groqInstance()))
+        assertEquals("groq", hostAwareHealHintResolver(groqInstance()))
+        // Official types were never at risk: no hint under either policy.
+        assertNull(defaultHealHintResolver(openAIInstance()))
+        assertNull(hostAwareHealHintResolver(openAIInstance()))
+    }
+
+    @Test
+    fun `v129 pass heals custom-instance entries exactly once`() {
+        var healedFlag = false
+        var saves = 0
+        val config = ProviderConfig(
+            instances = mutableListOf(customGroqInstance()),
+            modelEntries = mutableListOf(poisonedEntry("custom-1")),
+        )
+        fun run(): Int = healPoisonedOutputLimitsPass(
+            isAlreadyHealed = { healedFlag },
+            markHealed = { healedFlag = true },
+            snapshot = { config },
+            save = { saves++ },
+            enrich = fixedEnrich,
+            resolveHint = ::hostAwareHealHintResolver,
+        )
+        assertEquals(1, run())
+        assertTrue(healedFlag)
+        assertEquals(1, saves)
+        assertEquals(16384, config.modelEntries.first().baseModel.maxOutputTokens)
+        // Second run is a no-op via the guard.
+        assertEquals(0, run())
+        assertEquals(1, saves)
+    }
+
+    @Test
+    fun `v129 pass still skips user-modified entries`() {
+        val custom = poisonedEntry("custom-1").copy(
+            baseModel = poisonedEntry("custom-1").baseModel.copy(maxOutputTokens = 65536),
+        )
+        val userModified = custom.copy(
+            // Mark user-modified via overrides (see ModelEntry.isUserModified).
+            overrides = ai.unicto.unibot.data.model.ModelOverrides(maxOutputTokens = 65536),
+        )
+        var healedFlag = false
+        val config = ProviderConfig(
+            instances = mutableListOf(customGroqInstance()),
+            modelEntries = mutableListOf(userModified),
+        )
+        val healed = healPoisonedOutputLimitsPass(
+            isAlreadyHealed = { healedFlag },
+            markHealed = { healedFlag = true },
+            snapshot = { config },
+            save = { },
+            enrich = fixedEnrich,
+            resolveHint = ::hostAwareHealHintResolver,
+        )
+        assertEquals(0, healed)
+        assertEquals(65536, config.modelEntries.first().baseModel.maxOutputTokens)
+    }
 }

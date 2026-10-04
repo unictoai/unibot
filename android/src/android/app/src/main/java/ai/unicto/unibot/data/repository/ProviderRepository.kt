@@ -62,6 +62,8 @@ private const val MODALITY_BIT_IMG_OUT = 1 shl 6
 private const val MODALITY_BIT_AUD_OUT = 1 shl 7
 /** [T-android-v127-heal-output-limits] One-time guard for the poisoned-output-limit migration. */
 private const val PREFS_HEALED_OUTPUT_LIMITS_V127 = "healed_output_limits_v127"
+/** [T-android-v129-custom-instance-hint] One-time guard for the second heal pass (custom instances). */
+private const val PREFS_HEALED_OUTPUT_LIMITS_V129 = "healed_output_limits_v129"
 private const val MODALITY_BIT_VID_OUT = 1 shl 8
 
 class ProviderRepository(private val context: Context) {
@@ -2319,9 +2321,14 @@ class ProviderRepository(private val context: Context) {
                 // can assign ANOTHER provider's output limit to the same model
                 // id (Groq's qwen3.6-27b got aiand's 65536 → HTTP 400). The
                 // hinted pass converges to the serving provider's exact entry.
+                //
+                // [T-android-v129-custom-instance-hint] The base-URL host wins
+                // over the type key: a custom OpenAI-type instance pointing at
+                // api.groq.com must resolve "groq", not "openai".
                 val hinted = ai.unicto.unibot.provider.ModelsDevApi.enrichModels(
                     models,
-                    providerHint = instance.providerType.modelsDevKey,
+                    providerHint = ai.unicto.unibot.provider.ModelsDevApi.modelsDevKeyForBaseUrl(instance.effectiveBaseURL)
+                        ?: instance.providerType.modelsDevKey,
                 )
                 replaceEntries(instance.id, hinted)
                 return
@@ -2458,6 +2465,16 @@ class ProviderRepository(private val context: Context) {
                     markHealed = { prefs.edit().putBoolean(PREFS_HEALED_OUTPUT_LIMITS_V127, true).apply() },
                 )
                 android.util.Log.i("ProviderRepo", "[ModelList] healPoisonedOutputLimits healed=$healed entries")
+                // [T-android-v129-custom-instance-hint] Second pass for entries
+                // the v1.2.7 pass skipped: custom OpenAI-type instances pointing
+                // at free-tier hosts (e.g. Groq added as a custom instance).
+                // One-time via its own guard; never touches user-modified entries.
+                val healedV129 = runHealPoisonedOutputLimits(
+                    isAlreadyHealed = { prefs.getBoolean(PREFS_HEALED_OUTPUT_LIMITS_V129, false) },
+                    markHealed = { prefs.edit().putBoolean(PREFS_HEALED_OUTPUT_LIMITS_V129, true).apply() },
+                    resolveHint = ::hostAwareHealHintResolver,
+                )
+                android.util.Log.i("ProviderRepo", "[ModelList] healPoisonedOutputLimits v129 healed=$healedV129 entries")
             } catch (e: Exception) {
                 android.util.Log.e("ProviderRepo", "[ModelList] healPoisonedOutputLimits failed: ${e.message}", e)
             }
@@ -2469,6 +2486,7 @@ class ProviderRepository(private val context: Context) {
         markHealed: () -> Unit,
         enrich: (model: ai.unicto.unibot.data.model.LLMModel, hint: String?) -> ai.unicto.unibot.data.model.LLMModel =
             { m, h -> ai.unicto.unibot.provider.ModelsDevApi.enrichModel(m, h) },
+        resolveHint: (ai.unicto.unibot.data.model.ProviderInstance) -> String? = ::defaultHealHintResolver,
     ): Int {
         ensureConfigLoaded()
         return ai.unicto.unibot.data.repository.healPoisonedOutputLimitsPass(
@@ -2477,6 +2495,7 @@ class ProviderRepository(private val context: Context) {
             snapshot = { synchronized(configLock) { workingCopy() } },
             save = { saveConfig(it) },
             enrich = enrich,
+            resolveHint = resolveHint,
         )
     }
 
@@ -3178,18 +3197,32 @@ class ProviderRepository(private val context: Context) {
  * enrichment yields a concrete different maxOutputTokens are rewritten, and
  * only via [save] when at least one changed.
  */
+/** [T-android-v127-heal-output-limits] v1.2.7 hint policy: free-tier provider types only. */
+internal fun defaultHealHintResolver(inst: ai.unicto.unibot.data.model.ProviderInstance): String? =
+    inst.providerType.modelsDevKey.takeIf { inst.providerType.isFreeTier }
+
+/**
+ * [T-android-v129-custom-instance-hint] v1.2.9 hint policy: the base-URL host
+ * wins (covers custom OpenAI-type instances pointing at free-tier hosts);
+ * falls back to the v1.2.7 policy for built-in types.
+ */
+internal fun hostAwareHealHintResolver(inst: ai.unicto.unibot.data.model.ProviderInstance): String? =
+    ai.unicto.unibot.provider.ModelsDevApi.modelsDevKeyForBaseUrl(inst.effectiveBaseURL)
+        ?: defaultHealHintResolver(inst)
+
 internal fun healPoisonedOutputLimitsPass(
     isAlreadyHealed: () -> Boolean,
     markHealed: () -> Unit,
     snapshot: () -> ai.unicto.unibot.data.model.ProviderConfig,
     save: (ai.unicto.unibot.data.model.ProviderConfig) -> Unit,
     enrich: (model: ai.unicto.unibot.data.model.LLMModel, hint: String?) -> ai.unicto.unibot.data.model.LLMModel,
+    resolveHint: (ai.unicto.unibot.data.model.ProviderInstance) -> String? = ::defaultHealHintResolver,
 ): Int {
     if (isAlreadyHealed()) return 0
     val config = snapshot()
     val hintByInstanceId = config.instances
-        .filter { it.providerType.isFreeTier }
-        .associate { it.id to it.providerType.modelsDevKey }
+        .mapNotNull { inst -> resolveHint(inst)?.let { hint -> inst.id to hint } }
+        .toMap()
     var count = 0
     val healedEntries = config.modelEntries.map { entry ->
         val hint = hintByInstanceId[entry.providerInstanceId] ?: return@map entry

@@ -211,4 +211,80 @@ class MaxTokensClampTest {
         val byId = LLMModel.allCerebras.associateBy { it.id }
         assertEquals(40960, byId["gpt-oss-120b"]?.maxOutputTokens)
     }
+
+    // ── [T-android-v129-corrupt-limit] Corruption-proof ceiling ─────────
+
+    /** A model entry poisoned the way the user's was: limit > context window. */
+    private fun corruptGptOss() = LLMModel(
+        id = "openai/gpt-oss-120b",
+        displayName = "GPT OSS 120B",
+        provider = "Custom",
+        contextWindow = 131072,
+        maxOutputTokens = 1_000_000,
+    )
+
+    @Test
+    fun `corrupt limit above context window falls back to provider default`() {
+        val corrupt = corruptGptOss()
+        assertEquals(16384, groqProvider(corrupt).effectiveMaxOutputTokens(corrupt))
+    }
+
+    @Test
+    fun `sane limit under context window passes through untouched`() {
+        val sane = corruptGptOss().copy(maxOutputTokens = 65536)
+        assertEquals(65536, groqProvider(sane).effectiveMaxOutputTokens(sane))
+    }
+
+    @Test
+    fun `limit equal to context window passes through untouched`() {
+        val edge = corruptGptOss().copy(maxOutputTokens = 131072)
+        assertEquals(131072, groqProvider(edge).effectiveMaxOutputTokens(edge))
+    }
+
+    @Test
+    fun `null or non-positive limit falls back to provider default`() {
+        val nullLimit = corruptGptOss().copy(maxOutputTokens = null)
+        assertEquals(16384, groqProvider(nullLimit).effectiveMaxOutputTokens(nullLimit))
+        val zeroLimit = corruptGptOss().copy(maxOutputTokens = 0)
+        assertEquals(16384, groqProvider(zeroLimit).effectiveMaxOutputTokens(zeroLimit))
+    }
+
+    @Test
+    fun `corrupt saved limit never reaches the wire`() {
+        val b = body(corruptGptOss(), maxTokens = 1_000_000)
+        assertEquals(16384, b.getInt("max_completion_tokens"))
+    }
+
+    @Test
+    fun `corruption fallback respects provider-specific default`() {
+        val corrupt = corruptGptOss().copy(id = "claude-opus-4-6", provider = "Anthropic")
+        val anthropic = ai.unicto.unibot.provider.anthropic.AnthropicProvider(
+            apiKey = "test-key",
+            model = corrupt,
+        )
+        assertEquals(64000, anthropic.effectiveMaxOutputTokens(corrupt))
+    }
+
+    // ── [T-android-v129-custom-instance-hint] Host → models.dev key ─────
+
+    @Test
+    fun `base url host resolves free-tier models dev keys`() {
+        assertEquals("groq", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.groq.com/openai/v1"))
+        assertEquals("cerebras", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.cerebras.ai/v1"))
+        assertEquals("mistral", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.mistral.ai/v1"))
+        assertEquals("deepseek", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.deepseek.com/v1"))
+        assertEquals("zai", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.z.ai/api/paas/v4"))
+        assertEquals("nvidia", ModelsDevApi.modelsDevKeyForBaseUrl("https://integrate.api.nvidia.com/v1"))
+        assertEquals("nebius", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.studio.nebius.com/v1"))
+        assertEquals("chutes", ModelsDevApi.modelsDevKeyForBaseUrl("https://llm.chutes.ai/v1"))
+        assertEquals("xai", ModelsDevApi.modelsDevKeyForBaseUrl("https://api.x.ai/v1"))
+    }
+
+    @Test
+    fun `unknown or blank base url resolves no key`() {
+        assertNull(ModelsDevApi.modelsDevKeyForBaseUrl("https://my-relay.example.com/v1"))
+        assertNull(ModelsDevApi.modelsDevKeyForBaseUrl(null))
+        assertNull(ModelsDevApi.modelsDevKeyForBaseUrl(""))
+        assertNull(ModelsDevApi.modelsDevKeyForBaseUrl("not a url"))
+    }
 }

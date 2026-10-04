@@ -86,7 +86,7 @@ class LlmCorrectionStrategy(
         val response = provider.sendMessage(
             messages = listOf(LLMMessage(role = LLMMessage.Role.USER, content = prompt)),
             systemPrompt = SYSTEM_PROMPT,
-            maxTokens = correctionMaxTokens(transcript.length, entry.model.maxOutputTokens),
+            maxTokens = correctionMaxTokens(transcript.length, provider.effectiveMaxOutputTokens(entry.model)),
             // Reasoning traces add latency for no benefit here, and on some
             // providers yield empty text with finish_reason=tool_calls.
             thinkingLevel = ThinkingLevel.OFF,

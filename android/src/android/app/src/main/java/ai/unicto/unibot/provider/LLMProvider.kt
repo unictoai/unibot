@@ -17,10 +17,25 @@ interface LLMProvider {
     /**
      * Effective max output tokens ceiling for the given model.
      * Priority: model.maxOutputTokens > provider-level default.
-     * Used as the upper bound in dynamicMaxTokens().
+     * Used as the upper bound in dynamicMaxTokens() and by every wire
+     * builder's final clamp.
+     *
+     * [T-android-v129-corrupt-limit] Corruption-proof: model.maxOutputTokens
+     * is metadata and can be poisoned — a bad enrichment once wrote a
+     * million-token limit for a 131K-window model, and Groq 413'd the
+     * request because the wire trusted the saved value. No model can output
+     * more than its context window, so a limit above the known window (or a
+     * non-positive limit) is corrupt metadata: discard it and fall back to
+     * the provider default. This single rule neutralizes ALL poisoned
+     * limits — past, present, future — with no heal or refresh needed. It
+     * errs toward capping response length, never toward an HTTP 400/413.
      */
-    fun effectiveMaxOutputTokens(model: LLMModel): Int =
-        model.maxOutputTokens ?: defaultMaxOutputTokens
+    fun effectiveMaxOutputTokens(model: LLMModel): Int {
+        val limit = model.maxOutputTokens ?: return defaultMaxOutputTokens
+        if (limit <= 0) return defaultMaxOutputTokens
+        val window = model.contextWindowTokens
+        return if (window > 0 && limit > window) defaultMaxOutputTokens else limit
+    }
 
     /** Provider-level fallback when model.maxOutputTokens is unknown. */
     val defaultMaxOutputTokens: Int get() = 16_384

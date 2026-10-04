@@ -58,6 +58,38 @@ object ModelsDevApi {
     private var cachedRegistry: Map<String, ProviderEntry>? = null
     private var cacheTimestamp: Long = 0L
     private val isRefreshing = AtomicBoolean(false)
+
+    // [T-android-v129-custom-instance-hint] Known free-tier hosts → models.dev
+    // keys. A user can add Groq as a *custom* OpenAI-type instance pointing at
+    // api.groq.com: the ProviderType-based hint then resolves to "openai" (the
+    // wrong vendor) and the v1.2.7 heal skipped the instance entirely (not
+    // isFreeTier). Matching the effective base URL's host recovers the right
+    // key in both cases. Order: most-specific first; a null/blank URL or no
+    // match returns null and the caller falls back to the type-based key or
+    // the conservative scan. Hosts with no models.dev entry (GitHub Models,
+    // SambaNova) are deliberately absent — null is the right answer for them.
+    private val freeTierHostKeys = listOf(
+        "groq" to "groq",
+        "cerebras" to "cerebras",
+        "mistral" to "mistral",
+        "deepseek" to "deepseek",
+        "z.ai" to "zai",
+        "nvidia" to "nvidia",
+        "nebius" to "nebius",
+        "chutes" to "chutes",
+        "x.ai" to "xai",
+    )
+
+    internal fun modelsDevKeyForBaseUrl(baseUrl: String?): String? {
+        if (baseUrl.isNullOrBlank()) return null
+        val host = try {
+            java.net.URI(baseUrl).host ?: return null
+        } catch (_: Exception) {
+            return null
+        }
+        val h = host.lowercase()
+        return freeTierHostKeys.firstOrNull { (fragment, _) -> h.contains(fragment) }?.second
+    }
     private var appContext: Context? = null
 
     private val client = OkHttpClient.Builder()
