@@ -254,7 +254,7 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") && it
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }
     .configureEach {
         doLast {
-            val outDirs = outputs.files.filter { it.isDirectory }
+            val outDirs = outputs.files.files.filter { it.isDirectory }
             check(outDirs.isNotEmpty()) {
                 "FATAL [ort-pinning]: merge task '$name' has no directory output — " +
                     "AGP packaging layout changed, update this check."
