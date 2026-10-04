@@ -90,6 +90,14 @@ jobs:
           set -o pipefail
           ./gradlew :app:assembleDebug --console=plain --no-daemon 2>&1 | tee "$RUNNER_TEMP/assemble.log"
 
+      - name: Run Kotlin unit tests
+        id: unittest
+        working-directory: android/src/android
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+          set -o pipefail
+          ./gradlew :app:testDebugUnitTest --console=plain --no-daemon 2>&1 | tee "$RUNNER_TEMP/unittest.log"
+
       - name: Report assembleDebug failure
         if: failure() && steps.assemble.conclusion == 'failure'
         env:
