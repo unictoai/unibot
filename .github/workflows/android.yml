@@ -98,6 +98,24 @@ jobs:
           set -o pipefail
           ./gradlew :app:testDebugUnitTest --console=plain --no-daemon 2>&1 | tee "$RUNNER_TEMP/unittest.log"
 
+      - name: Report unit test failure
+        if: failure() && steps.unittest.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # CI job logs are not readable without auth; publish the failure tail
+          # as an issue so it can be diagnosed.
+          { echo 'testDebugUnitTest failed. Error lines + tail:'; echo '```'; grep -E '^e:|error:|FAILED|AssertionError|expected' "$RUNNER_TEMP/unittest.log" | head -60; echo '--- tail ---'; tail -c 15000 "$RUNNER_TEMP/unittest.log"; echo '```'; } | python3 .github/scripts/redact-log.py > /tmp/unittest-tail.txt || true
+          # Don't flood the tracker: one open issue per failing commit is
+          # enough (a stale open issue must not suppress diagnostics for new
+          # failures, so match on the commit SHA in the title).
+          existing=$(gh issue list --state open --search "CI: testDebugUnitTest failed on ${{ github.sha }} in:title" --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "$existing" = "0" ]; then
+            gh issue create --title "CI: testDebugUnitTest failed on ${{ github.sha }}" \
+              --body-file /tmp/unittest-tail.txt \
+              --label "ci-failure" 2>/dev/null || true
+          fi
+
       - name: Report assembleDebug failure
         if: failure() && steps.assemble.conclusion == 'failure'
         env:

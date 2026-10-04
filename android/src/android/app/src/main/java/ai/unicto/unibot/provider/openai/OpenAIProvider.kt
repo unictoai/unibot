@@ -97,6 +97,23 @@ class OpenAIProvider private constructor(
     override val name = "OpenAI"
 
     /**
+     * [T-android-v128-test-ctor] Test-only construction. The primary
+     * constructor is private (factories disambiguate the erased overloads);
+     * unit tests need a plain API-key instance to exercise [mapHttpError].
+     * Internal so production still goes through the factories.
+     */
+    internal constructor(
+        apiKey: String,
+        model: LLMModel,
+        basePath: String,
+    ) : this(
+        apiKey = apiKey,
+        oauthTokenProvider = null,
+        model = model,
+        basePath = basePath,
+    )
+
+    /**
      * [T-android-thinking-rules-phase2] Owning provider-instance id, set by
      * ProviderFactory after construction (mirrors how [codexAccountId] is a
      * post-construction var). Lets the thinking resolver look up this instance's
