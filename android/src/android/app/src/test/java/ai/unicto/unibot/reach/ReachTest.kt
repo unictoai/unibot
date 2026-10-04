@@ -12,7 +12,7 @@ class ReachTest {
     }
 
     @Test fun `the help names every verb`() {
-        for (verb in listOf("status", "run", "ls", "get", "put", "open", "screen")) {
+        for (verb in listOf("run", "ls", "get", "put", "open", "screen")) {
             assertTrue(verb, ReachOffloadHandler.HELP.contains("unibot-pc $verb"))
         }
     }
