@@ -201,7 +201,7 @@ class MaxTokensClampTest {
     @Test
     fun `Groq catalog declares true max output tokens`() {
         val byId = LLMModel.allGroq.associateBy { it.id }
-        assertEquals(16384, byId["qwen/qwen3.6-27b"]?.maxOutputTokens)
+        assertEquals(16384, byId["qwen/qwen3.8-27b"]?.maxOutputTokens)
         assertEquals(65536, byId["openai/gpt-oss-120b"]?.maxOutputTokens)
         assertEquals(65536, byId["openai/gpt-oss-20b"]?.maxOutputTokens)
     }

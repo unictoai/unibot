@@ -60,7 +60,9 @@ class ChatModelFilterTest {
         val chat = listOf(
             "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
-            "qwen/qwen3.6-27b",
+            // qwen/qwen3.6-27b retired ~2026-09-14 (see RETIRED_MODEL_IDS);
+            // its replacement qwen/qwen3.8-27b is the legit entry now.
+            "qwen/qwen3.8-27b",
             "deepseek-chat",
             "moonshotai/kimi-k2.5",
             "z-ai/glm-4.7",

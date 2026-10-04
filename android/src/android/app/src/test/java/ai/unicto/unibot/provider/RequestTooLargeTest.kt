@@ -48,11 +48,13 @@ class RequestTooLargeTest {
 
     @Test
     fun `Groq catalog contains no decommissioned model IDs`() {
-        val dead = setOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant")
+        // qwen3.6-27b retired ~2026-09-14 (renamed to qwen3.8-27b) — it must
+        // not be in the seed catalog anymore (see RETIRED_MODEL_IDS).
+        val dead = setOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3.6-27b")
         val ids = LLMModel.allGroq.map { it.id }.toSet()
         assertTrue("dead IDs still present: ${ids intersect dead}", (ids intersect dead).isEmpty())
         assertTrue(ids.contains("openai/gpt-oss-120b"))
         assertTrue(ids.contains("openai/gpt-oss-20b"))
-        assertTrue(ids.contains("qwen/qwen3.6-27b"))
+        assertTrue(ids.contains("qwen/qwen3.8-27b"))
     }
 }
