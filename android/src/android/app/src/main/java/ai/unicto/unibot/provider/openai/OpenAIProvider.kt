@@ -16,6 +16,7 @@ import ai.unicto.unibot.provider.thinking.ThinkingResolveContext
 import ai.unicto.unibot.provider.thinking.ThinkingRuleResolver
 import ai.unicto.unibot.provider.LLMProvider
 import ai.unicto.unibot.provider.MessageNormalizer
+import ai.unicto.unibot.provider.RequestDiagnostics
 import ai.unicto.unibot.provider.applyUserAgentOverride
 import ai.unicto.unibot.provider.safeOptString
 import kotlinx.coroutines.CancellationException
@@ -841,6 +842,20 @@ class OpenAIProvider private constructor(
                 "[T321] ← HTTP ${response.code} error body: $errorBody"
             )
             response.close()
+            // [T-android-v122-400-diag] Shape-only 400 diagnostic: when the
+            // server rejects the request, log the wire shape (roles, tool_call
+            // pairing — never content) so the next 400 reveals the actual
+            // malformation instead of another blind guess. The image-generation
+            // route carries no chat messages, so it is excluded.
+            if (response.code == 400 && !isCodexImageModel) {
+                RequestDiagnostics.logHttp400(
+                    "OpenAIProvider",
+                    name,
+                    if (usesChatCompletionsAPI) RequestDiagnostics.Kind.OPENAI_CHAT
+                    else RequestDiagnostics.Kind.OPENAI_RESPONSES,
+                    body,
+                )
+            }
             // T302: skip the LLMRequestLog write entirely on release builds —
             // not just to avoid the (already-truncated) retention cost, but to
             // dodge constructing the Entry / headerMap copies that go with it.
@@ -1282,6 +1297,18 @@ class OpenAIProvider private constructor(
                     val inlineError = event.optJSONObject("error")
                     if (inlineError != null) {
                         val code = inlineError.optInt("code", 0)
+                        // [T-android-v122-400-diag] OpenRouter-style inline 400
+                        // inside SSE: same shape-only diagnostic as the HTTP
+                        // 400 path above — `body` is still in scope here.
+                        if (code == 400 && !isCodexImageModel) {
+                            RequestDiagnostics.logHttp400(
+                                "OpenAIProvider",
+                                name,
+                                if (usesChatCompletionsAPI) RequestDiagnostics.Kind.OPENAI_CHAT
+                                else RequestDiagnostics.Kind.OPENAI_RESPONSES,
+                                body,
+                            )
+                        }
                         val msg = inlineError.optString("message", "Unknown SSE error")
                         val err = mapHttpError(code, event.toString())
                         throw err

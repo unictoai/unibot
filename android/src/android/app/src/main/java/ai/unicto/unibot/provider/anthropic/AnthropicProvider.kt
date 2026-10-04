@@ -14,6 +14,7 @@ import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.provider.ImageBudget
 import ai.unicto.unibot.provider.LLMProvider
 import ai.unicto.unibot.provider.MessageNormalizer
+import ai.unicto.unibot.provider.RequestDiagnostics
 import ai.unicto.unibot.provider.applyUserAgentOverride
 import ai.unicto.unibot.provider.safeOptString
 import kotlinx.coroutines.Dispatchers
@@ -104,6 +105,13 @@ class AnthropicProvider(
         val responseBody = response.body?.string() ?: ""
 
         if (!response.isSuccessful) {
+            // [T-android-v122-400-diag] Shape-only 400 diagnostic — see
+            // OpenAIProvider for the rationale; never logs content.
+            if (response.code == 400) {
+                RequestDiagnostics.logHttp400(
+                    "AnthropicProvider", name, RequestDiagnostics.Kind.ANTHROPIC, body,
+                )
+            }
             throw mapHttpError(response.code, responseBody)
         }
 
@@ -172,6 +180,13 @@ class AnthropicProvider(
                 )
             }
             android.util.Log.e("AnthropicProvider", "Stream failed: ${response.code} isOAuth=$isOAuth body=${errorBody.take(300)}")
+            // [T-android-v122-400-diag] Shape-only 400 diagnostic — see
+            // OpenAIProvider for the rationale; never logs content.
+            if (response.code == 400) {
+                RequestDiagnostics.logHttp400(
+                    "AnthropicProvider", name, RequestDiagnostics.Kind.ANTHROPIC, body,
+                )
+            }
             throw mapHttpError(response.code, errorBody)
         }
 

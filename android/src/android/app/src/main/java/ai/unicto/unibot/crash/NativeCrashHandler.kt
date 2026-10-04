@@ -60,6 +60,23 @@ object NativeCrashHandler {
     }
 
     /**
+     * [T-android-v122-ort-pinning] Runtime ORT version guard. The APK pins
+     * VAD's ORT 1.20.0 at build time, but this is the last line of defense:
+     * returns "OK <version>" when the loaded libonnxruntime.so serves
+     * OrtApi v20, else "FAIL <reason>". Voice init paths call this BEFORE
+     * touching the VAD/sherpa native libs so a version skew degrades to
+     * "voice unavailable" instead of a SIGABRT. Never throws.
+     */
+    fun checkOnnxRuntime(): String {
+        return try {
+            System.loadLibrary("unibot_crash_handler")
+            nativeCheckOnnxRuntime()
+        } catch (t: Throwable) {
+            "FAIL err=${t.message}"
+        }
+    }
+
+    /**
      * Appends logcat context + app-log tail to every un-finalized
      * native-crash report in [logsDir]. Best-effort: logd's buffers may
      * already have rotated, in which case the file keeps its original
@@ -80,7 +97,7 @@ object NativeCrashHandler {
                 if (FINALIZED_MARKER in existing) continue
                 val sb = StringBuilder()
                 sb.append("\n\n--- logcat context (captured at next launch) ---\n")
-                val logcatLines = captureLogcatContext()
+                val logcatLines = captureLogcatContext(report)
                 if (logcatLines.isEmpty()) {
                     sb.append("(logd buffers already rotated — no matching lines left)\n")
                 } else {
@@ -98,22 +115,67 @@ object NativeCrashHandler {
         }
     }
 
-    /** Last matching logcat lines for the tags that diagnose native aborts. */
-    private fun captureLogcatContext(): List<String> {
-        val wanted = listOf("scudo", "libc", "DEBUG", "abort", "fatal", "tombstone")
+    /**
+     * [T-android-v122-crash-capture] Last matching logcat lines for the tags
+     * that diagnose native aborts. Two lessons from the v1.2.1 field report:
+     * (1) the old `*:W` filter dropped debuggerd's "Abort message:" line
+     * (info-level), so the capture held stack frames but never the abort
+     * reason — now `*:I`; (2) the window was unbounded-but-tiny (takeLast
+     * 150 of tag matches), so the reason scrolled away — now every line
+     * within ±30 s of the crash timestamp (parsed from the report filename)
+     * is kept, PLUS every line matching the abort patterns regardless of
+     * time, capped at 400.
+     */
+    private fun captureLogcatContext(report: File): List<String> {
+        val crashSec = parseCrashTimestampSec(report.name)
+        val abortPatterns = listOf(
+            "abort message", "fatal signal", "fatal", "scudo", "sigabrt",
+            "f libc", "f debug", "tombstone", "backtrace", "abort(",
+        )
         return try {
-            val proc = ProcessBuilder("logcat", "-d", "-v", "threadtime", "*:W")
-                .redirectErrorStream(true)
-                .start()
-            val lines = proc.inputStream.bufferedReader().readLines()
+            val proc = ProcessBuilder(
+                "logcat", "-d", "-v", "threadtime", "-b", "main,system,crash", "*:I",
+            ).redirectErrorStream(true).start()
+            // Bound the read: a chatty device can hold megabytes in the
+            // ring buffers; 60k lines is plenty for a ±30 s window.
+            val lines = proc.inputStream.bufferedReader().readLines().takeLast(60_000)
             proc.waitFor()
-            lines.filter { line ->
+            val picked = ArrayList<String>(400)
+            for (line in lines) {
                 val l = line.lowercase()
-                wanted.any { it.lowercase() in l }
-            }.takeLast(150)
+                val inWindow = crashSec != null && logcatLineInWindow(line, crashSec)
+                if (inWindow || abortPatterns.any { it in l }) picked.add(line)
+            }
+            picked.takeLast(400)
         } catch (t: Throwable) {
             Log.w(TAG, "logcat capture failed: ${t.message}")
             emptyList()
+        }
+    }
+
+    /** "native-crash-2026-10-04_11-41-13.log" → seconds since month start. */
+    private fun parseCrashTimestampSec(name: String): Long? {
+        return try {
+            val m = Regex(
+                """native-crash-\d{4}-\d{2}-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.log"""
+            ).find(name) ?: return null
+            val (day, h, min, s) = m.destructured
+            ((day.toLong() * 24 + h.toLong()) * 60 + min.toLong()) * 60 + s.toLong()
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    /** threadtime head "10-04 11:41:13.096" → true when within ±30 s. */
+    private fun logcatLineInWindow(line: String, crashSec: Long): Boolean {
+        return try {
+            val m = Regex("""^(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})""").find(line)
+                ?: return false
+            val (_, _, day, h, min, s) = m.groupValues
+            val sec = ((day.toLong() * 24 + h.toLong()) * 60 + min.toLong()) * 60 + s.toLong()
+            kotlin.math.abs(sec - crashSec) <= 30
+        } catch (_: Throwable) {
+            false
         }
     }
 
@@ -132,4 +194,5 @@ object NativeCrashHandler {
     }
 
     private external fun nativeInstall(logDir: String)
+    private external fun nativeCheckOnnxRuntime(): String
 }

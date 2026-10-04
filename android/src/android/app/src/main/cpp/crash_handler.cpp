@@ -40,6 +40,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <cstring>
 #include <cstdio>
 #include <ctime>
@@ -331,4 +332,51 @@ Java_ai_unicto_unibot_crash_NativeCrashHandler_nativeInstall(
 
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
         "installed: dir=%s (chaining to prior handlers)", g_log_dir);
+}
+
+// [T-android-v122-ort-pinning] Runtime ORT version guard. The APK pins VAD's
+// ORT 1.20.0 at build time (see app/build.gradle.kts), but this is the last
+// line of defense on-device: dlopen the merged libonnxruntime.so, resolve
+// OrtGetApiBase, and verify GetApi(20) is served and the version string is
+// >= 1.20. If not, the VAD native lib would abort the process (SIGABRT) on
+// its first ORT call — so callers must treat FAIL as "voice unavailable"
+// instead of proceeding. Returns "OK <version>" or "FAIL <reason>".
+// Uses dlopen (not NOLOAD): loading the already-present .so is cheap, and
+// this also covers the case where no ORT consumer has run yet.
+struct OrtApiBaseShim {
+    const void* (*GetApi)(uint32_t version);
+    const char* (*GetVersionString)();
+};
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_ai_unicto_unibot_crash_NativeCrashHandler_nativeCheckOnnxRuntime(
+    JNIEnv* env, jclass) {
+    char buf[192];
+    void* h = dlopen("libonnxruntime.so", RTLD_LAZY);
+    if (!h) {
+        snprintf(buf, sizeof buf, "FAIL dlopen: %s", dlerror());
+        return env->NewStringUTF(buf);
+    }
+    auto getBase =
+        reinterpret_cast<OrtApiBaseShim* (*)()>(dlsym(h, "OrtGetApiBase"));
+    if (!getBase) {
+        snprintf(buf, sizeof buf, "FAIL OrtGetApiBase not exported");
+        return env->NewStringUTF(buf);
+    }
+    OrtApiBaseShim* base = getBase();
+    if (!base || !base->GetApi || !base->GetVersionString) {
+        snprintf(buf, sizeof buf, "FAIL OrtGetApiBase broken");
+        return env->NewStringUTF(buf);
+    }
+    const char* ver = base->GetVersionString();
+    const void* api20 = base->GetApi(20);
+    // Do not dlclose: the handle is shared process-wide; dropping our
+    // reference could unload the library out from under its consumers.
+    if (!ver || !api20) {
+        snprintf(buf, sizeof buf, "FAIL ver=%s api20=%s (need ORT>=1.20)",
+                 ver ? ver : "?", api20 ? "yes" : "no");
+        return env->NewStringUTF(buf);
+    }
+    snprintf(buf, sizeof buf, "OK %s api20=yes", ver);
+    return env->NewStringUTF(buf);
 }

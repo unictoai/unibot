@@ -89,6 +89,14 @@ object SherpaTtsEngine {
     fun initEngine(context: Context, voiceDir: File, speed: Float): Boolean {
         if (!nativeAvailable) return false
         if (!validateVoiceDir(voiceDir)) return false
+        // [T-android-v122-ort-pinning] Same guard as VoiceActivityDetector:
+        // sherpa-onnx tolerates the pinned ORT 1.20.0, but if the device ever
+        // loads another ORT, refuse here instead of risking a native abort.
+        val ortStatus = ai.unicto.unibot.crash.NativeCrashHandler.checkOnnxRuntime()
+        if (!ortStatus.startsWith("OK ")) {
+            android.util.Log.e(TAG, "TTS init refused: bad ONNX Runtime ($ortStatus)")
+            return false
+        }
         this.speed = speed
         return try {
             val config = OfflineTtsConfig(
