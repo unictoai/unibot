@@ -366,9 +366,16 @@ internal fun ModelPickerSheet(
             .filter { it.isEnabled }
             .map { instance ->
                 val pt = System.nanoTime()
-                val entries = config.modelEntries.filter {
-                    it.providerInstanceId == instance.id && !it.isHidden
-                }
+                // [T-android-v125-model-filter] Chat pickers never show
+                // TTS/STT/guard/embedding models or retired IDs (Groq's
+                // /v1/models lists whisper, orpheus, guard models next to
+                // chat models) — those entries stay in storage for Voice
+                // Services, they just can't be picked for chat.
+                val entries = ai.unicto.unibot.provider.ChatModelFilter.filterEntries(
+                    config.modelEntries.filter {
+                        it.providerInstanceId == instance.id && !it.isHidden
+                    },
+                )
                 val filtered = if (searchText.isEmpty()) entries
                 else entries.filter {
                     fuzzyMatch(it.model.displayName, searchText) || fuzzyMatch(it.model.id, searchText)

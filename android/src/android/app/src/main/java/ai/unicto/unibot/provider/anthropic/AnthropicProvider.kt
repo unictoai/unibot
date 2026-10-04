@@ -5,6 +5,8 @@ import ai.unicto.unibot.data.model.AgentContentPart
 import ai.unicto.unibot.data.model.AgentToolDefinition
 import ai.unicto.unibot.data.model.sanitizeToolId
 import ai.unicto.unibot.data.model.LLMError
+import ai.unicto.unibot.data.model.extractModelId
+import ai.unicto.unibot.data.model.isModelNotFoundBody
 import ai.unicto.unibot.data.model.LLMMessage
 import ai.unicto.unibot.data.model.LLMModel
 import ai.unicto.unibot.data.model.LLMResponse
@@ -1062,6 +1064,11 @@ class AnthropicProvider(
         // [T-android-v124-413] Own error class so the chat shows the friendly
         // recovery card instead of the raw status text.
         if (statusCode == 413) return LLMError.RequestTooLarge("HTTP 413: ${body.take(500)}")
+        // [T-android-v125-model-filter] 404 where the body says the model is
+        // gone → ModelNotFound (friendly card). Bare 404s stay ProviderError.
+        if (statusCode == 404 && isModelNotFoundBody(body)) {
+            return LLMError.ModelNotFound(extractModelId(body), "[$statusCode] ${body.take(300)}")
+        }
 
         val message = try {
             val json = JSONObject(body)

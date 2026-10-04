@@ -133,7 +133,12 @@ fun ProviderDetailScreen(
     // OpenAI-/Anthropic-compat custom-base section surfaces it (see gate below).
     var customUserAgent by remember { mutableStateOf(instance.customUserAgent ?: "") }
 
-    val entries = providerRepository.entriesFor(instanceId)
+    // [T-android-v125-model-filter] The Models section is a chat-model list:
+    // TTS/STT/guard/embedding entries and retired IDs are hidden here
+    // (they remain in storage for Voice Services).
+    val entries = ai.unicto.unibot.provider.ChatModelFilter.filterEntries(
+        providerRepository.entriesFor(instanceId),
+    )
     var isRefreshing by remember { mutableStateOf(false) }
 
     val exportContext = androidx.compose.ui.platform.LocalContext.current

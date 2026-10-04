@@ -2373,6 +2373,14 @@ fun ChatScreen(
         }
     }
 
+    // [T-android-v125-model-filter] Model-management notices: auto-fallback
+    // when the selected model was filtered out, refresh outcomes.
+    LaunchedEffect(Unit) {
+        viewModel.modelNoticeEvent.collect { msg ->
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
     // T-request-imgsize: surface request-level image-budget elisions
     // (older images compacted into text placeholders to fit the 25MB
     // request cap). Independent flow from the composer-side budget so
@@ -4849,13 +4857,20 @@ fun ChatScreen(
                                 // [T-android-v124-413] No Retry on a 413 — re-sending the
                                 // same oversized history 413s again. The card offers
                                 // New chat / Change model instead.
-                                onRetry = if (item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE) null else ({
+                                // [T-android-v125-model-filter] No Retry on a dead
+                                // model either — retrying the same id 404s again.
+                                // The card offers Change model / Refresh models.
+                                onRetry = if (item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE ||
+                                    item.errorKind == ERROR_KIND_MODEL_NOT_FOUND
+                                ) null else ({
                                     coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                     safeMutate { viewModel.retryLast() }
                                 }),
                                 isRequestTooLarge = item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE,
+                                isModelNotFound = item.errorKind == ERROR_KIND_MODEL_NOT_FOUND,
                                 onNewChat = { onNewChat() },
                                 onChangeModel = { showModelPicker = true },
+                                onRefreshModels = { safeMutate { viewModel.refreshCurrentProviderModels() } },
                             )
                             // [P2-branching] Sibling pager + regenerate/fork
                             // row under the assistant turn. UI lives in

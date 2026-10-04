@@ -4,6 +4,8 @@ import android.util.Base64
 import ai.unicto.unibot.data.model.AgentContentPart
 import ai.unicto.unibot.data.model.AgentToolDefinition
 import ai.unicto.unibot.data.model.LLMError
+import ai.unicto.unibot.data.model.extractModelId
+import ai.unicto.unibot.data.model.isModelNotFoundBody
 import ai.unicto.unibot.provider.ImageBudget
 import ai.unicto.unibot.provider.applyUserAgentOverride
 import ai.unicto.unibot.data.model.LLMMessage
@@ -539,6 +541,11 @@ class GeminiProvider(
         // [T-android-v124-413] Own error class so the chat shows the friendly
         // recovery card instead of the raw status text.
         if (statusCode == 413) return LLMError.RequestTooLarge("HTTP $statusCode: ${body.take(200)}")
+        // [T-android-v125-model-filter] 404 where the body says the model is
+        // gone → ModelNotFound (friendly card). Bare 404s stay ProviderError.
+        if (statusCode == 404 && isModelNotFoundBody(body)) {
+            return LLMError.ModelNotFound(extractModelId(body), "[$statusCode] ${body.take(300)}")
+        }
         val message = "Gemini API error $statusCode: ${body.take(200)}"
         val transientCodes = setOf(500, 502, 503, 504, 529)
         if (statusCode in transientCodes) return LLMError.TransientError(message)

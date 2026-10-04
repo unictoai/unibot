@@ -3511,6 +3511,16 @@ class OpenAIProvider private constructor(
             }
             return LLMError.RequestTooLarge(detail)
         }
+        // [T-android-v125-model-filter] 404 where the BODY says the model is
+        // gone → ModelNotFound (friendly "Change model / Refresh models"
+        // card). A 404 without model language stays a ProviderError — it may
+        // be a wrong endpoint, which is a different problem.
+        if (statusCode == 404 && ai.unicto.unibot.data.model.isModelNotFoundBody(body)) {
+            return LLMError.ModelNotFound(
+                ai.unicto.unibot.data.model.extractModelId(body),
+                "[$statusCode] ${body.take(300)}",
+            )
+        }
 
         val message = try {
             val json = JSONObject(body)

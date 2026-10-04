@@ -1125,6 +1125,15 @@ class ChatViewModel(
     val imageBudgetEvent: SharedFlow<ImageBudget.BudgetResult> = _imageBudgetEvent.asSharedFlow()
 
     /**
+     * [T-android-v125-model-filter] Short user-facing notices about model
+     * management: auto-fallback when the selected model was filtered out
+     * (retired id / non-chat model), refresh outcomes. ChatScreen collects
+     * this flow into the Snackbar. Mirrors [imageBudgetEvent].
+     */
+    private val _modelNoticeEvent = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val modelNoticeEvent: SharedFlow<String> = _modelNoticeEvent.asSharedFlow()
+
+    /**
      * Request-level image-budget events (T-request-imgsize). Emitted by
      * [applyRequestImageBudget] when the cumulative history image payload
      * exceeds [ImageBudget.MAX_REQUEST_BYTES] and older images had to be
@@ -6647,6 +6656,38 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * [T-android-v125-model-filter] Never leave the user pointing at a model
+     * that can't work: if the active entry's model id is filtered out (a
+     * retired id like llama-3.3-70b-versatile, or a TTS/STT/guard/embedding
+     * model), fall back to the first live chat model on the same provider
+     * instance and say what happened. Runs before every send — cheap
+     * (in-memory config read) and idempotent: after the first swap the
+     * active entry is valid, so it no-ops.
+     */
+    private fun ensureValidModelSelection() {
+        val activeId = _activeEntryId.value ?: return
+        val config = providerRepository.config.value
+        val entry = config.modelEntries.find { it.id == activeId } ?: return
+        if (ai.unicto.unibot.provider.ChatModelFilter.isChatModel(entry.model.id)) return
+        val fallback = config.modelEntries.firstOrNull {
+            it.providerInstanceId == entry.providerInstanceId &&
+                !it.isHidden &&
+                ai.unicto.unibot.provider.ChatModelFilter.isChatModel(it.model.id)
+        } ?: return // nothing valid on this instance — the 404 card will guide
+        val instance = providerRepository.instance(entry.providerInstanceId) ?: return
+        val apiKey = providerRepository.usableApiKey(instance) ?: ""
+        val oldName = entry.model.displayName.ifBlank { entry.model.id }
+        currentModel = fallback.model
+        _modelName.value = fallback.model.displayName
+        _providerName.value = instance.label.ifEmpty { fallback.model.provider }
+        _activeEntryId.value = fallback.id
+        currentProvider = ProviderFactory.create(instance, apiKey, fallback.model, context)
+        _modelNoticeEvent.tryEmit(
+            "Switched from $oldName (no longer available) to ${fallback.model.displayName}",
+        )
+    }
+
     fun sendMessage(text: String) {
         // unibot: "change your avatar to …" (and a pick while the options are
         // up) is handled in the app, not by the model.
@@ -6654,6 +6695,9 @@ class ChatViewModel(
         // [v0.5.0-agentic-core] "remember that …" / "forget …" never reach
         // the model — persisted locally with a confirmation line.
         if (ubInterceptRemember(text)) return
+        // [T-android-v125-model-filter] Never send on a dead/filtered-out
+        // model id — fall back first so the turn can't 404.
+        ensureValidModelSelection()
         // unibot: during the first conversation the text goes to the model as
         // it is; the model says what it meant in a `unibot-naming` block and
         // ubAfterTurn moves the phase (see FirstConversation).
@@ -7714,8 +7758,40 @@ class ChatViewModel(
                 friendlyRequestTooLargeText(modelName, providerName),
                 ERROR_KIND_REQUEST_TOO_LARGE,
             )
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.ModelNotFound) {
+            // [T-android-v125-model-filter] Dead model id (e.g. a retired id
+            // still selected): friendly card with Change model / Refresh
+            // models — never a bare Retry pill.
+            val provider = currentProvider
+            val modelId = llmError.modelId.ifBlank { provider?.model?.id.orEmpty() }
+            val modelName = provider?.model?.displayName?.ifBlank { modelId }
+                ?: modelId.ifBlank { "this model" }
+            val providerName = provider?.name ?: "the provider"
+            setInlineError(
+                friendlyModelNotFoundText(modelName, providerName),
+                ERROR_KIND_MODEL_NOT_FOUND,
+            )
         } else {
             setInlineError(error.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * [T-android-v125-model-filter] "Refresh models" action for the 404 card:
+     * re-pulls the current provider instance's live /v1/models list, then
+     * toasts the outcome. Called from the UI (ChatScreen wires the banner).
+     */
+    fun refreshCurrentProviderModels() {
+        val entryId = _activeEntryId.value ?: return
+        val entry = providerRepository.config.value.modelEntries.find { it.id == entryId } ?: return
+        val instance = providerRepository.instance(entry.providerInstanceId) ?: return
+        viewModelScope.launch {
+            try {
+                providerRepository.refreshModels(instance)
+                _modelNoticeEvent.emit("Model list refreshed — pick a current model")
+            } catch (e: Exception) {
+                _modelNoticeEvent.emit("Couldn't refresh the model list — check your connection")
+            }
         }
     }
 

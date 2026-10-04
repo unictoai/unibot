@@ -633,11 +633,15 @@ fun UnifiedModelPickerSheet(
                 val entriesByInstance = config.instances
                     .filter { it.isEnabled }
                     .mapNotNull { inst ->
-                        val entries = config.modelEntries.filter { e ->
-                            e.providerInstanceId == inst.id && !e.isHidden &&
-                                modalityFilter.matches(e.model) &&
-                                (matches(e.model.displayName) || matches(e.model.id))
-                        }
+                        // [T-android-v125-model-filter] Chat pickers never show
+                        // TTS/STT/guard/embedding models or retired IDs.
+                        val entries = ai.unicto.unibot.provider.ChatModelFilter.filterEntries(
+                            config.modelEntries.filter { e ->
+                                e.providerInstanceId == inst.id && !e.isHidden &&
+                                    modalityFilter.matches(e.model) &&
+                                    (matches(e.model.displayName) || matches(e.model.id))
+                            },
+                        )
                         if (entries.isEmpty()) null else inst to entries
                     }
                 entriesByInstance.forEach { (inst, entries) ->

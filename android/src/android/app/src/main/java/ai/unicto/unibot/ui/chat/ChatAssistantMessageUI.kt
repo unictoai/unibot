@@ -476,6 +476,11 @@ internal fun InlineErrorBanner(
     isRequestTooLarge: Boolean = false,
     onNewChat: (() -> Unit)? = null,
     onChangeModel: (() -> Unit)? = null,
+    // [T-android-v125-model-filter] When true, the card shows the 404-model-gone
+    // recovery actions ("Change model" / "Refresh models") instead of the Retry
+    // pill — retrying a dead model id 404s again.
+    isModelNotFound: Boolean = false,
+    onRefreshModels: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     Column(
@@ -515,7 +520,7 @@ internal fun InlineErrorBanner(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (onRetry != null && !isRequestTooLarge) {
+            if (onRetry != null && !isRequestTooLarge && !isModelNotFound) {
                 Spacer(modifier = Modifier.width(8.dp))
                 ErrorPillButton(
                     icon = Icons.Default.Refresh,
@@ -524,21 +529,32 @@ internal fun InlineErrorBanner(
                 )
             }
         }
-        if (isRequestTooLarge && (onNewChat != null || onChangeModel != null)) {
+        val showRecoveryRow = (isRequestTooLarge && (onNewChat != null || onChangeModel != null)) ||
+            (isModelNotFound && (onChangeModel != null || onRefreshModels != null))
+        if (showRecoveryRow) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (onNewChat != null) {
+                if (isRequestTooLarge && onNewChat != null) {
                     ErrorPillButton(
                         icon = Icons.Default.Add,
                         text = "New chat",
                         onClick = onNewChat,
                     )
                 }
-                if (onChangeModel != null) {
+                if (onChangeModel != null && (isRequestTooLarge || isModelNotFound)) {
                     ErrorPillButton(
                         icon = Icons.Default.SwapHoriz,
                         text = "Change model",
                         onClick = onChangeModel,
+                    )
+                }
+                // [T-android-v125-model-filter] Pull the provider's live
+                // /v1/models list — the fix when the catalog went stale.
+                if (isModelNotFound && onRefreshModels != null) {
+                    ErrorPillButton(
+                        icon = Icons.Default.Refresh,
+                        text = "Refresh models",
+                        onClick = onRefreshModels,
                     )
                 }
             }

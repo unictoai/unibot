@@ -86,6 +86,14 @@ import org.json.JSONObject
 const val ERROR_KIND_REQUEST_TOO_LARGE = "request_too_large"
 
 /**
+ * [T-android-v125-model-filter] Machine-readable kind for [ChatMessage.errorKind] —
+ * marks an HTTP 404 where the model itself is gone (retired id, no access),
+ * so the banner renders the friendly recovery card (Change model /
+ * Refresh models) instead of a bare Retry pill.
+ */
+const val ERROR_KIND_MODEL_NOT_FOUND = "model_not_found"
+
+/**
  * [T-android-v124-413] Human sentence for a 413, with the model + provider
  * filled in. Never exposes the raw "[413]" code as primary text.
  */
@@ -94,6 +102,18 @@ internal fun friendlyRequestTooLargeText(modelName: String, providerName: String
     val provider = providerName.ifBlank { "the provider" }
     return "This conversation is too long for $model on $provider's free tier — " +
         "it can't fit the whole history. Your messages are safe."
+}
+
+/**
+ * [T-android-v125-model-filter] Human sentence for a 404-model-gone, with the
+ * model + provider filled in. Never exposes the raw "[404]" code as primary
+ * text.
+ */
+internal fun friendlyModelNotFoundText(modelName: String, providerName: String): String {
+    val model = modelName.ifBlank { "this model" }
+    val provider = providerName.ifBlank { "the provider" }
+    return "The model $model is no longer available on $provider — it may " +
+        "have been retired. Pick a current model below."
 }
 
 /**
