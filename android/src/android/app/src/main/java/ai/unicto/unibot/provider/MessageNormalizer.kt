@@ -20,17 +20,19 @@ import ai.unicto.unibot.data.model.LLMMessage
  *
  * [T-android-v122-400-diag] The v1.2.1 repair did not stop the 400, so the
  * passes below were broadened for the tool_call edge cases the first version
- * missed: ToolUse parts with empty arguments, ToolResult parts whose id
- * matches no assistant tool_call anywhere in the list, and tool-result
- * messages left dangling (first in list, or after a non-assistant message)
- * by earlier drops. Pass ORDER is load-bearing — each pass documents what it
- * assumes about the previous ones. The merge pass runs last, then the
- * dangling/empty drops run once more: merging two USER neighbours can
- * re-create a dangling adjacency, so the result is only valid after the
- * final sweep.
+ * missed: ToolResult parts whose id matches no assistant tool_call anywhere
+ * in the list, and tool-result messages left dangling (first in list, or
+ * after a non-assistant message) by earlier drops. Pass ORDER is load-bearing
+ * — each pass documents what it assumes about the previous ones. The merge
+ * pass runs last, then the dangling/empty drops run once more: merging two
+ * USER neighbours can re-create a dangling adjacency, so the result is only
+ * valid after the final sweep.
+ *
+ * Deliberately NOT stripped: ToolUse parts with `{}` (zero-key JSONObject)
+ * arguments — a no-parameter tool call is spec-valid and no strict endpoint
+ * 400s on it; stripping it would silently eat legitimate tool context.
  *
  * Passes, in order:
- *  0. Drop [AgentContentPart.ToolUse] parts with empty arguments.
  *  Then a fixpoint loop (each pass only ever removes parts/messages, so it
  *  always stabilizes — capped at 4 iterations):
  *  1. Tool-pairing repair — strip [AgentContentPart.ToolUse] parts whose id
@@ -62,7 +64,7 @@ object MessageNormalizer {
         // stripping that call can empty its assistant (pass 3 must re-run).
         // Every pass only removes parts/messages — never adds or reorders —
         // so the loop always stabilizes; the cap is belt-and-braces.
-        var cur = stripEmptyArgToolUse(messages)
+        var cur = messages
         var guard = 0
         while (guard++ < 4) {
             val next = dropDanglingToolMessages(
@@ -97,26 +99,6 @@ object MessageNormalizer {
         }
         return true
     }
-
-    /**
-     * [T-android-v122-400-diag] Drop ToolUse parts whose `arguments` are empty
-     * or missing (blank `{}`). An empty-arguments tool_call serializes to
-     * `"arguments": ""`/`"{}"` with no usable input and is rejected by strict
-     * schema validation; a message left with nothing else becomes empty and is
-     * dropped by the empty-assistant pass.
-     */
-    private fun stripEmptyArgToolUse(messages: List<LLMMessage>): List<LLMMessage> =
-        messages.map { msg ->
-            if (msg.role != LLMMessage.Role.ASSISTANT) return@map msg
-            if (msg.contentParts.none { it is AgentContentPart.ToolUse && it.input.length() == 0 }) {
-                return@map msg
-            }
-            msg.copy(
-                contentParts = msg.contentParts.filterNot {
-                    it is AgentContentPart.ToolUse && it.input.length() == 0
-                },
-            )
-        }
 
     /**
      * A tool_call id emitted by the assistant message at [fromIndex] is

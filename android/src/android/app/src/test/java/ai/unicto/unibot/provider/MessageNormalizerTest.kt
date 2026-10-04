@@ -9,8 +9,10 @@ import org.junit.Test
 
 /**
  * JVM unit tests for the [MessageNormalizer] v1.2.2 broadenings
- * ([T-android-v122-400-diag]): empty-argument ToolUse drops, orphaned
- * ToolResult drops, dangling tool-message drops, and whitespace handling.
+ * ([T-android-v122-400-diag]): orphaned ToolResult drops, dangling
+ * tool-message drops, whitespace handling — and the deliberate decision that
+ * no-arg (`{}`) ToolUse parts are NOT stripped (spec-valid; only unanswered
+ * calls are dropped via pairing repair).
  */
 class MessageNormalizerTest {
 
@@ -33,18 +35,33 @@ class MessageNormalizerTest {
         msg.contentParts.filterIsInstance<AgentContentPart.ToolResult>().map { it.id }
 
     @Test
-    fun `toolUse with empty arguments is dropped`() {
+    fun `unanswered no-arg tool call is dropped via pairing repair`() {
         val msgs = listOf(
             user("hi"),
             assistant(toolUse("c1", JSONObject())),
             user("done"),
         )
         val out = MessageNormalizer.normalize(msgs)
-        // The assistant is left with nothing -> dropped as empty; the two
-        // user messages merge.
+        // No result ever answered c1 -> pairing repair strips the call, the
+        // assistant drops as empty, and the two user messages merge.
         assertEquals(1, out.size)
         assertEquals(LLMMessage.Role.USER, out[0].role)
         assertTrue(toolUseIds(out[0]).isEmpty())
+    }
+
+    @Test
+    fun `answered no-arg tool call survives with its result`() {
+        // Regression guard: "{}" arguments are spec-valid and must NOT be
+        // stripped — only the pairing matters.
+        val msgs = listOf(
+            user("hi"),
+            assistant(toolUse("c1", JSONObject())),
+            user("", toolResult("c1")),
+        )
+        val out = MessageNormalizer.normalize(msgs)
+        assertEquals(3, out.size)
+        assertEquals(listOf("c1"), toolUseIds(out[1]))
+        assertEquals(listOf("c1"), toolResultIds(out[2]))
     }
 
     @Test
