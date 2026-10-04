@@ -2304,7 +2304,18 @@ class ProviderRepository(private val context: Context) {
 
             // Step 2: If API returned results, use them
             if (models.isNotEmpty()) {
-                replaceEntries(instance.id, models)
+                // [T-android-v126-maxtokens] Re-enrich with the serving
+                // provider's models.dev key. The fetch path enriches with
+                // provider="Custom" (the /v1/models listing doesn't name the
+                // vendor), which falls through to the all-provider scan and
+                // can assign ANOTHER provider's output limit to the same model
+                // id (Groq's qwen3.6-27b got aiand's 65536 → HTTP 400). The
+                // hinted pass converges to the serving provider's exact entry.
+                val hinted = ai.unicto.unibot.provider.ModelsDevApi.enrichModels(
+                    models,
+                    providerHint = instance.providerType.modelsDevKey,
+                )
+                replaceEntries(instance.id, hinted)
                 return
             }
         }

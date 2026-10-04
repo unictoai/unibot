@@ -4860,14 +4860,20 @@ fun ChatScreen(
                                 // [T-android-v125-model-filter] No Retry on a dead
                                 // model either — retrying the same id 404s again.
                                 // The card offers Change model / Refresh models.
+                                // [T-android-v126-maxtokens] No Retry on an output-limit
+                                // 400 either — retrying the same oversized budget
+                                // 400s again. The card offers Change model /
+                                // Refresh models.
                                 onRetry = if (item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE ||
-                                    item.errorKind == ERROR_KIND_MODEL_NOT_FOUND
+                                    item.errorKind == ERROR_KIND_MODEL_NOT_FOUND ||
+                                    item.errorKind == ERROR_KIND_OUTPUT_LIMIT
                                 ) null else ({
                                     coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                     safeMutate { viewModel.retryLast() }
                                 }),
                                 isRequestTooLarge = item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE,
                                 isModelNotFound = item.errorKind == ERROR_KIND_MODEL_NOT_FOUND,
+                                isOutputLimit = item.errorKind == ERROR_KIND_OUTPUT_LIMIT,
                                 onNewChat = { onNewChat() },
                                 onChangeModel = { showModelPicker = true },
                                 onRefreshModels = { safeMutate { viewModel.refreshCurrentProviderModels() } },

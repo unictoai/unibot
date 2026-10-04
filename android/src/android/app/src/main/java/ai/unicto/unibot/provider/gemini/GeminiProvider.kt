@@ -5,7 +5,9 @@ import ai.unicto.unibot.data.model.AgentContentPart
 import ai.unicto.unibot.data.model.AgentToolDefinition
 import ai.unicto.unibot.data.model.LLMError
 import ai.unicto.unibot.data.model.extractModelId
+import ai.unicto.unibot.data.model.extractOutputLimit
 import ai.unicto.unibot.data.model.isModelNotFoundBody
+import ai.unicto.unibot.data.model.isOutputLimitBody
 import ai.unicto.unibot.provider.ImageBudget
 import ai.unicto.unibot.provider.applyUserAgentOverride
 import ai.unicto.unibot.data.model.LLMMessage
@@ -378,7 +380,10 @@ class GeminiProvider(
         }
 
         val config = JSONObject()
-        config.put("maxOutputTokens", maxTokens)
+        // [T-android-v126-maxtokens] Final clamp: never emit maxOutputTokens
+        // above the model's known output limit, no matter what the caller
+        // passed.
+        config.put("maxOutputTokens", minOf(maxTokens, effectiveMaxOutputTokens(model)))
         if (temperature != null) {
             config.put("temperature", temperature)
         }
@@ -545,6 +550,12 @@ class GeminiProvider(
         // gone → ModelNotFound (friendly card). Bare 404s stay ProviderError.
         if (statusCode == 404 && isModelNotFoundBody(body)) {
             return LLMError.ModelNotFound(extractModelId(body), "[$statusCode] ${body.take(300)}")
+        }
+        // [T-android-v126-maxtokens] 400 where the BODY says the requested
+        // output budget exceeds the model's cap → OutputLimitExceeded
+        // (friendly card). Every other 400 stays a ProviderError.
+        if (statusCode == 400 && isOutputLimitBody(body)) {
+            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}")
         }
         val message = "Gemini API error $statusCode: ${body.take(200)}"
         val transientCodes = setOf(500, 502, 503, 504, 529)

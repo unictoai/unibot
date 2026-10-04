@@ -1985,10 +1985,18 @@ class OpenAIProvider private constructor(
         val supportsImages = model.hasImageInput
         val body = JSONObject()
         body.put("model", model.id)
+        // [T-android-v126-maxtokens] FINAL clamp: the wire must never carry
+        // max_tokens/max_completion_tokens above the model's known output
+        // limit, no matter what the caller passed. (The models.dev fallback
+        // scan once assigned aiand's 65536 limit to Groq's qwen3.6-27b, whose
+        // real cap is 16384 → HTTP 400.) Clamp FIRST so the thinking-budget
+        // math below (QwenDual derives the budget from maxTokens) stays
+        // consistent with the value actually sent.
+        val safeMax = minOf(maxTokens, effectiveMaxOutputTokens(model))
         if (isOpenRouter) {
-            body.put("max_tokens", maxTokens)
+            body.put("max_tokens", safeMax)
         } else {
-            body.put("max_completion_tokens", maxTokens)
+            body.put("max_completion_tokens", safeMax)
         }
         body.put("stream", stream)
 
@@ -2022,7 +2030,7 @@ class OpenAIProvider private constructor(
         // ported, so an enabled thinking level still put `reasoning_effort` on
         // the wire to api.mistral.ai.
         if (!isMistral) {
-            injectThinkingParams(body, thinkingLevel, maxTokens)
+            injectThinkingParams(body, thinkingLevel, safeMax)
         }
 
         // [OpenMinis#191] Opt this request into Anthropic prompt caching.
@@ -3041,8 +3049,10 @@ class OpenAIProvider private constructor(
         // 637cd890/5f148144: maxTokens > 0, and Codex OAuth excluded — the
         // codex_cli_rs body shape is a client fingerprint and must not carry
         // fields the real CLI doesn't send.
+        // [T-android-v126-maxtokens] Same final clamp as the Chat path: never
+        // emit max_output_tokens above the model's known limit.
         if (maxTokens > 0 && !isOAuth) {
-            body.put("max_output_tokens", maxTokens)
+            body.put("max_output_tokens", minOf(maxTokens, effectiveMaxOutputTokens(model)))
         }
 
         // [T-codex-fast-mode] Fast tier injection (mirrors iOS fb671083 +
@@ -3518,6 +3528,15 @@ class OpenAIProvider private constructor(
         if (statusCode == 404 && ai.unicto.unibot.data.model.isModelNotFoundBody(body)) {
             return LLMError.ModelNotFound(
                 ai.unicto.unibot.data.model.extractModelId(body),
+                "[$statusCode] ${body.take(300)}",
+            )
+        }
+        // [T-android-v126-maxtokens] 400 where the BODY says the requested
+        // output budget exceeds the model's cap → OutputLimitExceeded
+        // (friendly card). Every other 400 stays a ProviderError.
+        if (statusCode == 400 && ai.unicto.unibot.data.model.isOutputLimitBody(body)) {
+            return LLMError.OutputLimitExceeded(
+                ai.unicto.unibot.data.model.extractOutputLimit(body),
                 "[$statusCode] ${body.take(300)}",
             )
         }

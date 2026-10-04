@@ -480,6 +480,10 @@ internal fun InlineErrorBanner(
     // recovery actions ("Change model" / "Refresh models") instead of the Retry
     // pill — retrying a dead model id 404s again.
     isModelNotFound: Boolean = false,
+    // [T-android-v126-maxtokens] When true, the card shows the output-limit
+    // recovery actions ("Change model" / "Refresh models") instead of the
+    // Retry pill — retrying the same oversized budget 400s again.
+    isOutputLimit: Boolean = false,
     onRefreshModels: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -520,7 +524,7 @@ internal fun InlineErrorBanner(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (onRetry != null && !isRequestTooLarge && !isModelNotFound) {
+            if (onRetry != null && !isRequestTooLarge && !isModelNotFound && !isOutputLimit) {
                 Spacer(modifier = Modifier.width(8.dp))
                 ErrorPillButton(
                     icon = Icons.Default.Refresh,
@@ -530,7 +534,7 @@ internal fun InlineErrorBanner(
             }
         }
         val showRecoveryRow = (isRequestTooLarge && (onNewChat != null || onChangeModel != null)) ||
-            (isModelNotFound && (onChangeModel != null || onRefreshModels != null))
+            ((isModelNotFound || isOutputLimit) && (onChangeModel != null || onRefreshModels != null))
         if (showRecoveryRow) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -541,7 +545,7 @@ internal fun InlineErrorBanner(
                         onClick = onNewChat,
                     )
                 }
-                if (onChangeModel != null && (isRequestTooLarge || isModelNotFound)) {
+                if (onChangeModel != null && (isRequestTooLarge || isModelNotFound || isOutputLimit)) {
                     ErrorPillButton(
                         icon = Icons.Default.SwapHoriz,
                         text = "Change model",
@@ -550,7 +554,9 @@ internal fun InlineErrorBanner(
                 }
                 // [T-android-v125-model-filter] Pull the provider's live
                 // /v1/models list — the fix when the catalog went stale.
-                if (isModelNotFound && onRefreshModels != null) {
+                // [T-android-v126-maxtokens] Same for the output-limit card:
+                // a refresh re-pulls (now correctly-enriched) limits.
+                if ((isModelNotFound || isOutputLimit) && onRefreshModels != null) {
                     ErrorPillButton(
                         icon = Icons.Default.Refresh,
                         text = "Refresh models",

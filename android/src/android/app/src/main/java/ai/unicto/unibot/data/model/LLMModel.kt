@@ -179,17 +179,26 @@ data class LLMModel(
         // NOTE: llama-3.3-70b-versatile + llama-3.1-8b-instant were
         // decommissioned 2026-08-16 — do NOT re-add them. Live free-tier
         // chat lineup (Oct 2026): gpt-oss-120b/20b, qwen3.6-27b.
+        // [T-android-v126-maxtokens] maxOutputTokens declared from
+        // console.groq.com/models (matches models.dev "groq" entry): the
+        // request builder clamps max_completion_tokens to these, and the
+        // models.dev enrichment can no longer inflate them via another
+        // provider's entry.
         val allGroq = listOf(
-            LLMModel("openai/gpt-oss-120b", "GPT OSS 120B", "Groq", supportsReasoning = true),
-            LLMModel("openai/gpt-oss-20b", "GPT OSS 20B", "Groq"),
-            LLMModel("qwen/qwen3.6-27b", "Qwen3.6 27B", "Groq"),
+            LLMModel("openai/gpt-oss-120b", "GPT OSS 120B", "Groq", maxOutputTokens = 65536, supportsReasoning = true),
+            LLMModel("openai/gpt-oss-20b", "GPT OSS 20B", "Groq", maxOutputTokens = 65536),
+            LLMModel("qwen/qwen3.6-27b", "Qwen3.6 27B", "Groq", maxOutputTokens = 16384),
         )
 
         // Cerebras — https://inference-docs.cerebras.ai
+        // [T-android-v126-maxtokens] gpt-oss-120b cap from the models.dev
+        // "cerebras" entry (40960). The other two ids are not in that entry —
+        // left undeclared rather than guessed; the 16384 provider default
+        // and the request-builder clamp still bound them.
         val allCerebras = listOf(
             LLMModel("llama-3.3-70b", "Llama 3.3 70B", "Cerebras"),
             LLMModel("qwen-3-32b", "Qwen3 32B", "Cerebras"),
-            LLMModel("gpt-oss-120b", "GPT OSS 120B", "Cerebras", supportsReasoning = true),
+            LLMModel("gpt-oss-120b", "GPT OSS 120B", "Cerebras", maxOutputTokens = 40960, supportsReasoning = true),
         )
 
         // Mistral — https://docs.mistral.ai

@@ -7771,6 +7771,17 @@ class ChatViewModel(
                 friendlyModelNotFoundText(modelName, providerName),
                 ERROR_KIND_MODEL_NOT_FOUND,
             )
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.OutputLimitExceeded) {
+            // [T-android-v126-maxtokens] Requested output budget exceeded the
+            // model's cap: friendly card with Change model / Refresh models —
+            // retrying the same oversized value 400s again.
+            val provider = currentProvider
+            val modelName = provider?.model?.displayName ?: "this model"
+            val providerName = provider?.name ?: "the provider"
+            setInlineError(
+                friendlyOutputLimitText(modelName, providerName, llmError.limit),
+                ERROR_KIND_OUTPUT_LIMIT,
+            )
         } else {
             setInlineError(error.message ?: "Unknown error")
         }

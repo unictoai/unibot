@@ -32,6 +32,27 @@ object ModelsDevApi {
         "OpenAI" to listOf("openai"),
         "OpenRouter" to listOf("openrouter"),
         "Antigravity" to emptyList(), // Custom proxy, no public models.dev entry
+        // [T-android-v126-maxtokens] First-class free-tier providers. WITHOUT
+        // these, a refreshed Groq/Cerebras/… model (whose /v1/models entries
+        // carry provider="Custom") fell through to the all-provider fallback
+        // scan, which could assign ANOTHER provider's output limit to the same
+        // model id (e.g. aiand's 65536 for qwen/qwen3.6-27b on Groq, whose
+        // real cap is 16384) → HTTP 400 "'max_completion_tokens' must be less
+        // than or equal to '16384'". Display names must match
+        // ProviderType.displayName exactly.
+        "Groq" to listOf("groq"),
+        "Cerebras" to listOf("cerebras"),
+        "Mistral" to listOf("mistral"),
+        "DeepSeek" to listOf("deepseek"),
+        "Z.AI" to listOf("zai"),
+        "NVIDIA NIM" to listOf("nvidia"),
+        "Nebius" to listOf("nebius"),
+        "Chutes" to listOf("chutes"),
+        "xAI (Grok)" to listOf("xai"),
+        // No models.dev entry: enrichment falls back to the conservative scan.
+        "GitHub Models" to emptyList(),
+        "SambaNova" to emptyList(),
+        "Kimi Code" to emptyList(),
     )
 
     private var cachedRegistry: Map<String, ProviderEntry>? = null
@@ -89,51 +110,78 @@ object ModelsDevApi {
 
     // MARK: - Public: Enrich models with models.dev data
 
-    fun enrichModel(model: LLMModel): LLMModel {
+    /**
+     * [T-android-v126-maxtokens] [providerHint] is a models.dev registry key
+     * (e.g. "groq") for the provider actually SERVING these models. It is
+     * needed because /v1/models listings don't name the vendor — refreshed
+     * entries carry provider="Custom" — so without a hint the lookup falls
+     * through to the all-provider scan, which may assign another provider's
+     * output limit to the same model id.
+     */
+    fun enrichModel(model: LLMModel, providerHint: String? = null): LLMModel {
         val registry = loadRegistry() ?: return model
+        resolveDevEntry(model, registry, providerHint)?.let { return applyDevData(model, it) }
+        return model
+    }
 
-        // Try mapped provider keys first
+    fun enrichModels(models: List<LLMModel>, providerHint: String? = null): List<LLMModel> {
+        val registry = loadRegistry() ?: return models
+        return models.map { model ->
+            resolveDevEntry(model, registry, providerHint)?.let { applyDevData(model, it) } ?: model
+        }
+    }
+
+    /**
+     * [T-android-v126-maxtokens] Resolve the models.dev entry for [model],
+     * extracted so the selection logic is unit-testable without the registry.
+     * Order: explicit hint → providerKeyMap → conservative fallback scan.
+     *
+     * The fallback scan is deliberately CONSERVATIVE on maxOutputTokens: when
+     * several providers publish the same model id with different output
+     * limits, the MINIMUM wins. A too-high guess becomes an HTTP 400 (the
+     * request is rejected); a too-low guess only caps response length. The
+     * returned entry's other fields (reasoning metadata, modalities) still
+     * come from the richest candidate — only the LIMIT is minimized.
+     */
+    internal fun resolveDevEntry(
+        model: LLMModel,
+        registry: Map<String, ProviderEntry>,
+        providerHint: String? = null,
+    ): ModelDevEntry? {
+        // 1. Explicit hint: the provider serving these models.
+        if (!providerHint.isNullOrBlank()) {
+            val devModel = registry[providerHint]?.models?.get(model.id)
+            if (devModel != null) return devModel
+        }
+        // 2. Mapped provider keys (matches iOS).
         val keys = providerKeyMap[model.provider] ?: emptyList()
         for (key in keys) {
             val prov = registry[key] ?: continue
             val devModel = prov.models[model.id] ?: continue
-            return applyDevData(model, devModel)
+            return devModel
         }
-
-        // Fallback: scan all providers for the model ID
-        for ((_, prov) in registry) {
-            val devModel = prov.models[model.id] ?: continue
-            return applyDevData(model, devModel)
-        }
-
-        return model
-    }
-
-    fun enrichModels(models: List<LLMModel>): List<LLMModel> {
-        val registry = loadRegistry() ?: return models
-        return models.map { model ->
-            val keys = providerKeyMap[model.provider] ?: emptyList()
-            for (key in keys) {
-                val prov = registry[key] ?: continue
-                val devModel = prov.models[model.id] ?: continue
-                return@map applyDevData(model, devModel)
-            }
-            // Fallback scan: the same model id is published by many providers
-            // (e.g. `glm-5.2` appears under 19), and a custom relay's provider
-            // name matches none of them, so this scan is what third-party
-            // gateways actually hit.
-            //
-            // [T-reasoning-effort-data-driven] Map iteration order is not a
-            // stable contract, and these entries disagree on capabilities: 17 of
-            // the 19 `glm-5.2` entries declare effort tiers, 2 declare none.
-            // Sort by key for a stable pick and prefer an entry that carries
-            // reasoning metadata, so the richer declaration wins over a sparser
-            // duplicate. Mirrors iOS ModelsDevAPI.enrichModels.
-            val candidates = registry.keys.sorted().mapNotNull { registry[it]?.models?.get(model.id) }
-            val best = candidates.firstOrNull { !it.reasoningEffortValues.isNullOrEmpty() }
-                ?: candidates.firstOrNull()
-            if (best != null) return@map applyDevData(model, best)
-            model
+        // 3. Fallback scan: the same model id is published by many providers
+        // (e.g. `glm-5.2` appears under 19), and a custom relay's provider
+        // name matches none of them, so this scan is what third-party
+        // gateways actually hit.
+        //
+        // [T-reasoning-effort-data-driven] Map iteration order is not a
+        // stable contract, and these entries disagree on capabilities: 17 of
+        // the 19 `glm-5.2` entries declare effort tiers, 2 declare none.
+        // Sort by key for a stable pick and prefer an entry that carries
+        // reasoning metadata, so the richer declaration wins over a sparser
+        // duplicate. Mirrors iOS ModelsDevAPI.enrichModels.
+        val candidates = registry.keys.sorted().mapNotNull { registry[it]?.models?.get(model.id) }
+        if (candidates.isEmpty()) return null
+        val best = candidates.firstOrNull { !it.reasoningEffortValues.isNullOrEmpty() }
+            ?: candidates.firstOrNull()!!
+        // [T-android-v126-maxtokens] Conservative limit: the minimum output
+        // cap across every provider publishing this id. See the kdoc above.
+        val minOutput = candidates.mapNotNull { it.maxOutputTokens }.minOrNull()
+        return if (minOutput != null && minOutput != best.maxOutputTokens) {
+            best.copy(maxOutputTokens = minOutput)
+        } else {
+            best
         }
     }
 

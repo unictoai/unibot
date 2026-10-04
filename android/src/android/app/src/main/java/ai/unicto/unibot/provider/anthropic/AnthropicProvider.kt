@@ -6,7 +6,9 @@ import ai.unicto.unibot.data.model.AgentToolDefinition
 import ai.unicto.unibot.data.model.sanitizeToolId
 import ai.unicto.unibot.data.model.LLMError
 import ai.unicto.unibot.data.model.extractModelId
+import ai.unicto.unibot.data.model.extractOutputLimit
 import ai.unicto.unibot.data.model.isModelNotFoundBody
+import ai.unicto.unibot.data.model.isOutputLimitBody
 import ai.unicto.unibot.data.model.LLMMessage
 import ai.unicto.unibot.data.model.LLMModel
 import ai.unicto.unibot.data.model.LLMResponse
@@ -358,7 +360,9 @@ class AnthropicProvider(
     ): JSONObject {
         val body = JSONObject()
         body.put("model", model.id)
-        body.put("max_tokens", maxTokens)
+        // [T-android-v126-maxtokens] Final clamp: never emit max_tokens above
+        // the model's known output limit, no matter what the caller passed.
+        body.put("max_tokens", minOf(maxTokens, effectiveMaxOutputTokens(model)))
         body.put("stream", stream)
         // [T-android-v121-message-normalize] Repair the history right before
         // serialization: merge consecutive same-role messages, drop empty
@@ -1068,6 +1072,12 @@ class AnthropicProvider(
         // gone → ModelNotFound (friendly card). Bare 404s stay ProviderError.
         if (statusCode == 404 && isModelNotFoundBody(body)) {
             return LLMError.ModelNotFound(extractModelId(body), "[$statusCode] ${body.take(300)}")
+        }
+        // [T-android-v126-maxtokens] 400 where the BODY says the requested
+        // output budget exceeds the model's cap → OutputLimitExceeded
+        // (friendly card). Every other 400 stays a ProviderError.
+        if (statusCode == 400 && isOutputLimitBody(body)) {
+            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}")
         }
 
         val message = try {

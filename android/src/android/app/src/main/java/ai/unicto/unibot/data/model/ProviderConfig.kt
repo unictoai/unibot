@@ -5,12 +5,12 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 
 @Serializable
-enum class ProviderType(val displayName: String) {
-    anthropic("Anthropic"),
-    gemini("Google Gemini"),
-    openAI("OpenAI"),
-    openRouter("OpenRouter"),
-    xAI("xAI (Grok)"),
+enum class ProviderType(val displayName: String, val modelsDevKey: String? = null) {
+    anthropic("Anthropic", "anthropic"),
+    gemini("Google Gemini", "google"),
+    openAI("OpenAI", "openai"),
+    openRouter("OpenRouter", "openrouter"),
+    xAI("xAI (Grok)", "xai"),
     // [T-kimi-oauth] Kimi Code (Coding Plan) — RFC 8628 device-code OAuth,
     // OpenAI-compatible upstream at api.kimi.com/coding/v1. DB round-trip is
     // name-based (ProviderCredential.valueOf), so appending is migration-safe.
@@ -21,25 +21,25 @@ enum class ProviderType(val displayName: String) {
     // no manual base-URL fiddling. Appended (never inserted), so the
     // name-based DB round-trip stays migration-safe.
     /** Groq — free plan, no card. https://console.groq.com */
-    groq("Groq"),
+    groq("Groq", "groq"),
     /** Cerebras — free tier ~1M tokens/day. https://cloud.cerebras.ai */
-    cerebras("Cerebras"),
+    cerebras("Cerebras", "cerebras"),
     /** Mistral — Experiment tier free, no card. https://console.mistral.ai */
-    mistral("Mistral"),
+    mistral("Mistral", "mistral"),
     /** GitHub Models — free with any GitHub account. https://github.com/marketplace/models */
     githubModels("GitHub Models"),
     /** SambaNova — free tier. https://cloud.sambanova.ai */
     sambaNova("SambaNova"),
     /** NVIDIA NIM — free credits on signup. https://build.nvidia.com */
-    nvidiaNim("NVIDIA NIM"),
+    nvidiaNim("NVIDIA NIM", "nvidia"),
     /** DeepSeek — one-time trial grant on signup (not permanent). https://platform.deepseek.com */
-    deepSeek("DeepSeek"),
+    deepSeek("DeepSeek", "deepseek"),
     /** Z.AI (GLM) — several models flagged "Limited-time Free". https://z.ai */
-    zai("Z.AI"),
+    zai("Z.AI", "zai"),
     /** Nebius AI Studio — free credits for new accounts. https://studio.nebius.com */
-    nebius("Nebius"),
+    nebius("Nebius", "nebius"),
     /** Chutes.ai — free API access, decentralized inference. https://chutes.ai */
-    chutes("Chutes"),
+    chutes("Chutes", "chutes"),
 
     // [T-android-provider-type-parity] The cases below exist on iOS but were
     // missing here. They are declared so a cross-platform restore or sync can

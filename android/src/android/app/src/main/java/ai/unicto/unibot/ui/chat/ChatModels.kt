@@ -94,6 +94,14 @@ const val ERROR_KIND_REQUEST_TOO_LARGE = "request_too_large"
 const val ERROR_KIND_MODEL_NOT_FOUND = "model_not_found"
 
 /**
+ * [T-android-v126-maxtokens] Machine-readable kind for [ChatMessage.errorKind] —
+ * marks an HTTP 400 where the requested output-token budget exceeded the
+ * model's cap, so the banner renders the friendly recovery card (Change
+ * model / Refresh models) instead of raw JSON.
+ */
+const val ERROR_KIND_OUTPUT_LIMIT = "output_limit_exceeded"
+
+/**
  * [T-android-v124-413] Human sentence for a 413, with the model + provider
  * filled in. Never exposes the raw "[413]" code as primary text.
  */
@@ -114,6 +122,19 @@ internal fun friendlyModelNotFoundText(modelName: String, providerName: String):
     val provider = providerName.ifBlank { "the provider" }
     return "The model $model is no longer available on $provider — it may " +
         "have been retired. Pick a current model below."
+}
+
+/**
+ * [T-android-v126-maxtokens] Human sentence for an output-limit 400, with the
+ * model + provider filled in. Never exposes the raw JSON as primary text.
+ * The cap comes from the provider when it states one, else it is omitted.
+ */
+internal fun friendlyOutputLimitText(modelName: String, providerName: String, limit: Int): String {
+    val model = modelName.ifBlank { "this model" }
+    val provider = providerName.ifBlank { "the provider" }
+    val cap = if (limit > 0) " (max $limit output tokens)" else ""
+    return "The app asked $model on $provider for more output than it allows$cap. " +
+        "Pick a model with a larger limit below, or refresh the model list."
 }
 
 /**

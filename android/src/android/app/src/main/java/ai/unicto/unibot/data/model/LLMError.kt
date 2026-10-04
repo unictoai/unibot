@@ -24,6 +24,18 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
      */
     class ModelNotFound(val modelId: String = "", val detail: String = "") :
         LLMError(if (detail.isBlank()) "Model not available" else "Model not available: $detail")
+    /**
+     * [T-android-v126-maxtokens] HTTP 400 where the body says the requested
+     * max_tokens/max_completion_tokens exceeds the model's output cap (e.g.
+     * Groq: "'max_completion_tokens' must be less than or equal to '16384'").
+     * Kept as its own class (NOT a ProviderError) so the chat renders a
+     * friendly card instead of raw JSON — retrying the same oversized value
+     * would 400 again, so the card offers Change model / Refresh models.
+     * With the request-builder clamp this should be unreachable; if it ever
+     * fires, the model's declared limit itself is wrong.
+     */
+    class OutputLimitExceeded(val limit: Int = 0, val detail: String = "") :
+        LLMError(if (detail.isBlank()) "Output limit exceeded" else "Output limit exceeded: $detail")
     class DecodingError(cause: Throwable) : LLMError("Decoding error: ${cause.message}", cause)
     class RateLimited : LLMError("Rate limited — please try again later")
     class TransientError(val detail: String) : LLMError("Transient error: $detail")
@@ -47,6 +59,7 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
             is ProviderError -> "Provider error"
             is RequestTooLarge -> "Request too large"
             is ModelNotFound -> "Model not available"
+            is OutputLimitExceeded -> "Output limit exceeded"
             is TransientError -> "Transient error"
             is NetworkError -> "Network error"
             is DecodingError -> "Decoding error"
@@ -77,4 +90,29 @@ internal fun isModelNotFoundBody(body: String): Boolean {
 internal fun extractModelId(body: String): String {
     val match = Regex("'([^']{2,120})'").find(body)
     return match?.groupValues?.getOrNull(1).orEmpty()
+}
+
+/**
+ * [T-android-v126-maxtokens] True when an HTTP 400 body says the requested
+ * output-token budget exceeds the model's cap: "max_completion_tokens /
+ * max_tokens / max_output_tokens … must be less than or equal to 'N'".
+ * Other 400s (bad fields, bad history shape) stay ProviderError.
+ */
+internal fun isOutputLimitBody(body: String): Boolean {
+    val lower = body.lowercase()
+    val namesField = lower.contains("max_completion_tokens") ||
+        lower.contains("max_output_tokens") ||
+        (lower.contains("max_tokens") && !lower.contains("max_completion_tokens"))
+    return namesField && (lower.contains("less than or equal to") || lower.contains("must be <="))
+}
+
+/**
+ * [T-android-v126-maxtokens] Best-effort extraction of the provider's stated
+ * cap from an output-limit 400 body: the number after "less than or equal
+ * to", e.g. '16384' in "'max_completion_tokens' must be less than or equal
+ * to '16384'". 0 when not found.
+ */
+internal fun extractOutputLimit(body: String): Int {
+    val match = Regex("less than or equal to '?(\\d+)").find(body.lowercase())
+    return match?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
 }
