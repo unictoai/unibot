@@ -93,16 +93,24 @@ android {
         }
     }
 
-    // Both the VAD library (RealTimeCutVADLibraryForAndroid) and sherpa-onnx
-    // (via its transitive lib-onnx dependency) ship libonnxruntime.so.
-    // They're the same library (ORT's C API is stable), so first wins.
-    // Cover every ABI the AARs ship (the merge task sees them all).
+    // [T-android-v122-ort-pinning] ONNX Runtime pinning — READ BEFORE TOUCHING.
+    // The VAD library (RealTimeCutVADLibraryForAndroid) ships ORT 1.20.0 and
+    // sherpa-onnx's transitive lib-onnx AAR ships ORT 1.17.1, under the SAME
+    // soname (libonnxruntime.so). Both native libs DT_NEEDED-link it. The VAD
+    // lib was built against ORT 1.20 and calls OrtGetApiBase()->GetApi(20);
+    // against 1.17.1 that returns NULL/older-struct and the process aborts
+    // (SIGABRT in voice mode — the shipped v1.2.1 APK demonstrably contained
+    // 1.17.1 because pickFirsts picked the transitive copy; "first wins" is
+    // NOT contractual). sherpa-onnx's JNI was built against 1.17.1 and
+    // tolerates the newer runtime via GetApi(17) backward compatibility, so
+    // VAD's 1.20.0 is the only copy both native libs can share. The exclude
+    // on the sherpa-onnx dependency below drops lib-onnx's copy entirely
+    // (its classes.jar holds only BuildConfig — verified 2026-10-04 by
+    // extracting both AARs and comparing VERS_ strings + DT_NEEDED).
+    // The verifyOnnxRuntimeVersion task below fails the build if the merged
+    // .so ever stops being 1.20.0 (e.g. a VAD AAR update ships a new ORT).
     packaging {
         jniLibs {
-            pickFirsts += "lib/arm64-v8a/libonnxruntime.so"
-            pickFirsts += "lib/armeabi-v7a/libonnxruntime.so"
-            pickFirsts += "lib/x86_64/libonnxruntime.so"
-            pickFirsts += "lib/x86/libonnxruntime.so"
             // The VAD AAR also bundles libc++_shared.so, which duplicates the
             // NDK one from our CMake build — prefer the NDK's (matches the
             // toolchain llama.cpp was built with).
@@ -236,6 +244,43 @@ val stageDebugSkillAssets by tasks.registering(Exec::class) {
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") && it.name.contains("Debug") }
     .configureEach { dependsOn(stageDebugSkillAssets) }
 
+// [T-android-v122-ort-pinning] Build-time invariant for the ORT pinning above:
+// the APK must ship ONNX Runtime 1.20.0 (VAD's build). The VAD native lib was
+// built against ORT 1.20 and calls OrtGetApiBase()->GetApi(20); any other ORT
+// in the merged output aborts voice mode natively (v1.2.1 shipped 1.17.1 and
+// SIGABRTed). Runs after every native-lib merge; fails the build loudly if
+// the invariant ever breaks (e.g. a VAD AAR update ships a new ORT) instead
+// of shipping a crashing APK.
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }
+    .configureEach {
+        doLast {
+            val outDirs = outputs.files.filter { it.isDirectory }
+            check(outDirs.isNotEmpty()) {
+                "FATAL [ort-pinning]: merge task '$name' has no directory output — " +
+                    "AGP packaging layout changed, update this check."
+            }
+            var checked = 0
+            outDirs.forEach { root ->
+                root.walkTopDown()
+                    .filter { it.isFile && it.name == "libonnxruntime.so" }
+                    .forEach { so ->
+                        checked++
+                        val content = so.readBytes().toString(Charsets.ISO_8859_1)
+                        check("VERS_1.20.0" in content) {
+                            "FATAL [ort-pinning]: $so is not ORT 1.20.0 (VAD's build). " +
+                                "The VAD native lib requires OrtApi v20; shipping another " +
+                                "ORT aborts voice mode (SIGABRT). Investigate before releasing."
+                        }
+                    }
+            }
+            check(checked > 0) {
+                "FATAL [ort-pinning]: no libonnxruntime.so in '$name' output — " +
+                    "VAD AAR packaging changed?"
+            }
+            logger.lifecycle("[ort-pinning] verified $checked libonnxruntime.so = ORT 1.20.0")
+        }
+    }
+
 dependencies {
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2025.09.00")
@@ -309,7 +354,13 @@ dependencies {
     // so com.k2fsa.sherpa.onnx.Tts.kt is a hand port of the official bindings
     // (field names must match exactly; the native side reads them
     // reflectively). Ships arm64-v8a only, like the VAD lib above.
-    implementation("com.bihe0832.android:lib-sherpa-onnx:6.25.21")
+    //
+    // [T-android-v122-ort-pinning] The transitive lib-onnx AAR is excluded:
+    // see the packaging block above for why VAD's ORT 1.20.0 must be the only
+    // libonnxruntime.so in the APK.
+    implementation("com.bihe0832.android:lib-sherpa-onnx:6.25.21") {
+        exclude(group = "com.bihe0832.android", module = "lib-onnx")
+    }
 
     // rclone, via its official gomobile binding, for backup destinations
     // (SMB / WebDAV / SFTP / S3 / FTP). Build it with

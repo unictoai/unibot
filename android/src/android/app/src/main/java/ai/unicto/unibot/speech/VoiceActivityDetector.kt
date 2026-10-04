@@ -290,6 +290,17 @@ class VoiceActivityDetector(
         segmentSamples = 0
         isSpeaking = false
 
+        // [T-android-v122-ort-pinning] Verify the loaded ONNX Runtime serves
+        // OrtApi v20 BEFORE the VAD native lib touches it: a version skew
+        // here aborts the process (SIGABRT), which no try/catch can catch.
+        // Degrade to "unavailable" instead.
+        val ortStatus = ai.unicto.unibot.crash.NativeCrashHandler.checkOnnxRuntime()
+        if (!ortStatus.startsWith("OK ")) {
+            running.set(false)
+            Log.e(TAG, "VAD init refused: bad ONNX Runtime ($ortStatus)")
+            return "Voice detection unavailable (speech engine mismatch: $ortStatus)."
+        }
+
         val wrapper = try {
             VADWrapper(context).also {
                 it.setVADModel(VADWrapper.SileroModelVersion.V5)
