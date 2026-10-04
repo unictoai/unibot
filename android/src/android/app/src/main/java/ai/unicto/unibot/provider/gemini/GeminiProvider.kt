@@ -15,6 +15,7 @@ import ai.unicto.unibot.data.model.LLMUsage
 import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.provider.LLMProvider
 import ai.unicto.unibot.provider.MessageNormalizer
+import ai.unicto.unibot.provider.RequestDiagnostics
 import ai.unicto.unibot.provider.safeOptString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -80,6 +81,13 @@ class GeminiProvider(
         val responseBody = response.body?.string() ?: ""
 
         if (!response.isSuccessful) {
+            // [T-android-v122-400-diag] Shape-only 400 diagnostic — see
+            // OpenAIProvider for the rationale; never logs content.
+            if (response.code == 400) {
+                RequestDiagnostics.logHttp400(
+                    "GeminiProvider", name, RequestDiagnostics.Kind.GEMINI, body,
+                )
+            }
             throw mapHttpError(response.code, responseBody)
         }
 
@@ -126,6 +134,13 @@ class GeminiProvider(
         if (!response.isSuccessful) {
             val errorBody = response.body?.string() ?: ""
             response.close()
+            // [T-android-v122-400-diag] Shape-only 400 diagnostic — see
+            // OpenAIProvider for the rationale; never logs content.
+            if (response.code == 400) {
+                RequestDiagnostics.logHttp400(
+                    "GeminiProvider", name, RequestDiagnostics.Kind.GEMINI, body,
+                )
+            }
             throw mapHttpError(response.code, errorBody)
         }
 
