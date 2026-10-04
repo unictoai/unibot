@@ -512,6 +512,21 @@ class OpenAIProvider private constructor(
     private val isMistral: Boolean = basePath.lowercase().contains("mistral.ai")
 
     /**
+     * [T-v1.2.3-groq-cerebras-reasoning-400] Groq and Cerebras both reject
+     * unknown assistant-message fields with HTTP 400 (Groq's strict schema
+     * validator: `'messages.N': property 'reasoning_content' is unsupported`;
+     * Cerebras expects `reasoning` or nothing and likewise 400s on
+     * `reasoning_content`). Same hostname-substring style and same documented
+     * caveats as [isMistral]: a relay under its own hostname is not
+     * recognised (still 400s), and a URL merely mentioning the host in a
+     * query string would over-suppress (harmless — the field is optional).
+     */
+    private val isGroq: Boolean = basePath.lowercase().contains("groq.com")
+
+    /** See [isGroq] — same rejection, same caveats. */
+    private val isCerebras: Boolean = basePath.lowercase().contains("cerebras.ai")
+
+    /**
      * [OpenMinis#163] Talking to xAI's own API (api.x.ai), as opposed to a relay
      * that merely serves grok-named models. Mirrors iOS OpenAIProvider.isXAI.
      *
@@ -2058,7 +2073,12 @@ class OpenAIProvider private constructor(
         // history while Mistral forbids it, and neither advertises
         // supportsReasoning via /v1/models — opposite requirements on the same
         // generic openAI provider path. Hence a spec-driven vendor flag.
-        val forbidReasoningField = isMistral
+        // [T-v1.2.3-groq-cerebras-reasoning-400] Groq and Cerebras reject
+        // unknown assistant-message fields with HTTP 400, so they join
+        // Mistral in the suppression. Request-level thinking params
+        // (reasoning_effort) are NOT suppressed — Groq documents support
+        // for them; only the message-level echo is the 400 trigger.
+        val forbidReasoningField = isMistral || isGroq || isCerebras
         val includeReasoning =
             (thinkingLevel.isEnabled || modelAlwaysReasons) && modelMayReason && !forbidReasoningField
         val echoReasoning = includeReasoning
