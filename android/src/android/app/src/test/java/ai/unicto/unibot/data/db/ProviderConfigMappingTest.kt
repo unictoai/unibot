@@ -31,6 +31,7 @@ class ProviderConfigMappingTest {
                 label = "Test",
                 providerType = providerType,
                 credentialType = credentialType,
+                createdAt = 1L,
             )
         ),
         entries = emptyList(),
