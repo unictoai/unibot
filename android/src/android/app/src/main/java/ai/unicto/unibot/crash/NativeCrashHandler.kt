@@ -171,8 +171,10 @@ object NativeCrashHandler {
         return try {
             val m = Regex("""^(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})""").find(line)
                 ?: return false
-            val (_, _, day, h, min, s) = m.groupValues
-            val sec = ((day.toLong() * 24 + h.toLong()) * 60 + min.toLong()) * 60 + s.toLong()
+            // groupValues = [whole, month, day, h, min, s]; List destructuring
+            // only supports component1..5, so index explicitly.
+            val g = m.groupValues
+            val sec = ((g[2].toLong() * 24 + g[3].toLong()) * 60 + g[4].toLong()) * 60 + g[5].toLong()
             kotlin.math.abs(sec - crashSec) <= 30
         } catch (_: Throwable) {
             false
