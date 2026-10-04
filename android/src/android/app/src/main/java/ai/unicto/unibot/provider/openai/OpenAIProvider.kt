@@ -99,18 +99,20 @@ class OpenAIProvider private constructor(
     /**
      * [T-android-v128-test-ctor] Test-only construction. The primary
      * constructor is private (factories disambiguate the erased overloads);
-     * unit tests need a plain API-key instance to exercise [mapHttpError].
-     * Internal so production still goes through the factories.
+     * unit tests need plain API-key instances to exercise [mapHttpError] and
+     * request builders. Internal so production still goes through the factories.
      */
     internal constructor(
         apiKey: String,
         model: LLMModel,
         basePath: String,
+        useResponsesAPI: Boolean = false,
     ) : this(
         apiKey = apiKey,
         oauthTokenProvider = null,
         model = model,
         basePath = basePath,
+        useResponsesAPI = useResponsesAPI,
     )
 
     /**
