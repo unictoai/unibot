@@ -112,8 +112,7 @@ jobs:
           existing=$(gh issue list --state open --search "CI: testDebugUnitTest failed on ${{ github.sha }} in:title" --json number --jq 'length' 2>/dev/null || echo 0)
           if [ "$existing" = "0" ]; then
             gh issue create --title "CI: testDebugUnitTest failed on ${{ github.sha }}" \
-              --body-file /tmp/unittest-tail.txt \
-              --label "ci-failure" 2>/dev/null || true
+              --body-file /tmp/unittest-tail.txt 2>/dev/null || true
           fi
 
       - name: Report assembleDebug failure
