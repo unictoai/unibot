@@ -14,6 +14,7 @@ import ai.unicto.unibot.data.model.LLMStreamChunk
 import ai.unicto.unibot.data.model.LLMUsage
 import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.provider.LLMProvider
+import ai.unicto.unibot.provider.MessageNormalizer
 import ai.unicto.unibot.provider.safeOptString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -196,6 +197,12 @@ class GeminiProvider(
         thinkingLevel: ThinkingLevel = ThinkingLevel.OFF,
     ): JSONObject {
         val body = JSONObject()
+
+        // [T-android-v121-message-normalize] Repair the history right before
+        // serialization: merge consecutive same-role messages, drop empty
+        // assistant messages, strip orphaned tool_calls. Provider-agnostic —
+        // strict OpenAI-compatible endpoints 400 on all three defects.
+        val messages = MessageNormalizer.normalize(messages)
 
         // [T-android-gemini3-thoughtsig / #179] Gemini 3.x REQUIRES a
         // thoughtSignature on every historical functionCall part; a bare

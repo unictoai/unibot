@@ -15,6 +15,7 @@ import ai.unicto.unibot.data.model.hasImageInput
 import ai.unicto.unibot.provider.thinking.ThinkingResolveContext
 import ai.unicto.unibot.provider.thinking.ThinkingRuleResolver
 import ai.unicto.unibot.provider.LLMProvider
+import ai.unicto.unibot.provider.MessageNormalizer
 import ai.unicto.unibot.provider.applyUserAgentOverride
 import ai.unicto.unibot.provider.safeOptString
 import kotlinx.coroutines.CancellationException
@@ -1923,6 +1924,11 @@ class OpenAIProvider private constructor(
         thinkingLevel: ThinkingLevel = ThinkingLevel.OFF,
     ): JSONObject {
         // T264: cross-provider image sanitization, mirrors iOS
+        // [T-android-v121-message-normalize] Repair the history right before
+        // serialization: merge consecutive same-role messages, drop empty
+        // assistant messages, strip orphaned tool_calls. Provider-agnostic —
+        // strict OpenAI-compatible endpoints 400 on all three defects.
+        val messages = MessageNormalizer.normalize(messages)
         // OpenAIAgentProvider.swift:744-768 / 900-918. When the target model
         // doesn't declare "image" in inputModalities (e.g. DeepSeek V4 after
         // user sent image to GPT-5.5 then switched provider), serialize a
@@ -2870,6 +2876,11 @@ class OpenAIProvider private constructor(
         thinkingLevel: ThinkingLevel = ThinkingLevel.OFF,
     ): JSONObject {
         // T264: same vision-capability gate as buildRequestBody. Responses API
+        // [T-android-v121-message-normalize] Repair the history right before
+        // serialization: merge consecutive same-role messages, drop empty
+        // assistant messages, strip orphaned tool_calls. Provider-agnostic —
+        // strict OpenAI-compatible endpoints 400 on all three defects.
+        val messages = MessageNormalizer.normalize(messages)
         // path (Codex OAuth) is currently always wired to a vision-capable
         // GPT-5.x so this branch is defensive rather than load-bearing, but
         // keeping the two paths symmetric prevents future regressions when

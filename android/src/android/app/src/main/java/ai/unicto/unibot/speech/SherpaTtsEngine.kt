@@ -36,6 +36,13 @@ import kotlinx.coroutines.launch
 object SherpaTtsEngine {
     private const val TAG = "SherpaTts"
 
+    /**
+     * Minimum plausible voice-model size. Published voices are ~60 MB; a
+     * truncated download must never reach the native loader (it aborts the
+     * process on corrupt models instead of returning an error).
+     */
+    private const val MIN_MODEL_BYTES = 1_000_000L
+
     /** Non-null when [System.loadLibrary] threw. */
     var loadError: Throwable? = null
         private set
@@ -71,9 +78,17 @@ object SherpaTtsEngine {
      * [TtsVoiceModelManager.activeVoiceDir] returns). Blocks for a second or
      * two while the model loads — call off the UI thread. Returns false when
      * the native library is unavailable or the model fails to load.
+     *
+     * [T-android-v121-tts-corrupt-model] The voice files are validated BEFORE
+     * the native load: a truncated/interrupted download used to reach
+     * `newFromFile`, where sherpa-onnx aborts the process (SIGABRT,
+     * self-abort — the exact signature of the v1.2 voice-mode crash) instead
+     * of returning an error. Now a bad download degrades to "voice
+     * unavailable" and the manager can re-download.
      */
     fun initEngine(context: Context, voiceDir: File, speed: Float): Boolean {
         if (!nativeAvailable) return false
+        if (!validateVoiceDir(voiceDir)) return false
         this.speed = speed
         return try {
             val config = OfflineTtsConfig(
@@ -100,6 +115,33 @@ object SherpaTtsEngine {
     }
 
     /**
+     * Sanity-check a downloaded voice directory. Voices are ~60 MB; anything
+     * far smaller (or missing pieces) is a truncated download and must never
+     * reach the native loader — sherpa-onnx aborts the process on corrupt
+     * models instead of returning an error.
+     */
+    private fun validateVoiceDir(voiceDir: File): Boolean {
+        val onnx = File(voiceDir, "model.onnx")
+        val tokens = File(voiceDir, "tokens.txt")
+        val espeakDir = File(voiceDir, "espeak-ng-data")
+        val problems = mutableListOf<String>()
+        if (!onnx.isFile || onnx.length() < MIN_MODEL_BYTES) {
+            problems += "model.onnx missing or truncated (${onnx.length()} bytes)"
+        }
+        if (!tokens.isFile || tokens.length() == 0L) {
+            problems += "tokens.txt missing or empty"
+        }
+        if (!espeakDir.isDirectory || (espeakDir.list()?.isEmpty() != false)) {
+            problems += "espeak-ng-data/ missing or empty"
+        }
+        if (problems.isNotEmpty()) {
+            Log.w(TAG, "voice dir ${voiceDir.name} failed validation: ${problems.joinToString("; ")}")
+            return false
+        }
+        return true
+    }
+
+    /**
      * Speak [text] aloud. The text is sanitized with [VoiceTextSanitizer]
      * first (no spoken markdown, no emoji). Synthesis runs on
      * Dispatchers.Default; only one utterance plays at a time — a new
@@ -122,7 +164,13 @@ object SherpaTtsEngine {
             // utterance's isSpeaking=true.
             val myJob = coroutineContext[Job]
             try {
-                val audio = tts?.generate(clean, sid = 0, speed = speed)
+                // [T-android-v121-tts-use-after-free] Snapshot the engine
+                // under the same lock release() uses. OfflineTts holds its
+                // own lock across the blocking generate() call, so a
+                // release() racing us waits for synthesis to finish instead
+                // of deleting the native object mid-call (SIGABRT).
+                val engine = synchronized(this@SherpaTtsEngine) { tts }
+                val audio = engine?.generate(clean, sid = 0, speed = speed)
                 if (audio == null || stopRequested) return@launch
                 playPcm16(audio.samples, audio.sampleRate)
             } catch (t: Throwable) {

@@ -126,6 +126,17 @@ class OfflineTts(
 ) {
     private var ptr: Long
 
+    /**
+     * [T-android-v121-tts-use-after-free] Guards every native entry point.
+     * The engine object is shared between the speak coroutine and release()
+     * on another thread: without this lock, release() could delete() the
+     * native object between the Kotlin null-check and generateImpl(), and
+     * the freed pointer would SIGABRT/SIGSEGV inside sherpa-onnx. The lock
+     * is held across the (blocking) native call so free() waits for any
+     * in-flight synthesis instead of pulling the object out from under it.
+     */
+    private val nativeLock = Any()
+
     init {
         ptr = newFromFile(config)
         require(ptr != 0L) {
@@ -133,23 +144,37 @@ class OfflineTts(
         }
     }
 
-    fun sampleRate() = getSampleRate(ptr)
+    fun sampleRate(): Int = synchronized(nativeLock) {
+        checkAlive()
+        getSampleRate(ptr)
+    }
 
-    fun numSpeakers() = getNumSpeakers(ptr)
+    fun numSpeakers(): Int = synchronized(nativeLock) {
+        checkAlive()
+        getNumSpeakers(ptr)
+    }
 
     fun generate(
         text: String,
         sid: Int = 0,
         speed: Float = 1.0f
-    ): GeneratedAudio {
-        return generateImpl(ptr, text = text, sid = sid, speed = speed)
+    ): GeneratedAudio = synchronized(nativeLock) {
+        checkAlive()
+        generateImpl(ptr, text = text, sid = sid, speed = speed)
     }
 
     fun free() {
-        if (ptr != 0L) {
-            delete(ptr)
-            ptr = 0
+        synchronized(nativeLock) {
+            if (ptr != 0L) {
+                delete(ptr)
+                ptr = 0
+            }
         }
+    }
+
+    /** Throws instead of letting a null native pointer reach JNI. */
+    private fun checkAlive() {
+        check(ptr != 0L) { "OfflineTts used after free()" }
     }
 
     private external fun newFromFile(

@@ -42,6 +42,10 @@ class WhisperCppSpeechRecognitionEngine(private val appContext: Context) : Speec
          * memory; whisper.cpp windows long audio internally, so quality holds.
          */
         private const val MAX_RECORD_SECONDS = 120
+
+        /** Smallest published whisper model is ~31 MB — anything far smaller
+         *  is a truncated download that must never reach the native loader. */
+        private const val MIN_MODEL_BYTES = 1_000_000L
     }
 
     override val id: String = "whisper-offline"
@@ -84,6 +88,18 @@ class WhisperCppSpeechRecognitionEngine(private val appContext: Context) : Speec
             listener.onError(
                 RecognitionError.OEM_NO_SERVICE,
                 "Offline voice model not downloaded.",
+            )
+            return
+        }
+        // [T-android-v121-whisper-corrupt-model] A truncated download must
+        // never reach nativeInit: whisper.cpp aborts the process on corrupt
+        // models instead of returning an error (same SIGABRT signature as the
+        // v1.2 TTS crash). Smallest published model is ~31 MB.
+        if (modelFile.length() < MIN_MODEL_BYTES) {
+            Log.w(TAG, "voice model file too small (${modelFile.length()} bytes) — refusing native load")
+            listener.onError(
+                RecognitionError.UNKNOWN,
+                "Offline voice model looks incomplete — please re-download it.",
             )
             return
         }

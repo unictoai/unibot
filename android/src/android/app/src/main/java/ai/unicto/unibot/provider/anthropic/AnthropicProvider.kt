@@ -13,6 +13,7 @@ import ai.unicto.unibot.data.model.LLMUsage
 import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.provider.ImageBudget
 import ai.unicto.unibot.provider.LLMProvider
+import ai.unicto.unibot.provider.MessageNormalizer
 import ai.unicto.unibot.provider.applyUserAgentOverride
 import ai.unicto.unibot.provider.safeOptString
 import kotlinx.coroutines.Dispatchers
@@ -342,6 +343,11 @@ class AnthropicProvider(
         body.put("model", model.id)
         body.put("max_tokens", maxTokens)
         body.put("stream", stream)
+        // [T-android-v121-message-normalize] Repair the history right before
+        // serialization: merge consecutive same-role messages, drop empty
+        // assistant messages, strip orphaned tool_calls. Provider-agnostic —
+        // strict OpenAI-compatible endpoints 400 on all three defects.
+        val messages = MessageNormalizer.normalize(messages)
 
         if (temperature != null && !thinkingLevel.isEnabled && !modelRejectsTemperature(model.id)) {
             body.put("temperature", temperature)
