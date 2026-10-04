@@ -102,7 +102,7 @@ class ChatModelFilterTest {
 
     @Test
     fun `ModelNotFound is not retryable and not fallbackable`() {
-        val err: LLMError = LLMError.ModelNotFound("llama-3.3-70b-versatile", "detail")
+        val err = LLMError.ModelNotFound("llama-3.3-70b-versatile", "detail")
         assertFalse(err is LLMError.ProviderError)
         assertFalse(err.isFallbackable)
         assertFalse(err.isRetryable)

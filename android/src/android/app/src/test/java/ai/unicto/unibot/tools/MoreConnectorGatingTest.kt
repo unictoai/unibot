@@ -55,7 +55,7 @@ class MoreConnectorGatingTest {
         assertTrue(sl.size == 2)
         assertTrue(sl[SlackTool.READ_NAME]!!.required.contains("channel_id"))
         (YouTubeTool.definitions() + DiscordTool.definitions() + SlackTool.definitions()).forEach {
-            assertTrue(it.propertyOrdering.first() == "tool_title")
+            assertTrue(it.propertyOrdering?.first() == "tool_title")
         }
     }
 }

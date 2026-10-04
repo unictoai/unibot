@@ -49,7 +49,7 @@ class HealOutputLimitsTest {
         else model
     }
 
-    private class Harness(config: ProviderConfig) {
+    private inner class Harness(config: ProviderConfig) {
         var healedFlag = false
         var saves = 0
         var enrichCalls = 0

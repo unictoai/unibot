@@ -61,7 +61,7 @@ class TokenConnectorGatingTest {
         assertTrue(tg[TelegramTool.SEND_NAME]!!.required.contains("text"))
         // Every definition carries a tool_title param first (app convention).
         (GitHubTool.definitions() + TelegramTool.definitions()).forEach {
-            assertTrue(it.propertyOrdering.first() == "tool_title")
+            assertTrue(it.propertyOrdering?.first() == "tool_title")
         }
     }
 }

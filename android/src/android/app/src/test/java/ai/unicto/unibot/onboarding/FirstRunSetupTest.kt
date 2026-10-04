@@ -11,22 +11,22 @@ class FirstRunSetupTest {
 
     @Test
     fun `a fresh install is walked through the setup until Start`() {
-        assertTrue(FirstRunSetup.needed(signedIn = false, hasProviders = false, hasSessions = false, done = false))
-        // Signed in (the relay is a provider), models picked, but Start not tapped yet: still the setup.
-        assertTrue(FirstRunSetup.needed(signedIn = true, hasProviders = true, hasSessions = false, done = false))
-        assertFalse(FirstRunSetup.needed(signedIn = true, hasProviders = true, hasSessions = false, done = true))
+        assertTrue(FirstRunSetup.needed(hasProviders = false, hasSessions = false, done = false))
+        // Providers added, models picked, but Start not tapped yet: still the setup.
+        assertTrue(FirstRunSetup.needed(hasProviders = true, hasSessions = false, done = false))
+        assertFalse(FirstRunSetup.needed(hasProviders = true, hasSessions = false, done = true))
     }
 
     @Test
-    fun `an existing install with conversations never sees the setup while signed in`() {
-        assertFalse(FirstRunSetup.needed(signedIn = true, hasProviders = true, hasSessions = true, done = false))
-        assertFalse(FirstRunSetup.needed(signedIn = true, hasProviders = true, hasSessions = true, done = true))
+    fun `an existing install with conversations never sees the setup`() {
+        assertFalse(FirstRunSetup.needed(hasProviders = true, hasSessions = true, done = false))
+        assertFalse(FirstRunSetup.needed(hasProviders = true, hasSessions = true, done = true))
     }
 
     @Test
-    fun `the account is required - signing out brings the setup back, whatever else is true`() {
-        assertTrue(FirstRunSetup.needed(signedIn = false, hasProviders = true, hasSessions = true, done = true))
-        assertTrue(FirstRunSetup.needed(signedIn = true, hasProviders = false, hasSessions = true, done = true))
+    fun `no providers always needs the setup, whatever else is true`() {
+        assertTrue(FirstRunSetup.needed(hasProviders = false, hasSessions = true, done = true))
+        assertTrue(FirstRunSetup.needed(hasProviders = false, hasSessions = false, done = true))
     }
 
     @Test
