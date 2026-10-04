@@ -1,0 +1,5 @@
+Contact: https://github.com/unictoai/unibot/security/advisories/new
+Expires: 2027-10-04T08:10:25Z
+Preferred-Languages: en
+Policy: https://github.com/unictoai/unibot/blob/main/SECURITY.md
+Canonical: https://unictoai.github.io/unibot/.well-known/security.txt

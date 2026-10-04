@@ -60,6 +60,12 @@ See [docs/android.md](docs/android.md). In short: install the Android SDK (API 3
 
 Everything the agent does happens on your device; there is no unibot server and no account. Network traffic goes only to services you use: your model provider (API calls), GitHub (update checks), Google (OAuth for Gmail/Drive/Calendar/YouTube, only when you connect them), plus whatever websites the agent browses for you and any MCP servers you configure. Nothing is sent anywhere you didn't ask for. See [docs/privacy.md](docs/privacy.md).
 
+## Docs
+
+- [Roadmap](ROADMAP.md) — where unibot is headed
+- [Troubleshooting](TROUBLESHOOTING.md) — real problems and their fixes
+- [Security policy](SECURITY.md) — how to report a vulnerability
+
 ## License
 
 GPL-3.0-or-later — see [LICENSE](LICENSE). unibot is based on nanoMuse by the nanoMuse contributors, which builds on OpenMinis; their copyright notices and license terms are preserved.
