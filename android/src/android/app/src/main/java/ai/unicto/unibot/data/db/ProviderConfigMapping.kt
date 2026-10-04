@@ -198,8 +198,15 @@ fun ProviderConfigSnapshot.toProviderConfig(jsonForBlobs: Json): ProviderConfig 
         ProviderInstance(
             id = row.id,
             label = row.label,
-            providerType = ProviderType.valueOf(row.providerType),
-            credentialType = ProviderCredential.valueOf(row.credentialType),
+            // [T-android-v128-enum-hardening] Safe parse: an unknown name
+            // (downgrade, cross-platform restore carrying a newer enum) must
+            // NOT throw — a throw here wipes all providers/models/groups from
+            // the UI and kills chat. Unknown type → unsupported (explicitly
+            // undrivable, mirrors iOS); unknown credential → apiKey.
+            providerType = runCatching { ProviderType.valueOf(row.providerType) }
+                .getOrElse { ProviderType.unsupported },
+            credentialType = runCatching { ProviderCredential.valueOf(row.credentialType) }
+                .getOrElse { ProviderCredential.apiKey },
             isEnabled = row.isEnabled != 0,
             createdAt = row.createdAt,
             customBaseURL = row.customBaseURL,
@@ -243,8 +250,10 @@ fun ProviderConfigSnapshot.toProviderConfig(jsonForBlobs: Json): ProviderConfig 
             memberEntryIds = jsonForBlobs
                 .decodeFromString(stringListSerializer, row.memberEntryIdsJson)
                 .toMutableList(),
-            strategy = RoutingStrategy.valueOf(row.strategy),
-            fallbackStrategy = FallbackStrategy.valueOf(row.fallbackStrategy),
+            strategy = runCatching { RoutingStrategy.valueOf(row.strategy) }
+                .getOrElse { RoutingStrategy.fallback },
+            fallbackStrategy = runCatching { FallbackStrategy.valueOf(row.fallbackStrategy) }
+                .getOrElse { FallbackStrategy.default },
             // [T-android-thinking-level-arch] decoded() (not valueOf()) so a
             // level string a NEWER build persisted (e.g. "MAX"/"ULTRA") can't
             // throw and blow up the whole DB load — which would fall back to the

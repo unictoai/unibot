@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.ProviderRepository
+import ai.unicto.unibot.provider.ChatModelFilter
 import ai.unicto.unibot.ui.components.modelEntryPickerItems
 import ai.unicto.unibot.ui.components.UnibotButton
 import ai.unicto.unibot.ui.components.UnibotTextButton
@@ -76,7 +77,10 @@ fun AddAgentLoopModelsScreen(
         .flatMap { it.memberEntryIds }
         .toSet()
     val availableEntries = config.modelEntries.filter {
-        !it.isHidden && it.id !in pinnedEntries && it.id !in groupBackedEntries
+        !it.isHidden && it.id !in pinnedEntries && it.id !in groupBackedEntries &&
+            // [T-android-v128-filter-gaps] The agent loop needs text models;
+            // non-chat ids (Whisper/TTS/guard/embedding) would break agent runs.
+            ChatModelFilter.isChatModel(it.model.id)
     }
 
     val searchQuery = remember { mutableStateOf("") }

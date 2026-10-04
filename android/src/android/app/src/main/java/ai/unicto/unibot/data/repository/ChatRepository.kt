@@ -352,6 +352,16 @@ class ChatRepository(internal val dao: ChatDao) {
     }
 
     /**
+     * [T-android-v128-stream-persist] Delete a single message row by id.
+     * Removes the stream-start placeholder once the turn-end persist writes
+     * the real row. No-op for incognito ghost ids.
+     */
+    suspend fun deleteMessage(id: String) {
+        if (ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognitoMessage(id)) return
+        dao.deleteMessage(id)
+    }
+
+    /**
      * [P2-import] Insert one imported message, preserving the original role
      * and timestamp. New id + next sort_order (import order = array order).
      * Parts are capped with the same truncation as [appendMessage] so an

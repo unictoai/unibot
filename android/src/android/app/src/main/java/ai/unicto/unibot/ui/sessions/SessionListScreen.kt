@@ -106,6 +106,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import ai.unicto.unibot.ui.components.UnibotAlertDialog
 import ai.unicto.unibot.ui.components.UnibotOutlinedButton
@@ -568,6 +570,14 @@ fun SessionListScreen(
     // doesn't flash the "add a provider" onboarding before the real config emits.
     val configLoaded by providerRepository.configLoaded.collectAsState()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    // [T-android-v128-duplicate-rollback] Surface duplicateSession failures
+    // (e.g. disk-full) that the ViewModel reports on errorEvents.
+    LaunchedEffect(Unit) {
+        viewModel.errorEvents.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
     // [Wave 9b] Haptic audit: FAB taps, destructive deletes/archives.
     val haptics = rememberHaptic()
     val isDark = ChatColors.isDark
@@ -814,6 +824,7 @@ fun SessionListScreen(
     }.collectAsState(initial = 0)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

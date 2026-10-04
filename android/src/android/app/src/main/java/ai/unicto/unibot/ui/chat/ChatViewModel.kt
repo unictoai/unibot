@@ -718,6 +718,88 @@ class ChatViewModel(
     private val streamFlushStates = HashMap<String, StreamFlushState>()
 
     /**
+     * [T-android-v128-stream-persist] Crash-safety for streaming turns.
+     *
+     * The assistant reply used to exist only in memory until turn end; a
+     * process death mid-stream (LMK on 4GB phones) lost the partial text.
+     * Now: the first UI flush inserts a placeholder row in Room
+     * ([streamDbIds]: UI message id → DB row id), each subsequent flush
+     * rewrites its parts, and the stream-end drain deletes the placeholder
+     * (the existing turn-end persist then writes the real row with full
+     * metadata). If the process dies mid-stream, the placeholder survives
+     * with the last flushed text instead of nothing.
+     *
+     * All maps are Main-thread only (publish/drain run on Main); DB writes
+     * are fire-and-forget on IO. Content only grows during a stream, so the
+     * length guard keeps writes monotonic even if coroutines interleave.
+     */
+    private val streamDbIds = HashMap<String, String>()
+    private val streamDbInserting = HashSet<String>()
+    private val streamDbWriteLens = HashMap<String, Int>()
+
+    /** Insert the crash-safety placeholder row for [id] if not already present. */
+    private fun ensureStreamDbRow(id: String) {
+        if (streamDbIds.containsKey(id) || !streamDbInserting.add(id)) return
+        // Defensive: only insert while the UI still shows this message as
+        // streaming — a stale publish after the stream-end drain must not
+        // resurrect a placeholder row for a finished turn.
+        val stillStreaming = _messages.value.any { it.id == id && it.isStreaming } ||
+            _streamingById.value.containsKey(id)
+        if (!stillStreaming) {
+            streamDbInserting.remove(id)
+            return
+        }
+        val sid = realSessionId.ifEmpty { sessionId }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val row = chatRepository.appendMessage(sid, "assistant", "[]")
+                withContext(Dispatchers.Main) {
+                    // Still alive iff clearStreamDbRow hasn't run (it also
+                    // removes from streamDbInserting). Otherwise the new row
+                    // is an orphan — delete it immediately.
+                    val stillAlive = streamDbInserting.contains(id)
+                    streamDbInserting.remove(id)
+                    if (stillAlive) {
+                        streamDbIds[id] = row.id
+                        streamDbWriteLens[id] = 0
+                    } else {
+                        viewModelScope.launch(Dispatchers.IO) {
+                            runCatching { chatRepository.deleteMessage(row.id) }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) { streamDbInserting.remove(id) }
+            }
+        }
+    }
+
+    /** Rewrite the placeholder row's text after a UI flush, if it grew. */
+    private fun persistStreamDbRow(id: String, content: String) {
+        val dbId = streamDbIds[id]
+        if (dbId == null) {
+            ensureStreamDbRow(id)
+            return
+        }
+        if (content.length <= (streamDbWriteLens[id] ?: 0)) return
+        streamDbWriteLens[id] = content.length
+        val partsJson = streamPlaceholderPartsJson(content, ::escapeJson)
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { chatRepository.updateMessageParts(dbId, partsJson) }
+        }
+    }
+
+    /** Delete the placeholder row at stream end; the real row is persisted separately. */
+    private fun clearStreamDbRow(id: String) {
+        streamDbInserting.remove(id)
+        streamDbWriteLens.remove(id)
+        val dbId = streamDbIds.remove(id) ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { chatRepository.deleteMessage(dbId) }
+        }
+    }
+
+    /**
      * [T-android-stream-flush-review] Cancel a message's pending trailing flush
      * and drop its throttle accumulator. Call from EVERY stream-termination
      * path (natural end, cancel, turn-limit, retry-truncate, clearChat) so a
@@ -5364,6 +5446,13 @@ class ChatViewModel(
         // so none re-adds an orphan side-channel entry after the wipe.
         clearAllStreamFlushStates()
         _streamingById.value = emptyMap()
+        // [T-android-v128-stream-persist] Drop crash-safety tracking: the DB
+        // rows were just deleted above, so any tracked placeholder is gone.
+        // (flushAllStreamingDeltas deliberately does NOT clear these — an
+        // error-path placeholder must survive with its persisted error.)
+        streamDbIds.clear()
+        streamDbInserting.clear()
+        streamDbWriteLens.clear()
         // Memory state — match iOS clearChat() field list one-for-one.
         _messages.value = emptyList()
         agentHistory.clear()
@@ -11169,6 +11258,11 @@ class ChatViewModel(
                 )
                 st.lastFlushMs = System.currentTimeMillis()
                 st.lastFlushedLen = text.length
+                // [T-android-v128-stream-persist] Crash-safety: mirror the
+                // flushed text into the placeholder DB row (inserted lazily
+                // on first flush). Throttled by the same flush gate, so DB
+                // writes never exceed the UI publish rate.
+                persistStreamDbRow(id, text)
             }
 
             if (structuralChange || elapsed >= throttle || newlineFlush) {
@@ -11232,6 +11326,10 @@ class ChatViewModel(
         // trailing flush and drop the throttle accumulator for this message;
         // the canonical drain below publishes the final, complete text.
         clearStreamFlushState(id)
+        // [T-android-v128-stream-persist] Stream end → the placeholder DB row
+        // (if any) is deleted; the caller's turn-end persist writes the real
+        // row with full metadata right after.
+        clearStreamDbRow(id)
         // Stream end → sync delta into canonical message + clear side-channel.
         val current = _messages.value
         val idx = current.indexOfLast { it.id == id }
@@ -13090,6 +13188,19 @@ Media downloads (video/audio from a link) — follow this ladder in order:
                 val partsJson = buildAssistantPartsJson(parts)
                 chatRepository.appendMessage(activeSessionId, "assistant", partsJson)
             }
+            // [T-android-v128-stream-persist] The crash-safety placeholder (if
+            // any) is replaced by the row appended above: drop its tracking so
+            // a late in-flight insert self-deletes instead of orphaning, and
+            // remove the adopted row. Runs after the launch — the maps are
+            // Main-thread only and this function runs on Main.
+            streamDbInserting.remove(last.id)
+            streamDbWriteLens.remove(last.id)
+            val placeholderDbId = streamDbIds.remove(last.id)
+            if (placeholderDbId != null) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    runCatching { chatRepository.deleteMessage(placeholderDbId) }
+                }
+            }
             // [T-android-group-pause-badge-restamp] A LIVE interruption just
             // happened: this is a real entry into the paused state, so the
             // badge's 24h freshness stamp must be refreshed. Cancel any
@@ -13875,3 +13986,12 @@ Media downloads (video/audio from a link) — follow this ladder in order:
         }
     }
 }
+
+/**
+ * [T-android-v128-stream-persist] Parts JSON for the crash-safety placeholder
+ * row: a single text part carrying the last flushed stream text. The [escape]
+ * parameter is the ViewModel's JSON string escaper; extracted as a top-level
+ * internal function so the insert-then-update persist path is unit-testable.
+ */
+internal fun streamPlaceholderPartsJson(content: String, escape: (String) -> String): String =
+    """[{"type":"text","value":${escape(content)}}]"""

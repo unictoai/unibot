@@ -130,4 +130,56 @@ class ChatModelFilterTest {
     fun `error kind constant is stable`() {
         assertEquals("model_not_found", ERROR_KIND_MODEL_NOT_FOUND)
     }
+
+    // ---------- v128 filter gaps ----------
+
+    @Test
+    fun `embedding rerank ocr moderation image-gen ids are excluded`() {
+        val nonChat = listOf(
+            "cohere-embed-v3-multilingual",       // embed
+            "text-embedding-ada-002",             // embed
+            "llama-3.2-nv-rerankqa-1b-v2",        // rerank
+            "mistral-ocr-latest",                 // ocr
+            "text-moderation-latest",             // moderat
+            "omni-moderation-latest",
+            "dall-e-3",                           // dall
+            "imagen-4.0-generate-001",            // imagen
+            "flux-1-schnell",                     // flux
+            "sora-2",                             // sora
+        )
+        for (id in nonChat) {
+            assertFalse("expected non-chat model to be filtered: $id", ChatModelFilter.isChatModel(id))
+        }
+    }
+
+    @Test
+    fun `gpt-image-2 survives the filter via explicit carve-out`() {
+        // Specially routed through the Codex image_generation tool — it must
+        // remain selectable even though image-gen patterns got stricter.
+        assertTrue(ChatModelFilter.isChatModel("gpt-image-2"))
+        assertTrue(ChatModelFilter.isChatModel("openai/gpt-image-2"))
+    }
+
+    @Test
+    fun `retired qwen3_6-27b is excluded`() {
+        assertFalse(ChatModelFilter.isChatModel("qwen/qwen3.6-27b"))
+        assertTrue(ChatModelFilter.isRetired("qwen/qwen3.6-27b"))
+        // Its replacement stays selectable.
+        assertTrue(ChatModelFilter.isChatModel("qwen/qwen3.8-27b"))
+    }
+
+    @Test
+    fun `ordinary chat models still pass`() {
+        val chat = listOf(
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
+            "allam-2-7b",
+            "gpt-5.5",
+            "claude-opus-4-6",
+        )
+        for (id in chat) {
+            assertTrue("expected chat model to pass the filter: $id", ChatModelFilter.isChatModel(id))
+        }
+    }
 }

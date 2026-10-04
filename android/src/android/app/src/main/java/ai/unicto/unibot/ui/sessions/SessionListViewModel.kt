@@ -16,9 +16,12 @@ import ai.unicto.unibot.provider.ProviderFactory
 import ai.unicto.unibot.ui.chat.ChatViewModelStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -123,6 +126,14 @@ class SessionListViewModel(
     }
 
     private val _allSessions = MutableStateFlow<List<ChatSessionEntity>>(emptyList())
+
+    /**
+     * [T-android-v128-duplicate-rollback] One-shot user-visible errors (e.g.
+     * duplicateSession failing on a full disk). Collected by SessionListScreen
+     * into a snackbar.
+     */
+    private val _errorEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
 
     /**
      * Tracks whether the first DB emission has landed. Before this flips true
@@ -1141,21 +1152,24 @@ class SessionListViewModel(
 
     fun duplicateSession(id: String) {
         viewModelScope.launch {
-            val session = chatRepository.getSession(id) ?: return@launch
-            val messages = chatRepository.loadMessages(id)
-            val newSession = chatRepository.createSession(
-                modelId = session.modelId,
-                title = "${session.title ?: "Chat"} (Copy)",
+            duplicateSessionWithRollback(
+                ops = object : SessionDuplicateOps {
+                    override suspend fun getSession(id: String) = chatRepository.getSession(id)
+                    override suspend fun loadMessages(id: String) = chatRepository.loadMessages(id)
+                    override suspend fun createSession(modelId: String, title: String) =
+                        chatRepository.createSession(modelId = modelId, title = title)
+                    override suspend fun appendMessage(
+                        sessionId: String, role: String, partsJson: String,
+                        tokenUsage: String?, reasoningContent: String?,
+                    ) = chatRepository.appendMessage(
+                        sessionId = sessionId, role = role, partsJson = partsJson,
+                        tokenUsage = tokenUsage, reasoningContent = reasoningContent,
+                    )
+                    override suspend fun deleteSession(id: String) = chatRepository.deleteSession(id)
+                },
+                id = id,
+                onError = { _errorEvents.tryEmit(it) },
             )
-            for (msg in messages) {
-                chatRepository.appendMessage(
-                    sessionId = newSession.id,
-                    role = msg.role,
-                    partsJson = msg.partsJson,
-                    tokenUsage = msg.tokenUsage,
-                    reasoningContent = msg.reasoningContent,
-                )
-            }
         }
     }
 

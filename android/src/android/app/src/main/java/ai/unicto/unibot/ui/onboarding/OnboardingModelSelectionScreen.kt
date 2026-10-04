@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.model.ModelGroup
 import ai.unicto.unibot.data.repository.ProviderRepository
+import ai.unicto.unibot.provider.ChatModelFilter
 
 /**
  * Onboarding step 2: pick 1-3 models from configured providers
@@ -77,9 +78,13 @@ fun OnboardingModelSelectionScreen(
     }
 
     val enabledInstanceIds = config.instances.filter { it.isEnabled }.map { it.id }.toSet()
-    val allEntries = config.modelEntries.filter {
-        it.providerInstanceId in enabledInstanceIds && !it.isHidden
-    }
+    // [T-android-v128-filter-gaps] ChatModelFilter: a first-run user must not
+    // be offered Whisper/TTS/embedding/retired ids as their initial model.
+    val allEntries = ChatModelFilter.filterEntries(
+        config.modelEntries.filter {
+            it.providerInstanceId in enabledInstanceIds && !it.isHidden
+        }
+    )
     val filteredEntries = if (searchText.isBlank()) allEntries else {
         val q = searchText.lowercase()
         allEntries.filter {

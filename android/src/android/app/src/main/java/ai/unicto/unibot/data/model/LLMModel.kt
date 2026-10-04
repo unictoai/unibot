@@ -177,8 +177,10 @@ data class LLMModel(
 
         // Groq — https://console.groq.com/models
         // NOTE: llama-3.3-70b-versatile + llama-3.1-8b-instant were
-        // decommissioned 2026-08-16 — do NOT re-add them. Live free-tier
-        // chat lineup (Oct 2026): gpt-oss-120b/20b, qwen3.6-27b.
+        // decommissioned 2026-08-16 — do NOT re-add them. qwen/qwen3.6-27b
+        // was retired ~2026-09-14, renamed to qwen/qwen3.8-27b — do NOT
+        // re-add it either (see ChatModelFilter.RETIRED_MODEL_IDS).
+        // Live free-tier chat lineup (Oct 2026): gpt-oss-120b/20b, qwen3.8-27b.
         // [T-android-v126-maxtokens] maxOutputTokens declared from
         // console.groq.com/models (matches models.dev "groq" entry): the
         // request builder clamps max_completion_tokens to these, and the
@@ -187,7 +189,7 @@ data class LLMModel(
         val allGroq = listOf(
             LLMModel("openai/gpt-oss-120b", "GPT OSS 120B", "Groq", maxOutputTokens = 65536, supportsReasoning = true),
             LLMModel("openai/gpt-oss-20b", "GPT OSS 20B", "Groq", maxOutputTokens = 65536),
-            LLMModel("qwen/qwen3.6-27b", "Qwen3.6 27B", "Groq", maxOutputTokens = 16384),
+            LLMModel("qwen/qwen3.8-27b", "Qwen3.8 27B", "Groq", maxOutputTokens = 16384),
         )
 
         // Cerebras — https://inference-docs.cerebras.ai

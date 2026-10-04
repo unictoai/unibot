@@ -35,6 +35,7 @@ import ai.unicto.unibot.data.model.isVoiceTemplateSeedShape
 import ai.unicto.unibot.data.model.withInferredVoiceModality
 import ai.unicto.unibot.provider.ModelReleaseIndex
 import ai.unicto.unibot.provider.ModelsDevApi
+import ai.unicto.unibot.provider.ChatModelFilter
 import ai.unicto.unibot.provider.anthropic.AnthropicModelsApi
 import ai.unicto.unibot.provider.gemini.GeminiModelsApi
 import ai.unicto.unibot.provider.openai.OpenAIModelsApi
@@ -958,7 +959,12 @@ class ProviderRepository(private val context: Context) {
             .sortedByDescending { it.createdAt }
         for (instance in enabledProviders) {
             val textEntry = config.modelEntries
-                .filter { it.providerInstanceId == instance.id && !it.isHidden && it.model.isTextOutput }
+                .filter {
+                    it.providerInstanceId == instance.id && !it.isHidden && it.model.isTextOutput &&
+                        // [T-android-v128-filter-gaps] A new chat must never
+                        // silently default to whisper/embedding/guard models.
+                        ChatModelFilter.isChatModel(it.model.id)
+                }
                 .lastOrNull()
             if (textEntry != null) return textEntry
         }

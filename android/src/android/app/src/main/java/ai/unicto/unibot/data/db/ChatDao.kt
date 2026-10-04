@@ -201,6 +201,14 @@ interface ChatDao {
     @Query("DELETE FROM messages WHERE session_id = :sessionId")
     suspend fun deleteMessages(sessionId: String)
 
+    /**
+     * [T-android-v128-stream-persist] Delete a single message row by id.
+     * Used to remove the stream-start placeholder once the real persisted
+     * row is written at turn end.
+     */
+    @Query("DELETE FROM messages WHERE id = :id")
+    suspend fun deleteMessage(id: String)
+
     @Query("DELETE FROM messages WHERE session_id = :sessionId AND sort_order >= :keepCount")
     suspend fun deleteMessagesAfter(sessionId: String, keepCount: Int)
 
