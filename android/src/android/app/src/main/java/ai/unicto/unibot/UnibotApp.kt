@@ -750,6 +750,12 @@ class UnibotApp : Application(), ImageLoaderFactory {
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
         )
 
+        // One-time v1.2.7 migration: heal saved output limits the pre-v1.2.6
+        // enrichment bug poisoned, so no manual "Refresh models" tap is needed.
+        providerRepository.healPoisonedOutputLimits(
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
+        )
+
         // Propagate system timezone and HTTP-proxy changes into the sandbox.
         // iOS recomputes TZ for every command (ISHShellExecutor.m:335-353);
         // here we update PRootKernel.customEnvironment and push `export …`

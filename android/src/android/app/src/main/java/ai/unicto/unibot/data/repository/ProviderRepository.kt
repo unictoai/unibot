@@ -59,6 +59,8 @@ private const val MODALITY_BIT_AUD_IN = 1 shl 4
 private const val MODALITY_BIT_VID_IN = 1 shl 5
 private const val MODALITY_BIT_IMG_OUT = 1 shl 6
 private const val MODALITY_BIT_AUD_OUT = 1 shl 7
+/** [T-android-v127-heal-output-limits] One-time guard for the poisoned-output-limit migration. */
+private const val PREFS_HEALED_OUTPUT_LIMITS_V127 = "healed_output_limits_v127"
 private const val MODALITY_BIT_VID_OUT = 1 shl 8
 
 class ProviderRepository(private val context: Context) {
@@ -2419,6 +2421,59 @@ class ProviderRepository(private val context: Context) {
             && aDay == cal.get(java.util.Calendar.DAY_OF_YEAR)
     }
 
+    /**
+     * [T-android-v127-heal-output-limits] One-time on-upgrade data migration.
+     *
+     * The pre-v1.2.6 enrichment bug assigned the WRONG provider's output
+     * limit to refreshed model entries (Groq's qwen3.6-27b got aiand's 65536
+     * → HTTP 400/413 on send). v1.2.6 fixed the lookup for future refreshes,
+     * but already-saved numbers stay poisoned. This re-enriches the saved
+     * entries with the FIXED providerKeyMap + serving-provider hint, so
+     * installing v1.2.7 heals the data with no "Refresh models" tap.
+     *
+     * Safety:
+     * - Runs once (prefs guard); safe to call on every launch.
+     * - Only free-tier instances — the only ones the bug could poison.
+     * - Skips user-modified entries (custom / hidden / overrides): never
+     *   touches user intent.
+     * - Rewrites ONLY maxOutputTokens, ONLY when enrichment yields a concrete
+     *   different value. Lists are never wiped, reordered, or shrunk.
+     * - The guard is set only after a completed pass; a failed pass retries
+     *   next launch. The manual "Refresh models" button is untouched.
+     *
+     * Called from UnibotApp.onCreate on an IO scope.
+     */
+    fun healPoisonedOutputLimits(scope: kotlinx.coroutines.CoroutineScope) {
+        scope.launch {
+            try {
+                awaitConfigLoaded()
+                val healed = runHealPoisonedOutputLimits(
+                    isAlreadyHealed = { prefs.getBoolean(PREFS_HEALED_OUTPUT_LIMITS_V127, false) },
+                    markHealed = { prefs.edit().putBoolean(PREFS_HEALED_OUTPUT_LIMITS_V127, true).apply() },
+                )
+                android.util.Log.i("ProviderRepo", "[ModelList] healPoisonedOutputLimits healed=$healed entries")
+            } catch (e: Exception) {
+                android.util.Log.e("ProviderRepo", "[ModelList] healPoisonedOutputLimits failed: ${e.message}", e)
+            }
+        }
+    }
+
+    internal fun runHealPoisonedOutputLimits(
+        isAlreadyHealed: () -> Boolean,
+        markHealed: () -> Unit,
+        enrich: (model: ai.unicto.unibot.data.model.LLMModel, hint: String?) -> ai.unicto.unibot.data.model.LLMModel =
+            { m, h -> ai.unicto.unibot.provider.ModelsDevApi.enrichModel(m, h) },
+    ): Int {
+        ensureConfigLoaded()
+        return ai.unicto.unibot.data.repository.healPoisonedOutputLimitsPass(
+            isAlreadyHealed = isAlreadyHealed,
+            markHealed = markHealed,
+            snapshot = { synchronized(configLock) { workingCopy() } },
+            save = { saveConfig(it) },
+            enrich = enrich,
+        )
+    }
+
     /** Resolve the models.dev lookup base URL for an instance. */
     private fun modelsDevBaseURL(instance: ProviderInstance): String {
         instance.effectiveBaseURL?.let { return it }
@@ -3108,4 +3163,58 @@ class ProviderRepository(private val context: Context) {
         val bits = obj.optInt("modalityOverride", 0)
         return modalityListsFromBitfield(bits)
     }
+}
+
+/**
+ * [T-android-v127-heal-output-limits] Pure, unit-testable core of the
+ * one-time poisoned-output-limit migration. Returns the number of healed
+ * entries. Never wipes, reorders, or shrinks the list: only entries whose
+ * enrichment yields a concrete different maxOutputTokens are rewritten, and
+ * only via [save] when at least one changed.
+ */
+internal fun healPoisonedOutputLimitsPass(
+    isAlreadyHealed: () -> Boolean,
+    markHealed: () -> Unit,
+    snapshot: () -> ai.unicto.unibot.data.model.ProviderConfig,
+    save: (ai.unicto.unibot.data.model.ProviderConfig) -> Unit,
+    enrich: (model: ai.unicto.unibot.data.model.LLMModel, hint: String?) -> ai.unicto.unibot.data.model.LLMModel,
+): Int {
+    if (isAlreadyHealed()) return 0
+    val config = snapshot()
+    val hintByInstanceId = config.instances
+        .filter { it.providerType.isFreeTier }
+        .associate { it.id to it.providerType.modelsDevKey }
+    var count = 0
+    val healedEntries = config.modelEntries.map { entry ->
+        val hint = hintByInstanceId[entry.providerInstanceId] ?: return@map entry
+        val healedEntry = healEntryOutputLimit(entry, hint, enrich)
+        if (healedEntry !== entry) count++
+        healedEntry
+    }
+    if (count > 0) {
+        config.modelEntries.clear()
+        config.modelEntries.addAll(healedEntries)
+        save(config)
+    }
+    markHealed()
+    return count
+}
+
+/**
+ * [T-android-v127-heal-output-limits] Pure per-entry heal decision.
+ * Returns the original entry when nothing should change:
+ * - user-modified entries (custom / hidden / overrides) are never touched,
+ * - a blank serving hint heals nothing,
+ * - enrichment yielding null or the same value heals nothing.
+ */
+internal fun healEntryOutputLimit(
+    entry: ai.unicto.unibot.data.model.ModelEntry,
+    servingHint: String?,
+    enrich: (model: ai.unicto.unibot.data.model.LLMModel, hint: String?) -> ai.unicto.unibot.data.model.LLMModel,
+): ai.unicto.unibot.data.model.ModelEntry {
+    if (entry.isUserModified) return entry
+    if (servingHint.isNullOrBlank()) return entry
+    val newLimit = enrich(entry.baseModel, servingHint).maxOutputTokens
+    if (newLimit == null || newLimit == entry.baseModel.maxOutputTokens) return entry
+    return entry.copy(baseModel = entry.baseModel.copy(maxOutputTokens = newLimit))
 }
