@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.home
+import ai.unicto.unibot.ui.theme.Motion
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -302,6 +303,8 @@ fun UnibotHome(
                     onSetMain = { id -> MainChat.set(context, id); closeDrawer(); showSession(id) },
                     onSystemFiles = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.sysfiles.ROUTE_SYSTEM_FILES) },
                     onDevices = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
+                    // [v1.3.5] Drawer Swarm entry — the same swarm space the top-bar pill opens.
+                    onSwarm = { closeDrawer(); navController.safeNavigate(swarmEntryRoute()) },
                     onCoding = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.coding.ROUTE_CODING) },
                 )
             }
@@ -389,7 +392,7 @@ fun UnibotHome(
                 AnimatedVisibility(
                     visible = !chatVisible,
                     enter = fadeIn(tween(160)),
-                    exit = fadeOut(tween(120)),
+                    exit = fadeOut(tween(Motion.Instant)),
                     modifier = Modifier.fillMaxSize().zIndex(1f),
                 ) {
                     Surface(
@@ -401,7 +404,7 @@ fun UnibotHome(
                         AnimatedContent(
                             targetState = pageTab,
                             transitionSpec = {
-                                (fadeIn(tween(160)) togetherWith fadeOut(tween(120)))
+                                (fadeIn(tween(160)) togetherWith fadeOut(tween(Motion.Instant)))
                                     .using(SizeTransform(clip = false))
                             },
                             label = "ubTab",

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.avatar
+import ai.unicto.unibot.ui.theme.Motion
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -313,7 +314,7 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
                             }
                             if (row == 0) Spacer(Modifier.height(12.dp))
                         }
-                        AnimatedVisibility(visible = selected != null, enter = fadeIn(tween(180)) + scaleIn(initialScale = 0.96f), exit = fadeOut(tween(120))) {
+                        AnimatedVisibility(visible = selected != null, enter = fadeIn(tween(180)) + scaleIn(initialScale = 0.96f), exit = fadeOut(tween(Motion.Instant))) {
                             Column {
                                 Spacer(Modifier.height(14.dp))
                                 Button(

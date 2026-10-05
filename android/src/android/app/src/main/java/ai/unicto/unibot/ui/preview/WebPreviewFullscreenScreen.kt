@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.preview
+import ai.unicto.unibot.ui.theme.Motion
 
 import android.app.Activity
 import android.content.Intent
@@ -213,7 +214,7 @@ fun WebPreviewFullscreenScreen(
             AnimatedVisibility(
                 visible = toolbarVisible,
                 enter = fadeIn(animationSpec = tween(220)),
-                exit = fadeOut(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(Motion.Standard)),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = navInset + 16.dp),

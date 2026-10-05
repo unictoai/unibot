@@ -1,4 +1,5 @@
 package ai.unicto.unibot.webapp
+import ai.unicto.unibot.ui.theme.Motion
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -317,7 +318,7 @@ class WebAppActivity : ComponentActivity() {
             AnimatedVisibility(
                 visible = toolbarVisible,
                 enter = fadeIn(animationSpec = tween(220)),
-                exit = fadeOut(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(Motion.Standard)),
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = topInset + 12.dp),

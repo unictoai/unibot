@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.Motion
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -27,8 +28,8 @@ fun Modifier.messageEntrance(key: Any, enabled: Boolean): Modifier {
     val alpha = remember(key) { Animatable(0f) }
     val rise = remember(key) { Animatable(risePx) }
     LaunchedEffect(key) {
-        launch { alpha.animateTo(1f, tween(300)) }
-        launch { rise.animateTo(0f, tween(300)) }
+        launch { alpha.animateTo(1f, tween(Motion.Standard)) }
+        launch { rise.animateTo(0f, tween(Motion.Standard)) }
     }
     return this.graphicsLayer {
         this.alpha = alpha.value

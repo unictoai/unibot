@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.voice
+import ai.unicto.unibot.ui.theme.Motion
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -196,7 +197,7 @@ private fun VoiceHistoryEmptyState(
 ) {
     AnimatedVisibility(
         visible = true,
-        enter = if (animated) fadeIn(tween(300)) else fadeIn(tween(1)),
+        enter = if (animated) fadeIn(tween(Motion.Standard)) else fadeIn(tween(1)),
         modifier = modifier,
     ) {
         Column(

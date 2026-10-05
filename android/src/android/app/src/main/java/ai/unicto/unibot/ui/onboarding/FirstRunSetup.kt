@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.onboarding
+import ai.unicto.unibot.ui.theme.Motion
 
 import android.content.Context
 import android.content.Intent
@@ -220,7 +221,7 @@ fun FirstRunSetupScreen(
                 transitionSpec = {
                     val forward = targetState.ordinal >= initialState.ordinal
                     (slideInHorizontally(tween(260)) { if (forward) it / 6 else -it / 6 } + fadeIn(tween(220))) togetherWith
-                        (slideOutHorizontally(tween(200)) { if (forward) -it / 6 else it / 6 } + fadeOut(tween(160)))
+                        (slideOutHorizontally(tween(Motion.Quick)) { if (forward) -it / 6 else it / 6 } + fadeOut(tween(160)))
                 },
                 label = "ubSetupStage",
                 modifier = Modifier.weight(1f),

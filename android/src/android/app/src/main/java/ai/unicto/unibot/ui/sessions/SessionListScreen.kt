@@ -1,4 +1,6 @@
 package ai.unicto.unibot.ui.sessions
+import androidx.compose.ui.draw.alpha
+import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Context
@@ -1373,8 +1375,8 @@ fun SessionListScreen(
                 val bar = lastBar
                 AnimatedVisibility(
                     visible = miniBarBlock != null,
-                    enter = slideInVertically(tween(200)) { -it } + fadeIn(tween(200)),
-                    exit = slideOutVertically(tween(200)) { -it } + fadeOut(tween(200)),
+                    enter = slideInVertically(tween(Motion.Quick)) { -it } + fadeIn(tween(Motion.Quick)),
+                    exit = slideOutVertically(tween(Motion.Quick)) { -it } + fadeOut(tween(Motion.Quick)),
                     modifier = Modifier.align(Alignment.TopCenter),
                 ) {
                     if (bar != null) {
@@ -1814,7 +1816,7 @@ private fun DualFabRow(
         if (hasSessions) {
             AnimatedVisibility(
                 visible = !isSearchActive,
-                enter = fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.85f),
+                enter = fadeIn(tween(Motion.Quick)) + scaleIn(tween(Motion.Quick), initialScale = 0.85f),
                 exit = fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.85f),
             ) {
                 FloatingActionButton(
@@ -1864,7 +1866,7 @@ private fun DualFabRow(
         // Middle: Inline search bar (when active)
         AnimatedVisibility(
             visible = isSearchActive,
-            enter = fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.85f),
+            enter = fadeIn(tween(Motion.Quick)) + scaleIn(tween(Motion.Quick), initialScale = 0.85f),
             exit = fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.85f),
         ) {
             OutlinedTextField(
@@ -3146,7 +3148,7 @@ private fun SessionRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.then(
-                        if (chatLocked) Modifier.blur(8.dp) else Modifier,
+                        if (chatLocked) Modifier.alpha(0f) else Modifier,
                     ),
                 )
             } else {
@@ -3157,7 +3159,7 @@ private fun SessionRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.then(
-                        if (chatLocked) Modifier.blur(8.dp) else Modifier,
+                        if (chatLocked) Modifier.alpha(0f) else Modifier,
                     ),
                 )
             }

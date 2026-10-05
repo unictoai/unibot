@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.components
+import ai.unicto.unibot.ui.theme.Motion
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -159,11 +160,11 @@ fun UnibotMenu(
         AnimatedVisibility(
             visibleState = visibleState,
             enter = scaleIn(
-                animationSpec = tween(200),
+                animationSpec = tween(Motion.Quick),
                 initialScale = 0.85f,
                 transformOrigin = origin,
-            ) + fadeIn(animationSpec = tween(200)),
-            exit = scaleOut(animationSpec = tween(120)) + fadeOut(animationSpec = tween(120)),
+            ) + fadeIn(animationSpec = tween(Motion.Quick)),
+            exit = scaleOut(animationSpec = tween(Motion.Instant)) + fadeOut(animationSpec = tween(Motion.Instant)),
         ) {
             Surface(
                 // [T-android-unibot-menu-width] Size to the CONTENT's intrinsic
