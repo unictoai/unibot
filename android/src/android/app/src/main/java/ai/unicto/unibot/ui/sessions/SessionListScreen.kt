@@ -1789,7 +1789,7 @@ private fun DualFabRow(
                         onLongClick = {
                             if (topGroups.isNotEmpty()) showGroupMenu = true
                         },
-                    )
+                    ),
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
             ) {
                 Icon(Icons.Outlined.Forum, contentDescription = "New Chat", tint = Color.White, modifier = Modifier.size(24.dp))
@@ -1840,7 +1840,7 @@ private fun DualFabRow(
                                 onDragCancel = { searchDragX = 0f },
                                 onHorizontalDrag = { _, dragAmount -> searchDragX += dragAmount },
                             )
-                        }
+                        },
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                 ) {
                     Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.sessionlist_search_action), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))

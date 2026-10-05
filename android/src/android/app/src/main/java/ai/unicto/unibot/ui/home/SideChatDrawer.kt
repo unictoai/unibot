@@ -83,7 +83,7 @@ fun SideChatDrawer(
     onSetMain: (String) -> Unit,
     onSystemFiles: (() -> Unit)? = null,
     onDevices: (() -> Unit)? = null,
-    // [v1.3.5] Swarm entry, directly below Devices.
+    // v1.3.5 Swarm entry, directly below Devices.
     onSwarm: (() -> Unit)? = null,
     onCoding: (() -> Unit)? = null,
 ) {
@@ -174,7 +174,7 @@ fun SideChatDrawer(
             }
         }
 
-        // [v1.3.5] Swarm — the agent swarm space, one tap away like a chat,
+        // v1.3.5 Swarm — the agent swarm space, one tap away like a chat,
         // directly below Devices.
         if (onSwarm != null) {
             SwarmDrawerRow(onSwarm = onSwarm)

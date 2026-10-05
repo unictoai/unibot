@@ -32,7 +32,7 @@ import ai.unicto.unibot.swarm.SwarmStatus
 import ai.unicto.unibot.ui.navigation.Routes
 
 /**
- * [v1.3.5] The destination the drawer's Swarm entry opens.
+ * v1.3.5 The destination the drawer's Swarm entry opens.
  *
  * Pinned to [Routes.SWARM] — the same dedicated swarm space the chat top-bar
  * pill opens — so the two entries can never drift to different destinations.
@@ -41,7 +41,7 @@ import ai.unicto.unibot.ui.navigation.Routes
 internal fun swarmEntryRoute(): String = Routes.SWARM
 
 /**
- * [v1.3.5] The nav drawer's Swarm entry: directly below Devices, opening the
+ * v1.3.5 The nav drawer's Swarm entry: directly below Devices, opening the
  * same swarm space as the top-bar pill.
  *
  * It carries the pill's violet identity without copying its shape (a pill in

@@ -34,7 +34,7 @@ fun swarmDrawerHint(state: SwarmUiState): SwarmDrawerHint = when (state.lifecycl
 }
 
 /**
- * [v1.3.5] App-level mirror of the swarm runtime state, for surfaces outside
+ * v1.3.5 App-level mirror of the swarm runtime state, for surfaces outside
  * the swarm screen — the nav drawer's Swarm entry.
  *
  * The engine publishes every state change here ([SwarmEngine] calls [publish]

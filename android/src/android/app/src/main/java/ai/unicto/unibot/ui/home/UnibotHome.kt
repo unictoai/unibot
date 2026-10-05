@@ -303,7 +303,7 @@ fun UnibotHome(
                     onSetMain = { id -> MainChat.set(context, id); closeDrawer(); showSession(id) },
                     onSystemFiles = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.sysfiles.ROUTE_SYSTEM_FILES) },
                     onDevices = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
-                    // [v1.3.5] Drawer Swarm entry — the same swarm space the top-bar pill opens.
+                    // v1.3.5 Drawer Swarm entry — the same swarm space the top-bar pill opens.
                     onSwarm = { closeDrawer(); navController.safeNavigate(swarmEntryRoute()) },
                     onCoding = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.coding.ROUTE_CODING) },
                 )

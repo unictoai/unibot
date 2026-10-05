@@ -75,7 +75,7 @@ class SwarmEngine(
             return false
         }
         _uiState.update { it.copy(lifecycle = target) }
-        // [v1.3.5] Mirror every lifecycle change to the app-level SwarmStatus
+        // v1.3.5 Mirror every lifecycle change to the app-level SwarmStatus
         // (drawer hint), synchronously — the teardown path that cancels the
         // run when the swarm screen is popped must land here too.
         SwarmStatus.publish(_uiState.value)
@@ -448,7 +448,7 @@ class SwarmEngine(
     // ─── state helpers ────────────────────────────────────────────────────
 
     /**
-     * [v1.3.5] Single choke point for replacing the whole UI state.
+     * v1.3.5 Single choke point for replacing the whole UI state.
      * Publishes to the app-level [SwarmStatus] mirror synchronously, so the
      * drawer's status hint can never show a stale run.
      */
