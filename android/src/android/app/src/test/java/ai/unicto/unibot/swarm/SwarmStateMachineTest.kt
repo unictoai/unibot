@@ -18,7 +18,7 @@ class SwarmStateMachineTest {
     private fun engine(): Pair<SwarmEngine, CoroutineScope> {
         val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
         val engine = SwarmEngine(
-            FakeSwarmProvider { _, _ -> FakeSwarmResponse("") },
+            FakeSwarmProvider({ _, _ -> FakeSwarmResponse("") }),
             InMemorySwarmCheckpointStore(),
             scope,
         )
@@ -152,7 +152,7 @@ class SwarmStateMachineTest {
         val store = InMemorySwarmCheckpointStore()
         val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
         val engine = SwarmEngine(
-            FakeSwarmProvider { _, _ -> FakeSwarmResponse("") },
+            FakeSwarmProvider({ _, _ -> FakeSwarmResponse("") }),
             store,
             scope,
         )

@@ -116,7 +116,7 @@ class SwarmViewModelTest {
                 ),
             ),
         )
-        val vm = SwarmViewModel(FakeSwarmProvider { _, _ -> FakeSwarmResponse("") }, store)
+        val vm = SwarmViewModel(FakeSwarmProvider({ _, _ -> FakeSwarmResponse("") }), store)
         // Restore normalizes a checkpointed run to PAUSED with canResume.
         assertEquals(SwarmLifecycle.PAUSED, vm.uiState.value.lifecycle)
         assertTrue(vm.uiState.value.canResume)

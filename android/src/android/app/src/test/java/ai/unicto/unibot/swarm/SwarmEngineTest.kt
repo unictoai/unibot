@@ -58,7 +58,7 @@ class SwarmEngineTest {
 
     @Test
     fun `malformed plan falls back to one subtask per role and still completes`() = runTest {
-        val provider = FakeSwarmProvider { _, user ->
+        val provider = FakeSwarmProvider({ _, user ->
             when {
                 user.startsWith("MISSION DECOMPOSITION") ->
                     FakeSwarmResponse("Here are some thoughts with no list whatsoever.")
@@ -68,7 +68,7 @@ class SwarmEngineTest {
                 user.startsWith("STITCH RESULTS") -> FakeSwarmResponse("Stitched document")
                 else -> FakeSwarmResponse("unexpected")
             }
-        }
+        })
         val engine = SwarmEngine(provider, InMemorySwarmCheckpointStore(), this)
 
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
@@ -94,7 +94,7 @@ class SwarmEngineTest {
         engine.uiState.first { it.agents[1].status == SwarmAgentStatus.WORKING }
         assertTrue(engine.pause())
         // The in-flight step finishes, then the run halts at PAUSED.
-        gate.complete()
+        gate.complete(Unit)
         val paused = engine.uiState.first { it.lifecycle == SwarmLifecycle.PAUSED }
         assertEquals(SwarmAgentStatus.DONE, paused.agents[1].status)
         assertTrue("no stitching while paused", paused.stitchedResult.isBlank())
@@ -112,7 +112,7 @@ class SwarmEngineTest {
     @Test
     fun `verifier failure triggers exactly one revision then best output stands`() = runTest {
         var researcherAttempts = 0
-        val provider = FakeSwarmProvider { _, user ->
+        val provider = FakeSwarmProvider({ _, user ->
             when {
                 user.startsWith("MISSION DECOMPOSITION") ->
                     FakeSwarmResponse("1. Find facts\n2. Check facts")
@@ -135,7 +135,7 @@ class SwarmEngineTest {
                 user.startsWith("STITCH RESULTS") -> FakeSwarmResponse("Stitched document")
                 else -> FakeSwarmResponse("unexpected")
             }
-        }
+        })
         val engine = SwarmEngine(provider, InMemorySwarmCheckpointStore(), this)
 
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
@@ -174,7 +174,7 @@ class SwarmEngineTest {
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
         engine.uiState.first { it.agents[0].status == SwarmAgentStatus.WORKING }
         assertTrue(engine.cancel())
-        gate.complete() // let the cancelled step unwind
+        gate.complete(Unit) // let the cancelled step unwind
         val cancelled = engine.uiState.first { it.lifecycle == SwarmLifecycle.CANCELLED }
 
         assertEquals("Research scooters", cancelled.mission)
@@ -198,7 +198,7 @@ class SwarmEngineTest {
         assertTrue(engine1.launch("Research scooters", SwarmRoles.research))
         engine1.uiState.first { it.agents[0].status == SwarmAgentStatus.DONE }
         assertTrue(engine1.pause())
-        gate.complete()
+        gate.complete(Unit)
         engine1.uiState.first { it.lifecycle == SwarmLifecycle.PAUSED }
 
         // Simulate process death: brand-new engine, same store and provider.
@@ -229,7 +229,7 @@ class SwarmEngineTest {
 
     @Test
     fun `provider failure fails the run with an error`() = runTest {
-        val provider = FakeSwarmProvider { _, _ -> throw IllegalStateException("boom") }
+        val provider = FakeSwarmProvider({ _, _ -> throw IllegalStateException("boom") })
         val engine = SwarmEngine(provider, InMemorySwarmCheckpointStore(), this)
 
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
