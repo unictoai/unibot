@@ -1,5 +1,4 @@
 package ai.unicto.unibot.ui.theme
-import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -25,25 +24,25 @@ import androidx.compose.ui.graphics.Color
  */
 object UbColors {
     /** Success / positive accent — iOS systemGreen. */
-    val success = UbColors.success
+    val success: Color = Color(0xFF34C759)
 
     /** Warning / caution accent — iOS systemOrange. */
-    val warning = UbColors.warning
+    val warning: Color = Color(0xFFFF9500)
 
     /** Error / destructive accent — iOS systemRed. */
-    val error = UbColors.error
+    val error: Color = Color(0xFFFF3B30)
 
     /** Neutral secondary accent — iOS systemGray. */
-    val systemGray = UbColors.systemGray
+    val systemGray: Color = Color(0xFF8E8E93)
 
     /** Success on dark backgrounds (diff additions, dark charts). */
-    val successDark = UbColors.successDark
+    val successDark: Color = Color(0xFF30D158)
 
     /** Warning on dark backgrounds (dark charts, dark badges). */
-    val warningDark = UbColors.warningDark
+    val warningDark: Color = Color(0xFFFF9F0A)
 
     /** Error on dark backgrounds (diff deletions, dark charts). */
-    val errorDark = UbColors.errorDark
+    val errorDark: Color = Color(0xFFFF453A)
 
     /**
      * Brand violet, theme-aware: #6D28D9 on light, #A78BFA (lifted for
@@ -52,7 +51,7 @@ object UbColors {
      * track `isDark` themselves.
      */
     fun brandViolet(isDark: Boolean): Color =
-        UbColors.brandViolet(isDark)
+        if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
 }
 
 /**
