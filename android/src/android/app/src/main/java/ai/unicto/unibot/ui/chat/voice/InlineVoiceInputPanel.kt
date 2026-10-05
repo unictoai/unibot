@@ -1192,11 +1192,10 @@ private fun CircleIconButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    // [v1.3.5-ui] 48dp touch target around the 30dp visual disc.
     Box(
         modifier = modifier
-            .size(30.dp)
-            .background(ChatColors.inputIconBg, CircleShape)
-            .border(0.5.dp, ChatColors.inputIconBorder, CircleShape)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -1204,12 +1203,21 @@ private fun CircleIconButton(
             ) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            tint = ChatColors.secondaryText,
-            modifier = Modifier.size(16.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(ChatColors.inputIconBg, CircleShape)
+                .border(0.5.dp, ChatColors.inputIconBorder, CircleShape)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                tint = ChatColors.secondaryText,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 

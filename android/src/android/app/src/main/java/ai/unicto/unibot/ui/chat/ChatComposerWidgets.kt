@@ -381,19 +381,28 @@ internal fun InputCircleButton(
     // [Wave 9c] Haptic tick on every tap — covers the attach (+), slash (/)
     // and other composer circle buttons at once, at their single choke point.
     val haptics = rememberHaptic()
+    // [v1.3.5-ui] 48dp touch target around the 38dp visual disc (iOS: 34×34
+    // circle). The disc keeps its exact size; only the hit area grows.
     Box(
         modifier = Modifier
-            .size(38.dp)
-            .then(
-                if (plain) Modifier else Modifier
-                    .background(ChatColors.inputIconBg, CircleShape)
-                    .border(0.5.dp, ChatColors.inputIconBorder, CircleShape),
-            )
+            .size(48.dp)
             .clip(CircleShape)
             .clickable(onClick = { haptics.tap(); onClick() }),
         contentAlignment = Alignment.Center,
     ) {
-        content()
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .then(
+                    if (plain) Modifier else Modifier
+                        .background(ChatColors.inputIconBg, CircleShape)
+                        .border(0.5.dp, ChatColors.inputIconBorder, CircleShape),
+                )
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            content()
+        }
     }
 }
 
@@ -425,11 +434,12 @@ internal fun MicButton(
     val tint = if (isRecording) Color.Red
                else MaterialTheme.colorScheme.onSurfaceVariant
     val borderColor = if (isRecording || plain) Color.Transparent else ChatColors.inputIconBorder
+    // [v1.3.5-ui] 48dp touch target around the 38dp visual disc; the
+    // combinedClickable (tap + long-press) moves to the outer hit box so the
+    // disc keeps its exact size and the locale badge its exact position.
     Box(
         modifier = Modifier
-            .size(38.dp)
-            .background(bg, CircleShape)
-            .border(0.5.dp, borderColor, CircleShape)
+            .size(48.dp)
             .clip(CircleShape)
             .combinedClickable(
                 onClick = { haptics.tap(); onClick() },
@@ -437,25 +447,34 @@ internal fun MicButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            if (isVoiceActive) Icons.Default.Keyboard else if (plain) Icons.Outlined.Mic else Icons.Default.Mic,
-            contentDescription = if (isVoiceActive) "Switch to keyboard"
-            else if (isRecording) "Stop recording" else "Voice input",
-            tint = tint,
-            modifier = Modifier.size(if (plain) 22.dp else 20.dp), // unibot: Muse's outlined mic
-        )
-        if (!localeBadge.isNullOrEmpty()) {
-            Text(
-                text = localeBadge,
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Red,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 2.dp, end = 2.dp)
-                    .background(Color.White, CircleShape)
-                    .padding(horizontal = 3.dp, vertical = 1.dp),
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .background(bg, CircleShape)
+                .border(0.5.dp, borderColor, CircleShape)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (isVoiceActive) Icons.Default.Keyboard else if (plain) Icons.Outlined.Mic else Icons.Default.Mic,
+                contentDescription = if (isVoiceActive) "Switch to keyboard"
+                else if (isRecording) "Stop recording" else "Voice input",
+                tint = tint,
+                modifier = Modifier.size(if (plain) 22.dp else 20.dp), // unibot: Muse's outlined mic
             )
+            if (!localeBadge.isNullOrEmpty()) {
+                Text(
+                    text = localeBadge,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Red,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 2.dp, end = 2.dp)
+                        .background(Color.White, CircleShape)
+                        .padding(horizontal = 3.dp, vertical = 1.dp),
+                )
+            }
         }
     }
 }
