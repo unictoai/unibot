@@ -58,6 +58,14 @@
     <string name="ub_drawer_untitled">New chat</string>
     <string name="ub_drawer_set_main">Make this the main chat</string>
 
+    <!-- Drawer: the Swarm entry (v1.3.5) — same swarm space as the top-bar pill -->
+    <string name="ub_drawer_swarm">Swarm</string>
+    <string name="ub_swarm_idle">Idle</string>
+    <plurals name="ub_swarm_agents">
+        <item quantity="one">%d agent</item>
+        <item quantity="other">%d agents</item>
+    </plurals>
+
     <!-- Goals tab -->
     <string name="ub_goals_title">Goals</string>
     <string name="ub_goals_tracking">Tracking</string>

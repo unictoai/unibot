@@ -83,6 +83,8 @@ fun SideChatDrawer(
     onSetMain: (String) -> Unit,
     onSystemFiles: (() -> Unit)? = null,
     onDevices: (() -> Unit)? = null,
+    // [v1.3.5] Swarm entry, directly below Devices.
+    onSwarm: (() -> Unit)? = null,
     onCoding: (() -> Unit)? = null,
 ) {
     val sessions by chatRepository.observeSessions().collectAsState(initial = emptyList())
@@ -170,6 +172,12 @@ fun SideChatDrawer(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+
+        // [v1.3.5] Swarm — the agent swarm space, one tap away like a chat,
+        // directly below Devices.
+        if (onSwarm != null) {
+            SwarmDrawerRow(onSwarm = onSwarm)
         }
 
         // unibot: Coding — the coding agents on the account's computers, shown once one is online

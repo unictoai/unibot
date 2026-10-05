@@ -75,6 +75,10 @@ class SwarmEngine(
             return false
         }
         _uiState.update { it.copy(lifecycle = target) }
+        // [v1.3.5] Mirror every lifecycle change to the app-level SwarmStatus
+        // (drawer hint), synchronously — the teardown path that cancels the
+        // run when the swarm screen is popped must land here too.
+        SwarmStatus.publish(_uiState.value)
         return true
     }
 
@@ -95,7 +99,7 @@ class SwarmEngine(
                     currentStep = "Queued",
                 )
             }
-            _uiState.value = SwarmUiState(mission = mission, crew = preset, agents = agents)
+            setUiState(SwarmUiState(mission = mission, crew = preset, agents = agents))
             if (!transitionTo(SwarmLifecycle.PLANNING)) return false
             pauseRequested = false
             subtasks = emptyList()
@@ -174,7 +178,7 @@ class SwarmEngine(
             println("[swarm] dismissResult rejected: lifecycle is $from")
             return false
         }
-        _uiState.value = SwarmUiState()
+        setUiState(SwarmUiState())
         checkpointStore.clear()
         subtasks = emptyList()
         return true
@@ -197,7 +201,7 @@ class SwarmEngine(
             pauseRequested = false
             checkpointStore.clear()
             subtasks = emptyList()
-            _uiState.value = SwarmUiState()
+            setUiState(SwarmUiState())
             job = runJob
         }
         // A live PAUSED run's loop has already returned between steps; belt
@@ -437,11 +441,21 @@ class SwarmEngine(
         val data = SwarmCheckpoint.decode(raw) ?: return
         val restored = SwarmCheckpoint.toUiState(data) ?: return
         subtasks = data.subtasks
-        _uiState.value = restored
+        setUiState(restored)
         println("[swarm] restored checkpointed run (mission='${data.mission.take(60)}', canResume=true)")
     }
 
     // ─── state helpers ────────────────────────────────────────────────────
+
+    /**
+     * [v1.3.5] Single choke point for replacing the whole UI state.
+     * Publishes to the app-level [SwarmStatus] mirror synchronously, so the
+     * drawer's status hint can never show a stale run.
+     */
+    private fun setUiState(newValue: SwarmUiState) {
+        _uiState.value = newValue
+        SwarmStatus.publish(newValue)
+    }
 
     private fun updateAgent(index: Int, transform: (SwarmAgentState) -> SwarmAgentState) {
         _uiState.update { st ->
