@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * [v1.3.5] The drawer's Swarm entry must open the same dedicated swarm space
+ * v1.3.5: the drawer's Swarm entry must open the same dedicated swarm space
  * as the chat top-bar pill — [Routes.SWARM]. The destination is pinned behind
  * [swarmEntryRoute] so the two entries can never drift apart silently.
  *

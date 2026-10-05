@@ -10,7 +10,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * [v1.3.5] Unit tests for the nav drawer's swarm status hint: the pure
+ * v1.3.5 unit tests for the nav drawer's swarm status hint: the pure
  * [swarmDrawerHint] lifecycle mapping, the [SwarmStatus] mirror the engine
  * publishes to, and the checkpoint replay that keeps the hint honest before
  * any engine exists in the process. No Compose, no Robolectric — plain
