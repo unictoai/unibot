@@ -180,6 +180,32 @@ class SwarmEngine(
         return true
     }
 
+    /**
+     * Discard a checkpointed (interrupted) run and return to IDLE. Legal
+     * from PAUSED only — nothing is in flight worth keeping, so the
+     * checkpoint is cleared and the state resets for a fresh mission.
+     * (dismissResult() covers the terminal DONE/CANCELLED/FAILED states;
+     * it deliberately rejects PAUSED, so restored runs need this path.)
+     */
+    fun discardCheckpoint(): Boolean {
+        val job: Job?
+        synchronized(lock) {
+            if (_uiState.value.lifecycle != SwarmLifecycle.PAUSED) {
+                println("[swarm] discardCheckpoint rejected: lifecycle is ${_uiState.value.lifecycle}, must be PAUSED")
+                return false
+            }
+            pauseRequested = false
+            checkpointStore.clear()
+            subtasks = emptyList()
+            _uiState.value = SwarmUiState()
+            job = runJob
+        }
+        // A live PAUSED run's loop has already returned between steps; belt
+        // and suspenders in case a job is somehow still active.
+        if (job != null && !job.isCompleted) job.cancel()
+        return true
+    }
+
     // ─── run loop ─────────────────────────────────────────────────────────
 
     private suspend fun runSwarm() {
@@ -305,7 +331,9 @@ class SwarmEngine(
             )
             addTokens(index, revised)
             output = revised
-            note = "\n\n_Note: automated review flagged an issue (${verdict.reason}); " +
+            // Shared BEST_EFFORT_NOTE_MARKER: the UI detects this exact
+            // substring to render the explicit "incomplete" terminal state.
+            note = "\n\n_Note: $BEST_EFFORT_NOTE_MARKER (${verdict.reason}); " +
                 "one revision was applied and this best-effort output stands._"
         }
         val finalText = output.text.trim().ifBlank { "(no output)" } + note

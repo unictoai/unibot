@@ -60,6 +60,13 @@ class SwarmViewModel(
     /** Dismiss a finished run (DONE/CANCELLED/FAILED) and return to IDLE. */
     fun dismissResult(): Boolean = engine.dismissResult()
 
+    /**
+     * Discard a checkpointed (interrupted) run and return to IDLE. Legal
+     * from PAUSED — the resume banner's Discard path (dismissResult()
+     * deliberately rejects PAUSED).
+     */
+    fun discardCheckpoint(): Boolean = engine.discardCheckpoint()
+
     companion object {
         fun factory(context: Context, provider: LLMProvider): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

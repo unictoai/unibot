@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.swarm
 
+import ai.unicto.unibot.swarm.BEST_EFFORT_NOTE_MARKER
 import ai.unicto.unibot.swarm.SwarmAgentStatus
 import ai.unicto.unibot.swarm.SwarmCrewPreset
 import ai.unicto.unibot.swarm.SwarmLifecycle
@@ -23,12 +24,12 @@ import ai.unicto.unibot.swarm.SwarmLifecycle
 const val INCOMPLETE_MARKER = "[incomplete]"
 
 /**
- * Substring the v1.3.0 engine embeds in a best-effort result note. The
- * engine appends `_Note: automated review flagged an issue (...); one
- * revision was applied and this best-effort output stands._` to `result`
- * when its one bounded revision still didn't pass verification.
+ * Substring of the v1.3.0 engine's best-effort note — the single source of
+ * truth lives in the swarm package as [BEST_EFFORT_NOTE_MARKER]; the engine
+ * appends `_Note: <marker> (...); one revision was applied and this
+ * best-effort output stands._` to `result` when its one bounded revision
+ * still didn't pass verification.
  */
-private const val ENGINE_BEST_EFFORT_MARKER = "automated review flagged an issue"
 
 /**
  * If [result] or [detail] carries an incomplete marker, returns the note
@@ -49,7 +50,7 @@ private fun String.stripIncompleteMarker(): String? {
 }
 
 private fun String.extractEngineBestEffortNote(): String? {
-    val markerAt = indexOf(ENGINE_BEST_EFFORT_MARKER)
+    val markerAt = indexOf(BEST_EFFORT_NOTE_MARKER)
     if (markerAt < 0) return null
     val noteStart = lastIndexOf("_Note:", markerAt).takeIf { it >= 0 } ?: markerAt
     return substring(noteStart).trim().trim('_').trim().ifBlank { "(no note provided)" }
@@ -65,7 +66,7 @@ fun withoutIncompleteMarker(text: String): String {
     val withoutPrefix =
         if (trimmed.startsWith(INCOMPLETE_MARKER)) trimmed.removePrefix(INCOMPLETE_MARKER).trimStart()
         else text
-    val markerAt = withoutPrefix.indexOf(ENGINE_BEST_EFFORT_MARKER)
+    val markerAt = withoutPrefix.indexOf(BEST_EFFORT_NOTE_MARKER)
     if (markerAt < 0) return withoutPrefix
     val noteStart = withoutPrefix.lastIndexOf("_Note:", markerAt).takeIf { it >= 0 } ?: markerAt
     return withoutPrefix.substring(0, noteStart).trimEnd()

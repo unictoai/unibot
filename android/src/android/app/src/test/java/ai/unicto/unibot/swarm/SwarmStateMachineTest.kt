@@ -146,4 +146,29 @@ class SwarmStateMachineTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun `discardCheckpoint returns a paused run to IDLE and clears the checkpoint`() {
+        val store = InMemorySwarmCheckpointStore()
+        val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
+        val engine = SwarmEngine(
+            FakeSwarmProvider { _, _ -> FakeSwarmResponse("") },
+            store,
+            scope,
+        )
+        try {
+            assertFalse("discard from IDLE", engine.discardCheckpoint())
+            assertTrue(engine.transitionTo(SwarmLifecycle.PLANNING))
+            assertFalse("discard from PLANNING", engine.discardCheckpoint())
+            assertTrue(engine.transitionTo(SwarmLifecycle.PAUSED))
+            // Simulate the checkpoint a live or restored PAUSED run holds.
+            store.save("{\"checkpoint\":true}")
+            assertTrue("discard from PAUSED", engine.discardCheckpoint())
+            assertEquals(SwarmLifecycle.IDLE, engine.uiState.value.lifecycle)
+            assertEquals("checkpoint cleared", null, store.load())
+            assertTrue(engine.uiState.value.agents.isEmpty())
+        } finally {
+            scope.cancel()
+        }
+    }
 }

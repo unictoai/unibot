@@ -144,7 +144,11 @@ fun SwarmScreen(
                     state = state,
                     onLaunch = viewModel::launch,
                     onResume = viewModel::resume,
-                    onDiscard = viewModel::dismissResult,
+                    // Discard needs the PAUSED-legal path: dismissResult()
+                    // rejects interrupted (PAUSED) runs, so it would no-op
+                    // here. discardCheckpoint() clears the checkpoint and
+                    // returns to IDLE.
+                    onDiscard = viewModel::discardCheckpoint,
                     modifier = contentModifier,
                 )
         }

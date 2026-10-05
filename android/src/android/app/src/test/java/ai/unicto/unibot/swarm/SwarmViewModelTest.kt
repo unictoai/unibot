@@ -103,4 +103,27 @@ class SwarmViewModelTest {
         }
         assertEquals(SwarmLifecycle.CANCELLED, vm.uiState.value.lifecycle)
     }
+
+    @Test
+    fun `discardCheckpoint clears a restored interrupted run and returns to IDLE`() = runTest(mainDispatcher) {
+        val store = InMemorySwarmCheckpointStore()
+        store.save(
+            SwarmCheckpoint.encode(
+                SwarmCheckpointData(
+                    lifecycle = SwarmLifecycle.RUNNING.name,
+                    mission = "Interrupted mission",
+                    crewId = SwarmRoles.research.id,
+                ),
+            ),
+        )
+        val vm = SwarmViewModel(FakeSwarmProvider { _, _ -> FakeSwarmResponse("") }, store)
+        // Restore normalizes a checkpointed run to PAUSED with canResume.
+        assertEquals(SwarmLifecycle.PAUSED, vm.uiState.value.lifecycle)
+        assertTrue(vm.uiState.value.canResume)
+        // dismissResult() must NOT work here — this is the resume-banner caveat.
+        assertTrue(!vm.dismissResult())
+        assertTrue(vm.discardCheckpoint())
+        assertEquals(SwarmLifecycle.IDLE, vm.uiState.value.lifecycle)
+        assertEquals("checkpoint cleared", null, store.load())
+    }
 }

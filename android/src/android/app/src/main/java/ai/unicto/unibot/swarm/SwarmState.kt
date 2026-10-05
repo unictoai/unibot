@@ -9,6 +9,15 @@ enum class SwarmLifecycle { IDLE, PLANNING, RUNNING, PAUSED, DONE, CANCELLED, FA
 
 enum class SwarmAgentStatus { QUEUED, WORKING, VERIFYING, DONE, FAILED }
 
+/**
+ * Substring of the best-effort note the engine appends to an agent's
+ * `result` after its one bounded revision (see SwarmEngine.runWorkerStep).
+ * The UI detects this marker to render the explicit "incomplete" terminal
+ * state instead of silently "done". Engine and UI share this const — one
+ * source of truth, so the note can never drift between the two sides.
+ */
+const val BEST_EFFORT_NOTE_MARKER = "automated review flagged an issue"
+
 data class SwarmAgentState(
     val id: String,
     val role: String,
