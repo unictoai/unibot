@@ -84,7 +84,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.TextUnit
@@ -1978,23 +1977,17 @@ private fun RenderBlock(block: MdBlock) {
             // null) and the image quietly renders as a 0-height placeholder.
             // The video/audio renderers already follow this pattern.
             val file = remember(block.url, sessionId) { resolveMdMediaFile(context, block.url, sessionId) }
-            // T146: 1dp hairline + 2dp soft shadow so a white-bg PNG (matplotlib
+            // T146 [v1.3.5-ui]: 1dp hairline so a white-bg PNG (matplotlib
             // chart, screenshot…) reads as a discrete card against the chat
-            // surface. Same ChatColors.thumbnailBorder / inputShadow recipe as
-            // the attachment chip in T179 — keeps the visual rhythm consistent.
-            // shadow → clip → border so the elevation paints behind the rounded
-            // edge and the border stays crisp on top.
+            // surface. Same ChatColors.thumbnailBorder recipe as the attachment
+            // chip in T179 — keeps the visual rhythm consistent. The old 2dp
+            // drop shadow was removed: per-item shadows in the scrolling
+            // message list cost frames on low-RAM phones; tonal separation
+            // (hairline border) is the professional-ui replacement.
             val imageShape = RoundedCornerShape(8.dp)
             val imageBaseModifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
-                .shadow(
-                    elevation = 2.dp,
-                    shape = imageShape,
-                    clip = false,
-                    ambientColor = ChatColors.inputShadow,
-                    spotColor = ChatColors.inputShadow,
-                )
                 .clip(imageShape)
                 .border(1.dp, ChatColors.thumbnailBorder, imageShape)
                 .let { m -> if (onTap != null) m.clickable { onTap() } else m }

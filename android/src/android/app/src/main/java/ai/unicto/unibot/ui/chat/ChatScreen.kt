@@ -249,6 +249,8 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -5230,91 +5232,120 @@ fun ChatScreen(
                 // than jumping to the oldest message.
                 if (messages.isNotEmpty() && !isNearBottom.value) {
                     val upBaseBottom = if (latestTurnToolBlocks.isNotEmpty()) 80.dp else 8.dp
-                    androidx.compose.material3.FilledIconButton(
-                        onClick = {
-                            // [T-android-updown-fab-asymmetry] Arm the same flag a
-                            // finger-drag would. The down-button is gated on
-                            // `userScrolledAway`, which ONLY the drag handlers set
-                            // — and `scrollToPreviousUserTurn` moves the viewport
-                            // with `listState.scrollToItem` (instant, not
-                            // animated), so `isScrollInProgress` never toggles and
-                            // the fling-settle re-arm below never runs either.
-                            // Result: walking up with this button left the user
-                            // far from the bottom with NO way back except a manual
-                            // drag. Measured (ScrollFAB2 trace):
-                            //   up=true down=false | nearBottom=false scrolledAway=false
-                            // The down-button already does the symmetric reset
-                            // (`userScrolledAway = false`); this is its mirror.
-                            userScrolledAway = true
-                            coroutineScope.launch { scrollToPreviousUserTurn() }
-                        },
+                    // [v1.3.5-ui] 48dp hit area around the 36dp visual disc.
+                    // The old FilledIconButton was 36dp (below the 48dp touch
+                    // bar) with a redundant .shadow(4.dp). The disc keeps its
+                    // exact 36dp size and screen position (outer 48dp box is
+                    // centered on it, so padding shrinks 6dp per side); the
+                    // drop shadow is replaced by a 1dp hairline
+                    // (ChatColors.inputBorder) — tonal elevation per the
+                    // professional-ui bar, and it keeps the disc readable on
+                    // light theme where inputBg == background.
+                    Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp + fabEndInset, bottom = upBaseBottom + 46.dp)
-                            .shadow(4.dp, CircleShape)
-                            .size(36.dp),
-                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                            containerColor = ChatColors.inputBg,
-                            contentColor = ChatColors.primaryText,
-                        ),
+                            .padding(end = 12.dp + fabEndInset - 6.dp, bottom = upBaseBottom + 40.dp)
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .clickable(role = Role.Button) {
+                                // [T-android-updown-fab-asymmetry] Arm the same flag a
+                                // finger-drag would. The down-button is gated on
+                                // `userScrolledAway`, which ONLY the drag handlers set
+                                // — and `scrollToPreviousUserTurn` moves the viewport
+                                // with `listState.scrollToItem` (instant, not
+                                // animated), so `isScrollInProgress` never toggles and
+                                // the fling-settle re-arm below never runs either.
+                                // Result: walking up with this button left the user
+                                // far from the bottom with NO way back except a manual
+                                // drag. Measured (ScrollFAB2 trace):
+                                //   up=true down=false | nearBottom=false scrolledAway=false
+                                // The down-button already does the symmetric reset
+                                // (`userScrolledAway = false`); this is its mirror.
+                                userScrolledAway = true
+                                coroutineScope.launch { scrollToPreviousUserTurn() }
+                            }
+                            .semantics(mergeDescendants = true) {},
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            // Matches iOS's `arrow.up.to.line` (AIChatView.swift:2501):
-                            // an arrow pointing at a top line reads as "jump to a top
-                            // anchor" for the turn-walk, and keeps this button visually
-                            // distinct from the down button's plain chevron.
-                            imageVector = Icons.Default.VerticalAlignTop,
-                            contentDescription = "Scroll to previous message",
-                            modifier = Modifier.size(20.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(ChatColors.inputBg)
+                                .border(1.dp, ChatColors.inputBorder, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                // Matches iOS's `arrow.up.to.line` (AIChatView.swift:2501):
+                                // an arrow pointing at a top line reads as "jump to a top
+                                // anchor" for the turn-walk, and keeps this button visually
+                                // distinct from the down button's plain chevron.
+                                imageVector = Icons.Default.VerticalAlignTop,
+                                contentDescription = "Scroll to previous message",
+                                tint = ChatColors.primaryText,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
 
                 if (userScrolledAway && contentOverflows.value && messages.isNotEmpty()) {
                     val fabBottomPadding = if (latestTurnToolBlocks.isNotEmpty()) 80.dp else 8.dp
-                    androidx.compose.material3.FilledIconButton(
-                        onClick = {
-                            // [T-android-scroll-fab-down-stuck] Clear the
-                            // scrolled-away intent SYNCHRONOUSLY on tap — that
-                            // alone hides the FAB (its gate is userScrolledAway).
-                            // Don't rely on the at-bottom auto-reset LE
-                            // (`isNearBottom && userScrolledAway → false`): on a
-                            // long reverseLayout session scrollToItem(0,0) can
-                            // settle on a non-zero firstVisibleItemIndex while
-                            // unmeasured items resolve (logged: FAB-DOWN tap left
-                            // firstIdx=41/60, canBwd=false), so isNearBottom stays
-                            // false, the auto-reset never fires, and the FAB was
-                            // stuck visible. The user tapped "go to bottom" — the
-                            // intent is unambiguous, so reset directly.
-                            userScrolledAway = false
-                            // [T-android-scrollbtn-turn-walk] Jumping to the
-                            // bottom resets the up-button's turn-walk (iOS does
-                            // the same in its forceScrollToBottom handler).
-                            lastJumpedUserId = null
-                            coroutineScope.launch {
-                                tracedScrollToItem("FAB-DOWN", 0, 0)
-                                // Second pin after a frame: the first scroll may
-                                // land short while late-measuring items shift the
-                                // true bottom; re-issue once layout settles.
-                                kotlinx.coroutines.delay(100)
-                                tracedScrollToItem("FAB-DOWN/settle", 0, 0)
-                            }
-                        },
+                    // [v1.3.5-ui] Same 48dp-hit-area / 36dp-disc treatment as the
+                    // up-button above: drop the redundant .shadow(4.dp), keep
+                    // the disc pixel-identical, separate tonally with a 1dp
+                    // hairline instead of a drop shadow.
+                    Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp + fabEndInset, bottom = fabBottomPadding)
-                            .shadow(4.dp, CircleShape)
-                            .size(36.dp),
-                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                            containerColor = ChatColors.inputBg,
-                            contentColor = ChatColors.primaryText,
-                        ),
+                            .padding(end = 12.dp + fabEndInset - 6.dp, bottom = fabBottomPadding - 6.dp)
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .clickable(role = Role.Button) {
+                                // [T-android-scroll-fab-down-stuck] Clear the
+                                // scrolled-away intent SYNCHRONOUSLY on tap — that
+                                // alone hides the FAB (its gate is userScrolledAway).
+                                // Don't rely on the at-bottom auto-reset LE
+                                // (`isNearBottom && userScrolledAway → false`): on a
+                                // long reverseLayout session scrollToItem(0,0) can
+                                // settle on a non-zero firstVisibleItemIndex while
+                                // unmeasured items resolve (logged: FAB-DOWN tap left
+                                // firstIdx=41/60, canBwd=false), so isNearBottom stays
+                                // false, the auto-reset never fires, and the FAB was
+                                // stuck visible. The user tapped "go to bottom" — the
+                                // intent is unambiguous, so reset directly.
+                                userScrolledAway = false
+                                // [T-android-scrollbtn-turn-walk] Jumping to the
+                                // bottom resets the up-button's turn-walk (iOS does
+                                // the same in its forceScrollToBottom handler).
+                                lastJumpedUserId = null
+                                coroutineScope.launch {
+                                    tracedScrollToItem("FAB-DOWN", 0, 0)
+                                    // Second pin after a frame: the first scroll may
+                                    // land short while late-measuring items shift the
+                                    // true bottom; re-issue once layout settles.
+                                    kotlinx.coroutines.delay(100)
+                                    tracedScrollToItem("FAB-DOWN/settle", 0, 0)
+                                }
+                            }
+                            .semantics(mergeDescendants = true) {},
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Scroll to bottom",
-                            modifier = Modifier.size(20.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(ChatColors.inputBg)
+                                .border(1.dp, ChatColors.inputBorder, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Scroll to bottom",
+                                tint = ChatColors.primaryText,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
 

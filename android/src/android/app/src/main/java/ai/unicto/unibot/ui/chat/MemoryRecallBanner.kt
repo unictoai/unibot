@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import androidx.compose.foundation.border
 
 import ai.unicto.unibot.ui.theme.Motion
 import androidx.compose.animation.AnimatedVisibility
@@ -24,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,7 +61,7 @@ internal fun MemoryRecallBanner(
     ) {
         Row(
             modifier = Modifier
-                .shadow(4.dp, RoundedCornerShape(20.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                 .clip(RoundedCornerShape(20.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .padding(horizontal = 12.dp, vertical = 8.dp),

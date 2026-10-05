@@ -1788,7 +1788,6 @@ private fun DualFabRow(
                             if (topGroups.isNotEmpty()) showGroupMenu = true
                         },
                     )
-                    .shadow(8.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.2f)),
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
             ) {
                 Icon(Icons.Outlined.Forum, contentDescription = "New Chat", tint = Color.White, modifier = Modifier.size(24.dp))
@@ -1840,7 +1839,6 @@ private fun DualFabRow(
                                 onHorizontalDrag = { _, dragAmount -> searchDragX += dragAmount },
                             )
                         }
-                        .shadow(6.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.15f)),
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                 ) {
                     Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.sessionlist_search_action), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))

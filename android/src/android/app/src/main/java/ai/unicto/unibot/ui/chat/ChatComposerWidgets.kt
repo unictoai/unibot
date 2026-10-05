@@ -492,7 +492,7 @@ private fun ToolPreviewThumbnail(
     Box(
         modifier = Modifier
             .size(width = 100.dp, height = 65.dp)
-            .shadow(elevation = 10.dp, shape = thumbnailShape, ambientColor = Color.Black.copy(alpha = 0.15f), spotColor = Color.Black.copy(alpha = 0.25f))
+            .border(1.dp, ChatColors.thumbnailBorder, thumbnailShape)
             .clip(thumbnailShape)
             .background(
                 when (block.toolName) {
