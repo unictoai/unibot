@@ -1,4 +1,21 @@
 <!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════════════════════
+  UNIBOT WEBSITE — RELEASE CHECKLIST
+  ═══════════════════════════════════════════════════════════════════
+  Static site: the version is NOT centralized (no build step), so on
+  every release bump ALL of the spots below by hand. Full checklist
+  lives in docs/RELEASE_CHECKLIST.md. The APK URL is deterministic:
+  https://github.com/unictoai/unibot/releases/download/v<VERSION>/unibot-<VERSION>-arm64.apk
+
+  1. Line ~89:  hero pill ("v1.x — …")            → new version + headline
+  2. Line ~93:  hero "Download APK" href            → new APK URL
+  3. Line ~303: "Get unibot v<VERSION>" heading     → new version
+  4. Line ~305: "Download for Android" href        → new APK URL
+  5. FAQ:       "What's new in v<VERSION>?" entry   → new release notes
+  6. Line ~43:  JSON-LD downloadUrl                → new APK URL
+  ═══════════════════════════════════════════════════════════════════
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -40,7 +57,7 @@
   "description": "unibot: the private open-source AI agent for Android. 31 connectors, offline AI models, zero trackers. Bring your own key — no account. Free forever.",
   "license": "https://www.gnu.org/licenses/gpl-3.0.html",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "downloadUrl": "https://github.com/unictoai/unibot/releases/download/v1.3.0/unibot-1.3.0-arm64.apk"
+  "downloadUrl": "https://github.com/unictoai/unibot/releases/download/v1.3.5/unibot-1.3.5-arm64.apk"
 }
 </script>
 </head>
@@ -86,11 +103,11 @@
   </div>
   <div class="hero-inner">
     <div class="hero-copy reveal">
-      <div class="pill">v1.1 — voice mode is here</div>
+      <div class="pill">v1.3.5 — Agent Swarm is here</div>
       <h1>Your AI agent.<br>Your phone.<br><span class="violet">Your rules.</span></h1>
       <p class="sub">unibot is the private, open-source AI agent for Android — 31 connectors, offline AI models, zero trackers. An AI agent with no account: bring your own key.</p>
       <div class="hero-btns">
-        <a class="btn primary" href="https://github.com/unictoai/unibot/releases/download/v1.3.0/unibot-1.3.0-arm64.apk">Download APK</a>
+        <a class="btn primary" href="https://github.com/unictoai/unibot/releases/download/v1.3.5/unibot-1.3.5-arm64.apk">Download APK</a>
         <a class="btn ghost" href="https://github.com/unictoai/unibot">GitHub</a>
       </div>
       <p class="fine">Free forever · No account · Android 8.0+ · ≈43 MB</p>
@@ -300,9 +317,9 @@
 <section class="section" id="download">
   <div class="dl-card reveal">
     <div class="aurora small" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div></div>
-    <h2>Get unibot <span class="violet">v1.3.0</span></h2>
+    <h2>Get unibot <span class="violet">v1.3.5</span></h2>
     <p>Free forever. No account. ≈43 MB. Installs over any previous version — your data stays.</p>
-    <a class="btn primary big" href="https://github.com/unictoai/unibot/releases/download/v1.3.0/unibot-1.3.0-arm64.apk">Download for Android</a>
+    <a class="btn primary big" href="https://github.com/unictoai/unibot/releases/download/v1.3.5/unibot-1.3.5-arm64.apk">Download for Android</a>
     <p class="fine"><a href="https://github.com/unictoai/unibot/releases">or grab any release on GitHub →</a></p>
   </div>
 </section>
@@ -312,8 +329,8 @@
   <h2 class="reveal">Questions, <span class="violet">answered.</span></h2>
   <div class="faq">
     <div class="qa reveal">
-      <button class="q">What&apos;s new in v1.1?<span>+</span></button>
-      <div class="a"><p>Voice mode: full hands-free conversations with on-device speech recognition and downloadable voices, plus the usual round of fixes. Grab the latest APK from the download section — it installs right over your current version.</p></div>
+      <button class="q">What&apos;s new in v1.3.5?<span>+</span></button>
+      <div class="a"><p>v1.3.0 added the Agent Swarm: a dedicated swarm space where a hierarchical crew — planner, role workers and a verifier — runs multi-agent missions with checkpointed resume and per-agent cost accounting, plus a live agent timeline. v1.3.5 moves Swarm into the navigation drawer with a live status hint and ships a full UI optimization and performance pass. Grab the latest APK from the download section — it installs right over your current version.</p></div>
     </div>
     <div class="qa reveal">
       <button class="q">Is it really free?<span>+</span></button>
