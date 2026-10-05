@@ -32,7 +32,6 @@ fun SwarmEntryButton(
 ) {
     Surface(
         onClick = onClick,
-        onClickLabel = "Open agent swarm",
         shape = CircleShape,
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,

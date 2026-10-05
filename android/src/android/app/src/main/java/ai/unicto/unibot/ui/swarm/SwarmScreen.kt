@@ -3,6 +3,7 @@ package ai.unicto.unibot.ui.swarm
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,6 +87,7 @@ import ai.unicto.unibot.ui.theme.staggeredEntrance
  * incomplete-flagged (the engine prefixes `[incomplete]` onto a
  * best-effort result) — never silently "done".
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwarmScreen(
     viewModel: SwarmViewModel,
@@ -1138,6 +1141,7 @@ private fun SwarmResultView(
  * usable provider. The engine's ViewModel factory requires a provider, so
  * the screen cannot mount — this explains why and routes to setup instead.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SwarmNoProviderScreen(
     onBack: () -> Unit,
