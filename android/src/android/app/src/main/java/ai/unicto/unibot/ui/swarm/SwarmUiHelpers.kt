@@ -122,18 +122,20 @@ fun expectedOutput(role: String): String = when (role.lowercase()) {
     else -> "Agent output"
 }
 
-/** 850 -> "850", 1_250 -> "1.2k", 2_400_000 -> "2.4M". Locale-fixed: a cost
- * bill must not change its decimal separator with the device locale. */
+/** 850 -> "850", 1_250 -> "1.2k", 2_400_000 -> "2.4M". Locale-fixed: the
+ * decimal separator is a literal '.', so a cost bill never changes with
+ * the device locale. Truncates (never rounds up): 1_250 is "1.2k".
+ * Integer arithmetic throughout — no float-representation surprises. */
 fun formatTokens(tokens: Int): String {
     if (tokens < 1000) return tokens.toString()
     if (tokens < 1_000_000) {
-        val k = tokens / 1000.0
-        val text = if (k < 10) String.format(java.util.Locale.US, "%.1f", k) else k.toInt().toString()
-        return "${text}k"
+        val k = tokens / 1000
+        if (k >= 10) return "${k}k"
+        return "$k.${(tokens % 1000) / 100}k"
     }
-    val m = tokens / 1_000_000.0
-    val text = if (m < 10) String.format(java.util.Locale.US, "%.1f", m) else m.toInt().toString()
-    return "${text}M"
+    val m = tokens / 1_000_000
+    if (m >= 10) return "${m}M"
+    return "$m.${(tokens % 1_000_000) / 100_000}M"
 }
 
 // ─── Agent codenames ─────────────────────────────────────────────────────────
