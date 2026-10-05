@@ -576,6 +576,8 @@ fun ChatScreen(
     onStatsClick: () -> Unit = {},
     /** [unibot-voice-conversation] Open the full-screen voice conversation. */
     onOpenVoiceConversation: () -> Unit = {},
+    /** [v1.3.0-swarm] Open the agent swarm space. */
+    onSwarmClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -3605,7 +3607,15 @@ fun ChatScreen(
                     }
                 },
                 navigationIcon = {},
-                actions = {},
+                actions = {
+                    // [v1.3.0-swarm] Distinct pill entry to the swarm space —
+                    // shaped nothing like the chat chrome so it reads as
+                    // entering a separate place, not one more chat action.
+                    ai.unicto.unibot.ui.swarm.SwarmEntryButton(
+                        onClick = onSwarmClick,
+                        modifier = Modifier.padding(end = 12.dp),
+                    )
+                },
                 windowInsets = WindowInsets.statusBars,
                 colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
                     containerColor = ChatColors.background.copy(alpha = 0.92f),

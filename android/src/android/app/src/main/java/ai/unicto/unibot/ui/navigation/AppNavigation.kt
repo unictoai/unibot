@@ -230,6 +230,8 @@ object Routes {
     const val PROMPT_LIBRARY = "prompt_library"
     // [P2-compare] Side-by-side two-model comparison screen.
     const val COMPARE = "compare"
+    /** [v1.3.0-swarm] Agent swarm space — dedicated multi-agent mission screen. */
+    const val SWARM = "swarm"
     // [T-android-model-entry-route-slash-crash] entryId is a composite key
     // "<instanceId>/<modelId>" (compositeEntryKey) — it CONTAINS a '/'. Left
     // raw, that slash splits the route into an extra path segment, so the
@@ -1009,6 +1011,18 @@ fun AppNavigation(
         // [P2-compare] Side-by-side two-model comparison.
         composable(Routes.COMPARE) {
             ai.unicto.unibot.ui.chat.CompareScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // [v1.3.0-swarm] Agent swarm space — dedicated multi-agent mission
+        // screen. The engine owns ai.unicto.unibot.swarm.SwarmViewModel; the
+        // UI binds to its contract verbatim.
+        composable(Routes.SWARM) {
+            val swarmViewModel: ai.unicto.unibot.swarm.SwarmViewModel =
+                androidx.lifecycle.viewmodel.compose.viewModel()
+            ai.unicto.unibot.ui.swarm.SwarmScreen(
+                viewModel = swarmViewModel,
                 onBack = { navController.safePopBackStack() },
             )
         }

@@ -959,6 +959,11 @@ fun ChatSplitScaffoldRoute(
                 onStatsClick = {
                     navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS)
                 },
+                // [v1.3.0-swarm] Agent swarm space leaves the pair like the
+                // other outer-NavHost destinations.
+                onSwarmClick = {
+                    navController.safeNavigate(Routes.SWARM)
+                },
                 // [unibot-voice-conversation] Full-screen voice mode leaves
                 // the pair like the other outer-NavHost destinations.
                 onOpenVoiceConversation = {

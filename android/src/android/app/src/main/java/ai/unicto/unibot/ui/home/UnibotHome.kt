@@ -374,6 +374,8 @@ fun UnibotHome(
                             onStarredClick = { navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES) },
                             onStatsClick = { navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS) },
                             onOpenVoiceConversation = { navController.safeNavigate(Routes.voiceConversation(sid)) },
+                            // [v1.3.0-swarm] Agent swarm space.
+                            onSwarmClick = { navController.safeNavigate(Routes.SWARM) },
                             ubHome = NmHomeChrome(isMainChat = isMainChat, onOpenDrawer = { openDrawer() }),
                         )
                     }
