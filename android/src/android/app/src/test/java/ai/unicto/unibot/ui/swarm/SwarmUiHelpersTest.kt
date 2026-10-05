@@ -64,8 +64,12 @@ class SwarmUiHelpersTest {
     // ── Role names / expected outputs ─────────────────────────────────────────
 
     @Test
-    fun `role display names are humanized`() {
+    fun `role display names prefer the engine canon, humanize the rest`() {
+        // Engine-canonical names (SwarmRoles) — the UI can never drift.
         assertEquals("Planner", roleDisplayName("planner"))
+        assertEquals("Researcher", roleDisplayName("researcher"))
+        assertEquals("Analyst", roleDisplayName("analyst"))
+        // Unknown ids fall back to humanizing.
         assertEquals("Deep Researcher", roleDisplayName("deep_researcher"))
         assertEquals("Agent", roleDisplayName(""))
         assertEquals("Agent", roleDisplayName("___"))
@@ -75,6 +79,7 @@ class SwarmUiHelpersTest {
     fun `known roles have a defined output, unknown roles fall back`() {
         assertEquals("Findings with sources", expectedOutput("researcher"))
         assertEquals("Verification report", expectedOutput("VERIFIER"))
+        assertEquals("Analysis & recommendation", expectedOutput("analyst"))
         assertEquals("Agent output", expectedOutput("mystery_role"))
     }
 
@@ -118,7 +123,24 @@ class SwarmUiHelpersTest {
     }
 
     @Test
-    fun `no marker yields null`() {
+    fun `engine best-effort note is detected as incomplete`() {
+        val result = "Some findings here.\n\n_Note: automated review flagged an issue " +
+            "(missing sources); one revision was applied and this best-effort output stands._"
+        val note = extractIncompleteNote(result, "")
+        assertTrue("expected a note, got null", note != null)
+        assertTrue("note should name the issue, got: $note", note!!.contains("missing sources"))
+    }
+
+    @Test
+    fun `engine best-effort note is stripped from display text`() {
+        val result = "Some findings here.\n\n_Note: automated review flagged an issue " +
+            "(missing sources); one revision was applied and this best-effort output stands._"
+        assertEquals("Some findings here.", withoutIncompleteMarker(result))
+    }
+
+    @Test
+    fun `clean results stay untouched by marker stripping`() {
+        assertEquals("done well", withoutIncompleteMarker("done well"))
         assertNull(extractIncompleteNote("done well", "all good"))
         assertNull(extractIncompleteNote("", ""))
     }
@@ -153,9 +175,26 @@ class SwarmUiHelpersTest {
     }
 
     @Test
-    fun `custom preset uses all six roles`() {
+    fun `custom preset uses all six engine roles`() {
         val custom = swarmPresetById("custom")
-        assertEquals(6, custom?.roles?.size)
+        assertEquals(
+            ai.unicto.unibot.swarm.SwarmRoles.customRoles().map { it.id }.toSet(),
+            custom?.roles?.toSet(),
+        )
+    }
+
+    @Test
+    fun `every preset role resolves in the engine`() {
+        // Guards against the UI cards misrepresenting what launch() spawns:
+        // an unknown role id would silently fall back to a generic prompt.
+        SWARM_PRESETS.forEach { preset ->
+            preset.roles.forEach { roleId ->
+                assertTrue(
+                    "preset ${preset.id} role '$roleId' unknown to SwarmRoles",
+                    ai.unicto.unibot.swarm.SwarmRoles.byId(roleId) != null,
+                )
+            }
+        }
     }
 
     @Test

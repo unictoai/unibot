@@ -10,42 +10,65 @@ import ai.unicto.unibot.swarm.SwarmLifecycle
  * unit-testable without Robolectric (see SwarmUiHelpersTest).
  *
  * The engine owns `ai.unicto.unibot.swarm`; this file only *reads* its
- * contract types (statuses, presets) and derives presentation from them.
+ * contract types (lifecycle/status enums, `SwarmRoles` presets/role names)
+ * and derives presentation from them — never redefining what the engine
+ * owns, so the cards can never misrepresent what launch() actually spawns.
  */
 
 /** Marker the engine prefixes onto an agent's `result`/`detail` when a
  * failed-then-best-effort worker's output stands with a note instead of a
  * clean result. The UI renders this as the explicit "incomplete" terminal
  * state (Kimi's #1 complaint was silent partial failure) — never silently
- * "done". Integration must confirm the engine emits this exact prefix. */
+ * "done". */
 const val INCOMPLETE_MARKER = "[incomplete]"
 
 /**
- * If [result] or [detail] carries the [INCOMPLETE_MARKER] prefix, returns the
- * note text with the marker stripped; otherwise null. [result] wins when
- * both carry it.
+ * Substring the v1.3.0 engine embeds in a best-effort result note. The
+ * engine appends `_Note: automated review flagged an issue (...); one
+ * revision was applied and this best-effort output stands._` to `result`
+ * when its one bounded revision still didn't pass verification.
+ */
+private const val ENGINE_BEST_EFFORT_MARKER = "automated review flagged an issue"
+
+/**
+ * If [result] or [detail] carries an incomplete marker, returns the note
+ * text with the marker stripped; otherwise null. Recognizes both the
+ * `[incomplete]` prefix convention and the engine's appended best-effort
+ * note. [result] wins when both fields carry a marker.
  */
 fun extractIncompleteNote(result: String, detail: String): String? {
-    val fromResult = result.stripIncompleteMarker()
-    if (fromResult != null) return fromResult
-    return detail.stripIncompleteMarker()
+    result.stripIncompleteMarker()?.let { return it }
+    detail.stripIncompleteMarker()?.let { return it }
+    return result.extractEngineBestEffortNote()
 }
 
 private fun String.stripIncompleteMarker(): String? {
     val trimmed = trimStart()
     if (!trimmed.startsWith(INCOMPLETE_MARKER)) return null
-    val note = trimmed.removePrefix(INCOMPLETE_MARKER).trim()
-    return note.ifBlank { "(no note provided)" }
+    return trimmed.removePrefix(INCOMPLETE_MARKER).trim().ifBlank { "(no note provided)" }
+}
+
+private fun String.extractEngineBestEffortNote(): String? {
+    val markerAt = indexOf(ENGINE_BEST_EFFORT_MARKER)
+    if (markerAt < 0) return null
+    val noteStart = lastIndexOf("_Note:", markerAt).takeIf { it >= 0 } ?: markerAt
+    return substring(noteStart).trim().trim('_').trim().ifBlank { "(no note provided)" }
 }
 
 /**
  * Display-safe version of a `result`/`detail` string: strips a leading
- * [INCOMPLETE_MARKER] (the badge carries that meaning instead).
+ * [INCOMPLETE_MARKER] and/or the engine's appended best-effort note (the
+ * badge carries that meaning instead).
  */
 fun withoutIncompleteMarker(text: String): String {
     val trimmed = text.trimStart()
-    if (!trimmed.startsWith(INCOMPLETE_MARKER)) return text
-    return trimmed.removePrefix(INCOMPLETE_MARKER).trimStart()
+    val withoutPrefix =
+        if (trimmed.startsWith(INCOMPLETE_MARKER)) trimmed.removePrefix(INCOMPLETE_MARKER).trimStart()
+        else text
+    val markerAt = withoutPrefix.indexOf(ENGINE_BEST_EFFORT_MARKER)
+    if (markerAt < 0) return withoutPrefix
+    val noteStart = withoutPrefix.lastIndexOf("_Note:", markerAt).takeIf { it >= 0 } ?: markerAt
+    return withoutPrefix.substring(0, noteStart).trimEnd()
 }
 
 /** True when the agent has reached an explicit terminal state. */
@@ -70,12 +93,18 @@ fun SwarmLifecycle.label(): String = when (this) {
     SwarmLifecycle.FAILED -> "Failed"
 }
 
-/** "planner" -> "Planner", "deep_researcher" -> "Deep Researcher". */
+/**
+ * Canonical display name for a role id. Prefers the engine's
+ * [ai.unicto.unibot.swarm.SwarmRoles] display name so the UI can never
+ * drift from what the engine actually runs; falls back to humanizing
+ * unknown ids ("deep_researcher" -> "Deep Researcher", blank -> "Agent").
+ */
 fun roleDisplayName(role: String): String =
-    role.split('_', ' ', '-')
-        .filter { it.isNotBlank() }
-        .joinToString(" ") { it.replaceFirstChar(Char::uppercaseChar) }
-        .ifBlank { "Agent" }
+    ai.unicto.unibot.swarm.SwarmRoles.byId(role)?.displayName
+        ?: role.split('_', ' ', '-')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { it.replaceFirstChar(Char::uppercaseChar) }
+            .ifBlank { "Agent" }
 
 /**
  * What each role is expected to hand back — shown on the agent ID card as
@@ -86,9 +115,9 @@ fun expectedOutput(role: String): String = when (role.lowercase()) {
     "planner" -> "Task plan"
     "researcher" -> "Findings with sources"
     "writer" -> "Draft text"
-    "verifier" -> "Verification report"
-    "critic" -> "Critique notes"
     "editor" -> "Polished draft"
+    "analyst" -> "Analysis & recommendation"
+    "verifier" -> "Verification report"
     else -> "Agent output"
 }
 
@@ -128,36 +157,17 @@ fun agentCodename(agentId: String): String {
 }
 
 // ─── Crew presets ────────────────────────────────────────────────────────────
-// Preset ids are contract: "research" / "content" / "deepdive". "custom" is
-// UI-side (all six roles; a real crew picker is future work).
+// The three crew presets are ENGINE-OWNED (ai.unicto.unibot.swarm.SwarmRoles)
+// — the UI must never redefine their ids, names, descriptions or roles, or
+// the cards will misrepresent what launch() actually spawns. "custom" is
+// UI-side (all six engine roles; a real crew picker is future work).
 
-private val ALL_SIX_ROLES = listOf("planner", "researcher", "writer", "verifier", "critic", "editor")
-
-val SWARM_PRESETS: List<SwarmCrewPreset> = listOf(
-    SwarmCrewPreset(
-        id = "research",
-        name = "Research",
-        description = "Deep multi-source research, cross-checked before delivery.",
-        roles = listOf("planner", "researcher", "researcher", "verifier", "writer"),
-    ),
-    SwarmCrewPreset(
-        id = "content",
-        name = "Content",
-        description = "Drafts that read clean — written, edited, then verified.",
-        roles = listOf("planner", "writer", "editor", "verifier"),
-    ),
-    SwarmCrewPreset(
-        id = "deepdive",
-        name = "Deep dive",
-        description = "The full crew: research, critique, verify, then write.",
-        roles = ALL_SIX_ROLES,
-    ),
+val SWARM_PRESETS: List<SwarmCrewPreset> = ai.unicto.unibot.swarm.SwarmRoles.presets +
     SwarmCrewPreset(
         id = "custom",
         name = "Custom",
         description = "All six roles working the mission. A crew picker is coming.",
-        roles = ALL_SIX_ROLES,
-    ),
-)
+        roles = ai.unicto.unibot.swarm.SwarmRoles.customRoles().map { it.id },
+    )
 
 fun swarmPresetById(id: String): SwarmCrewPreset? = SWARM_PRESETS.firstOrNull { it.id == id }

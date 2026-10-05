@@ -1017,14 +1017,35 @@ fun AppNavigation(
 
         // [v1.3.0-swarm] Agent swarm space — dedicated multi-agent mission
         // screen. The engine owns ai.unicto.unibot.swarm.SwarmViewModel; the
-        // UI binds to its contract verbatim.
+        // UI binds to its contract verbatim. The ViewModel has no no-arg
+        // constructor — it is built via its factory with the user's own
+        // provider (first agent-loop model, else first text model), so the
+        // swarm bills the user's own key. With no usable provider the space
+        // explains itself instead of crashing the factory.
         composable(Routes.SWARM) {
-            val swarmViewModel: ai.unicto.unibot.swarm.SwarmViewModel =
-                androidx.lifecycle.viewmodel.compose.viewModel()
-            ai.unicto.unibot.ui.swarm.SwarmScreen(
-                viewModel = swarmViewModel,
-                onBack = { navController.safePopBackStack() },
-            )
+            val context = LocalContext.current
+            val providerConfig by providerRepository.config.collectAsState()
+            val swarmProvider = remember(providerConfig) {
+                ai.unicto.unibot.ui.swarm.resolveSwarmLlmProvider(providerRepository, context)
+            }
+            if (swarmProvider == null) {
+                ai.unicto.unibot.ui.swarm.SwarmNoProviderScreen(
+                    onBack = { navController.safePopBackStack() },
+                    onOpenProviders = { navController.safeNavigate(Routes.PROVIDER_LIST) },
+                )
+            } else {
+                val swarmViewModel: ai.unicto.unibot.swarm.SwarmViewModel =
+                    androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ai.unicto.unibot.swarm.SwarmViewModel.factory(
+                            context,
+                            swarmProvider,
+                        ),
+                    )
+                ai.unicto.unibot.ui.swarm.SwarmScreen(
+                    viewModel = swarmViewModel,
+                    onBack = { navController.safePopBackStack() },
+                )
+            }
         }
 
         // unibot P6: visual context — ask about the camera / a photo.

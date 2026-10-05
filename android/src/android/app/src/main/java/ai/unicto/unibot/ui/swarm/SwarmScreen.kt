@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -122,15 +123,19 @@ fun SwarmScreen(
                     onNewMission = viewModel::dismissResult,
                     modifier = contentModifier,
                 )
-            // Active run: plan -> agent ID cards -> controls.
+            // Active run: plan -> agent ID cards -> controls. CANCELLED lands
+            // here too (read-only): the engine keeps partial worker results
+            // visible, with a "New mission" exit instead of run controls.
             state.lifecycle == SwarmLifecycle.PLANNING ||
                 state.lifecycle == SwarmLifecycle.RUNNING ||
-                state.lifecycle == SwarmLifecycle.PAUSED ->
+                state.lifecycle == SwarmLifecycle.PAUSED ||
+                state.lifecycle == SwarmLifecycle.CANCELLED ->
                 SwarmActiveView(
                     state = state,
                     onPause = viewModel::pause,
                     onResume = viewModel::resume,
                     onCancel = viewModel::cancel,
+                    onDismiss = viewModel::dismissResult,
                     modifier = contentModifier,
                 )
             // Idle: greeting + composer + crew presets (+ resume/error banners).
@@ -408,6 +413,7 @@ private fun SwarmActiveView(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -429,6 +435,15 @@ private fun SwarmActiveView(
                 LifecyclePill(lifecycle = state.lifecycle)
                 Text(
                     text = "${state.crew?.name ?: "Crew"} · ${formatTokens(state.totalTokens)} tokens",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // Restored from a checkpoint (the engine lands these at PAUSED):
+            // say plainly where the run stands.
+            if (state.canResume) {
+                Text(
+                    text = "Interrupted — resume to continue from the last checkpoint.",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -457,6 +472,7 @@ private fun SwarmActiveView(
             onPause = onPause,
             onResume = onResume,
             onCancel = onCancel,
+            onDismiss = onDismiss,
         )
     }
 }
@@ -770,14 +786,15 @@ private fun AgentCard(
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    if (agent.result.isNotBlank()) {
+                    val cleanResult = withoutIncompleteMarker(agent.result)
+                    if (cleanResult.isNotBlank()) {
                         Text(
                             text = "Result",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = withoutIncompleteMarker(agent.result),
+                            text = cleanResult,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -912,8 +929,22 @@ private fun ControlsRow(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // A cancelled run is read-only: the timeline stays visible with its
+    // partial results, and the only way out is a fresh mission.
+    if (lifecycle == SwarmLifecycle.CANCELLED) {
+        Button(
+            onClick = onDismiss,
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            Text("New mission")
+        }
+        return
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -1091,6 +1122,67 @@ private fun SwarmResultView(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("New mission")
+            }
+        }
+    }
+}
+
+// ─── No provider: the space explains itself ─────────────────────────────────
+
+/**
+ * Shown by the NavHost destination when [resolveSwarmLlmProvider] finds no
+ * usable provider. The engine's ViewModel factory requires a provider, so
+ * the screen cannot mount — this explains why and routes to setup instead.
+ */
+@Composable
+internal fun SwarmNoProviderScreen(
+    onBack: () -> Unit,
+    onOpenProviders: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("Agent Swarm") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = "Swarms need a model",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = "Add a provider first — the swarm runs on your own key, " +
+                    "so it costs nothing extra.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.size(16.dp))
+            Button(onClick = onOpenProviders) {
+                Text("Set up a provider")
             }
         }
     }
