@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings.backup
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -349,7 +350,7 @@ private fun BackupTab(
         CategorySwitchRow(
             title = stringResource(R.string.backup_encrypt_backup),
             icon = Icons.Outlined.Lock,
-            iconColor = Color(0xFF34C759),
+            iconColor = UbColors.success,
             checked = encrypt,
             onCheckedChange = { vm.setEncrypt(it) },
             enabled = !running,
@@ -575,7 +576,7 @@ private fun BackupHistorySection(
         if (!expanded && records.size > shown.size) {
             RestoreSourceRow(
                 icon = Icons.Outlined.History,
-                iconColor = Color(0xFF8E8E93),
+                iconColor = UbColors.systemGray,
                 label = stringResource(
                     R.string.backup_history_show_all,
                     records.size,
@@ -595,10 +596,10 @@ private fun BackupHistoryRow(
     onClick: () -> Unit,
 ) {
     val (icon, tint) = when (record.status) {
-        BackupHistory.Status.RUNNING -> Icons.Outlined.Sync to Color(0xFF8E8E93)
-        BackupHistory.Status.SUCCEEDED -> Icons.Outlined.CheckCircle to Color(0xFF34C759)
-        BackupHistory.Status.COMPLETED_WITH_ISSUES -> Icons.Outlined.Warning to Color(0xFFFF9500)
-        BackupHistory.Status.FAILED -> Icons.Outlined.ErrorOutline to Color(0xFFFF3B30)
+        BackupHistory.Status.RUNNING -> Icons.Outlined.Sync to UbColors.systemGray
+        BackupHistory.Status.SUCCEEDED -> Icons.Outlined.CheckCircle to UbColors.success
+        BackupHistory.Status.COMPLETED_WITH_ISSUES -> Icons.Outlined.Warning to UbColors.warning
+        BackupHistory.Status.FAILED -> Icons.Outlined.ErrorOutline to UbColors.error
     }
     Column {
         Row(
@@ -718,7 +719,7 @@ private fun MaxFileSizeRow(
         ) {
             Icon(
                 Icons.Outlined.FolderZip, contentDescription = null,
-                tint = Color(0xFF8E8E93), modifier = Modifier.size(26.dp),
+                tint = UbColors.systemGray, modifier = Modifier.size(26.dp),
             )
             Spacer(Modifier.width(14.dp))
             Text(
@@ -1179,7 +1180,7 @@ private fun DestinationsSection(
         // knew what either did.
         RestoreSourceRow(
             icon = Icons.Outlined.Add,
-            iconColor = Color(0xFF34C759),
+            iconColor = UbColors.success,
             label = stringResource(R.string.backup_manage_destinations),
             enabled = enabled,
             onClick = onManage,
@@ -1297,7 +1298,7 @@ private fun ResultDestinationRow(
             Icon(
                 if (outcome.succeeded) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
                 contentDescription = null,
-                tint = if (outcome.succeeded) Color(0xFF34C759) else Color(0xFFFF9500),
+                tint = if (outcome.succeeded) UbColors.success else UbColors.warning,
                 modifier = Modifier.size(20.dp),
             )
             Spacer(Modifier.width(10.dp))
@@ -1574,9 +1575,9 @@ private fun categoryIcon(cat: BackupCategory): ImageVector = when (cat) {
 
 /** Tint per category, mirroring iOS BackupCategoryIcon.tint(for:). */
 private fun categoryTint(cat: BackupCategory, isDark: Boolean): Color = when (cat) {
-    BackupCategory.CHATS -> if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9) // violet
+    BackupCategory.CHATS -> UbColors.brandViolet(isDark) // violet
     BackupCategory.SHARED_FILES -> Color(0xFF5856D6)         // indigo
-    BackupCategory.SKILLS -> Color(0xFFFF9500)              // orange
+    BackupCategory.SKILLS -> UbColors.warning              // orange
     BackupCategory.MEMORY -> Color(0xFFFF2D55)             // pink
     BackupCategory.PROVIDERS -> Color(0xFF30B0C7)         // teal
     BackupCategory.MCP_SERVERS -> Color(0xFF32ADE6)      // cyan

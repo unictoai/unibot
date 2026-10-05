@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 // [T-android-split-chat] Assistant-message + tool-pill + thinking rendering
 // extracted verbatim from ChatScreen.kt: AssistantHeader, AssistantMessageView,
@@ -492,7 +493,7 @@ internal fun InlineErrorBanner(
             .fillMaxWidth()
             .padding(top = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFFF3B30).copy(alpha = 0.12f))
+            .background(UbColors.error.copy(alpha = 0.12f))
             .combinedClickable(
                 onClick = {},
                 onLongClick = {
@@ -511,13 +512,13 @@ internal fun InlineErrorBanner(
             Icon(
                 imageVector = Icons.Default.Error,
                 contentDescription = null,
-                tint = Color(0xFFFF3B30),
+                tint = UbColors.error,
                 modifier = Modifier.size(14.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = error,
-                color = Color(0xFFFF3B30),
+                color = UbColors.error,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 maxLines = if (isRequestTooLarge) 5 else 3,
@@ -578,7 +579,7 @@ private fun ErrorPillButton(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(Color(0xFFFF3B30).copy(alpha = 0.15f))
+            .background(UbColors.error.copy(alpha = 0.15f))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -586,11 +587,11 @@ private fun ErrorPillButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color(0xFFFF3B30),
+            tint = UbColors.error,
             modifier = Modifier.size(10.dp),
         )
         Spacer(modifier = Modifier.width(4.dp))
-        Text(text, color = Color(0xFFFF3B30), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = UbColors.error, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -633,7 +634,7 @@ private fun ToolStopButton(
                 modifier = Modifier
                     .size(10.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Color(0xFFFF3B30)),
+                    .background(UbColors.error),
             )
         }
     }

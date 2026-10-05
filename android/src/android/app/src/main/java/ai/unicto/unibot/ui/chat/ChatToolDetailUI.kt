@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 // [T-android-split-chat] Tool-detail sheet + reveal/editor helpers extracted
 // verbatim from ChatScreen.kt: ToolDetailSheet, extractShellCommand,
@@ -556,7 +557,7 @@ internal fun ToolDetailSheet(
                                                 text = linkified,
                                                 fontSize = 13.sp,
                                                 fontFamily = FontFamily.Monospace,
-                                                color = Color(0xFF34C759),  // iOS .green
+                                                color = UbColors.success,  // iOS .green
                                                 lineHeight = 18.sp,
                                             )
                                         }
@@ -583,14 +584,14 @@ internal fun ToolDetailSheet(
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium,
                                             fontFamily = FontFamily.Monospace,
-                                            color = Color(0xFF34C759),  // iOS .green
+                                            color = UbColors.success,  // iOS .green
                                         )
                                         Text(
                                             text = sheetMonitor.formattedMem(),
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium,
                                             fontFamily = FontFamily.Monospace,
-                                            color = Color(0xFF34C759),
+                                            color = UbColors.success,
                                         )
                                     }
                                 }
@@ -674,7 +675,7 @@ internal fun ToolDetailSheet(
                                     Icon(
                                         Icons.Default.EditNote,
                                         contentDescription = null,
-                                        tint = Color(0xFFFF9500),
+                                        tint = UbColors.warning,
                                         modifier = Modifier.size(12.dp),
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1274,7 +1275,7 @@ internal fun ToolDetailSheet(
                             Box(
                                 modifier = Modifier
                                     .size(7.dp)
-                                    .background(Color(0xFF34C759), CircleShape),
+                                    .background(UbColors.success, CircleShape),
                             )
                             Text(
                                 "Live",
@@ -1599,7 +1600,7 @@ private fun EditorCard(
                     Text(
                         text = if (isStreaming) "($sizeLabel received)" else "($sizeLabel)",
                         fontSize = 11.sp,
-                        color = if (isStreaming) Color(0xFFFF9500).copy(alpha = 0.8f) else sizeColor,
+                        color = if (isStreaming) UbColors.warning.copy(alpha = 0.8f) else sizeColor,
                     )
                 }
             }

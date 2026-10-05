@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
@@ -52,20 +53,20 @@ internal fun formatStepDuration(seconds: Long, stillRunning: Boolean): String {
 
 // Helper: tool accent color
 internal fun toolAccentColor(toolName: String, isDark: Boolean): Color {
-    val violet = if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
+    val violet = UbColors.brandViolet(isDark)
     return when (toolName) {
-        "shell_execute" -> Color(0xFF34C759)
+        "shell_execute" -> UbColors.success
         "file_read" -> Color(0xFF32ADE6)
         "file_write" -> violet
-        "file_edit" -> Color(0xFFFF9500)
+        "file_edit" -> UbColors.warning
         "browser_use" -> violet
         "read_image" -> Color(0xFFAF52DE)
         "photos_search", "photos_list_recent" -> Color(0xFFAF52DE)
         "memory_write", "memory_get" -> Color(0xFFFF2D55)
         "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
     // [v1.0-wave6] Reminders — warm amber.
-    "remind_me", "list_reminders", "cancel_reminder" -> Color(0xFFFF9F0A)
-        else -> Color(0xFF8E8E93)
+    "remind_me", "list_reminders", "cancel_reminder" -> UbColors.warningDark
+        else -> UbColors.systemGray
     }
 }
 

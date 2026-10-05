@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.components
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -311,7 +311,7 @@ fun UnifiedModelPickerSheet(
                                     if (groupSelected) Icons.Default.CheckCircle
                                     else Icons.Default.RadioButtonUnchecked,
                                     contentDescription = null,
-                                    tint = if (groupSelected) Color(0xFF34C759)
+                                    tint = if (groupSelected) UbColors.success
                                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                                     modifier = Modifier.size(22.dp),
                                 )
@@ -473,10 +473,10 @@ fun UnifiedModelPickerSheet(
                                                 fontSize = 9.sp,
                                                 lineHeight = 11.sp,
                                                 fontWeight = FontWeight.Medium,
-                                                color = Color(0xFF34C759),
+                                                color = UbColors.success,
                                                 modifier = Modifier
                                                     .background(
-                                                        Color(0xFF34C759).copy(alpha = 0.1f),
+                                                        UbColors.success.copy(alpha = 0.1f),
                                                         RoundedCornerShape(50),
                                                     )
                                                     .padding(horizontal = 5.dp, vertical = 1.dp),
@@ -566,10 +566,10 @@ fun UnifiedModelPickerSheet(
                                             fontSize = 9.sp,
                                             lineHeight = 11.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF34C759),
+                                            color = UbColors.success,
                                             modifier = Modifier
                                                 .background(
-                                                    Color(0xFF34C759).copy(alpha = 0.1f),
+                                                    UbColors.success.copy(alpha = 0.1f),
                                                     RoundedCornerShape(50),
                                                 )
                                                 .padding(horizontal = 5.dp, vertical = 1.dp),

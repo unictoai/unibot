@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.local.WebResult
 import ai.unicto.unibot.ui.components.SkeletonLine
@@ -238,7 +239,7 @@ private fun SourceRow(
 private fun domainColor(domain: String): Color {
     val palette = listOf(
         Color(0xFF6D28D9), Color(0xFF0A84FF), Color(0xFF30B980),
-        Color(0xFFFF9F0A), Color(0xFFFF375F), Color(0xFF64D2FF),
+        UbColors.warningDark, Color(0xFFFF375F), Color(0xFF64D2FF),
         Color(0xFFBF5AF2), Color(0xFFAC8E68),
     )
     val idx = (domain.hashCode() and Int.MAX_VALUE) % palette.size

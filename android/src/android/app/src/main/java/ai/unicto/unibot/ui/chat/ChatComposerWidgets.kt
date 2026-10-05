@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 // [T-android-split-chat] Composer/input widgets + tool preview/status bar
 // extracted verbatim from ChatScreen.kt: AttachmentChip, InputCircleButton,
@@ -1004,7 +1005,7 @@ internal fun ThinkingLevelPicker(
     // up-arrow, signalling "your setting is higher, this model caps here".
     val maxAvailable = availableLevels.lastOrNull { it != ThinkingLevel.OFF }
     val isClamped = current.isEnabled && maxAvailable != null && current.rank > maxAvailable.rank
-    val clampOrange = Color(0xFFFF9500)
+    val clampOrange = UbColors.warning
     Row(
         modifier = Modifier
             .background(

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.clickable
@@ -100,7 +101,7 @@ fun KimiDeviceLoginDialog(
                             if (copied) Icons.Default.CheckCircle else Icons.Default.ContentCopy,
                             contentDescription = stringResource(R.string.kimi_login_copy_code),
                             tint = if (copied) {
-                                androidx.compose.ui.graphics.Color(0xFF34C759)
+                                UbColors.success
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },

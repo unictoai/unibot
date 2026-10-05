@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.clickable
@@ -157,9 +158,9 @@ private fun SharedFolderRow(
 @Composable
 private fun AccessBadge(writable: Boolean) {
     val (textRes, color) = if (writable) {
-        R.string.mount_badge_rw to Color(0xFF34C759)
+        R.string.mount_badge_rw to UbColors.success
     } else {
-        R.string.mount_badge_readonly to Color(0xFFFF9500)
+        R.string.mount_badge_readonly to UbColors.warning
     }
     Surface(
         shape = RoundedCornerShape(8.dp),

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.coding
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -329,7 +330,7 @@ private fun AgentChip(label: String, selected: Boolean, running: Int, installed:
             .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
         if (running > 0) {
-            Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF34C759)))
+            Box(Modifier.size(7.dp).clip(CircleShape).background(UbColors.success))
             Spacer(Modifier.width(6.dp))
         }
         Text(
@@ -368,7 +369,7 @@ private fun SessionRow(session: Session, agentName: String, onClick: () -> Unit)
                     if (session.status == "running") stringResource(R.string.ub_coding_running) else SystemFiles.relative(context, session.updatedAt * 1000),
                 ).filterNotNull().joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (session.status == "running") Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (session.status == "running") UbColors.success else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -385,7 +386,7 @@ private fun SessionRow(session: Session, agentName: String, onClick: () -> Unit)
         }
         if (session.status == "running") {
             Spacer(Modifier.width(10.dp))
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color(0xFF34C759))
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = UbColors.success)
         }
     }
 }

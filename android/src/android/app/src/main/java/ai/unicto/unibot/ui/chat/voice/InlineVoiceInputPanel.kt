@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat.voice
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -733,10 +734,10 @@ private fun ExpandedContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(Color(0xFFFF9500).copy(alpha = 0.12f))
+                    .background(UbColors.warning.copy(alpha = 0.12f))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
             ) {
-                Text("⚠︎", fontSize = 10.sp, color = Color(0xFFFF9500))
+                Text("⚠︎", fontSize = 10.sp, color = UbColors.warning)
                 Spacer(Modifier.width(5.dp))
                 Text(
                     transcribeError,

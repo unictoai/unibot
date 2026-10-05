@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings.backup
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -298,11 +298,11 @@ private fun StatusValue(status: BackupHistory.Status) {
         BackupHistory.Status.RUNNING ->
             Triple(null, MaterialTheme.colorScheme.onSurfaceVariant, R.string.backup_history_running)
         BackupHistory.Status.SUCCEEDED ->
-            Triple(Icons.Outlined.CheckCircle, Color(0xFF34C759), R.string.backup_status_succeeded)
+            Triple(Icons.Outlined.CheckCircle, UbColors.success, R.string.backup_status_succeeded)
         BackupHistory.Status.COMPLETED_WITH_ISSUES ->
-            Triple(Icons.Outlined.Warning, Color(0xFFFF9500), R.string.backup_status_issues)
+            Triple(Icons.Outlined.Warning, UbColors.warning, R.string.backup_status_issues)
         BackupHistory.Status.FAILED ->
-            Triple(Icons.Outlined.ErrorOutline, Color(0xFFFF3B30), R.string.backup_status_failed)
+            Triple(Icons.Outlined.ErrorOutline, UbColors.error, R.string.backup_status_failed)
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
@@ -334,7 +334,7 @@ private fun DestinationOutcomeRow(
             Icon(
                 if (outcome.succeeded) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
                 contentDescription = null,
-                tint = if (outcome.succeeded) Color(0xFF34C759) else Color(0xFFFF3B30),
+                tint = if (outcome.succeeded) UbColors.success else UbColors.error,
                 modifier = Modifier.size(22.dp),
             )
             Spacer(Modifier.width(12.dp))

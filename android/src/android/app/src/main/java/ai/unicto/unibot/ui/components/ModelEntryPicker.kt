@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.components
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.background
@@ -499,6 +500,6 @@ fun providerDotColor(providerType: ProviderType?): Color = when (providerType) {
     // the neutral gray used for "no provider".
     ProviderType.openAIResponses -> Color(0xFF4CAF50)
     ProviderType.antigravity,
-    ProviderType.unsupported -> Color(0xFF8E8E93)
-    null -> Color(0xFF8E8E93)
+    ProviderType.unsupported -> UbColors.systemGray
+    null -> UbColors.systemGray
 }

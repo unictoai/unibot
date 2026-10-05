@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.privacy
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.privacy.PrivacyNetworkGate
 import ai.unicto.unibot.ui.components.EmptyState
@@ -268,8 +269,8 @@ private fun CategoryChip(category: PrivacyNetworkGate.Category) {
 private fun categoryColor(category: PrivacyNetworkGate.Category) =
     when (category) {
         PrivacyNetworkGate.Category.LLM -> MaterialTheme.colorScheme.primary
-        PrivacyNetworkGate.Category.OAUTH -> androidx.compose.ui.graphics.Color(0xFF34C759)
-        PrivacyNetworkGate.Category.UPDATE -> androidx.compose.ui.graphics.Color(0xFFFF9F0A)
+        PrivacyNetworkGate.Category.OAUTH -> UbColors.success
+        PrivacyNetworkGate.Category.UPDATE -> UbColors.warningDark
         PrivacyNetworkGate.Category.WEB_SEARCH -> androidx.compose.ui.graphics.Color(0xFF0A84FF)
         PrivacyNetworkGate.Category.CONNECTOR -> androidx.compose.ui.graphics.Color(0xFFBF5AF2)
         PrivacyNetworkGate.Category.OTHER -> MaterialTheme.colorScheme.onSurfaceVariant

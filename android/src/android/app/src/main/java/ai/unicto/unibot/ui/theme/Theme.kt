@@ -59,7 +59,7 @@ private val VioletDarkSurface = Color(0xFF000000)
 private val VioletDarkOnSurface = Color(0xFFE5E5EA)
 private val VioletDarkSurfaceVariant = Color(0xFF3C3C43)
 private val VioletDarkOnSurfaceVariant = Color(0xFFC7C7CC)
-private val VioletDarkOutline = Color(0xFF8E8E93)
+private val VioletDarkOutline = UbColors.systemGray
 
 // -- Fluid Black (theme_mode = 3): unibot's signature look. Pure #000000
 // everywhere, lifted violet accents tuned to glow on true black, and the

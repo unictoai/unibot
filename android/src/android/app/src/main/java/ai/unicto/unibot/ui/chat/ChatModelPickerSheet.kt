@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 // [T-android-split-chat] ModelPickerSheet (+ its private helpers fuzzyMatch /
 // providerDotColor) extracted verbatim from ChatScreen.kt. Full import block
@@ -617,7 +618,7 @@ internal fun ModelPickerSheet(
                                     Icon(
                                         if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                                         contentDescription = null,
-                                        tint = if (isSelected) Color(0xFF34C759)
+                                        tint = if (isSelected) UbColors.success
                                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                                         modifier = Modifier.size(22.dp),
                                     )
@@ -864,10 +865,10 @@ internal fun ModelPickerSheet(
                                                         fontSize = 9.sp,
                                                         lineHeight = 11.sp,
                                                         fontWeight = FontWeight.Medium,
-                                                        color = Color(0xFF34C759),
+                                                        color = UbColors.success,
                                                         modifier = Modifier
                                                             .background(
-                                                                Color(0xFF34C759).copy(alpha = 0.1f),
+                                                                UbColors.success.copy(alpha = 0.1f),
                                                                 RoundedCornerShape(50),
                                                             )
                                                             .padding(horizontal = 5.dp, vertical = 1.dp),
@@ -1175,10 +1176,10 @@ internal fun ModelPickerSheet(
                                                     fontSize = 9.sp,
                                                     lineHeight = 11.sp,
                                                     fontWeight = FontWeight.Medium,
-                                                    color = Color(0xFF34C759),
+                                                    color = UbColors.success,
                                                     modifier = Modifier
                                                         .background(
-                                                            Color(0xFF34C759).copy(alpha = 0.1f),
+                                                            UbColors.success.copy(alpha = 0.1f),
                                                             RoundedCornerShape(50),
                                                         )
                                                         .padding(horizontal = 5.dp, vertical = 1.dp),
@@ -1310,6 +1311,6 @@ private fun providerDotColor(providerType: ProviderType?): Color = when (provide
     // the neutral gray used for "no provider".
     ProviderType.openAIResponses -> Color(0xFF4CAF50)
     ProviderType.antigravity,
-    ProviderType.unsupported -> Color(0xFF8E8E93)
-    null -> Color(0xFF8E8E93)                    // gray
+    ProviderType.unsupported -> UbColors.systemGray
+    null -> UbColors.systemGray                    // gray
 }

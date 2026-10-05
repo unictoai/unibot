@@ -1,4 +1,5 @@
 package ai.unicto.unibot.widget
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -103,7 +104,7 @@ class QuickAskActivity : ComponentActivity() {
                             placeholder = {
                                 Text(
                                     stringResource(R.string.ub_widget_quick_ask_hint),
-                                    color = Color(0xFF8E8E93),
+                                    color = UbColors.systemGray,
                                 )
                             },
                             modifier = Modifier
@@ -132,7 +133,7 @@ class QuickAskActivity : ComponentActivity() {
                             TextButton(onClick = { finish() }) {
                                 Text(
                                     stringResource(android.R.string.cancel),
-                                    color = Color(0xFF8E8E93),
+                                    color = UbColors.systemGray,
                                 )
                             }
                             Button(
@@ -142,7 +143,7 @@ class QuickAskActivity : ComponentActivity() {
                                     containerColor = Color(0xFF6D28D9),
                                     disabledContainerColor = Color(0xFF3A3A3C),
                                     contentColor = Color.White,
-                                    disabledContentColor = Color(0xFF8E8E93),
+                                    disabledContentColor = UbColors.systemGray,
                                 ),
                                 shape = RoundedCornerShape(16.dp),
                             ) {

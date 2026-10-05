@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.AppIconRepository
@@ -284,8 +285,8 @@ fun AppearanceScreen(
 
     val tilePurple = Color(0xFF5856D6)
     val tileBlue = ChatColors.thinking
-    val tileOrange = Color(0xFFFF9500)
-    val tileGreen = Color(0xFF34C759)
+    val tileOrange = UbColors.warning
+    val tileGreen = UbColors.success
     val tileTeal = Color(0xFF5AC8FA)
 
     SettingsScaffold(title = stringResource(R.string.appearance_title), onBack = onBack) {

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.background
@@ -129,11 +130,11 @@ fun SkillRowItem(
  * stay consistent between Settings and the in-chat sheet.
  */
 fun sourceIconAndColor(source: SkillRepository.ImportSource, isDark: Boolean): Pair<ImageVector, Color> {
-    val violet = if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
+    val violet = UbColors.brandViolet(isDark)
     return when (source) {
     SkillRepository.ImportSource.URL -> Icons.Default.Link to violet
-    SkillRepository.ImportSource.FILE -> Icons.Outlined.Description to Color(0xFFFF9500)
-    SkillRepository.ImportSource.BUNDLED -> Icons.Default.Inventory2 to Color(0xFF34C759)
+    SkillRepository.ImportSource.FILE -> Icons.Outlined.Description to UbColors.warning
+    SkillRepository.ImportSource.BUNDLED -> Icons.Default.Inventory2 to UbColors.success
     SkillRepository.ImportSource.SESSION -> Icons.Outlined.ChatBubble to Color(0xFFAF52DE)
     }
 }

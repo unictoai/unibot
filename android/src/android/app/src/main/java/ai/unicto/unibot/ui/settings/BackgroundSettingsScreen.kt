@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import android.app.Activity
@@ -247,7 +248,7 @@ fun BackgroundSettingsScreen(
             Spacer(Modifier.size(8.dp))
             BgToggleRow(
                 icon = Icons.Outlined.Bolt,
-                iconColor = Color(0xFF34C759),
+                iconColor = UbColors.success,
                 title = stringResource(R.string.settings_dynamic_island),
                 checked = dynamicIslandEnabled && dynamicIslandCapable,
                 enabled = dynamicIslandCapable,
@@ -265,7 +266,7 @@ fun BackgroundSettingsScreen(
             BgSectionTitle(stringResource(R.string.battery_opt_section_title))
             BgRow(
                 icon = Icons.Outlined.BatteryFull,
-                iconColor = if (ignoringOptimizations) Color(0xFF34C759) else Color(0xFFFF9500),
+                iconColor = if (ignoringOptimizations) UbColors.success else UbColors.warning,
                 title = stringResource(R.string.battery_opt_row_title),
                 subtitle = if (ignoringOptimizations) {
                     stringResource(R.string.battery_opt_already_exempt)
@@ -285,7 +286,7 @@ fun BackgroundSettingsScreen(
                 BgSectionTitle(stringResource(R.string.rom_autostart_section_title))
                 BgRow(
                     icon = Icons.Outlined.PhoneAndroid,
-                    iconColor = Color(0xFFFF9500),
+                    iconColor = UbColors.warning,
                     title = stringResource(R.string.rom_autostart_row_title),
                     subtitle = stringResource(
                         R.string.rom_autostart_row_subtitle,

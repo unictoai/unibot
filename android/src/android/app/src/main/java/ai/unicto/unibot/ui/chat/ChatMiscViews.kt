@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 // [T-android-split-chat] Tail composables extracted verbatim from ChatScreen.kt:
 // BorderedMarkdownTable, FallbackInfoBlock, CompactSummarySheet,
@@ -671,7 +672,7 @@ private fun CompactSummarySheet(
                 Icon(
                     imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
                     contentDescription = "Copy",
-                    tint = if (copied) Color(0xFF34C759) else ChatColors.secondaryText,
+                    tint = if (copied) UbColors.success else ChatColors.secondaryText,
                 )
             }
         },
@@ -903,7 +904,7 @@ internal fun rememberBrowserLiveSnapshot(
  */
 @Composable
 internal fun ResumeBanner(onResume: () -> Unit) {
-    val orange = Color(0xFFFF9500)
+    val orange = UbColors.warning
     // [T-android-c3a-resume-one-tap] Crash-aware resume. When the previous app
     // cycle ended in crash_or_stall we surface a one-line warning as CONTEXT
     // (the user is about to re-enter the load that killed the last cycle), but

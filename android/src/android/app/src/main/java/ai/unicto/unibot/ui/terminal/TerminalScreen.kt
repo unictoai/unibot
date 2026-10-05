@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.terminal
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.theme.ChatColors
@@ -72,7 +73,7 @@ import kotlinx.coroutines.launch
 // iOS-matched palette
 private val TerminalBg = Color(0xFF000000)
 private val TerminalFg = Color(0xFFD4D4D4)
-private val TerminalGreen = Color(0xFF34C759)
+private val TerminalGreen = UbColors.success
 private val AccessoryBg = Color(0xFF1F1F1F)
 private val AccButtonBg = Color(0xFF404040)
 private val TopButtonBg = Color(0xFF2C2C2E)

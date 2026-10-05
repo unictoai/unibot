@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.UnibotButton
@@ -807,9 +808,9 @@ fun SkillDetailScreen(
                     is UpdateStatus.Done -> {
                         DetailDivider()
                         DetailRow {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF34C759), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = UbColors.success, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(10.dp))
-                            Text(stringResource(R.string.skill_detail_updated), style = MaterialTheme.typography.bodySmall, color = Color(0xFF34C759))
+                            Text(stringResource(R.string.skill_detail_updated), style = MaterialTheme.typography.bodySmall, color = UbColors.success)
                         }
                     }
                     is UpdateStatus.Failed -> {
@@ -1037,7 +1038,7 @@ private fun shareSkillZip(context: android.content.Context, zip: java.io.File) {
 /** [T-android-skill-icon-circular] The same iOS-system-palette values the main
  *  Settings rows use (SettingsScreen): blue for navigational/remote actions,
  *  green for local filesystem operations. */
-private val SettingsIconGreen = Color(0xFF34C759)
+private val SettingsIconGreen = UbColors.success
 
 /**
  * [T-android-skill-icon-circular] A colored circular badge with a white glyph

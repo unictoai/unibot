@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 // [T-android-split-chat] User-message rendering extracted verbatim from
 // ChatScreen.kt: UserMessageBubble, UserAttachmentList, FileAttachmentTile,
@@ -459,7 +460,7 @@ internal fun UserMessageBubble(
                                 Icon(
                                     imageVector = Icons.Filled.Cancel,
                                     contentDescription = "Withdraw queued message",
-                                    tint = Color(0xFFFF3B30),
+                                    tint = UbColors.error,
                                     modifier = Modifier.size(24.dp),
                                 )
                             }

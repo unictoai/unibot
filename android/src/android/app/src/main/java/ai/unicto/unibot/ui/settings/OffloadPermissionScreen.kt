@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Context
 import android.content.Intent
@@ -128,7 +129,7 @@ fun OffloadPermissionScreen(
         // deeplink back to the OS settings page that fixes it.
         IntegrationSection(
             iconVector = Icons.Outlined.Accessibility,
-            iconTint = Color(0xFF34C759),
+            iconTint = UbColors.success,
             sectionHeaderRes = R.string.perm_section_a11y,
             sectionFooterRes = R.string.perm_a11y_section_footer,
             toolName = "a11y_cli",

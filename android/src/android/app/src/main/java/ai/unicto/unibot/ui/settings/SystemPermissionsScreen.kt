@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.widget.Toast
 import android.app.Activity
@@ -36,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import ai.unicto.unibot.R
@@ -131,7 +131,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
             ) {
                 SettingsRow(
                     icon = Icons.Outlined.Accessibility,
-                    iconColor = Color(0xFF34C759),
+                    iconColor = UbColors.success,
                     title = stringResource(R.string.system_permissions_a11y_row),
                     subtitle = if (a11yEnabled)
                         stringResource(R.string.system_permissions_a11y_enabled)
@@ -163,7 +163,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                     if (shizukuReady) {
                         SettingsRow(
                             icon = Icons.Outlined.LockOpen,
-                            iconColor = Color(0xFF34C759),
+                            iconColor = UbColors.success,
                             title = stringResource(R.string.system_permissions_a11y_restricted_shizuku),
                             subtitle = when {
                                 unrestricting ->
@@ -189,7 +189,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                     }
                     SettingsRow(
                         icon = Icons.Outlined.Info,
-                        iconColor = Color(0xFFFF9500),
+                        iconColor = UbColors.warning,
                         title = stringResource(R.string.system_permissions_a11y_restricted_manual),
                         subtitle = stringResource(R.string.system_permissions_a11y_restricted_manual_sub),
                         // Lands on Unibot' own App info page, where the
@@ -221,7 +221,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                 ) {
                     SettingsRow(
                         icon = Icons.Outlined.Build,
-                        iconColor = Color(0xFFFF3B30),
+                        iconColor = UbColors.error,
                         title = stringResource(
                             if (shizukuReady) R.string.a11y_repair_row_shizuku
                             else R.string.a11y_repair_row_manual
@@ -270,7 +270,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                 ) {
                     SettingsRow(
                         icon = Icons.Outlined.RestartAlt,
-                        iconColor = Color(0xFFFF9500),
+                        iconColor = UbColors.warning,
                         title = stringResource(R.string.system_permissions_a11y_oem_autostart),
                         subtitle = stringResource(R.string.system_permissions_a11y_oem_autostart_sub),
                         onClick = {
@@ -281,7 +281,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                     )
                     SettingsRow(
                         icon = Icons.Outlined.BatteryAlert,
-                        iconColor = Color(0xFFFF9500),
+                        iconColor = UbColors.warning,
                         title = stringResource(R.string.system_permissions_a11y_oem_battery),
                         subtitle = stringResource(R.string.system_permissions_a11y_oem_battery_sub),
                         onClick = {

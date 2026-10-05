@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -252,9 +253,9 @@ private fun ScoreRing(score: Int) {
         label = "score_ring",
     )
     val ringColor = when {
-        score >= 75 -> androidx.compose.ui.graphics.Color(0xFF34C759)
-        score >= 50 -> androidx.compose.ui.graphics.Color(0xFFFF9F0A)
-        else -> androidx.compose.ui.graphics.Color(0xFFFF453A)
+        score >= 75 -> UbColors.success
+        score >= 50 -> UbColors.warningDark
+        else -> UbColors.errorDark
     }
     val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
     Row(

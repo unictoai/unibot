@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -309,8 +310,8 @@ import ai.unicto.unibot.ui.theme.LocalFluidBlack
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
 // iOS ChatColors equivalent
-internal val ToolCheckColor = Color(0xFF34C759) // iOS .green
-internal val ToolErrorColor = Color(0xFFFF3B30) // iOS .red
+internal val ToolCheckColor = UbColors.success // iOS .green
+internal val ToolErrorColor = UbColors.error // iOS .red
 internal val ToolCancelColor = Color(0xFFFFCC00) // iOS .yellow
 // Memory tool accent — matches iOS `.pink` on SF Symbols.
 internal val ToolMemoryAccent = Color(0xFFFF2D55)
@@ -2870,7 +2871,7 @@ fun ChatScreen(
                                                         modifier = Modifier
                                                             .size(6.dp)
                                                             .background(
-                                                                if (modelName.isNotEmpty()) Color(0xFF34C759) else Color(0xFFFF9500),
+                                                                if (modelName.isNotEmpty()) UbColors.success else UbColors.warning,
                                                                 CircleShape,
                                                             ),
                                                     )
@@ -2975,7 +2976,7 @@ fun ChatScreen(
                                                                 contentAlignment = Alignment.Center,
                                                                 modifier = Modifier
                                                                     .size(11.dp)
-                                                                    .background(Color(0xFFFF9500), CircleShape),
+                                                                    .background(UbColors.warning, CircleShape),
                                                             ) {
                                                                 Icon(
                                                                     Icons.Default.Bolt,
@@ -7409,7 +7410,7 @@ fun ChatScreen(
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
-                                    .background(Color(0xFFFF3B30), CircleShape)
+                                    .background(UbColors.error, CircleShape)
                                     .clip(CircleShape)
                                     .clickable { viewModel.cancelStream() },
                                 contentAlignment = Alignment.Center,

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.privacy
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.local.FactMemoryStore
@@ -261,7 +262,7 @@ private fun PrivacyHero() {
                 modifier = Modifier.size(72.dp),
             )
             DrawnCheckmark(
-                color = Color(0xFF34C759),
+                color = UbColors.success,
                 progress = checkProgress,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

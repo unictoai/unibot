@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
@@ -365,7 +366,7 @@ fun SoulSettingsScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 val isOverLimit = bodyLimitCheck.isOverLimit
                 val warnColor: Color =
-                    if (isOverLimit) Color(0xFFFF3B30)
+                    if (isOverLimit) UbColors.error
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 val indicatorText: String = when (val c = bodyLimitCheck) {
                     is SoulBodyLimitCheck.Ok -> {

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.sandbox
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.settings.SettingsSwitch
 import ai.unicto.unibot.R
@@ -97,9 +98,9 @@ enum class MirrorCategory(
         }
 
     fun iconColor(isDark: Boolean): Color = when (this) {
-        ALPINE -> if (isDark) Color(0xFFA78BFA) else Color(0xFF6D28D9)
-        PIP -> Color(0xFF34C759)
-        NPM -> Color(0xFFFF3B30)
+        ALPINE -> UbColors.brandViolet(isDark)
+        PIP -> UbColors.success
+        NPM -> UbColors.error
     }
 }
 
@@ -504,7 +505,7 @@ fun MirrorsSectionView(onNavigate: (MirrorCategory) -> Unit) {
     ListItem(
         headlineContent = { Text(if (vm.isTesting) stringResource(R.string.mirror_test_speed_testing) else stringResource(R.string.mirror_detect_fast_label)) },
         leadingContent = {
-            CircleIconBadge(icon = Icons.Filled.Bolt, tint = Color(0xFFFF9500))
+            CircleIconBadge(icon = Icons.Filled.Bolt, tint = UbColors.warning)
         },
         modifier = Modifier
             .fillMaxWidth()
@@ -589,9 +590,9 @@ private fun CircleIconBadge(icon: ImageVector, tint: Color) {
 @Composable
 private fun LatencyBadge(ms: Int) {
     val color = when {
-        ms < 200 -> Color(0xFF34C759)
-        ms < 500 -> Color(0xFFFF9500)
-        else -> Color(0xFFFF3B30)
+        ms < 200 -> UbColors.success
+        ms < 500 -> UbColors.warning
+        else -> UbColors.error
     }
     Box(
         modifier = Modifier
@@ -732,7 +733,7 @@ fun MirrorCategoryDetailScreen(
             ListItem(
                 headlineContent = { Text(if (vm.isTesting) stringResource(R.string.mirror_test_speed_testing) else stringResource(R.string.mirror_test_speed_label)) },
                 leadingContent = {
-                    CircleIconBadge(icon = Icons.Filled.Bolt, tint = Color(0xFFFF9500))
+                    CircleIconBadge(icon = Icons.Filled.Bolt, tint = UbColors.warning)
                 },
                 modifier = Modifier
                     .fillMaxWidth()

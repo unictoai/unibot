@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -56,7 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -862,7 +862,7 @@ private fun OAuthCredentialBlock(
                 modifier = Modifier
                     .padding(horizontal = 8.dp)
                     .size(8.dp)
-                    .background(Color(0xFF34C759), CircleShape),
+                    .background(UbColors.success, CircleShape),
             )
         } else {
             Spacer(modifier = Modifier.weight(1f))
@@ -1141,7 +1141,7 @@ private fun ManualBearerTokenSection(
                 modifier = Modifier
                     .padding(horizontal = 8.dp)
                     .size(8.dp)
-                    .background(Color(0xFF34C759), CircleShape),
+                    .background(UbColors.success, CircleShape),
             )
         }
         Row(modifier = Modifier.padding(top = 8.dp)) {

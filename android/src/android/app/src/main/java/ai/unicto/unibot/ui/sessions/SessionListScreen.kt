@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.sessions
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
@@ -212,18 +213,18 @@ private fun categoryStyle(category: String?): CategoryStyle {
         "research"     -> CategoryStyle(Icons.Outlined.Language, Color(0xFF30B0C7))
         "analysis"     -> CategoryStyle(Icons.Outlined.BarChart, Color(0xFF5856D6))
         "creative"     -> CategoryStyle(Icons.Outlined.Brush, Color(0xFFFF2D55))
-        "chat"         -> CategoryStyle(Icons.Outlined.Forum, Color(0xFF34C759))
+        "chat"         -> CategoryStyle(Icons.Outlined.Forum, UbColors.success)
         "math"         -> CategoryStyle(Icons.Outlined.Calculate, Color(0xFF9B59B6))
         "translation"  -> CategoryStyle(Icons.Outlined.Translate, Color(0xFF00BCD4))
-        "health"       -> CategoryStyle(Icons.Outlined.Favorite, Color(0xFFFF3B30))
+        "health"       -> CategoryStyle(Icons.Outlined.Favorite, UbColors.error)
         "finance"      -> CategoryStyle(Icons.Outlined.Payments, Color(0xFF00C7BE))
         "travel"       -> CategoryStyle(Icons.Outlined.Map, Color(0xFFF09A37))
         "education"    -> CategoryStyle(Icons.Outlined.Book, Color(0xFF3478F6))
         "design"       -> CategoryStyle(Icons.Outlined.Palette, Color(0xFFFF2D55))
         "productivity" -> CategoryStyle(Icons.Outlined.CalendarMonth, Color(0xFFFFCC00))
         "support"      -> CategoryStyle(Icons.Outlined.Settings, Color(0xFF8B6914))
-        "other"        -> CategoryStyle(Icons.Outlined.GridView, Color(0xFF8E8E93))
-        else           -> CategoryStyle(Icons.Outlined.Forum, Color(0xFF8E8E93))
+        "other"        -> CategoryStyle(Icons.Outlined.GridView, UbColors.systemGray)
+        else           -> CategoryStyle(Icons.Outlined.Forum, UbColors.systemGray)
     }
 }
 
@@ -3267,7 +3268,7 @@ private fun SessionBadgeOverlay(
                     .background(
                         // Solid system-orange. Picked over yellow so the
                         // alert reads as "attention" rather than "info".
-                        color = Color(0xFFFF9500),
+                        color = UbColors.warning,
                         shape = CircleShape,
                     )
                     .border(
@@ -3412,7 +3413,7 @@ private fun SetupStepCard(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    color = if (isDone) Color(0xFF34C759) else MaterialTheme.colorScheme.primary,
+                    color = if (isDone) UbColors.success else MaterialTheme.colorScheme.primary,
                     shape = CircleShape,
                 ),
             contentAlignment = Alignment.Center,

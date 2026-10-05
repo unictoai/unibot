@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.net.Uri
 import android.widget.Toast
@@ -406,7 +407,7 @@ private fun ProviderInstanceRow(
             modifier = Modifier
                 .size(8.dp)
                 .background(
-                    color = if (isActive) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+                    color = if (isActive) UbColors.success else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
                     shape = CircleShape,
                 ),
         )

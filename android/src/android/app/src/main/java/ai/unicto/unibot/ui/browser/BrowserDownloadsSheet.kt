@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.browser
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Context
 import android.content.Intent
@@ -133,7 +134,7 @@ private fun DownloadRow(
             BrowserTabPool.DownloadState.DOWNLOADING ->
                 Icons.Default.Download to MaterialTheme.colorScheme.primary
             BrowserTabPool.DownloadState.COMPLETED ->
-                Icons.Default.CheckCircle to androidx.compose.ui.graphics.Color(0xFF34C759)
+                Icons.Default.CheckCircle to UbColors.success
             BrowserTabPool.DownloadState.FAILED ->
                 Icons.Default.ErrorOutline to MaterialTheme.colorScheme.error
         }

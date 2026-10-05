@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.privacy
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -42,7 +43,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,7 +122,7 @@ fun PermissionAuditScreen(onBack: () -> Unit) {
 
 @Composable
 private fun PermissionRow(name: String, granted: Boolean, index: Int) {
-    val dot = if (granted) Color(0xFF34C759) else Color(0xFF8E8E93)
+    val dot = if (granted) UbColors.success else UbColors.systemGray
     Surface(
         color = MuseTones.surface,
         shape = RoundedCornerShape(16.dp),
@@ -160,7 +160,7 @@ private fun PermissionRow(name: String, granted: Boolean, index: Int) {
             Text(
                 text = if (granted) "Granted" else "Not granted",
                 fontSize = 12.sp,
-                color = if (granted) Color(0xFF34C759)
+                color = if (granted) UbColors.success
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

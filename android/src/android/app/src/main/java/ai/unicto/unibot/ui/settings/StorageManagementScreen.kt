@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.UnibotTextButton
@@ -110,7 +111,7 @@ fun StorageManagementScreen(
     SettingsScaffold(title = stringResource(R.string.storage_title), onBack = onBack) {
         SettingsSection(header = stringResource(R.string.storage_section_overview)) {
             StorageOverviewRow(
-                color = Color(0xFF8E8E93),
+                color = UbColors.systemGray,
                 label = stringResource(R.string.storage_overview_shell),
                 value = Formatter.formatFileSize(context, shellSize),
                 onClick = onRootfsClick,

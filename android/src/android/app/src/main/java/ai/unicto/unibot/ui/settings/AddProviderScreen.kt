@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -873,7 +874,7 @@ private fun ColumnScope.OAuthConfigSection(
                     Icon(
                         Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF34C759),
+                        tint = UbColors.success,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(Modifier.width(8.dp))

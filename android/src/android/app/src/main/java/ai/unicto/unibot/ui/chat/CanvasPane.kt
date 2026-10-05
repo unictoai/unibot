@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -40,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -420,11 +420,11 @@ private fun SuggestionDiff(suggestion: CanvasSuggestion) {
     ) {
         suggestion.find.lines().forEach { line ->
             Text("- $line", fontSize = 12.sp, fontFamily = FontFamily.Monospace,
-                color = Color(0xFFFF453A))
+                color = UbColors.errorDark)
         }
         suggestion.replace.lines().forEach { line ->
             Text("+ $line", fontSize = 12.sp, fontFamily = FontFamily.Monospace,
-                color = Color(0xFF30D158))
+                color = UbColors.successDark)
         }
     }
 }

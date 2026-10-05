@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import android.content.Intent
@@ -290,7 +291,7 @@ fun MountedFoldersScreen(
                         item {
                             Text(
                                 text = stringResource(R.string.mount_folders_limit_reached),
-                                color = Color(0xFFFF9500),
+                                color = UbColors.warning,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                             )
@@ -508,7 +509,7 @@ private fun ListHeader(count: Int, atCapacity: Boolean) {
         Text(
             text = "$count / ${MountedFoldersStore.MAX_MOUNTS}",
             style = MaterialTheme.typography.labelSmall,
-            color = if (atCapacity) Color(0xFFFF9500) else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (atCapacity) UbColors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = FontFamily.Monospace,
         )
     }
@@ -577,9 +578,9 @@ private fun MountRow(
 @Composable
 private fun AccessBadge(entry: MountedFoldersStore.Entry) {
     val (text, color) = when {
-        !entry.isWritable -> stringResource(R.string.mount_badge_readonly) to Color(0xFFFF9500)
+        !entry.isWritable -> stringResource(R.string.mount_badge_readonly) to UbColors.warning
         !entry.userAllowWrite -> stringResource(R.string.mount_badge_locked) to Color(0xFFAF52DE)
-        else -> stringResource(R.string.mount_badge_rw) to Color(0xFF34C759)
+        else -> stringResource(R.string.mount_badge_rw) to UbColors.success
     }
     Surface(
         shape = RoundedCornerShape(8.dp),

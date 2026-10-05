@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Context
 import android.content.Intent
@@ -1804,7 +1805,7 @@ private fun RenderBlock(block: MdBlock) {
                     Icon(
                         imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
                         contentDescription = if (copied) "Copied" else "Copy code",
-                        tint = if (copied) Color(0xFF34C759) else Color.White.copy(alpha = 0.4f),
+                        tint = if (copied) UbColors.success else Color.White.copy(alpha = 0.4f),
                         modifier = Modifier
                             .size(16.dp)
                             .clickable {
@@ -1854,7 +1855,7 @@ private fun RenderBlock(block: MdBlock) {
             // refuses intrinsic measurement on those. Draw the orange rule
             // directly behind a single Column so layout never queries
             // intrinsics.
-            val barColor = Color(0xFFFF9500)
+            val barColor = UbColors.warning
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.chat
+import ai.unicto.unibot.ui.theme.UbColors
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -184,8 +185,8 @@ private fun ChartCanvas(spec: ChartSpec) {
 }
 
 private val piePalette = listOf(
-    Color(0xFF6D28D9), Color(0xFF0A84FF), Color(0xFF30D158), Color(0xFFFF9F0A),
-    Color(0xFFFF453A), Color(0xFF64D2FF), Color(0xFFBF5AF2), Color(0xFFFFD60A),
+    Color(0xFF6D28D9), Color(0xFF0A84FF), UbColors.successDark, UbColors.warningDark,
+    UbColors.errorDark, Color(0xFF64D2FF), Color(0xFFBF5AF2), Color(0xFFFFD60A),
 )
 
 private fun DrawScope.drawBarChart(

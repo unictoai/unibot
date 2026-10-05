@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import ai.unicto.unibot.ui.theme.ChatColors
 import androidx.compose.foundation.background
@@ -252,7 +253,7 @@ private fun HeaderCard(entry: MountedFoldersStore.Entry) {
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFFF9500)),
+                    .background(UbColors.warning),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

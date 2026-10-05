@@ -1,4 +1,5 @@
 package ai.unicto.unibot.ui.settings
+import ai.unicto.unibot.ui.theme.UbColors
 
 import android.content.Context
 import android.text.format.Formatter
@@ -343,7 +344,7 @@ private fun measureCategories(context: Context): List<BreakdownCategory> {
             titleRes = R.string.v12g_storage_cat_db,
             subtitleRes = R.string.v12g_storage_cat_db_sub,
             icon = Icons.Outlined.Forum,
-            color = Color(0xFFFF9F0A),
+            color = UbColors.warningDark,
             bytes = dbFiles.filter { it.exists() }.sumOf { it.length() },
             hasDetails = true,
         ),
@@ -352,7 +353,7 @@ private fun measureCategories(context: Context): List<BreakdownCategory> {
             titleRes = R.string.v12g_storage_cat_media,
             subtitleRes = R.string.v12g_storage_cat_media_sub,
             icon = Icons.Outlined.PermMedia,
-            color = Color(0xFF30D158),
+            color = UbColors.successDark,
             bytes = media.sumOf { directorySize(it) },
             hasDetails = true,
         ),
@@ -361,7 +362,7 @@ private fun measureCategories(context: Context): List<BreakdownCategory> {
             titleRes = R.string.v12g_storage_cat_cache,
             subtitleRes = R.string.v12g_storage_cat_cache_sub,
             icon = Icons.Outlined.Cached,
-            color = Color(0xFF8E8E93),
+            color = UbColors.systemGray,
             bytes = directorySize(context.cacheDir),
             dirs = listOf(context.cacheDir),
             clearable = true,
@@ -371,7 +372,7 @@ private fun measureCategories(context: Context): List<BreakdownCategory> {
             titleRes = R.string.v12g_storage_cat_app,
             subtitleRes = R.string.v12g_storage_cat_app_sub,
             icon = Icons.Outlined.Apps,
-            color = Color(0xFFFF453A),
+            color = UbColors.errorDark,
             bytes = appFile?.takeIf { it.exists() }?.length() ?: 0L,
         ),
     )
