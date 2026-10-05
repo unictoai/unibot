@@ -32,7 +32,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -4520,20 +4519,28 @@ fun ChatScreen(
                                 // messageId so scroll-back never replays it.
                                 var userEntered by remember(item.message.id) { mutableStateOf(false) }
                                 LaunchedEffect(item.message.id) { userEntered = true }
+                                // [v1.3.5-ui] Entrance is transform-only: alpha +
+                                // translationY in ONE graphicsLayer. The old
+                                // animateDpAsState + Modifier.offset re-ran the
+                                // layout phase every frame for every entering
+                                // message; this stays on the render thread.
+                                val density = LocalDensity.current
+                                val risePx = remember(density) { with(density) { 12.dp.toPx() } }
                                 val userEnterAlpha by animateFloatAsState(
                                     targetValue = if (userEntered) 1f else 0f,
                                     animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
                                     label = "user_enter_alpha",
                                 )
-                                val userEnterRise by animateDpAsState(
-                                    targetValue = if (userEntered) 0.dp else 12.dp,
+                                val userEnterRisePx by animateFloatAsState(
+                                    targetValue = if (userEntered) 0f else risePx,
                                     animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
                                     label = "user_enter_rise",
                                 )
                                 Box(
-                                    modifier = Modifier
-                                        .graphicsLayer { alpha = userEnterAlpha }
-                                        .offset(y = userEnterRise),
+                                    modifier = Modifier.graphicsLayer {
+                                        alpha = userEnterAlpha
+                                        translationY = userEnterRisePx
+                                    },
                                 ) {
                                 // User bubbles intentionally don't register
                                 // UnibotTextKit shards — long-press on a user
@@ -4649,20 +4656,26 @@ fun ChatScreen(
                                 // history items simply settle once on open.
                                 var entered by remember(item.messageId) { mutableStateOf(false) }
                                 LaunchedEffect(item.messageId) { entered = true }
+                                // [v1.3.5-ui] Transform-only entrance (see the
+                                // user-bubble site above): one graphicsLayer,
+                                // no layout pass per frame.
+                                val density = LocalDensity.current
+                                val risePx = remember(density) { with(density) { 12.dp.toPx() } }
                                 val enterAlpha by animateFloatAsState(
                                     targetValue = if (entered) 1f else 0f,
                                     animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
                                     label = "asst_enter_alpha",
                                 )
-                                val enterRise by animateDpAsState(
-                                    targetValue = if (entered) 0.dp else 12.dp,
+                                val enterRisePx by animateFloatAsState(
+                                    targetValue = if (entered) 0f else risePx,
                                     animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
                                     label = "asst_enter_rise",
                                 )
                                 Box(
-                                    modifier = Modifier
-                                        .graphicsLayer { alpha = enterAlpha }
-                                        .offset(y = enterRise),
+                                    modifier = Modifier.graphicsLayer {
+                                        alpha = enterAlpha
+                                        translationY = enterRisePx
+                                    },
                                 ) {
                                     if (ubHome != null) Spacer(Modifier.height(6.dp)) else AssistantHeader()
                                 }
