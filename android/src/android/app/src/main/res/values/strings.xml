@@ -1982,5 +1982,9 @@
     <!-- [T-android-compact-progress] Live status while a compaction runs. -->
     <string name="compact_progress">Compacting… %1$d s elapsed</string>
     <string name="compact_progress_split">Compacting… %1$d s · summarizing in segments (%2$d/%3$d)</string>
+    <!-- v1.4.0-onboarding Onboarding & help theme: help center, BYOK wizard, retired-model check. -->
+    <string name="settings_help_center">Help center</string>
+    <string name="settings_guided_key_setup">Guided key setup</string>
+    <string name="settings_model_check">Check for retired models</string>
 
 </resources>

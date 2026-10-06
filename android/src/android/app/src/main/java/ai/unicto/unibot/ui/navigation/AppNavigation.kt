@@ -36,6 +36,9 @@ import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.ui.chat.ChatScreen
 import ai.unicto.unibot.ui.sessions.SessionListScreen
 import ai.unicto.unibot.ui.settings.AboutScreen
+import ai.unicto.unibot.ui.settings.ByokWizardScreen
+import ai.unicto.unibot.ui.settings.HelpCenterScreen
+import ai.unicto.unibot.ui.settings.ModelCheckScreen
 import ai.unicto.unibot.ui.settings.AddAgentLoopGroupsScreen
 import ai.unicto.unibot.ui.settings.AddAgentLoopModelsScreen
 import ai.unicto.unibot.ui.settings.AddCustomModelScreen
@@ -183,6 +186,11 @@ object Routes {
     /** v0.2.0 P3: Automation help — Tasker intents, widgets, background approvals. */
     const val AUTOMATION = "automation"
     const val ABOUT = "about"
+    // v1.4.0-onboarding Onboarding & help theme screens.
+    const val HELP_CENTER = "help_center"
+    const val BYOK_WIZARD = "byok_wizard"
+    const val GUIDED_TOUR = "guided_tour"
+    const val MODEL_CHECK = "model_check"
     const val ONBOARDING_MODELS = "onboarding_models"
     /** T219-2: Mount external folders settings + detail. */
     const val MOUNTED_FOLDERS = "mounted_folders"
@@ -934,6 +942,10 @@ fun AppNavigation(
                 onLogsClick = { navController.safeNavigate(Routes.LOGS) },
                 onAppLockClick = { navController.safeNavigate(Routes.APP_LOCK) }, // [P1-app-lock]
                 onAboutClick = { navController.safeNavigate(Routes.ABOUT) },
+                // v1.4.0-onboarding Help center, BYOK wizard, retired-model check.
+                onHelpClick = { navController.safeNavigate(Routes.HELP_CENTER) },
+                onByokWizardClick = { navController.safeNavigate(Routes.BYOK_WIZARD) },
+                onModelCheckClick = { navController.safeNavigate(Routes.MODEL_CHECK) },
                 onMountedFoldersClick = { navController.safeNavigate(Routes.MOUNTED_FOLDERS) },
                 onSharedFoldersClick = { navController.safeNavigate(Routes.SHARED_FOLDERS) },
                 // [P2] Prompt Library + Compare Models entries.
@@ -1898,6 +1910,44 @@ fun AppNavigation(
 
         composable(Routes.ABOUT) {
             AboutScreen(onBack = { navController.safePopBackStack() })
+        }
+
+        // v1.4.0-onboarding In-app help center: searchable offline FAQ, tour replay, model check.
+        composable(Routes.HELP_CENTER) {
+            HelpCenterScreen(
+                onBack = { navController.safePopBackStack() },
+                onReplayTour = {
+                    ai.unicto.unibot.ui.onboarding.GuidedTour.reset(context)
+                    navController.safeNavigate(Routes.GUIDED_TOUR)
+                },
+                onModelCheck = { navController.safeNavigate(Routes.MODEL_CHECK) },
+            )
+        }
+
+        // v1.4.0-onboarding BYOK setup wizard: free-tier suggestions + live key validation.
+        composable(Routes.BYOK_WIZARD) {
+            ByokWizardScreen(
+                providerRepository = providerRepository,
+                onBack = { navController.safePopBackStack() },
+                onSaved = { navController.safePopBackStack() },
+            )
+        }
+
+        // v1.4.0-onboarding Guided first-run tour: chat, providers, swarm, privacy.
+        composable(Routes.GUIDED_TOUR) {
+            ai.unicto.unibot.ui.onboarding.GuidedTourScreen(
+                onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+                onOpenSwarm = { navController.safeNavigate(Routes.SWARM) },
+                onOpenPrivacy = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_PRIVACY_DASHBOARD)
+                },
+                onDone = { navController.safePopBackStack() },
+            )
+        }
+
+        // v1.4.0-onboarding Retired-model live check against provider catalogs.
+        composable(Routes.MODEL_CHECK) {
+            ModelCheckScreen(onBack = { navController.safePopBackStack() })
         }
 
         composable(Routes.LOGS) {

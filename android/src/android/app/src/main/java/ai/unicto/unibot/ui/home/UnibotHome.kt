@@ -482,9 +482,17 @@ fun UnibotHome(
                 // reached by navigation; when the tour ends the old flow resumes past its own
                 // welcome page (source marked chosen) at models/hands/meet.
                 var tourDismissed by remember { mutableStateOf(false) }
+                var guidedDismissed by remember { mutableStateOf(false) }
                 val tourShow = remember(tourDismissed, hasProviders, sessions, setupDone) {
                     !tourDismissed && sessions != null &&
                         OnboardingTour.shouldShow(context, hasProviders, sessions!!.isNotEmpty(), setupDone)
+                }
+                // v1.4.0-onboarding The guided product tour (chat, providers,
+                // swarm, privacy) follows the setup tour on fresh installs,
+                // before first-run setup resumes. Skippable, resumable, once.
+                val guidedShow = remember(tourDismissed, guidedDismissed, tourShow) {
+                    !tourDismissed && !guidedDismissed && !tourShow &&
+                        ai.unicto.unibot.ui.onboarding.GuidedTour.shouldShow(context)
                 }
                 if (tourShow) {
                     OnboardingTourScreen(
@@ -501,6 +509,18 @@ fun UnibotHome(
                             FirstRunSetup.markSourceChosen(context)
                             OnboardingTour.markSeen(context)
                             tourDismissed = true
+                        },
+                    )
+                } else if (guidedShow) {
+                    ai.unicto.unibot.ui.onboarding.GuidedTourScreen(
+                        onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+                        onOpenSwarm = { navController.safeNavigate(Routes.SWARM) },
+                        onOpenPrivacy = {
+                            navController.safeNavigate(ai.unicto.unibot.ui.privacy.ROUTE_PRIVACY_DASHBOARD)
+                        },
+                        onDone = {
+                            ai.unicto.unibot.ui.onboarding.GuidedTour.markSeen(context)
+                            guidedDismissed = true
                         },
                     )
                 } else FirstRunSetupScreen(

@@ -42,14 +42,17 @@ import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderShared
 import androidx.compose.material.icons.outlined.FrontHand
+import androidx.compose.material.icons.outlined.HelpOutline // v1.4.0-onboarding help center row
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Key // v1.4.0-onboarding guided key setup row
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mic // [unibot-voice-conversation]
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Route // P4: smart routing row (v0.2.0)
+import androidx.compose.material.icons.outlined.Refresh // v1.4.0-onboarding retired-model check row
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -160,6 +163,12 @@ fun SettingsScreen(
     // About row below still has a TODO onClick in HEAD; future settings-bucket
     // work will wire this through.
     onAboutClick: () -> Unit = {},
+    // v1.4.0-onboarding Help center (offline FAQ), the BYOK setup wizard,
+    // and the retired-model live check. Default no-op for callers that
+    // haven't wired the routes yet.
+    onHelpClick: () -> Unit = {},
+    onByokWizardClick: () -> Unit = {},
+    onModelCheckClick: () -> Unit = {},
     // [P2] Prompt Library (presets + composer modes) entry. Default no-op
     // for back-compat with callers wired before P2.
     onPromptLibraryClick: () -> Unit = {},
@@ -280,6 +289,20 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_manage_providers),
                     icon = Icons.Outlined.Lock,
                     onClick = onProvidersClick,
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // v1.4.0-onboarding BYOK setup wizard: free-tier suggestions + live key validation.
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = stringResource(R.string.settings_guided_key_setup),
+                    icon = Icons.Outlined.Key,
+                    onClick = onByokWizardClick,
+                )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // v1.4.0-onboarding Retired-model live check against provider catalogs.
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = stringResource(R.string.settings_model_check),
+                    icon = Icons.Outlined.Refresh,
+                    onClick = onModelCheckClick,
                 )
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // unibot: the image and video models, which Muse has built in and we set ourselves.
@@ -563,6 +586,13 @@ fun SettingsScreen(
             // -- About --
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(5)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_about_unibot), icon = Icons.Outlined.Info, onClick = onAboutClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // v1.4.0-onboarding In-app help center: searchable offline FAQ and guides.
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = stringResource(R.string.settings_help_center),
+                    icon = Icons.Outlined.HelpOutline,
+                    onClick = onHelpClick,
+                )
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(
                     title = stringResource(R.string.settings_privacy_policy),
