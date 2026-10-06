@@ -81,7 +81,9 @@ fun SessionFileTrayScreen(
             runCatching { collectTrayEntries(chatRepository, mediaStore, sessionId) }
                 .getOrDefault(emptyList())
         }
-    }    Scaffold(
+    }
+
+    Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
