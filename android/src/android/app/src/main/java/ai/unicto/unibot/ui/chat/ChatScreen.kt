@@ -7541,7 +7541,8 @@ fun ChatScreen(
                         // Voice theme item 33: karaoke follow-along for long
                         // replies — the sentence being read aloud, with the
                         // spoken word highlighted. Only while read-replies is
-                        // on; the X stops playback.
+                        // on; the X stops playback. Inside the voice-panel
+                        // block: replyTts and readReplies are scoped here.
                         val karaokeWord by replyTts.spokenWord.collectAsState()
                         karaokeWord?.let { spoken ->
                             if (readReplies) {
@@ -7550,6 +7551,7 @@ fun ChatScreen(
                                     onStop = { replyTts.stop() },
                                 )
                             }
+                        }
                         }
 
                         // [T-android-voice-entry-always-available] The voice /

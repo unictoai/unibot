@@ -18,8 +18,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -117,14 +120,14 @@ class ReadAloudPlayer(context: Context) {
      * [TextToSpeechManager], so [TextToSpeechManager.spokenWord] is already
      * player-scoped.
      */
-    val spokenWord: StateFlow<SpokenWord?> = kotlinx.coroutines.flow.combine(
+    val spokenWord: StateFlow<SpokenWord?> = combine(
         _currentUtteranceText,
         system.spokenWord,
     ) { text, sys ->
         sys ?: text?.let { SpokenWord(it, null) }
     }.stateIn(
         scope,
-        kotlinx.coroutines.flow.SharingStarted.Eagerly,
+        SharingStarted.Eagerly,
         null,
     )
 

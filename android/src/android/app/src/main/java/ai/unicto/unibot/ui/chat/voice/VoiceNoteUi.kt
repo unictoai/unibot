@@ -207,7 +207,7 @@ fun VoiceNotePlayerRow(
     }
     DisposableEffect(player) {
         onDispose {
-            runCatching {
+            player.runCatching {
                 if (isPlaying) stop()
                 release()
             }
@@ -294,7 +294,7 @@ private fun VoiceNotePlayButton(
         MediaPlayer().apply { runCatching { setDataSource(path); prepare() } }
     }
     DisposableEffect(player) {
-        onDispose { runCatching { if (isPlaying) stop(); release() } }
+        onDispose { player.runCatching { if (isPlaying) stop(); release() } }
     }
     var playing by remember { mutableStateOf(false) }
     DisposableEffect(player) {

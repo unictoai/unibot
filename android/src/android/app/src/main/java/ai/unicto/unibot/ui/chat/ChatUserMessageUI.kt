@@ -383,7 +383,7 @@ internal fun UserMessageBubble(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(18.dp))
-                                .background(bubbleBg)
+                                .background(if (isQueued) Color.Transparent else ChatColors.userBubble)
                                 .padding(horizontal = 14.dp, vertical = 8.dp),
                         ) {
                             ai.unicto.unibot.ui.chat.voice.VoiceNotePlayerRow(
