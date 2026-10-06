@@ -975,16 +975,26 @@ class MainActivity : ComponentActivity() {
             // home shell and prefills the main chat's composer via HomeBus —
             // the same path the profile page's pre-typed request uses.
             // Never auto-sends: the user reviews the text first.
+            // v1.4.0 item 73: `&new=1` opens a fresh draft chat with the
+            // text prefilled (the shell switches to the draft itself); in
+            // wide windows (no shell) it falls back to the main-chat path.
             is DeepLinkAction.Ask -> {
-                if (ai.unicto.unibot.ui.home.HomeShell.active) {
-                    nav.popBackStack(Routes.SESSION_LIST, inclusive = false)
-                } else {
-                    nav.navigate(Routes.SESSION_LIST) {
-                        popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                val shellActive = ai.unicto.unibot.ui.home.HomeShell.active
+                if (action.newChat && shellActive) {
+                    if (action.text.isNotBlank()) {
+                        ai.unicto.unibot.ui.home.HomeBus.prefillNewChat(action.text)
                     }
-                }
-                if (action.text.isNotBlank()) {
-                    ai.unicto.unibot.ui.home.HomeBus.prefillComposer(action.text)
+                } else {
+                    if (shellActive) {
+                        nav.popBackStack(Routes.SESSION_LIST, inclusive = false)
+                    } else {
+                        nav.navigate(Routes.SESSION_LIST) {
+                            popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                        }
+                    }
+                    if (action.text.isNotBlank()) {
+                        ai.unicto.unibot.ui.home.HomeBus.prefillComposer(action.text)
+                    }
                 }
             }
             is DeepLinkAction.OpenAlarmList -> {
