@@ -40,6 +40,9 @@ import androidx.compose.material.icons.filled.PrecisionManufacturing
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Paragliding
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material.icons.filled.Terminal
@@ -351,7 +354,11 @@ private fun ChooseProviderScreen(
                     ProviderType.deepSeek,
                     ProviderType.zai,
                     ProviderType.nebius,
-                    ProviderType.chutes -> type.displayName
+                    ProviderType.chutes,
+                    // Item 45 — new free-tier providers.
+                    ProviderType.pollinations,
+                    ProviderType.huggingFace,
+                    ProviderType.aionLabs -> type.displayName
                     // [T-android-provider-type-parity] Fall back to the enum's
                     // own display name for types this screen doesn't curate.
                     ProviderType.openAIResponses,

@@ -696,6 +696,10 @@ class BrowserUseManager(
             BrowserAction.WAIT_FOR_DOM_STABLE -> return waitForDomStable(input.timeoutMs)
             BrowserAction.NEW_TAB, BrowserAction.CLOSE_TAB, BrowserAction.LIST_TABS ->
                 return BrowserActionResult.error("Tab management actions must be routed through BrowserTabPool")
+            // Item 40 — hand-over wait is pool-level (banner + Done button);
+            // it never reaches the per-tab manager.
+            BrowserAction.WAIT_FOR_USER ->
+                return BrowserActionResult.error("wait_for_user must be routed through BrowserTabPool")
         }
 
         // Auto-capture screenshot after visual-change actions

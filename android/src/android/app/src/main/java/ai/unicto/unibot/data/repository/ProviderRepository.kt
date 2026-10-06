@@ -2524,7 +2524,10 @@ class ProviderRepository(private val context: Context) {
             ProviderType.deepSeek,
             ProviderType.zai,
             ProviderType.nebius,
-            ProviderType.chutes -> instance.providerType.defaultBaseUrl
+            ProviderType.chutes,
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs -> instance.providerType.defaultBaseUrl
                 ?: "https://api.openai.com/v1"
             // No canonical host for a type this build cannot drive. Callers
             // reaching here have already exhausted effectiveBaseURL.

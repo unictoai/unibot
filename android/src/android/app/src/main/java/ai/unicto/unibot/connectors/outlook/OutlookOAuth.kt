@@ -150,8 +150,9 @@ object OutlookOAuth {
                     srv.stop()
                     server = null
                 }
+                val boundPort = srv.boundPort
                 val authUrl = buildAuthUrl(
-                    config, tenant, pkce, redirectUri(server.boundPort),
+                    config, tenant, pkce, redirectUri(boundPort),
                 )
                 CustomTabsIntent.Builder().setShowTitle(true).build()
                     .launchUrl(context, Uri.parse(authUrl))

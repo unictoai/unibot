@@ -194,36 +194,38 @@ object McpClient {
         parseToolResult(extractResult(envelope))
     }
 
-    private inner class Handshake(
+    private class Handshake(
         private val url: String,
         private val headers: Map<String, String>,
     ) {
         /** Full initialize handshake; returns the session id (may be null). */
         suspend fun initialize(): String? {
             // Try the current protocol version, then the previous one.
-            val versions = listOf(PROTOCOL_VERSION, FALLBACK_PROTOCOL_VERSION)
+            val versions = listOf(McpClient.PROTOCOL_VERSION, McpClient.FALLBACK_PROTOCOL_VERSION)
             var lastError: Exception? = null
             for (version in versions) {
                 try {
-                    val params = buildInitializeParams()
+                    val params = McpClient.buildInitializeParams()
                     params.put("protocolVersion", version)
-                    val (envelope, sessionId) = postRpc(url, headers, null, buildRequest("initialize", params))
-                    val result = extractResult(envelope)
+                    val (envelope, sessionId) = McpClient.postRpc(
+                        url, headers, null, McpClient.buildRequest("initialize", params),
+                    )
+                    val result = McpClient.extractResult(envelope)
                     val negotiated = result.optString("protocolVersion", version)
-                    AppLogger.info(TAG, "[initialize] negotiated=$negotiated session=${sessionId != null}")
+                    AppLogger.info(McpClient.TAG, "[initialize] negotiated=$negotiated session=${sessionId != null}")
                     // Mandatory initialized notification (no id).
                     val notif = JSONObject().apply {
                         put("jsonrpc", "2.0")
                         put("method", "notifications/initialized")
                     }
-                    runCatching { postRpc(url, headers, sessionId, notif) }
+                    runCatching { McpClient.postRpc(url, headers, sessionId, notif) }
                     return sessionId
-                } catch (e: CallError.Protocol) {
+                } catch (e: McpClient.CallError.Protocol) {
                     lastError = e
-                    AppLogger.warning(TAG, "[initialize] $version failed: ${e.message}")
+                    AppLogger.warning(McpClient.TAG, "[initialize] $version failed: ${e.message}")
                 }
             }
-            throw lastError ?: CallError.Protocol("MCP initialize failed")
+            throw lastError ?: McpClient.CallError.Protocol("MCP initialize failed")
         }
     }
 

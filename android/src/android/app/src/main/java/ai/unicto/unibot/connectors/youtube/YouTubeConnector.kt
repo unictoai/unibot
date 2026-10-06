@@ -400,7 +400,7 @@ object YouTubeConnector {
             ).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
-                val title = JSONObject(text).optJSONObject("snippet")?.optString("title", "")
+                val title = JSONObject(text).optJSONObject("snippet")?.optString("title").orEmpty()
                 ApiResult.Ok(
                     if (title.isNotBlank()) "Added \"$title\" to Watch Later."
                     else "Added to Watch Later.",
@@ -434,14 +434,12 @@ object YouTubeConnector {
         }
     }
 
-    companion object {
-        private const val INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1"
-        /**
-         * Public web-client API key embedded in YouTube's own web pages.
-         * Only used for the public player/captions lookup — never for
-         * account actions, which ride the user's OAuth token.
-         */
-        private const val INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
-    }
+    private const val INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1"
+    /**
+     * Public web-client API key embedded in YouTube's own web pages.
+     * Only used for the public player/captions lookup — never for
+     * account actions, which ride the user's OAuth token.
+     */
+    private const val INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
 }
