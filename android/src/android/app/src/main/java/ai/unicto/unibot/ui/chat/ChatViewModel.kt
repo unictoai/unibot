@@ -159,6 +159,8 @@ class ChatViewModel(
 
     companion object {
         internal const val TAG = "ChatViewModel"
+        /** v1.4.0 item 24 — once-per-day gate for the gentle quota hint. */
+        private const val PREFS_QUOTA_HINTS = "unibot_quota_hints"
 
         // ── [T-android-compact-runaway] Compaction budgets ──────────────
         //
@@ -6896,10 +6898,38 @@ class ChatViewModel(
         // [T-android-v125-model-filter] Never send on a dead/filtered-out
         // model id — fall back first so the turn can't 404.
         ensureValidModelSelection()
+        // v1.4.0 item 24 — gentle free-tier quota hint (once per day per
+        // instance, so it never nags).
+        viewModelScope.launch(Dispatchers.IO) {
+            quotaHintIfNeeded()?.let { _modelNoticeEvent.emit(it) }
+        }
         // unibot: during the first conversation the text goes to the model as
         // it is; the model says what it meant in a `unibot-naming` block and
         // ubAfterTurn moves the phase (see FirstConversation).
         sendMessage(outgoing, skipContextCheck = false)
+    }
+
+    /**
+     * v1.4.0 item 24 — gentle free-tier quota hint: when the active instance
+     * is on a tracked free tier and today's usage crossed 80% of the daily
+     * limit, return a one-line notice. Gated to once per calendar day per
+     * instance so it never nags. Null when there's nothing to say.
+     */
+    private suspend fun quotaHintIfNeeded(): String? {
+        val entryId = _activeEntryId.value ?: return null
+        val entry = providerRepository.config.value.modelEntries.find { it.id == entryId }
+            ?: return null
+        val instance = providerRepository.instance(entry.providerInstanceId) ?: return null
+        val limit = FreeTierLimits.dailyRequests(instance.providerType) ?: return null
+        val used = todayRequestCount(chatRepository, instance.id)
+        if (quotaStateFor(used, limit) != QuotaState.NEAR_LIMIT) return null
+        val prefs = context.getSharedPreferences(PREFS_QUOTA_HINTS, Context.MODE_PRIVATE)
+        val key = "hinted_${instance.id}_${todayKey()}"
+        if (prefs.getBoolean(key, false)) return null
+        prefs.edit().putBoolean(key, true).apply()
+        val pct = (used * 100 / limit).coerceIn(0, 100)
+        return "You're at ~$pct% of ${instance.providerType.displayName}'s " +
+            "free daily limit — it resets tomorrow."
     }
 
     /**

@@ -957,6 +957,10 @@ fun ChatSplitScaffoldRoute(
                 // v1.4.0 items 14/15 — error card "Update key" / "Sign in
                 // again" pills deep-link to the failing provider's settings.
                 onOpenProvider = { id -> navController.safeNavigate(Routes.providerDetail(id)) },
+                // v1.4.0 items 23/24 — provider health dashboard.
+                onOpenProviderHealth = {
+                    navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_PROVIDER_HEALTH)
+                },
                 // [Wave 8] Starred messages + chat stats leave the pair.
                 onStarredClick = {
                     navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES)

@@ -233,6 +233,19 @@ interface ChatDao {
     suspend fun tokenUsageByIds(ids: List<String>): List<MessageTokenUsageRow>
 
     /**
+     * v1.4.0 item 24 — approximate API-call count for one provider instance
+     * since [sinceMs]: one assistant row per turn. Used by the free-tier
+     * quota tracker; labelled approximate in the UI.
+     */
+    @Query("""
+        SELECT COUNT(*) FROM messages
+        WHERE provider_instance_id = :instanceId
+          AND role = 'assistant'
+          AND created_at >= :sinceMs
+    """)
+    suspend fun countAssistantSince(instanceId: String, sinceMs: Long): Int
+
+    /**
      * Fetch all token usage records joined with session model_id for aggregation.
      *
      * [T-android-usage-orphan-rows] GH#168 (iOS a192fad0f): LEFT JOIN, not

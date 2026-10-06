@@ -57,6 +57,10 @@ class ChatRepository(internal val dao: ChatDao) {
     suspend fun tokenUsageByIds(ids: List<String>): List<MessageTokenUsageRow> =
         if (ids.isEmpty()) emptyList() else dao.tokenUsageByIds(ids)
 
+    /** v1.4.0 item 24 — approximate API-call count for one provider instance since [sinceMs]. */
+    suspend fun countAssistantSince(instanceId: String, sinceMs: Long): Int =
+        dao.countAssistantSince(instanceId, sinceMs)
+
     /**
      * [T-android-session-paused-badge-hardkill] Session ids whose agent loop was
      * left interrupted, derived purely from the persisted message tail — so the

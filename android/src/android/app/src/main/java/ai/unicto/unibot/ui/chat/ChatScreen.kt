@@ -558,6 +558,11 @@ fun ChatScreen(
      * to the provider detail route for [instanceId].
      */
     onOpenProvider: (instanceId: String) -> Unit = {},
+    /**
+     * v1.4.0 items 23/24 — open the provider health dashboard + quota
+     * tracker from the chat "…" menu.
+     */
+    onOpenProviderHealth: () -> Unit = {},
     /** [P1-incognito] "New incognito chat" from the chat "…" menu — a draft
      *  that is never persisted to the database. */
     onNewIncognitoChat: () -> Unit = {},
@@ -3774,6 +3779,18 @@ fun ChatScreen(
                                         },
                                         leadingIcon = {
                                             Icon(Icons.Default.BarChart, contentDescription = null)
+                                        },
+                                    )
+                                    // v1.4.0 items 23/24 — provider health
+                                    // dashboard + free-tier quota tracker.
+                                    DropdownMenuItem(
+                                        text = { Text("Provider health") },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onOpenProviderHealth()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Speed, contentDescription = null)
                                         },
                                     )
                                     if (BuildConfig.DEBUG) {

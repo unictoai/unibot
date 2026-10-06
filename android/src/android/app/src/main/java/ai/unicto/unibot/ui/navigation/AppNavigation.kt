@@ -819,6 +819,16 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
             )
         }
+        // v1.4.0 items 23/24 — provider health dashboard + quota tracker.
+        composable(ai.unicto.unibot.ui.chat.ROUTE_PROVIDER_HEALTH) {
+            ai.unicto.unibot.ui.chat.ProviderHealthScreen(
+                providerRepository = providerRepository,
+                chatRepository = chatRepository,
+                onBack = { navController.safePopBackStack() },
+                onOpenProvider = { id -> navController.safeNavigate(Routes.providerDetail(id)) },
+                onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+            )
+        }
         composable(ai.unicto.unibot.ui.sessions.ROUTE_MESSAGE_SEARCH) {
             ai.unicto.unibot.ui.sessions.MessageSearchScreen(
                 chatRepository = chatRepository,
