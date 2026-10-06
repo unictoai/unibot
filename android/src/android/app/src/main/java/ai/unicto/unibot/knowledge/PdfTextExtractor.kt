@@ -250,7 +250,7 @@ object PdfTextExtractor {
                         't' -> out.write('\t'.code); 'b' -> out.write('\b'.code)
                         'f' -> out.write('\u000C'.code)
                         '(', ')', '\\' -> out.write(e.code)
-                        e.isDigit() -> {
+                        in '0'..'9' -> {
                             var oct = ""
                             var j = i + 1
                             while (j < n && j < i + 4 && content[j].isDigit() && content[j] in '0'..'7') { oct += content[j]; j++ }
