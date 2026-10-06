@@ -22,8 +22,12 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -60,6 +64,8 @@ internal fun BranchActionsRow(
     viewModel: ChatViewModel,
     anchorUserMessageId: String,
     assistantMessageId: String,
+    // v1.4.0 item 16 — tap the token count for the per-message token sheet.
+    onTokenClick: (messageId: String) -> Unit = {},
 ) {
     val variantsByAnchor by viewModel.branchVariants.collectAsState()
     val selectionByAnchor by viewModel.branchSelection.collectAsState()
@@ -154,7 +160,51 @@ internal fun BranchActionsRow(
             icon = Icons.Filled.CallSplit,
             desc = stringResource(R.string.ub_branch_fork),
         )
+        // v1.4.0 item 16 — per-message token affordance: a muted count that
+        // opens the token sheet. Loads async; hidden when the turn recorded
+        // no usage (e.g. restored legacy rows).
+        TokenCountChip(
+            viewModel = viewModel,
+            messageId = assistantMessageId,
+            onClick = { onTokenClick(assistantMessageId) },
+        )
     }
+}
+
+/**
+ * v1.4.0 item 16 — muted per-message token count ("1.2k tok"). Tapping opens
+ * the per-message token sheet. Deliberately quiet — same tertiary tint as the
+ * sibling ghost buttons — so turns without recorded usage gain nothing.
+ */
+@Composable
+private fun TokenCountChip(
+    viewModel: ChatViewModel,
+    messageId: String,
+    onClick: () -> Unit,
+) {
+    var label by remember(messageId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(messageId) {
+        val stats = viewModel.messageTokenStats(messageId)
+        label = stats?.let { "${formatTokenCount(it.total)} tok" }
+    }
+    label?.let { text ->
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = ChatColors.secondaryText,
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+        )
+    }
+}
+
+private fun formatTokenCount(n: Long): String = when {
+    n >= 1_000_000L -> String.format("%.1fM", n / 1_000_000.0)
+    n >= 1_000L -> String.format("%.1fK", n / 1_000.0)
+    else -> n.toString()
 }
 
 @Composable

@@ -2113,6 +2113,51 @@ class ChatViewModel(
 
     // ── Slash command API (mirrors iOS AIChatViewModel) ─────────────────
 
+    /**
+     * v1.4.0 item 16 — measured token usage for one UI message. Sums over
+     * the message's source DB rows (a merged assistant turn carries several).
+     * Null when the message has no recorded usage.
+     */
+    data class MessageTokenStats(
+        val input: Long,
+        val output: Long,
+        /** Display name snapshot from the row that produced the turn, if any. */
+        val modelName: String?,
+    ) {
+        val total: Long get() = input + output
+    }
+
+    suspend fun messageTokenStats(messageId: String): MessageTokenStats? {
+        val msg = _messages.value.firstOrNull { it.id == messageId } ?: return null
+        val ids = msg.sourceDbIds.ifEmpty { listOf(messageId) }
+        val rows = chatRepository.tokenUsageByIds(ids)
+        if (rows.isEmpty()) return null
+        var input = 0L
+        var output = 0L
+        var model: String? = null
+        for (row in rows) {
+            val (rowInput, rowOutput) = parseTokenUsage(row.tokenUsage) ?: continue
+            input += rowInput
+            output += rowOutput
+            if (model == null) model = row.modelDisplayName?.takeIf { it.isNotBlank() }
+        }
+        if (input == 0L && output == 0L) return null
+        return MessageTokenStats(input, output, model)
+    }
+
+    /**
+     * v1.4.0 item 16 — the current model's effective output cap, routed
+     * through the v1.2.9 corruption-proof clamp
+     * ([ai.unicto.unibot.provider.LLMProvider.effectiveMaxOutputTokens]):
+     * stored limits are metadata and can be poisoned, so the token sheet
+     * never shows the raw saved value. Null when no model is selected.
+     */
+    internal fun effectiveCurrentMaxOutputTokens(): Int? {
+        val model = currentModel ?: return null
+        val provider = currentProvider ?: return null
+        return provider.effectiveMaxOutputTokens(model)
+    }
+
     /** Static catalogue of available slash commands, in display order.
      *  Subtitles are placeholders here — [filteredSlashCommands] always
      *  rebuilds them with the current localized state. */

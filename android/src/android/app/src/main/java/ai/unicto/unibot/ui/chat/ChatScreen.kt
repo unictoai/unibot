@@ -947,6 +947,9 @@ fun ChatScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showModelPicker by remember { mutableStateOf(false) }
+    // v1.4.0 item 16 — per-message token sheet, opened from the token count
+    // under an assistant message.
+    var tokenSheetMessageId by remember { mutableStateOf<String?>(null) }
     // [T-android-modelpicker-stuck-ripple] Interaction source for the navbar
     // model-picker row, owned here so the press can be drained when the picker
     // closes. See the clickable's comment for why the release never arrives on
@@ -5189,6 +5192,9 @@ fun ChatScreen(
                                 viewModel = viewModel,
                                 anchorUserMessageId = item.anchorUserMessageId,
                                 assistantMessageId = item.assistantMessageId,
+                                // v1.4.0 item 16 — tap the token count for the
+                                // per-message token sheet.
+                                onTokenClick = { id -> tokenSheetMessageId = id },
                             )
                             // [v0.5.0-agentic-core] Follow-up chips under the
                             // last assistant turn — tap sends as next message.
@@ -8166,6 +8172,15 @@ fun ChatScreen(
         TokenUsageSheet(
             viewModel = viewModel,
             onDismiss = { showTokenUsageSheet = false },
+        )
+    }
+
+    // v1.4.0 item 16 — per-message token bottom sheet
+    tokenSheetMessageId?.let { messageId ->
+        MessageTokenSheet(
+            viewModel = viewModel,
+            messageId = messageId,
+            onDismiss = { tokenSheetMessageId = null },
         )
     }
 

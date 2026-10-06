@@ -388,6 +388,9 @@
     <string name="token_usage_cache_write">Cache Write</string>
     <string name="token_usage_section_agent_loop">Agent Loop</string>
     <string name="token_usage_total_loops">Total Loops</string>
+    <string name="token_usage_section_cost">Cost</string>
+    <string name="token_usage_spent">Spent via unibot</string>
+    <string name="token_usage_spent_hint">unibot is free — your own API key pays the provider directly. Nothing here ever bills you.</string>
     <string name="common_on">On</string>
     <string name="common_off">Off</string>
     <string name="common_yes">Yes</string>

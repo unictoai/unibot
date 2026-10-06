@@ -42,6 +42,16 @@ data class MessageSearchRow(
 )
 
 /**
+ * v1.4.0 item 16 — row projection for the per-message token lookup: the
+ * recorded token_usage payload plus the model snapshot for one message row.
+ */
+data class MessageTokenUsageRow(
+    val id: String,
+    @ColumnInfo(name = "token_usage") val tokenUsage: String?,
+    @ColumnInfo(name = "model_display_name") val modelDisplayName: String?,
+)
+
+/**
  * Row projection for [ChatDao.lastMessageTailPerSession] (T-android-session-
  * paused-badge-hardkill). One row = the last message of a session (by
  * sort_order), carrying just the fields needed to decide whether the agent loop
@@ -217,6 +227,10 @@ interface ChatDao {
 
     @Query("SELECT token_usage FROM messages WHERE session_id = :sessionId AND token_usage IS NOT NULL")
     suspend fun tokenUsages(sessionId: String): List<String>
+
+    /** v1.4.0 item 16 — token payloads for the given message rows. */
+    @Query("SELECT id, token_usage, model_display_name FROM messages WHERE id IN (:ids)")
+    suspend fun tokenUsageByIds(ids: List<String>): List<MessageTokenUsageRow>
 
     /**
      * Fetch all token usage records joined with session model_id for aggregation.

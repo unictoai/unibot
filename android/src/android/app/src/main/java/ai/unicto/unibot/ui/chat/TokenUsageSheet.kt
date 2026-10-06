@@ -109,6 +109,19 @@ fun TokenUsageSheet(
             StatSection(title = stringResource(R.string.token_usage_section_agent_loop)) {
                 StatRow(stringResource(R.string.token_usage_total_loops), (s?.loopCount ?: 0).toString())
             }
+
+            // v1.4.0 item 16 — chat totals framed as "$0 spent": unibot never
+            // bills; the user's own API key pays the provider directly.
+            StatSection(title = stringResource(R.string.token_usage_section_cost)) {
+                StatRow(stringResource(R.string.token_usage_spent), "$0.00")
+                Text(
+                    text = stringResource(R.string.token_usage_spent_hint),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
     }
 }

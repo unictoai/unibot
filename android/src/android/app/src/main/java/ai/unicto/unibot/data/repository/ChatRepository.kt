@@ -53,6 +53,10 @@ class ChatRepository(internal val dao: ChatDao) {
     /** All persisted token_usage JSON strings for a session (one per LLM call). */
     suspend fun sessionTokenUsages(sessionId: String): List<String> = dao.tokenUsages(sessionId)
 
+    /** v1.4.0 item 16 — token_usage payloads for the given message rows. */
+    suspend fun tokenUsageByIds(ids: List<String>): List<MessageTokenUsageRow> =
+        if (ids.isEmpty()) emptyList() else dao.tokenUsageByIds(ids)
+
     /**
      * [T-android-session-paused-badge-hardkill] Session ids whose agent loop was
      * left interrupted, derived purely from the persisted message tail — so the
