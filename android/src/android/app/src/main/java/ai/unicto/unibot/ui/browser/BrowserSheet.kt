@@ -255,7 +255,7 @@ fun BrowserSheet(
 
             // ── URL Bar ── (compact 36dp pill — OutlinedTextField defaults to
             // ~56dp which dominates the sheet header; users want to spend the
-            // space on the WebView.)            Row(
+            // space on the WebView.)
 
             // -- Item 40: hand-over wait banner. The agent paused at a page it
             // can't complete itself (login / CAPTCHA / payment) -- the user
@@ -268,6 +268,8 @@ fun BrowserSheet(
                     onDismiss = { tabPool.cancelHandover() },
                 )
             }
+
+            Row(
 
                 modifier = Modifier
                     .fillMaxWidth()
