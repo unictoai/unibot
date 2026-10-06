@@ -69,7 +69,7 @@ class SwarmHistoryTest {
     @Test
     fun `failed mission is recorded`() = runTest {
         val repo = InMemorySwarmRepository()
-        val failing = FakeSwarmProvider { _, _ -> throw RuntimeException("boom") }
+        val failing = FakeSwarmProvider(handler = { _, _ -> throw RuntimeException("boom") })
         val engine = SwarmEngine(failing, InMemorySwarmCheckpointStore(), this, repository = repo)
         engine.launch("Research scooters", SwarmRoles.research)
         engine.uiState.first { it.lifecycle == SwarmLifecycle.FAILED }
