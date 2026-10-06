@@ -7536,7 +7536,6 @@ fun ChatScreen(
                             // sides centre it between the leading (+, /) and
                             // trailing (keyboard, mic/send) button groups.
                             Spacer(modifier = Modifier.weight(1f))
-                        }
 
                         // Voice theme item 33: karaoke follow-along for long
                         // replies — the sentence being read aloud, with the
