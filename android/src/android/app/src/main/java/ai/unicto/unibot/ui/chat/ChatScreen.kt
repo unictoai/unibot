@@ -552,6 +552,12 @@ fun ChatScreen(
      *  navigates to a fresh draft chat (same funnel as the session list's
      *  new-chat button), replacing this chat on the back stack. */
     onNewChat: () -> Unit = {},
+    /**
+     * v1.4.0 items 14/15 — deep-link to a provider's settings page from the
+     * error card's "Update key" / "Sign in again" pill. The caller navigates
+     * to the provider detail route for [instanceId].
+     */
+    onOpenProvider: (instanceId: String) -> Unit = {},
     /** [P1-incognito] "New incognito chat" from the chat "…" menu — a draft
      *  that is never persisted to the database. */
     onNewIncognitoChat: () -> Unit = {},
@@ -5103,6 +5109,9 @@ fun ChatScreen(
                             }
                             is FlatChatItem.AssistantError -> InlineErrorBanner(
                                 error = item.error,
+                                // v1.4.0 item 13 — the banner shows the friendly
+                                // text; long-press copies the raw payload.
+                                copyText = item.errorRaw,
                                 // [T-android-v124-413] No Retry on a 413 — re-sending the
                                 // same oversized history 413s again. The card offers
                                 // New chat / Change model instead.
@@ -5113,9 +5122,20 @@ fun ChatScreen(
                                 // 400 either — retrying the same oversized budget
                                 // 400s again. The card offers Change model /
                                 // Refresh models.
+                                // v1.4.0 item 14 — no Retry on a bad key (futile);
+                                // the card offers "Update key".
+                                // v1.4.0 item 15 — no Retry on an expired sign-in;
+                                // the card offers "Sign in again".
+                                // v1.4.0 item 13 — HTTP-status cards route their
+                                // fix through the recovery row (408/409 keep an
+                                // honest Retry there), so the header pill stays
+                                // off for every http_ kind.
                                 onRetry = if (item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE ||
                                     item.errorKind == ERROR_KIND_MODEL_NOT_FOUND ||
-                                    item.errorKind == ERROR_KIND_OUTPUT_LIMIT
+                                    item.errorKind == ERROR_KIND_OUTPUT_LIMIT ||
+                                    item.errorKind == ERROR_KIND_INVALID_KEY ||
+                                    item.errorKind == ERROR_KIND_OAUTH_EXPIRED ||
+                                    errorKindIsHttpStatus(item.errorKind)
                                 ) null else ({
                                     coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                     safeMutate { viewModel.retryLast() }
@@ -5123,9 +5143,32 @@ fun ChatScreen(
                                 isRequestTooLarge = item.errorKind == ERROR_KIND_REQUEST_TOO_LARGE,
                                 isModelNotFound = item.errorKind == ERROR_KIND_MODEL_NOT_FOUND,
                                 isOutputLimit = item.errorKind == ERROR_KIND_OUTPUT_LIMIT,
+                                isInvalidKey = item.errorKind == ERROR_KIND_INVALID_KEY,
+                                isOAuthExpired = item.errorKind == ERROR_KIND_OAUTH_EXPIRED,
                                 onNewChat = { onNewChat() },
                                 onChangeModel = { showModelPicker = true },
                                 onRefreshModels = { safeMutate { viewModel.refreshCurrentProviderModels() } },
+                                onUpdateKey = viewModel.providerInstanceIdForLastError()?.let { id ->
+                                    { onOpenProvider(id) }
+                                },
+                                onSignInAgain = viewModel.providerInstanceIdForLastError()?.let { id ->
+                                    { onOpenProvider(id) }
+                                },
+                                httpFix = httpFixForKind(item.errorKind),
+                                httpFixLabel = httpFixLabelForKind(item.errorKind),
+                                onHttpFix = httpFixActionForKind(
+                                    item.errorKind,
+                                    onRetryLast = {
+                                        coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
+                                        safeMutate { viewModel.retryLast() }
+                                    },
+                                    onChangeModel = { showModelPicker = true },
+                                    onOpenProvider = {
+                                        viewModel.providerInstanceIdForLastError()?.let { id ->
+                                            onOpenProvider(id)
+                                        }
+                                    },
+                                ),
                             )
                             // [P2-branching] Sibling pager + regenerate/fork
                             // row under the assistant turn. UI lives in

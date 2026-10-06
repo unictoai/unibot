@@ -230,6 +230,16 @@ data class ChatMessage(
     // [ERROR_KIND_REQUEST_TOO_LARGE]. In-memory only — not persisted to the DB;
     // after a reload the banner falls back to the (friendly) text + Retry.
     val errorKind: String? = null,
+    // v1.4.0 item 13 — the raw provider payload behind a friendly card
+    // ("[402] {json}"). Never rendered; the error banner's long-press copies
+    // this instead of the friendly text. In-memory only.
+    val errorRaw: String? = null,
+    // v1.4.0 item 93 (power-user handoff) — question card attached to this
+    // assistant message. The message metadata key is `question_card_id`; the
+    // card itself lives in QuestionCardStore and survives restarts there.
+    // Persisted to the DB alongside [errorKind] so the in-chat host renders
+    // after a reload. Null for ordinary messages.
+    val questionCardId: String? = null,
     // Voice theme item 32: async voice note attached to a user message.
     // Absolute path of the recorded WAV (app cache) plus its duration; the
     // bubble renders a playable row, and the transcript is the message text.

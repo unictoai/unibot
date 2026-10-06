@@ -140,6 +140,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import ai.unicto.unibot.BuildConfig
@@ -488,6 +491,21 @@ internal fun InlineErrorBanner(
     // Retry pill — retrying the same oversized budget 400s again.
     isOutputLimit: Boolean = false,
     onRefreshModels: (() -> Unit)? = null,
+    // v1.4.0 item 14 — invalid key: no Retry pill (futile); "Update key"
+    // opens the provider's settings page.
+    isInvalidKey: Boolean = false,
+    onUpdateKey: (() -> Unit)? = null,
+    // v1.4.0 item 15 — expired OAuth sign-in: "Sign in again", never
+    // "Invalid API key"; Retry is futile until the user re-authenticates.
+    isOAuthExpired: Boolean = false,
+    onSignInAgain: (() -> Unit)? = null,
+    // v1.4.0 item 13 — numeric-status card: one fix pill for the code.
+    httpFix: HttpStatusFix? = null,
+    httpFixLabel: String? = null,
+    onHttpFix: (() -> Unit)? = null,
+    // v1.4.0 item 13 — long-press copies the raw provider payload behind a
+    // friendly card, not the friendly text itself.
+    copyText: String? = null,
 ) {
     val context = LocalContext.current
     // v1.4.0 item 68: tap-to-expand. Long errors collapse to 3 lines (5 for
@@ -508,10 +526,12 @@ internal fun InlineErrorBanner(
                 onLongClick = {
                     // [v1.0-wave5-privacy] Route through ClipboardGuard so the
                     // "Auto-clear clipboard" toggle wipes the copy after 60s.
+                    // v1.4.0 item 13: a friendly card copies its raw provider
+                    // payload, never the friendly text.
                     ai.unicto.unibot.privacy.ClipboardGuard.copyWithAutoClear(
                         context,
                         "unibot error",
-                        error,
+                        copyText ?: error,
                     )
                 },
                 indication = if (canExpand) LocalIndication.current else null,
@@ -545,7 +565,9 @@ internal fun InlineErrorBanner(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
             }
-            if (onRetry != null && !isRequestTooLarge && !isModelNotFound && !isOutputLimit) {
+            if (onRetry != null && !isRequestTooLarge && !isModelNotFound && !isOutputLimit &&
+                !isInvalidKey && !isOAuthExpired
+            ) {
                 Spacer(modifier = Modifier.width(8.dp))
                 ErrorPillButton(
                     icon = Icons.Default.Refresh,
@@ -555,7 +577,10 @@ internal fun InlineErrorBanner(
             }
         }
         val showRecoveryRow = (isRequestTooLarge && (onNewChat != null || onChangeModel != null)) ||
-            ((isModelNotFound || isOutputLimit) && (onChangeModel != null || onRefreshModels != null))
+            ((isModelNotFound || isOutputLimit) && (onChangeModel != null || onRefreshModels != null)) ||
+            (isInvalidKey && onUpdateKey != null) ||
+            (isOAuthExpired && onSignInAgain != null) ||
+            (httpFix != null && httpFix != HttpStatusFix.NONE && httpFixLabel != null && onHttpFix != null)
         if (showRecoveryRow) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -582,6 +607,38 @@ internal fun InlineErrorBanner(
                         icon = Icons.Default.Refresh,
                         text = "Refresh models",
                         onClick = onRefreshModels,
+                    )
+                }
+                // v1.4.0 item 14 — invalid key: the fix is a new key, not a retry.
+                if (isInvalidKey && onUpdateKey != null) {
+                    ErrorPillButton(
+                        icon = Icons.Default.VpnKey,
+                        text = "Update key",
+                        onClick = onUpdateKey,
+                    )
+                }
+                // v1.4.0 item 15 — expired sign-in: the fix is signing in again.
+                if (isOAuthExpired && onSignInAgain != null) {
+                    ErrorPillButton(
+                        icon = Icons.Default.Login,
+                        text = "Sign in again",
+                        onClick = onSignInAgain,
+                    )
+                }
+                // v1.4.0 item 13 — one fix pill for the HTTP status card.
+                if (httpFix != null && httpFix != HttpStatusFix.NONE &&
+                    httpFixLabel != null && onHttpFix != null
+                ) {
+                    val icon = when (httpFix) {
+                        HttpStatusFix.RETRY -> Icons.Default.Refresh
+                        HttpStatusFix.CHANGE_MODEL -> Icons.Default.SwapHoriz
+                        HttpStatusFix.PROVIDER_SETTINGS -> Icons.Default.Settings
+                        HttpStatusFix.NONE -> Icons.Default.Info
+                    }
+                    ErrorPillButton(
+                        icon = icon,
+                        text = httpFixLabel,
+                        onClick = onHttpFix,
                     )
                 }
             }

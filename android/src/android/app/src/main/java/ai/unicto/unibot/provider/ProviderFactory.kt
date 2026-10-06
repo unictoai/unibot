@@ -66,7 +66,7 @@ object ProviderFactory {
                     // Codex OAuth mode — Responses API with refresh-aware token provider
                     val oauthManager = OpenAIOAuthManager(context, instance.id)
                     OpenAIProvider(
-                        oauthTokenProvider = { oauthManager.validAccessToken() ?: throw ai.unicto.unibot.data.model.LLMError.InvalidApiKey() },
+                        oauthTokenProvider = { oauthManager.validAccessToken() ?: throw ai.unicto.unibot.data.model.LLMError.OAuthExpired() } // v1.4.0 item 15: expired sign-in, not a bad key,
                         model = model,
                         codexAccountId = oauthManager.accountId,
                     )
@@ -162,8 +162,9 @@ object ProviderFactory {
                     val oauthManager = ai.unicto.unibot.auth.XAIOAuthManager(context, instance.id)
                     OpenAIProvider.oauthOpenAICompat(
                         oauthTokenProvider = {
+                            // v1.4.0 item 15: expired sign-in, not a bad key.
                             oauthManager.validAccessToken()
-                                ?: throw ai.unicto.unibot.data.model.LLMError.InvalidApiKey()
+                                ?: throw ai.unicto.unibot.data.model.LLMError.OAuthExpired()
                         },
                         model = model,
                         basePath = base,
@@ -196,8 +197,9 @@ object ProviderFactory {
                     // iOS sends none either.
                     OpenAIProvider.oauthOpenAICompat(
                         oauthTokenProvider = {
+                            // v1.4.0 item 15: expired sign-in, not a bad key.
                             oauthManager.validAccessToken()
-                                ?: throw ai.unicto.unibot.data.model.LLMError.InvalidApiKey()
+                                ?: throw ai.unicto.unibot.data.model.LLMError.OAuthExpired()
                         },
                         model = model,
                         basePath = base,

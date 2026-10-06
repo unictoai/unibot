@@ -19,9 +19,51 @@ internal fun Throwable?.detailSuffix(): String =
     this?.message?.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()
 
 sealed class LLMError(message: String, cause: Throwable? = null) : Exception(message, cause) {
-    class InvalidApiKey(val detail: String = "") : LLMError(if (detail.isBlank()) "Invalid API key" else "Invalid API key: $detail")
+    /**
+     * v1.4.0 item 79 — numeric HTTP status when this error came from an HTTP
+     * response; null for transport / decoding / cancellation errors that
+     * never saw a status line. Numeric end-to-end: the provider health
+     * dashboard (v1.4.0 item 23) and the auto-retry gate read this instead
+     * of matching 5xx text out of the detail string.
+     */
+    open val httpStatus: Int? = null
+
+    /** True for 5xx statuses — numeric, never text-matched. */
+    val isServerError: Boolean get() = httpStatus != null && httpStatus in 500..599
+
+    /** True for 4xx statuses. */
+    val isClientError: Boolean get() = httpStatus != null && httpStatus in 400..499
+
+    /**
+     * v1.4.0 item 82 — short human label for the auto-retry countdown, e.g.
+     * "Connection hiccup". Never leaks raw provider text.
+     */
+    val friendlyRetryLabel: String
+        get() = when {
+            this is NetworkError -> "Connection hiccup"
+            this is TransientError || isServerError -> "Server hiccup"
+            this is RateLimited -> "Rate limited"
+            else -> "Something went wrong"
+        }
+
+    /**
+     * v1.4.0 item 82 — the full countdown line, e.g.
+     * "Connection hiccup — retrying (1/3)…".
+     */
+    fun retryCountdownText(attempt: Int, totalAttempts: Int): String =
+        "$friendlyRetryLabel — retrying ($attempt/$totalAttempts)…"
+
+    class InvalidApiKey(val detail: String = "", override val httpStatus: Int? = null) : LLMError(if (detail.isBlank()) "Invalid API key" else "Invalid API key: $detail")
+    /**
+     * v1.4.0 item 15 — the provider's OAuth sign-in expired (refresh token
+     * revoked/expired, or no usable access token). Kept as its own class
+     * (NOT InvalidApiKey) so the chat renders "Sign in again" instead of
+     * "Invalid API key" — the fix is re-authentication, not a new key.
+     */
+    class OAuthExpired(val detail: String = "", override val httpStatus: Int? = null) :
+        LLMError(if (detail.isBlank()) "Sign-in expired" else "Sign-in expired: $detail")
     class NetworkError(cause: Throwable) : LLMError("Network error${cause.detailSuffix()}", cause)
-    class ProviderError(val detail: String) : LLMError("Provider error: $detail")
+    class ProviderError(val detail: String, override val httpStatus: Int? = null) : LLMError("Provider error: $detail")
     /**
      * [T-android-v124-413] HTTP 413 — the request (usually a long agent
      * history with thinking blocks + tool calls) exceeds the model's quota.
@@ -30,7 +72,7 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
      * and so group-fallback never silently switches models on it — the user
      * picks "New chat" or "Change model" explicitly.
      */
-    class RequestTooLarge(val detail: String = "") :
+    class RequestTooLarge(val detail: String = "", override val httpStatus: Int? = null) :
         LLMError(if (detail.isBlank()) "Request too large" else "Request too large: $detail")
     /**
      * [T-android-v125-model-filter] HTTP 404 where the body says the MODEL is
@@ -40,7 +82,7 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
      * instead of a bare Retry pill — retrying a dead model 404s again, and
      * group-fallback must not silently switch models on it either.
      */
-    class ModelNotFound(val modelId: String = "", val detail: String = "") :
+    class ModelNotFound(val modelId: String = "", val detail: String = "", override val httpStatus: Int? = null) :
         LLMError(if (detail.isBlank()) "Model not available" else "Model not available: $detail")
     /**
      * [T-android-v126-maxtokens] HTTP 400 where the body says the requested
@@ -52,11 +94,11 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
      * With the request-builder clamp this should be unreachable; if it ever
      * fires, the model's declared limit itself is wrong.
      */
-    class OutputLimitExceeded(val limit: Int = 0, val detail: String = "") :
+    class OutputLimitExceeded(val limit: Int = 0, val detail: String = "", override val httpStatus: Int? = null) :
         LLMError(if (detail.isBlank()) "Output limit exceeded" else "Output limit exceeded: $detail")
     class DecodingError(cause: Throwable) : LLMError("Decoding error${cause.detailSuffix()}", cause)
-    class RateLimited : LLMError("Rate limited — please try again later")
-    class TransientError(val detail: String) : LLMError("Transient error: $detail")
+    class RateLimited(override val httpStatus: Int? = null) : LLMError("Rate limited — please try again later")
+    class TransientError(val detail: String, override val httpStatus: Int? = null) : LLMError("Transient error: $detail")
     class Cancelled : LLMError("Request was cancelled")
     class Unknown(cause: Throwable?) : LLMError("Unknown error${cause.detailSuffix()}", cause)
 
@@ -74,6 +116,7 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
         get() = when (this) {
             is RateLimited -> "Rate limited"
             is InvalidApiKey -> "Invalid API key"
+            is OAuthExpired -> "Sign-in expired"
             is ProviderError -> "Provider error"
             is RequestTooLarge -> "Request too large"
             is ModelNotFound -> "Model not available"

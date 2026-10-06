@@ -7892,7 +7892,7 @@ class ChatViewModel(
      *  true at runAgentLoop ~4015) leaves the "unibot is thinking" indicator
      *  on screen even though streaming is over. The flag is per-message and
      *  is not implicitly cleared by isStreaming=false. */
-    private fun setInlineError(errorText: String, errorKind: String? = null) {
+    private fun setInlineError(errorText: String, errorKind: String? = null, errorRaw: String? = null) {
         // [T-error-persist-android] Never let an empty/blank error string reach
         // the banner. The UI gate is `message.error?.let { … }` — a non-null ""
         // would render an EMPTY error banner, and (now that errors persist) it
@@ -7917,6 +7917,7 @@ class ChatViewModel(
             msgs[lastAssistantIdx] = msg.copy(
                 error = safeError,
                 errorKind = errorKind,
+                errorRaw = errorRaw,
                 isStreaming = false,
                 isAwaitingModelResponse = false,
             )
@@ -7982,11 +7983,50 @@ class ChatViewModel(
                 friendlyOutputLimitText(modelName, providerName, llmError.limit),
                 ERROR_KIND_OUTPUT_LIMIT,
             )
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.OAuthExpired) {
+            // v1.4.0 item 15 — the OAuth sign-in expired (refresh token
+            // revoked/expired, or no usable access token). "Sign in again",
+            // never "Invalid API key"; Retry is futile until re-auth.
+            val providerName = resolveCardProviderName(_providerName.value, currentProvider?.name)
+            setInlineError(
+                friendlyOAuthExpiredText(providerName),
+                ERROR_KIND_OAUTH_EXPIRED,
+            )
         } else if (llmError is ai.unicto.unibot.data.model.LLMError.InvalidApiKey) {
-            // Voice theme item 29: tag the kind (text unchanged) so the voice
-            // error card can offer "Update key" instead of a futile Retry.
-            // Chat's own banner keeps its current behavior.
-            setInlineError(error.message ?: "Invalid API key", ERROR_KIND_INVALID_KEY)
+            // v1.4.0 item 15 — a 401 on an OAuth-credentialed instance is an
+            // expired sign-in, not a bad key: the token refresh failed and the
+            // wire request went out with a dead token.
+            // v1.4.0 item 14 — invalid keys never get a Retry pill; the card
+            // offers "Update key" (wired in ChatScreen) instead.
+            val providerName = resolveCardProviderName(_providerName.value, currentProvider?.name)
+            if (activeInstanceIsOAuth()) {
+                setInlineError(
+                    friendlyOAuthExpiredText(providerName),
+                    ERROR_KIND_OAUTH_EXPIRED,
+                )
+            } else {
+                // Voice theme item 29: tag the kind so the voice error card
+                // can offer "Update key" instead of a futile Retry.
+                setInlineError(
+                    friendlyInvalidKeyText(providerName),
+                    ERROR_KIND_INVALID_KEY,
+                )
+            }
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.ProviderError &&
+            llmError.httpStatus?.let { it in HTTP_CARD_CODES } == true
+        ) {
+            // v1.4.0 item 13 — friendly card for the mapped HTTP statuses; the
+            // raw provider payload travels in errorRaw for long-press copy.
+            val code = llmError.httpStatus ?: 0
+            val provider = currentProvider
+            val modelName = provider?.model?.displayName ?: "this model"
+            val providerName = resolveCardProviderName(_providerName.value, provider?.name)
+            val card = httpStatusCard(code, modelName, providerName)
+            setInlineError(
+                "${card.headline} — ${card.body}",
+                errorKindForHttpStatus(code),
+                errorRaw = "HTTP $code — ${llmError.detail}",
+            )
         } else if (llmError is ai.unicto.unibot.data.model.LLMError.RateLimited) {
             // Voice theme item 29: tag the kind so the voice error card can
             // offer "Switch provider" first. Text unchanged.
@@ -8000,6 +8040,30 @@ class ChatViewModel(
             // so a null/empty cause can never surface as "Unknown error: null".
             setInlineError(error.readableMessage())
         }
+    }
+
+    /**
+     * v1.4.0 item 15 — true when the active provider instance authenticates
+     * via OAuth rather than an API key. A 401 here means the sign-in expired,
+     * not that a key is wrong.
+     */
+    fun activeInstanceIsOAuth(): Boolean {
+        val entryId = _activeEntryId.value ?: return false
+        val entry = providerRepository.config.value.modelEntries.find { it.id == entryId }
+            ?: return false
+        val instance = providerRepository.instance(entry.providerInstanceId) ?: return false
+        return instance.credentialType == ai.unicto.unibot.data.model.ProviderCredential.oauth
+    }
+
+    /**
+     * v1.4.0 items 14/15 — the provider instance behind the last inline
+     * error, so the banner's "Update key" / "Sign in again" pill can
+     * deep-link to its settings page. Null when it can't be resolved.
+     */
+    fun providerInstanceIdForLastError(): String? {
+        val entryId = _activeEntryId.value ?: return null
+        return providerRepository.config.value.modelEntries.find { it.id == entryId }
+            ?.providerInstanceId
     }
 
     /**
