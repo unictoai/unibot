@@ -184,4 +184,54 @@ class ChatModelFilterTest {
             assertTrue("expected chat model to pass the filter: $id", ChatModelFilter.isChatModel(id))
         }
     }
+
+    // ---------- v1.4.0 item 83: filter hardening ----------
+
+    @Test
+    fun `audio and realtime voice models are excluded`() {
+        val nonChat = listOf(
+            "gpt-4o-mini-audio-preview",   // OpenAI audio I/O
+            "gpt-4o-audio-preview",
+            "gpt-realtime",                // OpenAI realtime voice
+            "GPT-REALTIME-MINI",           // uppercase
+        )
+        for (id in nonChat) {
+            assertFalse("expected non-chat model to be filtered: $id", ChatModelFilter.isChatModel(id))
+        }
+    }
+
+    @Test
+    fun `firstChatModelId never picks a non-chat default`() {
+        fun entry(id: String) = ai.unicto.unibot.data.model.ModelEntry(
+            providerInstanceId = "inst-1",
+            baseModel = LLMModel(id = id, displayName = id, provider = "p"),
+        )
+        // TTS listed first (provider order) must be skipped.
+        val entries = listOf(
+            entry("tts-1"),
+            entry("text-embedding-3-small"),
+            entry("openai/gpt-oss-120b"),
+        )
+        assertEquals("openai/gpt-oss-120b", ChatModelFilter.firstChatModelId(entries))
+    }
+
+    @Test
+    fun `firstChatModelId returns null when nothing is a chat model`() {
+        fun entry(id: String) = ai.unicto.unibot.data.model.ModelEntry(
+            providerInstanceId = "inst-1",
+            baseModel = LLMModel(id = id, displayName = id, provider = "p"),
+        )
+        assertNull(ChatModelFilter.firstChatModelId(listOf(entry("tts-1"), entry("whisper-1"))))
+        assertNull(ChatModelFilter.firstChatModelId(emptyList()))
+    }
+
+    @Test
+    fun `firstChatModelId skips retired ids`() {
+        fun entry(id: String) = ai.unicto.unibot.data.model.ModelEntry(
+            providerInstanceId = "inst-1",
+            baseModel = LLMModel(id = id, displayName = id, provider = "p"),
+        )
+        val entries = listOf(entry("llama-3.3-70b-versatile"), entry("openai/gpt-oss-20b"))
+        assertEquals("openai/gpt-oss-20b", ChatModelFilter.firstChatModelId(entries))
+    }
 }

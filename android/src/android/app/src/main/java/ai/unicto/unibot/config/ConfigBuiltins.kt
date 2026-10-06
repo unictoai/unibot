@@ -368,23 +368,12 @@ internal object ConfigBuiltins {
                 defaultValue = true,
             )
         )
-        // [T-keyboard-auto-pop default flip] On by default — iOS gates
-        // the existing post-stream auto-focus behind this. Android
-        // currently does not auto-focus on stream end (it only
-        // auto-focuses on brand-new sessions starting with "__new__"),
-        // so on this platform the setting is registered for parity.
-        // When a future Android change adds stream-end auto-focus, it
-        // should read this same pref key.
-        r.register(
-            PrefsBoolField(
-                path = "chat.autoFocusAfterReply",
-                displayName = "Auto-focus input after reply",
-                description = "When ON, the keyboard pops up automatically after the model finishes a reply so the input is ready for a follow-up. Turn OFF if you prefer to read the response without an unexpected keyboard.",
-                prefs = appearancePrefs,
-                key = ai.unicto.unibot.ui.settings.KEY_AUTO_FOCUS_AFTER_REPLY,
-                defaultValue = true,
-            )
-        )
+        // v1.4.0 item 84 — the chat.autoFocusAfterReply toggle was removed
+        // from both the Appearance screen and the config registry: nothing
+        // on Android ever read the preference, so both surfaces were dead.
+        // The KEY_AUTO_FOCUS_AFTER_REPLY constant stays for iOS parity
+        // reference; a future stream-end auto-focus should re-register the
+        // field here and read the key in ChatScreen.
         r.register(fontScaleField(
             path = "chat.inputFontSize",
             displayName = "Input font size",

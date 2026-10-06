@@ -3521,11 +3521,11 @@ class OpenAIProvider private constructor(
     }
 
     internal fun mapHttpError(statusCode: Int, body: String): LLMError {
-        if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
+        if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey(httpStatus = statusCode)
         // unibot: the relay's "allowance used up" is a 429 with a structured body; keep it
         // for the chat's card before the generic mapping drops the body.
         ai.unicto.unibot.cloud.AllowanceSignal.noteHttpError(statusCode, body)
-        if (statusCode == 429) return LLMError.RateLimited()
+        if (statusCode == 429) return LLMError.RateLimited(httpStatus = statusCode)
         // [T-android-v127-413-output-limit] A 413 whose BODY is about the
         // output-token budget (Groq answers 413, not 400, for an oversized
         // max_completion_tokens) → OutputLimitExceeded, so the user gets the
@@ -3535,6 +3535,7 @@ class OpenAIProvider private constructor(
             return LLMError.OutputLimitExceeded(
                 ai.unicto.unibot.data.model.extractOutputLimit(body),
                 "[$statusCode] ${body.take(300)}",
+                httpStatus = statusCode,
             )
         }
         // [T-android-v124-413] 413 (request too large — usually an agent
@@ -3549,7 +3550,7 @@ class OpenAIProvider private constructor(
             } catch (_: Exception) {
                 "HTTP $statusCode: ${body.take(500)}"
             }
-            return LLMError.RequestTooLarge(detail)
+            return LLMError.RequestTooLarge(detail, httpStatus = statusCode)
         }
         // [T-android-v125-model-filter] 404 where the BODY says the model is
         // gone → ModelNotFound (friendly "Change model / Refresh models"
@@ -3559,6 +3560,7 @@ class OpenAIProvider private constructor(
             return LLMError.ModelNotFound(
                 ai.unicto.unibot.data.model.extractModelId(body),
                 "[$statusCode] ${body.take(300)}",
+                httpStatus = statusCode,
             )
         }
         // [T-android-v126-maxtokens] 400 where the BODY says the requested
@@ -3568,6 +3570,7 @@ class OpenAIProvider private constructor(
             return LLMError.OutputLimitExceeded(
                 ai.unicto.unibot.data.model.extractOutputLimit(body),
                 "[$statusCode] ${body.take(300)}",
+                httpStatus = statusCode,
             )
         }
 
@@ -3584,11 +3587,11 @@ class OpenAIProvider private constructor(
         if (statusCode in transientCodes) {
             // 503 with permanent failure indicators → ProviderError (trigger group fallback)
             if (statusCode == 503 && (body.contains("no_available_providers") || body.contains("model_not_found"))) {
-                return LLMError.ProviderError(message)
+                return LLMError.ProviderError(message, httpStatus = statusCode)
             }
-            return LLMError.TransientError(message)
+            return LLMError.TransientError(message, httpStatus = statusCode)
         }
-        return LLMError.ProviderError(message)
+        return LLMError.ProviderError(message, httpStatus = statusCode)
     }
 
     private fun mapError(error: Throwable): LLMError {

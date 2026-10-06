@@ -519,7 +519,13 @@ fun LogDetailScreen(
 
 private fun shareLogFile(context: Context, file: File) {
     try {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        // v1.4.0 item 88 — scrub secrets at the export boundary: the file
+        // the user sends never contains API keys, even if one leaked into
+        // a log line on disk. The scrubbed copy lives under cacheDir/share/
+        // (FileProvider `share` root); when there is nothing to scrub the
+        // original file is shared directly.
+        val exportFile = scrubbedCopyForShare(context, file)
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", exportFile)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_STREAM, uri)
@@ -548,12 +554,40 @@ private fun shareLogFile(context: Context, file: File) {
             "LogShare",
             "FileProvider share failed for ${file.name}: ${e.message} — falling back to EXTRA_TEXT",
         )
-        val text = try { file.readText().take(100_000) } catch (_: Exception) { return }
+        // v1.4.0 item 88 — the EXTRA_TEXT fallback carries raw log text;
+        // scrub it too before handing it to the chooser.
+        val text = try {
+            ai.unicto.unibot.logging.SecretScrubber.scrub(file.readText().take(100_000))
+        } catch (_: Exception) { return }
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, text)
         }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.log_share_chooser)))
+    }
+}
+
+/**
+ * v1.4.0 item 88 — returns a scrubbed temp copy of [file] under
+ * cacheDir/share/, or [file] itself when there is nothing to scrub or
+ * scrubbing isn't safe. Never throws: failures fall back to the raw file
+ * (the share must not break because the scrubber did).
+ */
+private fun scrubbedCopyForShare(context: Context, file: File): File {
+    return try {
+        if (!file.exists() || file.length() > ai.unicto.unibot.logging.SecretScrubber.MAX_SCRUB_BYTES) {
+            return file
+        }
+        val text = file.readText()
+        if (!ai.unicto.unibot.logging.SecretScrubber.containsSecrets(text)) return file
+        val dir = File(context.cacheDir, "share").apply { mkdirs() }
+        val tmp = File(dir, "scrubbed-${file.name}")
+        tmp.writeText(ai.unicto.unibot.logging.SecretScrubber.scrub(text))
+        AppLogger.info("LogShare", "scrubbed secrets from ${file.name} before share")
+        tmp
+    } catch (t: Throwable) {
+        AppLogger.warning("LogShare", "scrub failed for ${file.name}: ${t.message} — sharing raw")
+        file
     }
 }
 

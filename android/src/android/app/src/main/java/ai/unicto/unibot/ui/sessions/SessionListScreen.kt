@@ -646,8 +646,11 @@ fun SessionListScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             try {
-                val defaultModelId = providerRepository.config.value.modelEntries
-                    .firstOrNull()?.model?.id ?: ""
+                // v1.4.0 item 83 — the import needs a chat model, never a
+                // TTS / embedding / retired id that happens to be listed first.
+                val defaultModelId = ai.unicto.unibot.provider.ChatModelFilter.firstChatModelId(
+                    providerRepository.config.value.modelEntries,
+                ) ?: ""
                 val result = ai.unicto.unibot.share.ChatImporter.importFromUri(
                     context, uri, chatRepository, defaultModelId,
                 )

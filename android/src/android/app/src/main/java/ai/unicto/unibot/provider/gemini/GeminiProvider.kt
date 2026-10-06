@@ -541,32 +541,32 @@ class GeminiProvider(
     }
 
     internal fun mapHttpError(statusCode: Int, body: String): LLMError {
-        if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
-        if (statusCode == 429) return LLMError.RateLimited()
+        if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey(httpStatus = statusCode)
+        if (statusCode == 429) return LLMError.RateLimited(httpStatus = statusCode)
         // [T-android-v127-413-output-limit] A 413 whose BODY is about the
         // output-token budget → OutputLimitExceeded (accurate card); pure
         // 413s (no token language) keep the "too long" card below.
         if (statusCode == 413 && isOutputLimitBody(body)) {
-            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}")
+            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}", httpStatus = statusCode)
         }
         // [T-android-v124-413] Own error class so the chat shows the friendly
         // recovery card instead of the raw status text.
-        if (statusCode == 413) return LLMError.RequestTooLarge("HTTP $statusCode: ${body.take(200)}")
+        if (statusCode == 413) return LLMError.RequestTooLarge("HTTP $statusCode: ${body.take(200)}", httpStatus = statusCode)
         // [T-android-v125-model-filter] 404 where the body says the model is
         // gone → ModelNotFound (friendly card). Bare 404s stay ProviderError.
         if (statusCode == 404 && isModelNotFoundBody(body)) {
-            return LLMError.ModelNotFound(extractModelId(body), "[$statusCode] ${body.take(300)}")
+            return LLMError.ModelNotFound(extractModelId(body), "[$statusCode] ${body.take(300)}", httpStatus = statusCode)
         }
         // [T-android-v126-maxtokens] 400 where the BODY says the requested
         // output budget exceeds the model's cap → OutputLimitExceeded
         // (friendly card). Every other 400 stays a ProviderError.
         if (statusCode == 400 && isOutputLimitBody(body)) {
-            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}")
+            return LLMError.OutputLimitExceeded(extractOutputLimit(body), "[$statusCode] ${body.take(300)}", httpStatus = statusCode)
         }
         val message = "Gemini API error $statusCode: ${body.take(200)}"
         val transientCodes = setOf(500, 502, 503, 504, 529)
-        if (statusCode in transientCodes) return LLMError.TransientError(message)
-        return LLMError.ProviderError(message)
+        if (statusCode in transientCodes) return LLMError.TransientError(message, httpStatus = statusCode)
+        return LLMError.ProviderError(message, httpStatus = statusCode)
     }
 
     private fun mapError(error: Throwable): LLMError {

@@ -41,6 +41,11 @@ object ChatModelFilter {
         "imagen",
         "flux",
         "sora",
+        // v1.4.0 item 83 — audio / realtime voice models (gpt-4o-audio-preview,
+        // gpt-realtime, …) are listed next to chat models by several providers
+        // but cannot take a chat turn.
+        "audio",
+        "realtime",
     )
 
     /**
@@ -81,4 +86,13 @@ object ChatModelFilter {
 
     fun filterEntries(entries: List<ModelEntry>): List<ModelEntry> =
         entries.filter { isChatModel(it.model.id) }
+
+    /**
+     * v1.4.0 item 83 — the default-model choke point. Anywhere the app must
+     * pick a model WITHOUT asking the user (chat import, trace samples,
+     * first-run fallbacks) goes through here so a TTS / embedding / retired
+     * id can never become the default. Null when no entry is a chat model.
+     */
+    fun firstChatModelId(entries: List<ModelEntry>): String? =
+        entries.firstOrNull { isChatModel(it.model.id) }?.model?.id
 }

@@ -18,12 +18,35 @@ object ChatViewModelStore {
     private const val TAG = "ChatVMStore"
 
     /**
+     * v1.4.0 item 77 — cap on cached per-session stores. Each store holds a
+     * live ChatViewModel (agent loop, streaming state, message list); with no
+     * cap, hopping across dozens of sessions pins all of them in memory and
+     * OOMs a 4GB phone. LRU eviction: the least-recently-touched store whose
+     * session is not currently foregrounded is cleared (cancelling its
+     * viewModelScope, triggering ChatViewModel.onCleared).
+     */
+    const val MAX_CACHED_STORES = 8
+
+    /**
      * One ViewModelStore per canonical sessionId. Each store contains at most
      * one ChatViewModel (the one created by our factory). When we want to drop
      * a session's VM, we call `clear()` on its store which triggers
      * `onCleared`.
      */
     private val stores = mutableMapOf<String, ViewModelStore>()
+
+    /**
+     * v1.4.0 item 77 — MRU-at-tail access order for [stores]. Every
+     * [ownerFor] touch moves the key to the tail; eviction takes from the
+     * head. Kept in lock-step with [stores] by [release] and [rename].
+     */
+    private val accessOrder = ArrayDeque<String>()
+
+    /** Test hook: current cached store count. */
+    internal fun cachedStoreCount(): Int = synchronized(this) { stores.size }
+
+    /** Test hook: canonical ids currently cached. */
+    internal fun cachedStoreKeys(): Set<String> = synchronized(this) { stores.keys.toSet() }
 
     /**
      * Draft → canonical mapping. When a draft ("__new__...") session is
@@ -94,8 +117,36 @@ object ChatViewModelStore {
             Log.d(TAG, "allocate store for $key (total=${stores.size + 1})")
             ViewModelStore()
         }
+        // v1.4.0 item 77 — MRU touch, then evict past the cap.
+        accessOrder.remove(key)
+        accessOrder.addLast(key)
+        evictIfOverCap()
         return object : ViewModelStoreOwner {
             override val viewModelStore: ViewModelStore = store
+        }
+    }
+
+    /**
+     * v1.4.0 item 77 — drop the least-recently-used stores until the cache is
+     * back under [MAX_CACHED_STORES]. The foregrounded session's store is
+     * never a victim: evicting it would kill the agent loop the user is
+     * watching. When every cached store is the active one (only possible
+     * with a cap of 1), we keep them rather than evicting live work.
+     */
+    private fun evictIfOverCap() {
+        while (stores.size > MAX_CACHED_STORES) {
+            val activeKey = activeSessionIdInternal?.let { resolveKey(it) }
+            val victim = accessOrder.firstOrNull { it != activeKey && stores.containsKey(it) }
+                ?: break
+            accessOrder.remove(victim)
+            // Drop draft aliases pointing at the evicted store so a later
+            // lookup re-allocates cleanly instead of resolving to a dead key.
+            aliases.entries.removeAll { it.value == victim }
+            stores.remove(victim)?.let {
+                it.clear()
+                Log.i(TAG, "evict store for $victim (LRU cap $MAX_CACHED_STORES, remaining=${stores.size})")
+            }
+            aliasGeneration.intValue++
         }
     }
 
@@ -108,6 +159,7 @@ object ChatViewModelStore {
     fun release(sessionId: String) {
         val key = resolveKey(sessionId)
         aliases.entries.removeAll { it.value == key }
+        accessOrder.remove(key)
         aliasGeneration.intValue++
         stores.remove(key)?.let {
             it.clear()
@@ -147,6 +199,10 @@ object ChatViewModelStore {
         val store = stores.remove(fromSessionId)
         if (store != null) {
             stores[toSessionId] = store
+        }
+        // v1.4.0 item 77 — keep the LRU order keyed on the live id.
+        if (accessOrder.remove(fromSessionId) && store != null) {
+            accessOrder.addLast(toSessionId)
         }
         aliases[fromSessionId] = toSessionId
         // Invalidate anything resolving through the alias map — see

@@ -1642,10 +1642,16 @@ class ProviderRepository(private val context: Context) {
         runCatching { providerDao.loadThinkingRules(instanceId).map { it.id } }.getOrDefault(emptyList())
     }
 
-    /** First model id served by [instanceId], for the resolution-trace sample. Null if none. */
+    /**
+     * First model id served by [instanceId], for the resolution-trace sample.
+     * Null if none. v1.4.0 item 83 — filtered through [ChatModelFilter] so a
+     * TTS / embedding / retired id can never surface as the sample model.
+     */
     fun firstModelId(instanceId: String): String? {
         ensureConfigLoaded()
-        return _config.value.modelEntries.firstOrNull { it.providerInstanceId == instanceId }?.model?.id
+        return ai.unicto.unibot.provider.ChatModelFilter.firstChatModelId(
+            _config.value.modelEntries.filter { it.providerInstanceId == instanceId },
+        )
     }
 
     /** Warm the resolver cache with every instance's custom rules (called on config load). */

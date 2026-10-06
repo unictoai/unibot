@@ -8,6 +8,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.acra.ACRA
 import org.acra.ReportField
 import org.acra.config.CoreConfigurationBuilder
@@ -57,6 +61,9 @@ import ai.unicto.unibot.sandbox.offload.WeatherOffloadHandler
 import ai.unicto.unibot.service.SessionActivityTracker
 import ai.unicto.unibot.ui.UnibotImageFetcher
 import kotlinx.coroutines.launch
+import ai.unicto.unibot.diagnostics.StartupTimer
+import ai.unicto.unibot.media.applyUnibotTuning
+import ai.unicto.unibot.util.AppErrorBus
 
 class UnibotApp : Application(), ImageLoaderFactory {
     /**
@@ -166,6 +173,19 @@ class UnibotApp : Application(), ImageLoaderFactory {
         private set
     lateinit var mountedFoldersStore: MountedFoldersStore
         private set
+
+    /**
+     * v1.4.0 item 86 — cold-start: non-critical init runs here
+     * ([Dispatchers.IO]) instead of on the main thread. A throw lands on
+     * [AppErrorBus] — a visible snackbar — via the handler, never a dead
+     * launch. Cancelled only when the process dies.
+     */
+    private val deferredStartupScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
+            AppErrorBus.post(e, "Startup")
+            Log.e("UnibotApp", "deferred startup failed", e)
+        },
+    )
 
     /**
      * T180-bg-notif: foreground-Activity counter, mutated by the
@@ -281,6 +301,8 @@ class UnibotApp : Application(), ImageLoaderFactory {
         kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             ai.unicto.unibot.knowledge.KnowledgeSendHook.prime(this@UnibotApp)
         }
+        // v1.4.0 item 86 — cold-start phase timing (see StartupTimer).
+        StartupTimer.mark("primes")
 
         // [P1-app-lock] Load the lock toggle/timeout and start watching
         // foreground/background transitions for the lock gate.
@@ -351,6 +373,7 @@ class UnibotApp : Application(), ImageLoaderFactory {
         // touched in the last hour; if THRESHOLD+ are present, stash the
         // list so MainActivity.onCreate can prompt to share them.
         ai.unicto.unibot.crash.CrashFrequencyDetector.checkAtLaunch(this)
+        StartupTimer.mark("crash-infra")
 
         // Hard short-circuit: when checkAtLaunch flips safe-mode ON, skip
         // every heavy subsystem (DB, repositories, offload server, PRoot
@@ -465,14 +488,15 @@ class UnibotApp : Application(), ImageLoaderFactory {
             Log.e("UnibotApp", "subsystem init failed — app will start in degraded mode", t)
             return
         }
+        StartupTimer.mark("repos")
 
-        // [T-soul-md] Seed SOUL.md with the default content on first launch
-        // so the Soul settings page and chat bubble identity have a real
-        // file to read. Safe no-op on subsequent launches — never
-        // overwrites existing user edits. Cache refresh primes the
-        // synchronous metadata read-path (chat header / system prompt).
-        ai.unicto.unibot.agent.SoulStore.ensureExists(this)
-        ai.unicto.unibot.agent.SoulStore.refreshCache(this)
+        // v1.4.0 item 86 — cold-start: Soul seeding is file I/O the
+        // first frame never needs (chat header reads refresh lazily
+        // via SoulStore.refreshCache); it runs off the main thread now.
+        deferredStartupScope.launch {
+            ai.unicto.unibot.agent.SoulStore.ensureExists(this@UnibotApp)
+            ai.unicto.unibot.agent.SoulStore.refreshCache(this@UnibotApp)
+        }
 
         // T-config: unibot-config CLI surface — registry / audit log /
         // master-switch store. Initialized eagerly here so
@@ -487,128 +511,217 @@ class UnibotApp : Application(), ImageLoaderFactory {
         // Initialize models.dev registry (loads from bundled asset, refreshes in background)
         ModelsDevApi.init(this)
 
-        // Initialize sandbox singletons (does not trigger extraction)
-        RootfsManager.getInstance(this)
-        ExecutionCoordinator.init(this)
-        ExecutionCoordinator.envVarRepository = envVarRepository
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
         // Privacy Mode store + redactor wiring. Mirrors iOS
         // EnvVarPrivacyStore.init / EnvVarRedactor static handoff.
         ai.unicto.unibot.data.EnvVarPrivacyStore.init(this)
         ai.unicto.unibot.data.EnvVarRedactor.envVarRepository = envVarRepository
 
-        // Start network monitoring — mirrors iOS NetworkMonitor.shared.start().
-        // The monitor writes /etc/resolv.conf immediately and on every
-        // ConnectivityManager callback so shells inside the sandbox see fresh
-        // DNS servers after Wi-Fi ↔ cellular swaps or VPN toggles.
-        networkMonitor.start(this)
+        // v1.4.0 item 86 — cold-start: none of the below is needed
+        // for the first frame (sandbox singletons, network monitor,
+        // bind mounts, offload server, notifiers, feature inits,
+        // one-shot migrations). It runs on Dispatchers.IO in its
+        // ORIGINAL ORDER; a throw lands on AppErrorBus (visible
+        // snackbar) via the scope's handler instead of killing launch.
+        StartupTimer.mark("main-critical-done")
+        deferredStartupScope.launch {
+            val app = this@UnibotApp
+            // Initialize sandbox singletons (does not trigger extraction)
+            RootfsManager.getInstance(app)
+            ExecutionCoordinator.init(app)
+            ExecutionCoordinator.envVarRepository = envVarRepository
 
-        // Register global /var/minis/{memory,skills,shared} bind mounts up-front
-        // so direct file I/O tools (file_read) resolve these paths even before
-        // PRoot has booted or any shell has started.
-        PRootKernel.registerGlobalBindMounts(this)
+            // Start network monitoring — mirrors iOS NetworkMonitor.shared.start().
+            // The monitor writes /etc/resolv.conf immediately and on every
+            // ConnectivityManager callback so shells inside the sandbox see fresh
+            // DNS servers after Wi-Fi ↔ cellular swaps or VPN toggles.
+            networkMonitor.start(app)
 
-        // T219-1: load user-mounted external folders and seed PRoot's
-        // bindMounts before the first proot invocation, so the very first
-        // `shell_execute` already has `/var/minis/mounts/<name>/` visible.
-        // Entries whose SAF tree URI didn't resolve to a real POSIX path
-        // (cloud providers, unmounted SD card) are silently skipped by
-        // bindMountSpecs.
-        mountedFoldersStore = MountedFoldersStore(this)
-        // T219-5: hand the singleton to PRootKernel so applyMountedFoldersSnapshot
-        // can read the live state, and wire an onChange callback so any UI CRUD
-        // (add/remove/rename/toggle) re-applies the snapshot.
-        // T277: PersistentShell reuses one PRoot process per chat session for the
-        // session's lifetime, so an applyMountedFoldersSnapshot call alone never
-        // reaches the live shell — proot's `-b` argv is frozen at spawn time.
-        // Kill any live shells so the next execute() rebuilds them with the
-        // updated bind set. Mount CRUD is a Settings-screen action; the user
-        // is not in chat mid-command, so this restart is safe and user-invisible.
-        PRootKernel.mountedFoldersStore = mountedFoldersStore
-        mountedFoldersStore.onChange = {
-            PRootKernel.applyMountedFoldersSnapshot(this)
-            ExecutionCoordinator.stopCurrentCommand()
-        }
-        // T219-6: route launch-time seeding through applyMountedFoldersSnapshot
-        // so it (a) reads the live store consistently and (b) materializes the
-        // /var/minis/mounts/<name> placeholder dirs that PRoot's `-b` needs.
-        // Note: this runs before PRootKernel.boot, so rootfs may not yet exist —
-        // applyMountedFoldersSnapshot tolerates that case (mkdirs fails silently
-        // and PRootKernel.boot calls applyMountedFoldersSnapshot again at the
-        // end of boot to materialize the targets once rootfs is on disk).
-        PRootKernel.applyMountedFoldersSnapshot(this)
+            // Register global /var/minis/{memory,skills,shared} bind mounts up-front
+            // so direct file I/O tools (file_read) resolve these paths even before
+            // PRoot has booted or any shell has started.
+            PRootKernel.registerGlobalBindMounts(app)
 
-        // Register native_offload handlers and start the server eagerly —
-        // the server only needs the rootfs tmp directory, which can be
-        // materialized lazily. Starting here means the abstract socket is
-        // reachable even before any shell session is launched.
-        NativeOffloadServer.register("android-alarm", AlarmOffloadHandler(this))
-        NativeOffloadServer.register("android-calendar", CalendarOffloadHandler(this))
-        NativeOffloadServer.register("android-clipboard", ClipboardOffloadHandler(this))
-        NativeOffloadServer.register("android-contacts", ContactsOffloadHandler(this))
-        NativeOffloadServer.register("android-device", DeviceOffloadHandler(this))
-        NativeOffloadServer.register("android-location", LocationOffloadHandler(this))
-        NativeOffloadServer.register("android-notification", NotificationOffloadHandler(this))
-        NativeOffloadServer.register("android-open", OpenOffloadHandler(this))
-        NativeOffloadServer.register("android-photos", PhotosOffloadHandler(this))
-        NativeOffloadServer.register("android-player", PlayerOffloadHandler())
-        NativeOffloadServer.register("android-speak", SpeakOffloadHandler(this))
-        NativeOffloadServer.register("android-speech", SpeechOffloadHandler(this))
-        NativeOffloadServer.register("android-weather", WeatherOffloadHandler(this))
-        // T323: UI-layer automation backed by UnibotAccessibilityService.
-        NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(this))
-        NativeOffloadServer.register("unibot-model-use", ModelUseOffloadHandler(this, providerRepository))
-        // unibot: unibot-media — pictures and clips through the user's image / video models.
-        NativeOffloadServer.register("unibot-media", ai.unicto.unibot.media.MediaOffloadHandler(this))
-        // unibot: unibot-hands — the phone's screen as a hand (screenshot → screen model → gesture).
-        NativeOffloadServer.register("unibot-hands", ai.unicto.unibot.hands.HandsOffloadHandler(this))
-        // unibot: unibot-pc — the phone drives the user's other devices (shell, files, browser, screen, tasks).
-        NativeOffloadServer.register("unibot-pc", ai.unicto.unibot.reach.ReachOffloadHandler(this))
-        // unibot: join the hub, so the user's other devices can reach this phone and it can reach them.
-        ai.unicto.unibot.hub.Hub.autoStart(this)
-        // T-config: unibot-config — agent-facing settings management
-        // (read/write registered ConfigFields with audit + revert).
-        // Mirrors iOS `config_offload_register()` in ISHKernel.m.
-        NativeOffloadServer.register(
-            "unibot-config",
-            ai.unicto.unibot.sandbox.offload.ConfigOffloadHandler(),
-        )
-        NativeOffloadServer.register("unibot-browser-use", BrowserUseOffloadHandler(this))
-        // T188: unibot-sessions-cli — agent-side query of chat history.
-        // Registers next to the other unibot-* tools so PRootKernel.
-        // installHandlerStubs() picks it up on the next rootfs boot
-        // (writes a 17-byte exit-0 stub at /usr/local/bin/unibot-sessions-cli
-        // so PATH lookup succeeds; PRoot intercepts the execve before
-        // the stub runs and routes to this handler).
-        NativeOffloadServer.register("unibot-sessions-cli", SessionsOffloadHandler(chatRepository))
-        // [T-android-scheduled-tasks-full] unibot-scheduled — create/list/run
-        // timed AI tasks (new chat / follow-up / re-run), mirroring the in-app
-        // Scheduled Tasks editor and the iOS Shortcuts intent set.
-        NativeOffloadServer.register(
-            "unibot-scheduled",
-            ai.unicto.unibot.sandbox.offload.ScheduledTaskOffloadHandler(this),
-        )
-        // T322: android-shizuku-cli — privileged Android control via Shizuku.
-        // The handler short-circuits with a typed error envelope when the
-        // user hasn't installed / started / authorized Shizuku, so we
-        // can register unconditionally; ShizukuManager.init below wires
-        // up the binder lifecycle listeners + StateFlow.
-        NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(this))
-        ai.unicto.unibot.offload.ShizukuManager.init(this)
+            // T219-1: load user-mounted external folders and seed PRoot's
+            // bindMounts before the first proot invocation, so the very first
+            // `shell_execute` already has `/var/minis/mounts/<name>/` visible.
+            // Entries whose SAF tree URI didn't resolve to a real POSIX path
+            // (cloud providers, unmounted SD card) are silently skipped by
+            // bindMountSpecs.
+            this@UnibotApp.mountedFoldersStore = MountedFoldersStore(app)
+            // T219-5: hand the singleton to PRootKernel so applyMountedFoldersSnapshot
+            // can read the live state, and wire an onChange callback so any UI CRUD
+            // (add/remove/rename/toggle) re-applies the snapshot.
+            // T277: PersistentShell reuses one PRoot process per chat session for the
+            // session's lifetime, so an applyMountedFoldersSnapshot call alone never
+            // reaches the live shell — proot's `-b` argv is frozen at spawn time.
+            // Kill any live shells so the next execute() rebuilds them with the
+            // updated bind set. Mount CRUD is a Settings-screen action; the user
+            // is not in chat mid-command, so this restart is safe and user-invisible.
+            PRootKernel.mountedFoldersStore = this@UnibotApp.mountedFoldersStore
+            this@UnibotApp.mountedFoldersStore.onChange = {
+                PRootKernel.applyMountedFoldersSnapshot(app)
+                ExecutionCoordinator.stopCurrentCommand()
+            }
+            // T219-6: route launch-time seeding through applyMountedFoldersSnapshot
+            // so it (a) reads the live store consistently and (b) materializes the
+            // /var/minis/mounts/<name> placeholder dirs that PRoot's `-b` needs.
+            // Note: this runs before PRootKernel.boot, so rootfs may not yet exist —
+            // applyMountedFoldersSnapshot tolerates that case (mkdirs fails silently
+            // and PRootKernel.boot calls applyMountedFoldersSnapshot again at the
+            // end of boot to materialize the targets once rootfs is on disk).
+            PRootKernel.applyMountedFoldersSnapshot(app)
 
-        // T-android-unibot-debug-cli: shell-side CLI wrapper around the in-app
-        // DebugServer (127.0.0.1:5321) JSON-RPC. DEBUG-only — Release builds
-        // ship neither the DebugServer nor this handler, so the
-        // `/usr/local/bin/unibot-debug` stub is also absent (PRootKernel.
-        // installHandlerStubs enumerates currently-registered handlers).
-        if (BuildConfig.DEBUG) {
+            // Register native_offload handlers and start the server eagerly —
+            // the server only needs the rootfs tmp directory, which can be
+            // materialized lazily. Starting here means the abstract socket is
+            // reachable even before any shell session is launched.
+            NativeOffloadServer.register("android-alarm", AlarmOffloadHandler(app))
+            NativeOffloadServer.register("android-calendar", CalendarOffloadHandler(app))
+            NativeOffloadServer.register("android-clipboard", ClipboardOffloadHandler(app))
+            NativeOffloadServer.register("android-contacts", ContactsOffloadHandler(app))
+            NativeOffloadServer.register("android-device", DeviceOffloadHandler(app))
+            NativeOffloadServer.register("android-location", LocationOffloadHandler(app))
+            NativeOffloadServer.register("android-notification", NotificationOffloadHandler(app))
+            NativeOffloadServer.register("android-open", OpenOffloadHandler(app))
+            NativeOffloadServer.register("android-photos", PhotosOffloadHandler(app))
+            NativeOffloadServer.register("android-player", PlayerOffloadHandler())
+            NativeOffloadServer.register("android-speak", SpeakOffloadHandler(app))
+            NativeOffloadServer.register("android-speech", SpeechOffloadHandler(app))
+            NativeOffloadServer.register("android-weather", WeatherOffloadHandler(app))
+            // T323: UI-layer automation backed by UnibotAccessibilityService.
+            NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(app))
+            NativeOffloadServer.register("unibot-model-use", ModelUseOffloadHandler(app, providerRepository))
+            // unibot: unibot-media — pictures and clips through the user's image / video models.
+            NativeOffloadServer.register("unibot-media", ai.unicto.unibot.media.MediaOffloadHandler(app))
+            // unibot: unibot-hands — the phone's screen as a hand (screenshot → screen model → gesture).
+            NativeOffloadServer.register("unibot-hands", ai.unicto.unibot.hands.HandsOffloadHandler(app))
+            // unibot: unibot-pc — the phone drives the user's other devices (shell, files, browser, screen, tasks).
+            NativeOffloadServer.register("unibot-pc", ai.unicto.unibot.reach.ReachOffloadHandler(app))
+            // unibot: join the hub, so the user's other devices can reach this phone and it can reach them.
+            ai.unicto.unibot.hub.Hub.autoStart(app)
+            // T-config: unibot-config — agent-facing settings management
+            // (read/write registered ConfigFields with audit + revert).
+            // Mirrors iOS `config_offload_register()` in ISHKernel.m.
             NativeOffloadServer.register(
-                "unibot-debug",
-                ai.unicto.unibot.sandbox.offload.DebugOffloadHandler(this),
+                "unibot-config",
+                ai.unicto.unibot.sandbox.offload.ConfigOffloadHandler(),
             )
-        }
+            NativeOffloadServer.register("unibot-browser-use", BrowserUseOffloadHandler(app))
+            // T188: unibot-sessions-cli — agent-side query of chat history.
+            // Registers next to the other unibot-* tools so PRootKernel.
+            // installHandlerStubs() picks it up on the next rootfs boot
+            // (writes a 17-byte exit-0 stub at /usr/local/bin/unibot-sessions-cli
+            // so PATH lookup succeeds; PRoot intercepts the execve before
+            // the stub runs and routes to this handler).
+            NativeOffloadServer.register("unibot-sessions-cli", SessionsOffloadHandler(chatRepository))
+            // [T-android-scheduled-tasks-full] unibot-scheduled — create/list/run
+            // timed AI tasks (new chat / follow-up / re-run), mirroring the in-app
+            // Scheduled Tasks editor and the iOS Shortcuts intent set.
+            NativeOffloadServer.register(
+                "unibot-scheduled",
+                ai.unicto.unibot.sandbox.offload.ScheduledTaskOffloadHandler(app),
+            )
+            // T322: android-shizuku-cli — privileged Android control via Shizuku.
+            // The handler short-circuits with a typed error envelope when the
+            // user hasn't installed / started / authorized Shizuku, so we
+            // can register unconditionally; ShizukuManager.init below wires
+            // up the binder lifecycle listeners + StateFlow.
+            NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(app))
+            ai.unicto.unibot.offload.ShizukuManager.init(app)
 
-        NativeOffloadServer.start(RootfsManager.getInstance(this).rootfsDir)
+            // T-android-unibot-debug-cli: shell-side CLI wrapper around the in-app
+            // DebugServer (127.0.0.1:5321) JSON-RPC. DEBUG-only — Release builds
+            // ship neither the DebugServer nor this handler, so the
+            // `/usr/local/bin/unibot-debug` stub is also absent (PRootKernel.
+            // installHandlerStubs enumerates currently-registered handlers).
+            if (BuildConfig.DEBUG) {
+                NativeOffloadServer.register(
+                    "unibot-debug",
+                    ai.unicto.unibot.sandbox.offload.DebugOffloadHandler(app),
+                )
+            }
+
+            NativeOffloadServer.start(RootfsManager.getInstance(app).rootfsDir)
+
+            // T180-bg-notif: background-settings + task-completion notifier.
+            // The notifier is wired into SessionActivityTracker's completion
+            // hook so any session whose stream finishes (success or error)
+            // posts a tap-to-open notification when the app is backgrounded.
+            // Mirrors iOS BackgroundKeepAliveManager.postBackgroundTaskNotification.
+            this@UnibotApp.backgroundSettingsRepository = BackgroundSettingsRepository(app)
+            this@UnibotApp.backgroundTaskNotifier = BackgroundTaskNotifier(
+                context = app,
+                chatRepository = chatRepository,
+                backgroundSettings = backgroundSettingsRepository,
+                isAppForeground = this@UnibotApp::isAppForeground,
+            )
+            SessionActivityTracker.setCompletionListener { sessionId, isError ->
+                backgroundTaskNotifier.notifyTaskCompleted(sessionId, isError)
+            }
+
+            // [T-android-config-confirm-timeout] Wire the config-confirm background
+            // notifier into the (Context-free) gate, so a unibot-config approval that
+            // is waiting while the app is backgrounded nudges the user before the
+            // 120s timeout. Mirrors iOS ConfigConfirmationGate.notifyIfBackgrounded.
+            val configConfirmNotifier = ai.unicto.unibot.notification.ConfigConfirmNotifier(
+                context = app,
+                backgroundSettings = backgroundSettingsRepository,
+                isAppForeground = this@UnibotApp::isAppForeground,
+            )
+            ai.unicto.unibot.config.confirm.ConfigConfirmationGate.backgroundNotifier = {
+                configConfirmNotifier.notifyIfBackgrounded(it)
+            }
+            ai.unicto.unibot.config.confirm.ConfigConfirmationGate.cancelNotification = {
+                configConfirmNotifier.cancel(it)
+            }
+            // unibot: remembered approvals + the approval gate's background notification.
+            ai.unicto.unibot.guard.Grants.init(app)
+            ai.unicto.unibot.feed.FeedFlow.init(app) // unibot
+            ai.unicto.unibot.avatar.AvatarStore.init(app) // unibot: the user's own face, if any
+            ai.unicto.unibot.cloud.ProfileSync.init(app) // unibot: the name and face the account's devices share
+            ai.unicto.unibot.avatar.AvatarStudio.init(app) // unibot: the feed's files and its built-in routine
+            val ubRiskNotifier = ai.unicto.unibot.guard.RiskApprovalNotifier(app, this@UnibotApp::isAppForeground)
+            ai.unicto.unibot.guard.RiskGate.backgroundNotifier = { ubRiskNotifier.notifyIfBackgrounded(it) }
+            ai.unicto.unibot.guard.RiskGate.cancelNotification = { ubRiskNotifier.cancel(it) }
+
+            // Initialize offload permission manager
+            OffloadPermissionManager.init(app)
+
+            // Initialize speech-recognition adapter layer (system + provider engines).
+            ai.unicto.unibot.speech.SpeechRecognitionManager.init(app)
+
+            // Debug server: only start in debug builds (NEVER in release)
+            if (BuildConfig.DEBUG) {
+                try {
+                    ai.unicto.unibot.debug.DebugServer(app).start()
+                } catch (e: Exception) {
+                    Log.w("UnibotApp", "Failed to start debug server: ${e.message}")
+                }
+            }
+
+            // T268: one-shot migration of pre-T266 internal alarms into the
+            // system Clock app. Pre-T266 builds wrote alarms into Unibot's own
+            // SharedPreferences + AlarmManager; T266 retired that path but old
+            // installs still have ghost entries that fire only inside Unibot.
+            // Replay each future-dated entry through the same SET_ALARM /
+            // SET_TIMER intents the new path uses, then clear prefs so the
+            // migration runs at most once. Wrapped in runCatching so an
+            // unexpected prefs shape never blocks app launch.
+            runCatching { this@UnibotApp.migrateGhostAlarms() }
+                .onFailure { Log.w("UnibotApp", "ghost alarm migration failed: ${it.message}") }
+
+        }
+        StartupTimer.mark("deferred-launched")
+
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
+
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
+
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
+
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
         // Initialize session activity tracker for foreground service management
         SessionActivityTracker.init(this)
@@ -634,46 +747,9 @@ class UnibotApp : Application(), ImageLoaderFactory {
             ai.unicto.unibot.service.SessionBadgeStore.reconcileInterruptedSessions(interrupted - active)
         }
 
-        // T180-bg-notif: background-settings + task-completion notifier.
-        // The notifier is wired into SessionActivityTracker's completion
-        // hook so any session whose stream finishes (success or error)
-        // posts a tap-to-open notification when the app is backgrounded.
-        // Mirrors iOS BackgroundKeepAliveManager.postBackgroundTaskNotification.
-        backgroundSettingsRepository = BackgroundSettingsRepository(this)
-        backgroundTaskNotifier = BackgroundTaskNotifier(
-            context = this,
-            chatRepository = chatRepository,
-            backgroundSettings = backgroundSettingsRepository,
-            isAppForeground = ::isAppForeground,
-        )
-        SessionActivityTracker.setCompletionListener { sessionId, isError ->
-            backgroundTaskNotifier.notifyTaskCompleted(sessionId, isError)
-        }
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
-        // [T-android-config-confirm-timeout] Wire the config-confirm background
-        // notifier into the (Context-free) gate, so a unibot-config approval that
-        // is waiting while the app is backgrounded nudges the user before the
-        // 120s timeout. Mirrors iOS ConfigConfirmationGate.notifyIfBackgrounded.
-        val configConfirmNotifier = ai.unicto.unibot.notification.ConfigConfirmNotifier(
-            context = this,
-            backgroundSettings = backgroundSettingsRepository,
-            isAppForeground = ::isAppForeground,
-        )
-        ai.unicto.unibot.config.confirm.ConfigConfirmationGate.backgroundNotifier = {
-            configConfirmNotifier.notifyIfBackgrounded(it)
-        }
-        ai.unicto.unibot.config.confirm.ConfigConfirmationGate.cancelNotification = {
-            configConfirmNotifier.cancel(it)
-        }
-        // unibot: remembered approvals + the approval gate's background notification.
-        ai.unicto.unibot.guard.Grants.init(this)
-        ai.unicto.unibot.feed.FeedFlow.init(this) // unibot
-        ai.unicto.unibot.avatar.AvatarStore.init(this) // unibot: the user's own face, if any
-        ai.unicto.unibot.cloud.ProfileSync.init(this) // unibot: the name and face the account's devices share
-        ai.unicto.unibot.avatar.AvatarStudio.init(this) // unibot: the feed's files and its built-in routine
-        val ubRiskNotifier = ai.unicto.unibot.guard.RiskApprovalNotifier(this, ::isAppForeground)
-        ai.unicto.unibot.guard.RiskGate.backgroundNotifier = { ubRiskNotifier.notifyIfBackgrounded(it) }
-        ai.unicto.unibot.guard.RiskGate.cancelNotification = { ubRiskNotifier.cancel(it) }
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
         // Track foreground state via ActivityLifecycleCallbacks. Counting
         // started/stopped balances out around configuration changes (the
@@ -746,11 +822,9 @@ class UnibotApp : Application(), ImageLoaderFactory {
             override fun onActivityDestroyed(activity: Activity) {}
         })
 
-        // Initialize offload permission manager
-        OffloadPermissionManager.init(this)
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
-        // Initialize speech-recognition adapter layer (system + provider engines).
-        ai.unicto.unibot.speech.SpeechRecognitionManager.init(this)
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
         // Refresh model lists once per calendar day (mirrors iOS UnibotApp.swift).
         // Runs per-instance in parallel; `autoRefreshModels` skips instances with custom models.
@@ -798,25 +872,13 @@ class UnibotApp : Application(), ImageLoaderFactory {
             },
         )
 
-        // Debug server: only start in debug builds (NEVER in release)
-        if (BuildConfig.DEBUG) {
-            try {
-                ai.unicto.unibot.debug.DebugServer(this).start()
-            } catch (e: Exception) {
-                Log.w("UnibotApp", "Failed to start debug server: ${e.message}")
-            }
-        }
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
 
-        // T268: one-shot migration of pre-T266 internal alarms into the
-        // system Clock app. Pre-T266 builds wrote alarms into Unibot's own
-        // SharedPreferences + AlarmManager; T266 retired that path but old
-        // installs still have ghost entries that fire only inside Unibot.
-        // Replay each future-dated entry through the same SET_ALARM /
-        // SET_TIMER intents the new path uses, then clear prefs so the
-        // migration runs at most once. Wrapped in runCatching so an
-        // unexpected prefs shape never blocks app launch.
-        runCatching { migrateGhostAlarms() }
-            .onFailure { Log.w("UnibotApp", "ghost alarm migration failed: ${it.message}") }
+        // v1.4.0 item 86 — moved into deferredStartupScope below (cold-start).
+        // (ghost-alarm migration chunk)
+
+        // v1.4.0 item 86 — one-line cold-start summary (logcat + app log).
+        StartupTimer.report()
     }
 
     /**
@@ -893,9 +955,14 @@ class UnibotApp : Application(), ImageLoaderFactory {
      * Coil global ImageLoader — registers [UnibotImageFetcher] so `unibot://`
      * URIs in Markdown images (e.g. `![alt](unibot://attachments/x.png)`)
      * resolve to local files under /var/minis/.
+     *
+     * v1.4.0 item 87 — [ai.unicto.unibot.media.applyUnibotTuning] caps the
+     * memory + disk caches for 4GB devices (24 MB / 96 MB fixed budgets
+     * instead of Coil's memory-class-scaled defaults).
      */
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
+            .applyUnibotTuning(this)
             .components {
                 add(UnibotImageFetcher.Factory())
                 add(UnibotImageFetcher.UriFactory())

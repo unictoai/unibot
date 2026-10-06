@@ -21,6 +21,10 @@ import android.app.AlertDialog
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -593,6 +597,11 @@ class MainActivity : ComponentActivity() {
             // underneath, never delayed.
             var showSplash by remember { mutableStateOf(true) }
 
+            // v1.4.0 item 78 — app-wide crash safety net: coroutine errors
+            // that escape their scope degrade to a visible snackbar instead
+            // of a crash. Pumped by GlobalErrorSnackbar below.
+            val globalErrorSnackbar = remember { SnackbarHostState() }
+
             // [v0.4.2-first-impression] Theme switch crossfade: changing
             // Appearance → theme crossfades the whole UI (Motion.Standard)
             // instead of a hard cut.
@@ -688,6 +697,18 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                 )
+
+                // v1.4.0 item 78 — crash safety net renderer: pumps
+                // AppErrorBus into the snackbar host below. Mounted at the
+                // root so errors from any screen or background scope are
+                // visible. The transparent Box never intercepts touches.
+                ai.unicto.unibot.ui.components.GlobalErrorSnackbar(globalErrorSnackbar)
+                Box(
+                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                    contentAlignment = androidx.compose.ui.Alignment.BottomCenter,
+                ) {
+                    SnackbarHost(hostState = globalErrorSnackbar)
+                }
 
                 // T-config: root-level unibot-config confirm dialog.
                 // Bound to ConfigConfirmationGate.pending — the gate

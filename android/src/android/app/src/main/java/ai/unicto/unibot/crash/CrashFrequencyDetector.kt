@@ -884,6 +884,10 @@ object CrashFrequencyDetector {
      * Uses the cache dir so the OS cleans up stale archives if the user
      * shares but never re-opens Unibot; FileProvider already grants the
      * receiving app read access via FLAG_GRANT_READ_URI_PERMISSION.
+     *
+     * v1.4.0 item 88 — every file is scrubbed for secrets at this export
+     * boundary ([scrubbedCopyForExport]): the zip the user sends never
+     * contains API keys, even if one leaked into a log line on disk.
      */
     private fun packageZip(ctx: Context, files: List<File>): File? {
         val readable = files.filter { it.exists() && it.length() > 0 }
@@ -895,8 +899,11 @@ object CrashFrequencyDetector {
             val buf = ByteArray(64 * 1024)
             for (f in readable) {
                 try {
+                    // Zip under the ORIGINAL name so the recipient sees
+                    // crash-<stamp>.log, not the scrubbed temp name.
+                    val src = scrubbedCopyForExport(ctx, f)
                     zout.putNextEntry(ZipEntry(f.name))
-                    FileInputStream(f).use { fin ->
+                    FileInputStream(src).use { fin ->
                         while (true) {
                             val n = fin.read(buf)
                             if (n <= 0) break
@@ -910,6 +917,33 @@ object CrashFrequencyDetector {
             }
         }
         return zipFile
+    }
+
+    /**
+     * v1.4.0 item 88 — secret scrubbing at the export boundary.
+     *
+     * Returns a scrubbed temp copy of [f] under cacheDir/share/ (covered by
+     * the FileProvider's `share` root), or [f] itself when there is nothing
+     * to scrub or scrubbing isn't safe (oversized file, read failure).
+     * [ai.unicto.unibot.logging.SecretScrubber] is a pure string utility
+     * with no init requirements, so this keeps the detector's
+     * "zero Unibot-internal dependencies" contract intact.
+     */
+    private fun scrubbedCopyForExport(ctx: Context, f: File): File {
+        return try {
+            if (f.length() > ai.unicto.unibot.logging.SecretScrubber.MAX_SCRUB_BYTES) return f
+            val text = f.readText()
+            if (!ai.unicto.unibot.logging.SecretScrubber.containsSecrets(text)) return f
+            val scrubbed = ai.unicto.unibot.logging.SecretScrubber.scrub(text)
+            val tmp = File(ctx.cacheDir, "share/scrubbed-${f.name}")
+            tmp.parentFile?.mkdirs()
+            tmp.writeText(scrubbed)
+            android.util.Log.i(TAG, "scrubbed secrets from ${f.name} before export")
+            tmp
+        } catch (t: Throwable) {
+            android.util.Log.w(TAG, "scrub failed for ${f.name}, exporting raw: ${t.message}")
+            f
+        }
     }
 
     private fun formatBytes(bytes: Long): String = when {

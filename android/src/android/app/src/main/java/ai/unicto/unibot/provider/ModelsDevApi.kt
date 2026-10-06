@@ -376,6 +376,11 @@ object ModelsDevApi {
                     cacheTimestamp = System.currentTimeMillis()
                 }
                 saveDiskCache(body)
+                // v1.4.0 item 85 — the catalog changed, so the release-date
+                // ranking tables are stale. Invalidate so the next picker
+                // read rebuilds from the fresh registry instead of ranking
+                // new models with last week's dates.
+                ModelReleaseIndex.invalidate()
                 Log.d(TAG, "Background-refreshed models.dev registry: ${parsed.size} providers")
             }
         } catch (e: Exception) {
