@@ -132,6 +132,29 @@ jobs:
               --body-file /tmp/assemble-tail.txt || true
           fi
 
+      - name: Close stale CI diagnostic issues
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Self-healing tracker: when CI is green, bot-filed per-commit
+          # diagnostic issues are stale noise — close them so the tracker
+          # reflects reality. Triple-gated for safety: only issues authored
+          # by github-actions[bot], titled "CI: ...", and NOT about the
+          # current commit are touched. Never fails the build.
+          gh issue list --state open --limit 200 --json number,title,author \
+            --jq -r '.[] | "\(.number)\t\(.author.login)\t\(.title)"' 2>/dev/null | while IFS=$'\t' read -r num author title; do
+            case "$author:$title" in
+              "github-actions[bot]:CI: "*)
+                case "$title" in
+                  *"${{ github.sha }}"*) echo "keeping #$num (current commit)" ;;
+                  *) gh issue close "$num" --comment "CI is green on ${{ github.sha }} — closing this stale per-commit diagnostic." 2>/dev/null || true
+                     echo "closed stale #$num" ;;
+                esac
+                ;;
+            esac
+          done || true
+
       - name: Badging
         run: |
           bt="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
