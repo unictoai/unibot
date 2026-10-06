@@ -21,6 +21,10 @@ import ai.unicto.unibot.ui.navigation.Routes
  *   unibot://settings/model-groups/<groupId>     → Model Group detail
  *   unibot://settings/usage                      → Token usage
  *   unibot://settings/skills                     → Skills management
+ *   unibot://settings/background_agents         → Background agents
+ *   unibot://settings/question_cards             → Question cards
+ *   unibot://settings/slash_commands             → Slash commands
+ *   unibot://settings/portable_profile           → Portable profile
  *   unibot://settings/memory                     → Memory management
  *   unibot://settings/storage                    → Storage management
  *   unibot://settings/mount-external             → Mount External Folders list
@@ -236,6 +240,15 @@ object DeepLinkHandler {
             "usage", "usage-stats", "usage_stats" ->
                 DeepLinkAction.OpenSettingsScreen(Routes.USAGE_STATS)
             "skills" -> DeepLinkAction.OpenSettingsScreen(Routes.SKILLS)
+            // v1.4.0 power-user & automation theme.
+            "background-agents", "background_agents" ->
+                DeepLinkAction.OpenSettingsScreen(Routes.BACKGROUND_AGENTS)
+            "question-cards", "question_cards" ->
+                DeepLinkAction.OpenSettingsScreen(Routes.QUESTION_CARDS)
+            "slash-commands", "slash_commands" ->
+                DeepLinkAction.OpenSettingsScreen(Routes.SLASH_COMMANDS)
+            "portable-profile", "portable_profile" ->
+                DeepLinkAction.OpenSettingsScreen(Routes.PORTABLE_PROFILE)
             "memory" -> DeepLinkAction.OpenSettingsScreen(Routes.MEMORY)
             "storage" -> DeepLinkAction.OpenSettingsScreen(Routes.STORAGE)
             "mount-external", "mount_external", "mounts", "mounted-folders", "mounted_folders" ->

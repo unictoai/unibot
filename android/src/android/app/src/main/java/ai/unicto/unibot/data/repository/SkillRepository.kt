@@ -97,6 +97,13 @@ class SkillRepository(private val context: Context) {
         val sourceURL: String? = null,
         /** Cumulative read count of this skill's SKILL.md; normalized to 0–100 after exceeding 1000. */
         val useCount: Double = 0.0,
+        /**
+         * Declared `tools:` frontmatter entries (the Markdown skill schema).
+         * Source of truth is the SKILL.md frontmatter on disk; loaded into
+         * memory here so [ai.unicto.unibot.skills.SkillToolAdapter] can gate
+         * the skill's tool surface without a DB migration.
+         */
+        val tools: List<String> = emptyList(),
     )
 
     enum class UsageFrequency { NEVER, LOW, REGULAR, HIGH }
@@ -140,7 +147,7 @@ class SkillRepository(private val context: Context) {
 
     // -- CRUD --
 
-    fun add(name: String, description: String, body: String, version: String = "1.0.0", source: ImportSource = ImportSource.FILE, sourceURL: String? = null): Skill? {
+    fun add(name: String, description: String, body: String, version: String = "1.0.0", source: ImportSource = ImportSource.FILE, sourceURL: String? = null, tools: List<String> = emptyList()): Skill? {
         val id = slugify(name)
         if (id.isBlank()) return null
         if (_skills.value.any { it.id == id }) return null
@@ -153,6 +160,7 @@ class SkillRepository(private val context: Context) {
             importSource = source,
             body = body,
             sourceURL = sourceURL,
+            tools = tools,
         )
 
         insertDb(skill)
@@ -403,6 +411,7 @@ class SkillRepository(private val context: Context) {
                 body = parsed.body,
                 updatedAt = System.currentTimeMillis(),
                 sourceURL = sourceURL ?: current.sourceURL,
+                tools = parsed.tools,
             )
             db.execSQL(
                 "UPDATE skills SET name=?, description=?, version=?, import_source=?, source_url=?, updated_at=? WHERE id=?",
@@ -423,6 +432,7 @@ class SkillRepository(private val context: Context) {
             version = parsed.version,
             source = source,
             sourceURL = sourceURL,
+            tools = parsed.tools,
         )
     }
 
@@ -547,8 +557,74 @@ class SkillRepository(private val context: Context) {
         skill
     }
 
-    /** Outcome of [updateFromURL]: either an updated skill or a human-readable reason. */
-    sealed class UpdateResult {
+    /**
+     * What the gallery review screen shows before install (item 90).
+     * [fetchError] is non-null when the download or parse failed; in that
+     * case everything else is best-effort/empty.
+     */
+    data class SkillPreview(
+        val sourceUrl: String,
+        val name: String,
+        val description: String,
+        val version: String,
+        val author: String,
+        val tools: List<String>,
+        val bodyPreview: String,
+        val bodyLength: Int,
+        val errors: List<String>,
+        val warnings: List<String>,
+        val fetchError: String? = null,
+    ) {
+        val canInstall: Boolean get() = fetchError == null && errors.isEmpty()
+    }
+
+    /**
+     * Gallery import step 1 of 2: fetch a SKILL.md from a URL and parse it —
+     * WITHOUT installing anything. The caller shows the [SkillPreview] in a
+     * review dialog and only calls [importFromGitHub] after the user taps
+     * Install explicitly. Never auto-executes or auto-installs.
+     */
+    suspend fun previewFromUrl(urlString: String): SkillPreview = withContext(Dispatchers.IO) {
+        val normalized = normalizeURL(urlString)
+        // GitHub blob/tree URLs → raw file URL; anything else is fetched as-is.
+        val rawURL = githubToRawURL(normalized) ?: normalized
+        val content = httpGetString(rawURL)
+            ?: return@withContext SkillPreview(
+                sourceUrl = urlString,
+                name = "", description = "", version = "", author = "",
+                tools = emptyList(), bodyPreview = "", bodyLength = 0,
+                errors = emptyList(), warnings = emptyList(),
+                fetchError = "Could not download SKILL.md from that URL.",
+            )
+        val parsed = ai.unicto.unibot.skills.SkillSchema.parse(content)
+            ?: return@withContext SkillPreview(
+                sourceUrl = urlString,
+                name = "", description = "", version = "", author = "",
+                tools = emptyList(), bodyPreview = "", bodyLength = 0,
+                errors = emptyList(), warnings = emptyList(),
+                fetchError = "The downloaded file is not a valid SKILL.md (missing frontmatter or name).",
+            )
+        val validation = ai.unicto.unibot.skills.SkillSchema.validate(parsed)
+        val previewLines = parsed.body.lineSequence()
+            .filter { it.isNotBlank() }
+            .take(12)
+            .joinToString("\n")
+            .take(1200)
+        SkillPreview(
+            sourceUrl = urlString,
+            name = parsed.name,
+            description = parsed.description,
+            version = parsed.version,
+            author = parsed.author,
+            tools = parsed.tools,
+            bodyPreview = previewLines,
+            bodyLength = parsed.body.length,
+            errors = validation.errors,
+            warnings = validation.warnings + parsed.unknownKeys.map { "Unrecognized frontmatter key \"$it\" — ignored." },
+        )
+    }
+
+    /** Outcome of [updateFromURL]: either an updated skill or a human-readable reason. */    sealed class UpdateResult {
         data class Success(val skill: Skill) : UpdateResult()
         /**
          * SKILL.md fetched + persisted, but the sibling-file recursion
@@ -1237,7 +1313,9 @@ class SkillRepository(private val context: Context) {
                 Log.i(TAG, "Pruned orphan skill row (no SKILL.md on disk): $id")
                 continue
             }
-            val body = readSkillMdBody(id)
+            val diskParsed = readSkillMdParsed(id)
+            val body = diskParsed?.body ?: ""
+            val diskTools = diskParsed?.tools ?: emptyList()
             val sourceUrlIdx = cursor.getColumnIndex("source_url")
             val useCountIdx = cursor.getColumnIndex("use_count")
             var description = cursor.getString(cursor.getColumnIndexOrThrow("description"))
@@ -1337,6 +1415,7 @@ class SkillRepository(private val context: Context) {
                 body = body,
                 sourceURL = if (sourceUrlIdx >= 0 && !cursor.isNull(sourceUrlIdx)) cursor.getString(sourceUrlIdx) else null,
                 useCount = if (useCountIdx >= 0) cursor.getDouble(useCountIdx) else 0.0,
+                tools = diskTools,
             ))
             } catch (t: Throwable) {
                 Log.e(TAG, "skipping unreadable skill row: ${t.message}", t)
@@ -1389,17 +1468,21 @@ class SkillRepository(private val context: Context) {
             appendLine("name: ${skill.name}")
             appendLine("description: ${skill.description}")
             appendLine("version: ${skill.version}")
+            if (skill.tools.isNotEmpty()) {
+                appendLine("tools: ${skill.tools.joinToString(", ")}")
+            }
             appendLine("---")
             append(skill.body)
         }
         File(dir, "SKILL.md").writeText(content)
     }
 
-    private fun readSkillMdBody(id: String): String {
+    private fun readSkillMdBody(id: String): String = readSkillMdParsed(id)?.body ?: ""
+
+    private fun readSkillMdParsed(id: String): ParsedSkill? {
         val file = File(skillsDir, "$id/SKILL.md")
-        if (!file.exists()) return ""
-        val parsed = parseSkillMd(file.readText())
-        return parsed?.body ?: ""
+        if (!file.exists()) return null
+        return parseSkillMd(file.readText())
     }
 
     data class ParsedSkill(
@@ -1407,6 +1490,8 @@ class SkillRepository(private val context: Context) {
         val description: String,
         val version: String = "1.0.0",
         val body: String,
+        /** Declared `tools:` frontmatter entries (Markdown skill schema). */
+        val tools: List<String> = emptyList(),
     )
 
     /**
@@ -1461,6 +1546,7 @@ class SkillRepository(private val context: Context) {
         var name = ""
         var description = ""
         var version = "1.0.0"
+        val tools = mutableListOf<String>()
 
         var i = 1
         while (i < frontmatterEndLine) {
@@ -1508,6 +1594,24 @@ class SkillRepository(private val context: Context) {
                 "name" -> name = resolved
                 "description" -> description = resolved
                 "version" -> version = resolved
+                "tools" -> {
+                    // Inline comma list (`tools: web_search, file_read`) or a
+                    // YAML list on the following lines:
+                    //   tools:
+                    //     - web_search
+                    if (resolved.isNotBlank()) {
+                        tools += resolved.split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                    } else {
+                        while (i < frontmatterEndLine) {
+                            val next = lines[i].trim()
+                            if (next.startsWith("-")) {
+                                val item = next.removePrefix("-").trim().lowercase()
+                                if (item.isNotEmpty()) tools.add(item)
+                                i++
+                            } else break
+                        }
+                    }
+                }
             }
         }
 
@@ -1518,7 +1622,7 @@ class SkillRepository(private val context: Context) {
             lines.subList(bodyStartLine, lines.size).joinToString("\n").trim('\n')
         } else ""
 
-        return ParsedSkill(name, description, version, body)
+        return ParsedSkill(name, description, version, body, tools.distinct())
     }
 
     private fun slugify(name: String): String =

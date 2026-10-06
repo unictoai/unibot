@@ -39,6 +39,10 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.SmartToy // v1.4.0: background agents row
+import androidx.compose.material.icons.outlined.Quiz // v1.4.0: question cards row
+import androidx.compose.material.icons.outlined.Terminal // v1.4.0: slash commands row
+import androidx.compose.material.icons.outlined.ImportExport // v1.4.0: portable profile row
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderShared
 import androidx.compose.material.icons.outlined.FrontHand
@@ -113,6 +117,12 @@ fun SettingsScreen(
     onSkillsClick: () -> Unit = {},
     onTerminalClick: () -> Unit = {},
     onMemoryClick: () -> Unit = {},
+    // v1.4.0 power-user & automation theme. Default no-op for callers that
+    // haven't wired the routes yet.
+    onBackgroundAgentsClick: () -> Unit = {},
+    onQuestionCardsClick: () -> Unit = {},
+    onSlashCommandsClick: () -> Unit = {},
+    onPortableProfileClick: () -> Unit = {},
     // [T-mcp-integration-android] MCP Integrations page, listed directly below
     // Memory. Default no-op for callers that haven't wired the route yet.
     onMcpClick: () -> Unit = {},
@@ -354,6 +364,16 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [P2] Prompt Library: text presets + composer modes (Study Mode…).
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_prompt_library_title), icon = Icons.Outlined.LibraryBooks, onClick = onPromptLibraryClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // v1.4.0 power-user & automation: background agents, question
+                // cards, slash commands, portable profile.
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Background agents", icon = Icons.Outlined.SmartToy, onClick = onBackgroundAgentsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Question cards", icon = Icons.Outlined.Quiz, onClick = onQuestionCardsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Slash commands", icon = Icons.Outlined.Terminal, onClick = onSlashCommandsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Portable profile", icon = Icons.Outlined.ImportExport, onClick = onPortableProfileClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [P2] Compare Models: same prompt, two models, side by side.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_compare_title), icon = Icons.Outlined.CompareArrows, onClick = onCompareClick)

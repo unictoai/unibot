@@ -111,6 +111,29 @@ class ScheduledTaskManager(private val context: Context) {
         registerAlarm(t)
     }
 
+    /**
+     * Item 92 — arm a one-shot fire at [atMs] for a deferred task. The
+     * deferred fire goes through the normal receiver path, which calls
+     * [rescheduleNext] afterwards — so a task deferred past quiet hours
+     * still gets its regular next occurrence armed afterwards. The task is
+     * never dropped, only postponed.
+     */
+    fun deferUntil(taskId: String, atMs: Long) {
+        cancelAlarm(taskId)
+        val pi = buildPendingIntent(taskId)
+        try {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
+            AppLogger.info(TAG, "deferred task=$taskId until=$atMs")
+        } catch (e: SecurityException) {
+            AppLogger.warning(TAG, "exact-alarm denied for defer task=$taskId; falling back to inexact")
+            try {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
+            } catch (t2: Throwable) {
+                AppLogger.error(TAG, "defer fallback failed for task=$taskId: ${t2.message}")
+            }
+        }
+    }
+
     fun markFired(taskId: String, sessionId: String?, resultPreview: String?, ok: Boolean = true) {
         val t = store.get(taskId) ?: return
         val now = System.currentTimeMillis()

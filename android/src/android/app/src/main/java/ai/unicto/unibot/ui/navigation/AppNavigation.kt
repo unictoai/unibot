@@ -136,6 +136,20 @@ object Routes {
     const val UNIBOT_SKILLS_BROWSER = "unibot_skills_browser"
     /** P8: the agent/skills marketplace directory (Settings → Marketplace). */
     const val MARKETPLACE = "marketplace"
+    // v1.4.0 power-user & automation theme.
+    /** Background agents manager (Settings → Background agents). */
+    const val BACKGROUND_AGENTS = "background_agents"
+    const val BACKGROUND_AGENT_EDIT = "background_agent_edit?agentId={agentId}"
+    fun backgroundAgentEdit(agentId: String?): String =
+        if (agentId.isNullOrBlank()) "background_agent_edit" else "background_agent_edit?agentId=$agentId"
+    /** Question cards manager. */
+    const val QUESTION_CARDS = "question_cards"
+    const val QUESTION_CARD_EDITOR = "question_card/{cardId}"
+    fun questionCardEditor(cardId: String) = "question_card/$cardId"
+    /** Custom slash commands manager. */
+    const val SLASH_COMMANDS = "slash_commands"
+    /** Portable profile export/import. */
+    const val PORTABLE_PROFILE = "portable_profile"
     /** P8: opt-in cross-device session sync (Cloud account → Device sync). */
     const val SESSION_SYNC = "session_sync"
 
@@ -939,6 +953,11 @@ fun AppNavigation(
                 onBackupClick = { navController.safeNavigate(Routes.BACKUP) },
                 onEnvVarsClick = { navController.safeNavigate(Routes.ENV_VARS) },
                 onSkillsClick = { navController.safeNavigate(Routes.SKILLS) },
+                // v1.4.0 power-user & automation theme.
+                onBackgroundAgentsClick = { navController.safeNavigate(Routes.BACKGROUND_AGENTS) },
+                onQuestionCardsClick = { navController.safeNavigate(Routes.QUESTION_CARDS) },
+                onSlashCommandsClick = { navController.safeNavigate(Routes.SLASH_COMMANDS) },
+                onPortableProfileClick = { navController.safeNavigate(Routes.PORTABLE_PROFILE) },
                 onTerminalClick = { navController.safeNavigate(Routes.terminal()) },
                 onMemoryClick = { navController.safeNavigate(Routes.MEMORY) },
                 onMcpClick = { navController.safeNavigate(Routes.MCP) },
@@ -1801,6 +1820,59 @@ fun AppNavigation(
                     onBack = { navController.safePopBackStack() },
                 )
             }
+        }
+
+        // v1.4.0 power-user & automation theme.
+        composable(Routes.BACKGROUND_AGENTS) {
+            ai.unicto.unibot.ui.automation.BackgroundAgentsScreen(
+                onBack = { navController.safePopBackStack() },
+                onEditAgent = { agentId ->
+                    navController.safeNavigate(Routes.backgroundAgentEdit(agentId))
+                },
+                onOpenSession = { sessionId ->
+                    navController.safeNavigate("chat/$sessionId")
+                },
+            )
+        }
+        composable(
+            route = Routes.BACKGROUND_AGENT_EDIT,
+            arguments = listOf(navArgument("agentId") {
+                type = NavType.StringType
+                nullable = true
+            }),
+        ) { backStackEntry ->
+            ai.unicto.unibot.ui.automation.BackgroundAgentEditScreen(
+                agentId = backStackEntry.arguments?.getString("agentId"),
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+        composable(Routes.QUESTION_CARDS) {
+            ai.unicto.unibot.ui.questioncards.QuestionCardsScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenCard = { cardId ->
+                    navController.safeNavigate(Routes.questionCardEditor(cardId))
+                },
+            )
+        }
+        composable(
+            route = Routes.QUESTION_CARD_EDITOR,
+            arguments = listOf(navArgument("cardId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val cardId = backStackEntry.arguments?.getString("cardId") ?: return@composable
+            ai.unicto.unibot.ui.questioncards.QuestionCardEditorScreen(
+                cardId = cardId,
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+        composable(Routes.SLASH_COMMANDS) {
+            ai.unicto.unibot.ui.slashcommands.SlashCommandsScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+        composable(Routes.PORTABLE_PROFILE) {
+            ai.unicto.unibot.ui.settings.PortableProfileScreen(
+                onBack = { navController.safePopBackStack() },
+            )
         }
 
         composable(Routes.SKILLS) {

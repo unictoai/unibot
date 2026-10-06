@@ -57,6 +57,25 @@ class ScheduledTaskAlarmReceiver : BroadcastReceiver() {
                         AppLogger.info(TAG, "task $taskId disabled — skipping fire")
                         return@withTimeout
                     }
+                    // Item 92 — quiet hours + battery policy. A deferred task
+                    // is re-armed as a one-shot for the deferred instant (never
+                    // dropped); the deferred fire then goes through the normal
+                    // path below, which re-arms the regular next occurrence.
+                    val policyStore = SchedulePolicyStore(appContext)
+                    when (val decision = SchedulePolicy.decide(
+                        task,
+                        now = System.currentTimeMillis(),
+                        quietHours = policyStore.quietHours(),
+                        battery = BatteryStateReader.snapshot(appContext),
+                        batterySaverPause = policyStore.batterySaverPause(),
+                    )) {
+                        is FireDecision.DeferUntil -> {
+                            AppLogger.info(TAG, "task $taskId deferred until ${decision.atMs} by schedule policy")
+                            manager.deferUntil(taskId, decision.atMs)
+                            return@withTimeout
+                        }
+                        FireDecision.Run -> Unit
+                    }
                     // Schedule the next occurrence FIRST so a long-running
                     // prompt doesn't block tomorrow's fire even if we crash.
                     manager.rescheduleNext(taskId)

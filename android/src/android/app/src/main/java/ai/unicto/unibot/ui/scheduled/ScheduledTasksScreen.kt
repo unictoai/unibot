@@ -143,6 +143,12 @@ fun ScheduledTasksScreen(
                 .padding(padding),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
+            // Item 92 — quiet hours + battery controls pinned above the list.
+            item {
+                QuietHoursCard(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             // [v1.0-wave6] Rows stagger in on entrance; swipe left deletes
             // (via the existing confirm dialog).
             itemsIndexed(tasks, key = { _, it -> it.id }) { index, task ->

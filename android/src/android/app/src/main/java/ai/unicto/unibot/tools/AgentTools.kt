@@ -77,6 +77,9 @@ object AgentTools {
         // when the user disables it in Settings — the model then can't even
         // attempt the call.
         webSearchEnabled: Boolean = true,
+        // [v1.4.0-poweruser] Markdown skills surfaced as real agent tools.
+        // The caller builds these via SkillToolAdapter.definitionsFor(skills)
+        skillTools: List<AgentToolDefinition> = emptyList(),
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
         add(FileReadTool.definition())
@@ -89,6 +92,9 @@ object AgentTools {
         if (webSearchEnabled) {
             add(WebSearchTool.definition())
         }
+        // [v1.4.0-poweruser] Markdown skills as `skill_<name>` tools. Built
+        // by the caller via SkillToolAdapter.definitionsFor — the adapter
+        addAll(skillTools)
         // [v1.0-wave4] Creator tools — pure on-device generators for the
         // creator businesses (captions, hooks, replies, titles, hashtags,
         // scripts). No accounts, no network: always available.

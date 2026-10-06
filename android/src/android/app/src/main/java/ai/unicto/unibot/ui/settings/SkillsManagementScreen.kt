@@ -394,6 +394,9 @@ private fun SkillImportSheet(
     var pasteContent by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    // Item 90 — gallery review: the fetched-but-not-installed preview. Shown
+    // in SkillImportReviewDialog; install only happens on explicit tap there.
+    var reviewPreview by remember { mutableStateOf<SkillRepository.SkillPreview?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -524,14 +527,18 @@ private fun SkillImportSheet(
                                     isLoading = true
                                     scope.launch {
                                         try {
-                                            // importFromGitHub fetches SKILL.md AND recurses through
-                                            // the GitHub Contents API so bundled scripts/references
-                                            // land on disk. The old downloadSkillFromUrl +
-                                            // importFromContent path only grabbed SKILL.md, leaving
-                                            // skills like douyin-downloader non-runnable because the
-                                            // sibling python scripts never made it to local storage.
-                                            val result = skillRepository.importFromGitHub(urlText.trim())
-                                            if (result != null) onDismiss() else errorText = context.getString(R.string.skill_import_error_invalid)
+                                            // Item 90: fetch + parse ONLY. The
+                                            // parsed skill is shown in a review
+                                            // dialog; install happens only on
+                                            // explicit user approval there —
+                                            // never auto-installed on fetch.
+                                            val preview = skillRepository.previewFromUrl(urlText.trim())
+                                            if (preview.fetchError != null) {
+                                                errorText = preview.fetchError
+                                            } else {
+                                                errorText = null
+                                                reviewPreview = preview
+                                            }
                                         } catch (e: Exception) { errorText = "Error: ${e.message}" }
                                         finally { isLoading = false }
                                     }
@@ -548,6 +555,34 @@ private fun SkillImportSheet(
                 }
             }
         }
+    }
+    // Item 90: review dialog renders above the sheet. Install only fires from
+    // its explicit Install button — the preview fetch above never installs.
+    reviewPreview?.let { preview ->
+        SkillImportReviewDialog(
+            preview = preview,
+            onDismiss = { reviewPreview = null },
+            onInstall = {
+                scope.launch {
+                    try {
+                        // importFromGitHub fetches SKILL.md AND recurses through
+                        // the GitHub Contents API so bundled scripts/references
+                        // land on disk.
+                        val result = skillRepository.importFromGitHub(preview.sourceUrl)
+                        if (result != null) {
+                            reviewPreview = null
+                            onDismiss()
+                        } else {
+                            errorText = context.getString(R.string.skill_import_error_invalid)
+                            reviewPreview = null
+                        }
+                    } catch (e: Exception) {
+                        errorText = "Error: ${e.message}"
+                        reviewPreview = null
+                    }
+                }
+            },
+        )
     }
 }
 

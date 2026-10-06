@@ -30,6 +30,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -124,6 +125,9 @@ fun ScheduledTaskEditScreen(
     var modelDisplay by remember { mutableStateOf<String?>(null) }
     var startDateMs by remember { mutableStateOf<Long?>(null) }
     var endDateMs by remember { mutableStateOf<Long?>(null) }
+    // Item 92 — quiet hours + battery awareness toggles.
+    var respectQuietHours by remember { mutableStateOf(true) }
+    var requireCharging by remember { mutableStateOf(false) }
 
     LaunchedEffect(taskId) {
         if (taskId == null) { loaded = true; return@LaunchedEffect }
@@ -141,6 +145,8 @@ fun ScheduledTaskEditScreen(
         lastResultSessionId = existing.lastResultSessionId
         startDateMs = existing.startDateMs
         endDateMs = existing.endDateMs
+        respectQuietHours = existing.respectQuietHours
+        requireCharging = existing.requireCharging
         when (val m = existing.targetMode) {
             ScheduledTargetMode.NewSession -> targetKind = TargetKind.NEW
             is ScheduledTargetMode.AppendToSession -> {
@@ -191,6 +197,7 @@ fun ScheduledTaskEditScreen(
             vm.listModels().firstOrNull { it.entryId == eid }?.modelId
         },
         startDateMs = startDateMs, endDateMs = endDateMs,
+        respectQuietHours = respectQuietHours, requireCharging = requireCharging,
     )
 
     // re-run replays the chosen message, so prompt isn't required there.
@@ -258,6 +265,10 @@ fun ScheduledTaskEditScreen(
             onPickModel = { binding, display -> modelBinding = binding; modelDisplay = display },
             startDateMs = startDateMs, onStartDateChange = { startDateMs = it },
             endDateMs = endDateMs, onEndDateChange = { endDateMs = it },
+            respectQuietHours = respectQuietHours,
+            onRespectQuietHoursChange = { respectQuietHours = it },
+            requireCharging = requireCharging,
+            onRequireChargingChange = { requireCharging = it },
             vm = vm,
             isNew = isNew,
             canRunNow = canRunNow,
@@ -356,6 +367,9 @@ private fun EditFormBody(
     modelDisplay: String?, onPickModel: (binding: String?, display: String?) -> Unit,
     startDateMs: Long?, onStartDateChange: (Long?) -> Unit,
     endDateMs: Long?, onEndDateChange: (Long?) -> Unit,
+    // Item 92 — quiet hours + battery toggles.
+    respectQuietHours: Boolean, onRespectQuietHoursChange: (Boolean) -> Unit,
+    requireCharging: Boolean, onRequireChargingChange: (Boolean) -> Unit,
     vm: ScheduledTasksViewModel,
     isNew: Boolean,
     canRunNow: Boolean,
@@ -510,6 +524,25 @@ private fun EditFormBody(
             }
         }
 
+        // ── Item 92: battery & quiet hours ──
+        Column {
+            SectionLabel("Battery & quiet hours")
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                title = "Respect quiet hours",
+                subtitle = "Postpone this task until quiet hours end instead of running at night.",
+                checked = respectQuietHours,
+                onCheckedChange = onRespectQuietHoursChange,
+            )
+            Spacer(Modifier.height(4.dp))
+            SwitchRow(
+                title = "Only when charging",
+                subtitle = "Wait until the phone is plugged in before running.",
+                checked = requireCharging,
+                onCheckedChange = onRequireChargingChange,
+            )
+        }
+
         // ── Prompt ──
         if (needsPrompt) {
             OutlinedTextField(
@@ -655,6 +688,33 @@ private fun EditFormBody(
 @Composable
 private fun SectionLabel(text: String) {
     Text(text, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+}
+
+/** Item 92 — labeled switch row for the battery & quiet-hours section. */
+@Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
 }
 
 @Composable
@@ -820,6 +880,8 @@ private fun buildTask(
     modelEntryIdLookup: (String) -> String?,
     startDateMs: Long?,
     endDateMs: Long?,
+    respectQuietHours: Boolean,
+    requireCharging: Boolean,
 ): ScheduledTask {
     val targetMode = when (targetKind) {
         TargetKind.NEW -> ScheduledTargetMode.NewSession
@@ -860,5 +922,7 @@ private fun buildTask(
         lastFiredAt = lastFiredAt,
         lastResultPreview = lastResultPreview,
         lastResultSessionId = lastResultSessionId,
+        respectQuietHours = respectQuietHours,
+        requireCharging = requireCharging,
     )
 }

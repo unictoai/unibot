@@ -141,6 +141,10 @@ data class ScheduledTask(
     val hidden: Boolean = false,
     val goalId: String? = null,
     val intervalMinutes: Int? = null,
+    // Item 92 — quiet hours + battery awareness. Additive in the JSON; old
+    // rows read back with respectQuietHours=true, requireCharging=false.
+    val respectQuietHours: Boolean = true,
+    val requireCharging: Boolean = false,
 ) {
 
     /**
@@ -244,6 +248,9 @@ data class ScheduledTask(
         if (hidden) put("hidden", true)
         if (goalId != null) put("goalId", goalId)
         if (intervalMinutes != null) put("intervalMinutes", intervalMinutes)
+        // Item 92 — only written when non-default to keep old payloads small.
+        if (!respectQuietHours) put("respectQuietHours", false)
+        if (requireCharging) put("requireCharging", true)
     }
 
     companion object {
@@ -284,6 +291,9 @@ data class ScheduledTask(
             hidden = o.optBoolean("hidden", false),
             goalId = if (o.has("goalId")) o.optString("goalId", null) else null,
             intervalMinutes = if (o.has("intervalMinutes")) o.optInt("intervalMinutes") else null,
+            // Item 92 — additive; old rows default to respectQuietHours=true.
+            respectQuietHours = o.optBoolean("respectQuietHours", true),
+            requireCharging = o.optBoolean("requireCharging", false),
         )
     }
 }
