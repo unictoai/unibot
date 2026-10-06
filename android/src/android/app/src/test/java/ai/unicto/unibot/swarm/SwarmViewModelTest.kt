@@ -1,5 +1,6 @@
 package ai.unicto.unibot.swarm
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -86,16 +87,29 @@ class SwarmViewModelTest {
 
     @Test
     fun `cancel delegates to the engine`() = runTest(mainDispatcher) {
-        val provider = FakeSwarmProvider(standardSwarmHandler(listOf("Find facts", "Check facts")))
+        // Deterministic: hold the researcher worker on a gate so the run is
+        // guaranteed to still be RUNNING when cancel() is called. Without the
+        // gate the fake provider answers instantly and the run can reach DONE
+        // first, which legally rejects cancel().
+        val gate = CompletableDeferred<Unit>()
+        val provider = FakeSwarmProvider(
+            standardSwarmHandler(listOf("Find facts", "Check facts")),
+            blockRole = SwarmRoles.RESEARCHER,
+            gate = gate,
+        )
         val vm = SwarmViewModel(provider, InMemorySwarmCheckpointStore())
 
         assertTrue(vm.launch("Research scooters", SwarmRoles.research))
         repeat(200) {
             advanceUntilIdle()
-            if (vm.uiState.value.lifecycle == SwarmLifecycle.RUNNING) return@repeat
+            if (vm.uiState.value.lifecycle == SwarmLifecycle.RUNNING &&
+                provider.workerCalls(SwarmRoles.RESEARCHER) > 0
+            ) return@repeat
             delay(25)
         }
+        assertEquals(SwarmLifecycle.RUNNING, vm.uiState.value.lifecycle)
         assertTrue(vm.cancel())
+        gate.complete(Unit)
         repeat(400) {
             advanceUntilIdle()
             if (vm.uiState.value.lifecycle == SwarmLifecycle.CANCELLED) return@repeat

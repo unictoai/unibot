@@ -359,6 +359,9 @@ class SwarmEngine(
                     logPlan(it)
                 }
             }
+            // The plan (and its log entries) must be checkpointed before any
+            // transition away from PLANNING, so a restored run never loses it.
+            checkpoint()
             // v1.4.0 item 2 — plan-approval gate. The gate is state-driven
             // (requirePlanApproval + planApproved live on the UI state and
             // in the checkpoint), so a restored run re-gates exactly like
