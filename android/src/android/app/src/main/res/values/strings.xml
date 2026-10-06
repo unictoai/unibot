@@ -2020,9 +2020,8 @@
     <string name="ub_knowledge_kind_image">Scanned</string>
     <string name="ub_knowledge_kind_code">Code</string>
     <string name="ub_knowledge_kind_doc">Document</string>
-    <string name="ub_back">Back</string>
+    <!-- ub_back / ub_cancel live in ub_strings.xml (canonical); not repeated here. -->
     <string name="ub_delete">Delete</string>
-    <string name="ub_cancel">Cancel</string>
     <string name="ub_retry">Retry</string>
     <string name="ub_doc_title">Document</string>
     <string name="ub_doc_ask_hint">Ask about this document</string>
