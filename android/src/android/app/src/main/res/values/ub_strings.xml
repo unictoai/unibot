@@ -66,6 +66,12 @@
         <item quantity="other">%d agents</item>
     </plurals>
 
+    <!-- Drawer: the Knowledge base entry (v1.4.0-knowledge item 47) -->
+    <plurals name="ub_knowledge_docs">
+        <item quantity="one">%d doc</item>
+        <item quantity="other">%d docs</item>
+    </plurals>
+
     <!-- Goals tab -->
     <string name="ub_goals_title">Goals</string>
     <string name="ub_goals_tracking">Tracking</string>

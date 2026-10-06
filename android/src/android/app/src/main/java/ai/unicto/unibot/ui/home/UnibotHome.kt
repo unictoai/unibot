@@ -305,6 +305,8 @@ fun UnibotHome(
                     onDevices = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
                     // v1.3.5 Drawer Swarm entry — the same swarm space the top-bar pill opens.
                     onSwarm = { closeDrawer(); navController.safeNavigate(swarmEntryRoute()) },
+                    // v1.4.0-knowledge item 47 — the personal knowledge base.
+                    onKnowledge = { closeDrawer(); navController.safeNavigate(Routes.KNOWLEDGE) },
                     onCoding = { closeDrawer(); navController.safeNavigate(ai.unicto.unibot.ui.coding.ROUTE_CODING) },
                 )
             }
@@ -365,6 +367,8 @@ fun UnibotHome(
                             },
                             onMoveToSession = { targetId -> showSession(targetId) },
                             onBrowseChatFiles = { navController.safeNavigate(Routes.chatFiles(sid)) },
+                            // v1.4.0-knowledge item 52 — session file tray.
+                            onOpenFileTray = { navController.safeNavigate(Routes.fileTray(sid)) },
                             onPreviewAttachment = { item ->
                                 FilePreviewHolder.currentItem = item
                                 navController.safeNavigate(Routes.FILE_PREVIEW)

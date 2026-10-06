@@ -7468,8 +7468,20 @@ class ChatViewModel(
                 "${memoryContextBlock(recalledFacts)}\n\n$modelBody"
             } else modelBody
 
+            // v1.4.0-knowledge item 47: personal knowledge base retrieval.
+            // Cited excerpts go to the MODEL body only (never the bubble),
+            // like fact recall above. Synchronous and total — a broken index
+            // returns the body unchanged, so retrieval can never break a send.
+            val modelBodyWithKnowledge =
+                ai.unicto.unibot.knowledge.KnowledgeSendHook.augment(
+                    context,
+                    sessionId,
+                    trimmed,
+                    modelBodyWithMemory,
+                )
+
             val userContentParts = mutableListOf<AgentContentPart>()
-            if (modelBodyWithMemory.isNotEmpty()) userContentParts.add(AgentContentPart.Text(modelBodyWithMemory))
+            if (modelBodyWithKnowledge.isNotEmpty()) userContentParts.add(AgentContentPart.Text(modelBodyWithKnowledge))
             imageParts.forEachIndexed { idx, part ->
                 val path = prepared.imageUploadPaths.getOrNull(idx)
                 if (path != null) userContentParts.add(AgentContentPart.Text("[attached image: $path]"))

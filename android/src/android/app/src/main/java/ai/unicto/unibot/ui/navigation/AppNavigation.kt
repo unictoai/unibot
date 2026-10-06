@@ -161,6 +161,14 @@ object Routes {
     /** Chat-files browser: opens FileBrowser rooted at /var/minis for the session. */
     const val CHAT_FILES = "chat_files/{sessionId}"
     fun chatFiles(sessionId: String) = "chat_files/$sessionId"
+    /** v1.4.0-knowledge item 47: personal knowledge base. */
+    const val KNOWLEDGE = "knowledge"
+    /** v1.4.0-knowledge item 49: focused document reader. */
+    const val DOCUMENT = "document/{docId}"
+    fun document(docId: String) = "document/$docId"
+    /** v1.4.0-knowledge item 52: every file attached in one chat. */
+    const val FILE_TRAY = "file_tray/{sessionId}"
+    fun fileTray(sessionId: String) = "file_tray/$sessionId"
     const val MEMORY = "memory"
     /** [T-mcp-integration-android] MCP Integrations management screen. */
     const val MCP = "mcp"
@@ -1647,6 +1655,57 @@ fun AppNavigation(
                 viewModel = vm,
                 onBack = { navController.safePopBackStack() },
                 onPreviewFile = { item ->
+                    FilePreviewHolder.currentItem = item
+                    navController.safeNavigate(Routes.FILE_PREVIEW)
+                },
+            )
+        }
+
+        // v1.4.0-knowledge item 47 — the personal knowledge base: on-device
+        // document index, chat/swarm searchable.
+        composable(Routes.KNOWLEDGE) {
+            ai.unicto.unibot.ui.knowledge.KnowledgeScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenDocument = { docId ->
+                    navController.safeNavigate(Routes.document(docId))
+                },
+            )
+        }
+
+        // v1.4.0-knowledge item 49 — document mode: focused reader with
+        // ask-about-this-doc. The ask stages a chat prefill scoped to this
+        // document (KnowledgePrefs one-shot scope) and opens a fresh chat;
+        // the send hook injects only this doc's excerpts on the first send.
+        composable(
+            route = Routes.DOCUMENT,
+            arguments = listOf(navArgument("docId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val docId = backStackEntry.arguments?.getString("docId") ?: return@composable
+            ai.unicto.unibot.ui.knowledge.DocumentScreen(
+                docId = docId,
+                onBack = { navController.safePopBackStack() },
+                onAskInChat = { draftSessionId, scopedDocId, question ->
+                    ai.unicto.unibot.knowledge.KnowledgePrefs(context)
+                        .stageScopedDoc(draftSessionId, scopedDocId)
+                    ai.unicto.unibot.ui.chat.ChatStarterPrefill.stage(draftSessionId, question)
+                    navController.safeNavigate(Routes.chat(draftSessionId))
+                },
+            )
+        }
+
+        // v1.4.0-knowledge item 52 — session file tray: every file attached
+        // in this chat, in one place, persistent across restarts.
+        composable(
+            route = Routes.FILE_TRAY,
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+            ai.unicto.unibot.ui.knowledge.SessionFileTrayScreen(
+                sessionId = sessionId,
+                chatRepository = chatRepository,
+                onBack = { navController.safePopBackStack() },
+                onOpenFile = { item ->
                     FilePreviewHolder.currentItem = item
                     navController.safeNavigate(Routes.FILE_PREVIEW)
                 },

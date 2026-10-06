@@ -295,6 +295,13 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraX")
     implementation("androidx.camera:camera-view:$cameraX")
 
+    // v1.4.0-knowledge item 50: on-device OCR for camera scan-to-text. The
+    // Play Services variant downloads the model on demand through Play
+    // services — nothing ships in the APK and no image bytes leave the
+    // device. OcrEngines falls back to NoopOcrEngine where Play services is
+    // absent, so this dep is never a hard requirement at runtime.
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+
     // [T-android-tablet-split] Adaptive list-detail layout for tablets/large
     // windows. Version pinned explicitly rather than left to the BOM: the
     // 2025.09.00 BOM does not manage the material3.adaptive group at all, so

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.LibraryBooks
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -92,6 +93,55 @@ internal fun SwarmDrawerRow(onSwarm: () -> Unit) {
                 SwarmDrawerHint.Idle -> stringResource(R.string.ub_swarm_idle)
             },
             fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * v1.4.0-knowledge item 47: the nav drawer's Knowledge base entry, directly
+ * below Swarm. Same row treatment as [SwarmDrawerRow] — monochrome except
+ * the primary-tinted glyph — with the indexed document count as the status
+ * hint, mirroring the Devices row's live counts.
+ */
+@Composable
+internal fun KnowledgeDrawerRow(onKnowledge: () -> Unit) {
+    val context = LocalContext.current
+    val count = androidx.compose.runtime.remember {
+        runCatching {
+            val store = ai.unicto.unibot.knowledge.KnowledgeStore(
+                java.io.File(context.filesDir, "knowledge"),
+            )
+            store.snapshotSync().docs.size
+        }.getOrDefault(0)
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClick = onKnowledge)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Icon(
+            Icons.Outlined.LibraryBooks,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.size(12.dp))
+        Text(
+            text = stringResource(R.string.ub_drawer_knowledge),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = pluralStringResource(R.plurals.ub_knowledge_docs, count, count),
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

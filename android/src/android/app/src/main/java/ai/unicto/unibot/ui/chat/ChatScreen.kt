@@ -126,7 +126,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -564,6 +566,8 @@ fun ChatScreen(
      *  pending transfer in [ChatViewModelStore.stashPendingTransfer]. */
     onMoveToSession: (sessionId: String) -> Unit = {},
     onBrowseChatFiles: () -> Unit = {},
+    /** v1.4.0-knowledge item 52: open the session file tray. */
+    onOpenFileTray: () -> Unit = {},
     /** T150: open FilePreviewScreen for a non-image attachment in a user bubble. */
     onPreviewAttachment: (ai.unicto.unibot.ui.sandbox.FileItem) -> Unit = {},
     /** [T-android-modelpicker-group-edit] Navigate to the Model Groups
@@ -1202,6 +1206,95 @@ fun ChatScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) launchCamera()
+    }
+
+    // v1.4.0-knowledge item 50 — camera scan to text. Mirrors the Take Photo
+    // flow above (same FileProvider staging dir, same MIUI resultCode
+    // distrust) but routes the captured photo through on-device OCR instead
+    // of attaching it. Graceful fallback: when no OCR backend exists the
+    // dialog offers to keep the photo as a regular attachment.
+    var pendingScanCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var pendingScanCameraFilePath by rememberSaveable { mutableStateOf<String?>(null) }
+    var scanOcrState by remember {
+        mutableStateOf<ai.unicto.unibot.ui.knowledge.ScanOcrUiState?>(null)
+    }
+    val ocrEngine = remember(context) {
+        ai.unicto.unibot.knowledge.OcrEngines.bestAvailable(context)
+    }
+    val scanCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        ai.unicto.unibot.service.SessionActivityTracker.setCameraSuppressActive(false)
+        val uri = pendingScanCameraUri
+        val file = pendingScanCameraFilePath?.let { java.io.File(it) }
+        pendingScanCameraUri = null
+        pendingScanCameraFilePath = null
+        if (uri == null || file == null) return@rememberLauncherForActivityResult
+        val ok = file.exists() && file.length() > 0
+        if (!ok) {
+            ai.unicto.unibot.logging.AppLogger.warning(
+                "ScanText",
+                "capture failed: rc=${result.resultCode}, file=${file.name} len=${file.length()}",
+            )
+            file.delete()
+            return@rememberLauncherForActivityResult
+        }
+        val availability = ocrEngine.availability
+        if (availability is ai.unicto.unibot.knowledge.OcrAvailability.Unavailable) {
+            // Keep the file: the dialog's "Attach photo instead" needs it.
+            pendingScanCameraUri = uri
+            pendingScanCameraFilePath = file.absolutePath
+            scanOcrState = ai.unicto.unibot.ui.knowledge.ScanOcrUiState.Unavailable(
+                availability.reason,
+            )
+            return@rememberLauncherForActivityResult
+        }
+        scanOcrState = ai.unicto.unibot.ui.knowledge.ScanOcrUiState.Scanning
+        coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val bytes = runCatching { file.readBytes() }.getOrNull()
+            val text = if (bytes != null) {
+                runCatching { ocrEngine.recognize(bytes).text }.getOrDefault("")
+            } else ""
+            // The photo has served its purpose — OCR text is what continues.
+            runCatching { file.delete() }
+            scanOcrState = ai.unicto.unibot.ui.knowledge.ScanOcrUiState.Done(text.trim())
+        }
+    }
+    val launchScanCamera: () -> Unit = {
+        val (uri, file) = createCameraOutputUri(context)
+        pendingScanCameraUri = uri
+        pendingScanCameraFilePath = file.absolutePath
+        val intent = android.content.Intent(
+            android.provider.MediaStore.ACTION_IMAGE_CAPTURE,
+        ).apply {
+            putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        // Same overlay-suppress gate as Take Photo: the camera Activity takes
+        // foreground, which must not trigger the background overlay capsule.
+        ai.unicto.unibot.service.SessionActivityTracker.setCameraSuppressActive(true)
+        runCatching { scanCameraLauncher.launch(intent) }
+            .onFailure {
+                ai.unicto.unibot.logging.AppLogger.warning("ScanText", "launch failed: ${it.message}")
+                ai.unicto.unibot.service.SessionActivityTracker.setCameraSuppressActive(false)
+                pendingScanCameraUri = null
+                pendingScanCameraFilePath = null
+                file.delete()
+            }
+    }
+    val scanCameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) launchScanCamera()
+    }
+    val requestScanCamera: () -> Unit = {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.CAMERA,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) launchScanCamera()
+        else scanCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
     }
 
     // App-icon quick action: when the user launched via
@@ -3401,6 +3494,19 @@ fun ChatScreen(
                                             Icon(Icons.Default.Description, contentDescription = null)
                                         },
                                     )
+                                    // v1.4.0-knowledge item 52 — File tray:
+                                    // every file attached in THIS chat, in
+                                    // one place, persistent across restarts.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ub_chat_menu_file_tray)) },
+                                        onClick = {
+                                            showChatMenu = false
+                                            onOpenFileTray()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.FolderOpen, contentDescription = null)
+                                        },
+                                    )
                                     UnibotMenuDivider()
                                     // Session Skills (iOS parity)
                                     if (skillRepository != null) {
@@ -4291,6 +4397,31 @@ fun ChatScreen(
                                 "Deep-dive into this:\n\n$snippet",
                             )
                             onSwarmClick()
+                        },
+                        // v1.4.0-knowledge item 53 — "Save as note": the
+                        // selection is indexed into the personal knowledge
+                        // base (on-device, no network).
+                        onSaveNote = { snippet ->
+                            val trimmed = snippet.trim()
+                            if (trimmed.isNotEmpty()) {
+                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    runCatching {
+                                        val repo = ai.unicto.unibot.knowledge.KnowledgeRepository(
+                                            ai.unicto.unibot.knowledge.KnowledgeStore(
+                                                java.io.File(context.filesDir, "knowledge"),
+                                            ),
+                                        )
+                                        repo.addNote(trimmed)
+                                    }
+                                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            context.getString(R.string.ub_note_saved),
+                                            android.widget.Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                }
+                            }
                         },
                         isStreamingNow = { viewModel.isStreaming.value },
                         selectionController = selectionController,
@@ -6961,6 +7092,18 @@ fun ChatScreen(
                     } else {
                         // DeepSeek-style pill: the field owns a full-width row;
                         // the row below is the Think/Search + actions control row.
+                        // v1.4.0 item 76: context-usage glow — a subtle hairline
+                        // above the composer showing how full the model's
+                        // context window is. Cheap: char-count estimate only.
+                        ContextUsageGlow(
+                            messages = messages,
+                            draftText = inputText,
+                            contextWindowTokens = viewModel.currentContextWindowTokens,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = if (ubPill) 12.dp else 0.dp)
+                                .padding(bottom = 4.dp),
+                        )
                         ubTextField(
                             Modifier
                                 .fillMaxWidth()
@@ -7086,6 +7229,16 @@ fun ChatScreen(
                                             // OpenMultipleDocuments takes a mime-
                                             // type array; "*/*" stays the wildcard.
                                             filePickerLauncher.launch(arrayOf("*/*"))
+                                        },
+                                    )
+                                    // v1.4.0-knowledge item 50: scan text —
+                                    // OCR a photo into chat-editable text.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ub_scan_menu_label)) },
+                                        leadingIcon = { Icon(Icons.Default.DocumentScanner, contentDescription = null) },
+                                        onClick = {
+                                            showAttachMenu = false
+                                            requestScanCamera()
                                         },
                                     )
                                     // Voice theme item 32: async voice note —
@@ -7704,6 +7857,17 @@ fun ChatScreen(
                             },
                             modifier = Modifier.weight(1f),
                         )
+                        // v1.4.0-knowledge item 50: camera scan to text —
+                        // OCR a photo into chat-editable text.
+                        AttachTile(
+                            label = stringResource(R.string.ub_attach_scan),
+                            icon = Icons.Default.DocumentScanner,
+                            onClick = {
+                                showAttachTiles = false
+                                requestScanCamera()
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
                         // Voice theme item 32: async voice note tile.
                         AttachTile(
                             label = stringResource(R.string.ub_voice_note_label),
@@ -7802,6 +7966,43 @@ fun ChatScreen(
                         viewModel.clearChat()
                         viewModel.setInputText("")
                         showClearChatDialog = false
+                    },
+                )
+            }
+            // v1.4.0-knowledge item 50: scan-to-text result. Insert appends
+            // the (editable) OCR text to the composer; the fallback attaches
+            // the photo itself when on-device OCR isn't available.
+            scanOcrState?.let { scanState ->
+                ai.unicto.unibot.ui.knowledge.ScanTextDialog(
+                    state = scanState,
+                    onInsert = { text ->
+                        viewModel.appendToInputText(text)
+                        scanOcrState = null
+                    },
+                    onAttachPhotoInstead = {
+                        val uri = pendingScanCameraUri
+                        val file = pendingScanCameraFilePath?.let { java.io.File(it) }
+                        if (uri != null && file != null && file.exists()) {
+                            viewModel.addAttachment(
+                                InputAttachment(
+                                    fileName = file.name,
+                                    uri = uri,
+                                    mimeType = "image/jpeg",
+                                    kind = InputAttachment.Kind.IMAGE,
+                                ),
+                            )
+                        }
+                        pendingScanCameraUri = null
+                        pendingScanCameraFilePath = null
+                        scanOcrState = null
+                    },
+                    onDismiss = {
+                        // Drop the staging photo on cancel — OCR text is the
+                        // artifact here, not the image.
+                        pendingScanCameraFilePath?.let { java.io.File(it).delete() }
+                        pendingScanCameraUri = null
+                        pendingScanCameraFilePath = null
+                        scanOcrState = null
                     },
                 )
             }

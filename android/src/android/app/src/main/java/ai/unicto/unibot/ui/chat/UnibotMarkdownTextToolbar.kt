@@ -92,6 +92,13 @@ internal class UnibotMarkdownTextToolbar(
      */
     private val onDeepDive: ((String) -> Unit)? = null,
     /**
+     * v1.4.0-knowledge item 53 — "Save as note". Receives the
+     * currently-selected substring (same clipboard round-trip as
+     * [addSelectionToInput]); the host saves it into the personal knowledge
+     * base. Null hides the action.
+     */
+    private val onSaveNote: ((String) -> Unit)? = null,
+    /**
      * [T-android-readaloud-selection-vs-reply] Whether a reply is streaming
      * right now. A lambda, not a Boolean: this toolbar is constructed once
      * inside `remember`, so a captured value would freeze at construction time
@@ -157,6 +164,18 @@ internal class UnibotMarkdownTextToolbar(
     }
 
     internal val canDeepDive: Boolean get() = onDeepDive != null
+
+    /**
+     * v1.4.0-knowledge item 53 — "Save as note": hand the selected substring
+     * to the host's note sink (indexed into the personal knowledge base).
+     * No-op when not wired.
+     */
+    internal fun saveNoteSelection() {
+        val sink = onSaveNote ?: return
+        withSelection(sink)
+    }
+
+    internal val canSaveNote: Boolean get() = onSaveNote != null
 
     /**
      * [T-android-selection-readaloud] Speak just the selected substring (not the
@@ -366,6 +385,17 @@ internal fun UnibotMarkdownTextToolbarHost(toolbar: UnibotMarkdownTextToolbar) {
                         label = stringResource(R.string.selection_deep_dive),
                     ) {
                         toolbar.deepDiveSelection()
+                        toolbar.hide()
+                    }
+                }
+                // v1.4.0-knowledge item 53 — "Save as note": the selection
+                // is indexed into the personal knowledge base.
+                if (toolbar.canSaveNote) {
+                    ToolbarDivider()
+                    ToolbarButton(
+                        label = stringResource(R.string.selection_save_note),
+                    ) {
+                        toolbar.saveNoteSelection()
                         toolbar.hide()
                     }
                 }

@@ -2000,4 +2000,47 @@
     <string name="settings_guided_key_setup">Guided key setup</string>
     <string name="settings_model_check">Check for retired models</string>
 
+    <!-- v1.4.0-knowledge Files & knowledge theme (items 47-54). -->
+    <string name="ub_knowledge_title">Knowledge base</string>
+    <string name="ub_knowledge_add">Add document</string>
+    <string name="ub_knowledge_search_hint">Search documents and notes</string>
+    <string name="ub_knowledge_search_toggle">Search in chat</string>
+    <string name="ub_knowledge_search_toggle_hint">Chat checks your documents before answering</string>
+    <string name="ub_knowledge_empty_title">No documents yet</string>
+    <string name="ub_knowledge_empty_body">Add PDFs, notes, or text files. Chat and swarm can search them on-device — nothing ever leaves your phone.</string>
+    <string name="ub_knowledge_no_results">No matches in your knowledge base.</string>
+    <string name="ub_knowledge_delete">Delete document</string>
+    <string name="ub_knowledge_delete_title">Delete document?</string>
+    <string name="ub_knowledge_delete_body">Remove "%1$s" from the knowledge base? Its excerpts will no longer appear in chat.</string>
+    <string name="ub_knowledge_kind_pdf">PDF</string>
+    <string name="ub_knowledge_kind_note">Note</string>
+    <string name="ub_knowledge_kind_image">Scanned</string>
+    <string name="ub_knowledge_kind_code">Code</string>
+    <string name="ub_knowledge_kind_doc">Document</string>
+    <string name="ub_back">Back</string>
+    <string name="ub_delete">Delete</string>
+    <string name="ub_cancel">Cancel</string>
+    <string name="ub_retry">Retry</string>
+    <string name="ub_doc_title">Document</string>
+    <string name="ub_doc_ask_hint">Ask about this document</string>
+    <string name="ub_doc_ask_send">Ask in chat</string>
+    <string name="ub_doc_page_header">Page %1$d</string>
+    <string name="ub_doc_pdf_no_text">Could\'t extract text from this PDF (it may be scanned images).</string>
+    <string name="ub_doc_empty">This document has no readable text.</string>
+    <string name="ub_doc_load_failed">Could\'t open the document.</string>
+    <string name="ub_scan_title">Scan text</string>
+    <string name="ub_scan_reading">Reading text from the photo…</string>
+    <string name="ub_scan_no_text">No text found in the photo.</string>
+    <string name="ub_scan_insert">Insert into chat</string>
+    <string name="ub_scan_attach_instead">Attach photo instead</string>
+    <string name="ub_file_tray_title">Chat files</string>
+    <string name="ub_file_tray_empty_title">No files in this chat yet</string>
+    <string name="ub_file_tray_empty_body">Files you attach here will be listed in one place, even after restarting the app.</string>
+    <string name="ub_chat_menu_file_tray">File tray</string>
+    <string name="ub_attach_scan">Scan</string>
+    <string name="ub_scan_menu_label">Scan text</string>
+    <string name="selection_save_note">Save as note</string>
+    <string name="ub_note_saved">Saved to knowledge base</string>
+    <string name="ub_drawer_knowledge">Knowledge base</string>
+
 </resources>

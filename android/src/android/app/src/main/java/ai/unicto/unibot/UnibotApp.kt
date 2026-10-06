@@ -274,6 +274,14 @@ class UnibotApp : Application(), ImageLoaderFactory {
         // Activity context.
         ai.unicto.unibot.data.AutoCompactPrefs.prime(this)
 
+        // v1.4.0-knowledge item 47: pre-warm the knowledge index off the main
+        // thread so the chat send hook's first lookup never does file I/O on
+        // Main. Fire-and-forget; failures are swallowed (the hook degrades to
+        // no injection).
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            ai.unicto.unibot.knowledge.KnowledgeSendHook.prime(this@UnibotApp)
+        }
+
         // [P1-app-lock] Load the lock toggle/timeout and start watching
         // foreground/background transitions for the lock gate.
         ai.unicto.unibot.guard.AppLock.init(this)

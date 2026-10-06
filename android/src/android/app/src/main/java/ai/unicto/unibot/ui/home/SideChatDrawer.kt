@@ -85,6 +85,8 @@ fun SideChatDrawer(
     onDevices: (() -> Unit)? = null,
     // v1.3.5 Swarm entry, directly below Devices.
     onSwarm: (() -> Unit)? = null,
+    // v1.4.0-knowledge item 47: personal knowledge base, below Swarm.
+    onKnowledge: (() -> Unit)? = null,
     onCoding: (() -> Unit)? = null,
 ) {
     val sessions by chatRepository.observeSessions().collectAsState(initial = emptyList())
@@ -178,6 +180,12 @@ fun SideChatDrawer(
         // directly below Devices.
         if (onSwarm != null) {
             SwarmDrawerRow(onSwarm = onSwarm)
+        }
+
+        // v1.4.0-knowledge item 47 — the personal knowledge base, directly
+        // below Swarm.
+        if (onKnowledge != null) {
+            KnowledgeDrawerRow(onKnowledge = onKnowledge)
         }
 
         // unibot: Coding — the coding agents on the account's computers, shown once one is online

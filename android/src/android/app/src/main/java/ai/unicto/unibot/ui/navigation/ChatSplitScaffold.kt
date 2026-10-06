@@ -947,6 +947,8 @@ fun ChatSplitScaffoldRoute(
                 // the same reason onNewChat does.
                 onMoveToSession = { targetId -> onMoveToInPane(targetId) },
                 onBrowseChatFiles = { navController.safeNavigate(Routes.chatFiles(sessionId)) },
+                // v1.4.0-knowledge item 52 — session file tray.
+                onOpenFileTray = { navController.safeNavigate(Routes.fileTray(sessionId)) },
                 onPreviewAttachment = { item ->
                     FilePreviewHolder.currentItem = item
                     navController.safeNavigate(Routes.FILE_PREVIEW)
