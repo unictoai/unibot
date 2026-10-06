@@ -63,7 +63,7 @@ fun QuietHoursCard(modifier: Modifier = Modifier) {
                     if (quietHours.enabled) {
                         "Tasks wait until ${fmt(quietHours.endHour, quietHours.endMinute)}."
                     } else {
-                        "Tasks run at their scheduled time, day or night.",
+                        "Tasks run at their scheduled time, day or night."
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
