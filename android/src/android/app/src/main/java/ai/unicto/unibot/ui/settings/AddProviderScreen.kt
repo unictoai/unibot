@@ -217,6 +217,10 @@ private val providerDisplayOrder = listOf(
     ProviderType.zai,
     ProviderType.nebius,
     ProviderType.chutes,
+    // Item 45 — newly launched / verified free-tier providers.
+    ProviderType.pollinations,
+    ProviderType.huggingFace,
+    ProviderType.aionLabs,
 )
 
 /**
@@ -260,6 +264,10 @@ private fun providerIcon(type: ProviderType): Pair<ImageVector, Color> = when (t
     ProviderType.deepSeek -> Icons.Default.Search to Color(0xFF7B1FA2)        // deep purple
     ProviderType.zai -> Icons.Default.Psychology to Color(0xFF00ACC1)          // cyan — Z.AI
     ProviderType.nebius -> Icons.Default.CloudQueue to Color(0xFF5E35B1)       // purple — Nebius
+    // Item 45 — new free-tier providers.
+    ProviderType.pollinations -> Icons.Default.Public to Color(0xFF26A69A)       // teal — open/free cue
+    ProviderType.huggingFace -> Icons.Default.Face to Color(0xFFFFC107)         // amber — HF brand cue
+    ProviderType.aionLabs -> Icons.Default.Science to Color(0xFF7E57C2)          // violet — lab cue
     ProviderType.chutes -> Icons.Default.Paragliding to Color(0xFF00897B)      // teal — Chutes
     // [T-android-provider-type-parity] Types that arrive only from an iOS
     // package / newer build; never offered in addableProviderTypes, but the
@@ -294,7 +302,10 @@ private fun availableCredentials(type: ProviderType): List<ProviderCredential> {
         ProviderType.deepSeek,
         ProviderType.zai,
         ProviderType.nebius,
-        ProviderType.chutes -> listOf(ProviderCredential.apiKey)
+        ProviderType.chutes,
+        ProviderType.pollinations,
+        ProviderType.huggingFace,
+        ProviderType.aionLabs -> listOf(ProviderCredential.apiKey)
         // [T-android-provider-type-parity] Responses API instances authenticate
         // exactly like OpenAI ones (API key, or a Codex OAuth login).
         ProviderType.openAIResponses -> listOf(ProviderCredential.apiKey, ProviderCredential.oauth)
@@ -367,6 +378,10 @@ private fun ChooseProviderScreen(
                     ProviderType.zai -> R.string.add_provider_subtitle_zai
                     ProviderType.nebius -> R.string.add_provider_subtitle_nebius
                     ProviderType.chutes -> R.string.add_provider_subtitle_chutes
+                    // Item 45 — new free-tier providers.
+                    ProviderType.pollinations -> R.string.add_provider_subtitle_pollinations
+                    ProviderType.huggingFace -> R.string.add_provider_subtitle_huggingface
+                    ProviderType.aionLabs -> R.string.add_provider_subtitle_aionlabs
                     // [T-android-provider-type-parity] Not offered for
                     // creation; reuse the OpenAI copy for the Responses API and
                     // a generic line for the undrivable types.
@@ -487,6 +502,10 @@ private fun apiKeyDescription(type: ProviderType): String = when (type) {
     ProviderType.zai -> "Limited-time free models — get a key at z.ai"
     ProviderType.nebius -> "Free credits for new accounts — get a key at studio.nebius.com"
     ProviderType.chutes -> "Free API access — get a key at chutes.ai"
+    // Item 45 — new free-tier providers.
+    ProviderType.pollinations -> "Free and keyless — leave the key empty"
+    ProviderType.huggingFace -> "Free router credits — get a token at huggingface.co"
+    ProviderType.aionLabs -> "Permanent free tier — get a key at aionlabs.ai"
     ProviderType.antigravity,
     ProviderType.unsupported -> "This provider type is not supported on Android"
 }
@@ -509,7 +528,10 @@ private fun oauthDescription(type: ProviderType): String = when (type) {
     ProviderType.deepSeek,
     ProviderType.zai,
     ProviderType.nebius,
-    ProviderType.chutes -> "API key only — no sign-in flow for free-tier providers"
+    ProviderType.chutes,
+    ProviderType.pollinations,
+    ProviderType.huggingFace,
+    ProviderType.aionLabs -> "API key only — no sign-in flow for free-tier providers"
     ProviderType.antigravity,
     ProviderType.unsupported -> "This provider type is not supported on Android"
 }
@@ -653,6 +675,10 @@ private fun ColumnScope.ApiKeyConfigSection(
         ProviderType.zai -> "Z.AI API key..."
         ProviderType.nebius -> "Nebius API key..."
         ProviderType.chutes -> "Chutes API key..."
+        // Item 45 — new free-tier key formats.
+        ProviderType.pollinations -> "(no key needed)"
+        ProviderType.huggingFace -> "hf_..."
+        ProviderType.aionLabs -> "Aion Labs API key..."
         ProviderType.antigravity,
         ProviderType.unsupported -> "API Key..."
     }
@@ -839,7 +865,10 @@ private fun ColumnScope.OAuthConfigSection(
         ProviderType.deepSeek,
         ProviderType.zai,
         ProviderType.nebius,
-        ProviderType.chutes -> "Continue with API key"
+        ProviderType.chutes,
+        ProviderType.pollinations,
+        ProviderType.huggingFace,
+        ProviderType.aionLabs -> "Continue with API key"
         ProviderType.antigravity,
         ProviderType.unsupported -> "Sign in"
     }
@@ -1029,7 +1058,10 @@ private fun ColumnScope.OAuthConfigSection(
             ProviderType.deepSeek,
             ProviderType.zai,
             ProviderType.nebius,
-            ProviderType.chutes -> providerType.defaultBaseUrl ?: ""
+            ProviderType.chutes,
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs -> providerType.defaultBaseUrl ?: ""
             ProviderType.antigravity,
             ProviderType.unsupported -> ""
         }

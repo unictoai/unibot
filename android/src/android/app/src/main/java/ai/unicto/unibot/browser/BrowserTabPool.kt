@@ -109,10 +109,53 @@ class BrowserTabPool(private val context: Context) {
      */
     private val tabLocks = ConcurrentHashMap<Int, Mutex>()
 
+    /**
+     * Item 40 — hand-over wait state. The agent pauses here (via the
+     * `wait_for_user` action) at login / CAPTCHA / payment pages until the
+     * user finishes in the visible browser and taps Done. Observed by
+     * BrowserSheet, which renders the banner + Done button.
+     */
+    val handover = HandoverWaitController()
+
+    /** User tapped Done on the hand-over banner — the agent continues. */
+    fun resolveHandover() = handover.resolve()
+
+    /** User dismissed the hand-over banner — the agent gets CANCELLED, not an error. */
+    fun cancelHandover() = handover.cancel()
+
+    /**
+     * Item 40 — hand-over wait. Posts the banner request and suspends the
+     * tool call until the user taps Done, dismisses, or the timeout fires.
+     * Every outcome returns success=true with a plain narrative: the agent
+     * paused, it never failed, and the model decides what to do next.
+     */
+    private suspend fun waitForUser(input: BrowserActionInput): BrowserActionResult {
+        val pageUrl = _tabs.value
+            .firstOrNull { it.id == _selectedTabId.value }
+            ?.manager?.currentURL?.value
+            ?.takeIf { it.isNotBlank() }
+        val message = input.message?.trim().orEmpty()
+        return when (handover.awaitUser(message, pageUrl)) {
+            HandoverWaitController.Outcome.RESUMED -> BrowserActionResult(
+                text = "The user tapped Done — they finished the step in the browser. " +
+                    "Continue your task; take a screenshot to see the current page state.",
+            )
+            HandoverWaitController.Outcome.CANCELLED -> BrowserActionResult(
+                text = "The user dismissed the hand-over wait without tapping Done — " +
+                    "they may not have completed the step. Ask them what happened or " +
+                    "try a different approach; do not retry wait_for_user immediately.",
+            )
+            HandoverWaitController.Outcome.TIMED_OUT -> BrowserActionResult(
+                text = "The hand-over wait timed out after 10 minutes without the " +
+                    "user tapping Done. Tell the user what you were waiting for and " +
+                    "ask how they'd like to proceed.",
+            )
+        }
+    }
+
     private fun lockForTab(id: Int): Mutex = tabLocks.getOrPut(id) { Mutex() }
 
-    data class Tab(
-        val id: Int,
+    data class Tab(        val id: Int,
         val manager: BrowserUseManager,
         var inUse: Boolean = false,
         var lastActivityDate: Date = Date(),
@@ -539,6 +582,11 @@ class BrowserTabPool(private val context: Context) {
             BrowserAction.CLOSE_TAB -> closeTab(input.tabId)
             BrowserAction.LIST_TABS -> listTabs()
             BrowserAction.SET_VIEWPORT -> handleSetViewport(input)
+            // Item 40 — hand-over wait: pool-level, not tab-level. The tool
+            // call suspends here until the user taps Done (resolveHandover),
+            // dismisses (cancelHandover), or the 10-minute timeout fires.
+            // Never throws: every outcome is a plain result for the model.
+            BrowserAction.WAIT_FOR_USER -> waitForUser(input)
             else -> {
                 // [T-browser-use-per-tab-serial-android] Serialize per explicit
                 // tab id. Only an explicit tab_id that names an EXISTING tab can

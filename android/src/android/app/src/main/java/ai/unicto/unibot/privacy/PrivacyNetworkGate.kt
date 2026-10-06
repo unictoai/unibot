@@ -361,6 +361,10 @@ object PrivacyNetworkGate {
         ProviderType.zai -> "api.z.ai"
         ProviderType.nebius -> "api.studio.nebius.com"
         ProviderType.chutes -> "llm.chutes.ai"
+        // Item 45 — official hosts for the new free-tier providers.
+        ProviderType.pollinations -> "text.pollinations.ai"
+        ProviderType.huggingFace -> "router.huggingface.co"
+        ProviderType.aionLabs -> "api.aionlabs.ai"
         else -> null
     }
 

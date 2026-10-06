@@ -16,37 +16,35 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 
 /**
- * Microsoft identity platform OAuth 2.0 (Authorization Code + PKCE, loopback
- * redirect — RFC 8252). Mirrors
- * [ai.unicto.unibot.connectors.spotify.SpotifyOAuth]: a public client needs
- * no client secret, so nothing sensitive is embedded in the APK.
+ * Microsoft identity platform OAuth 2.0 (Authorization Code + PKCE).
+ * Mirrors [ai.unicto.unibot.connectors.spotify.SpotifyOAuth]: a public
+ * client needs no client secret, so nothing sensitive is embedded in the
+ * APK.
  *
- * SETUP (one time, by the app publisher): register an app at
- * portal.azure.com (single-tenant or multitenant "native / mobile app"),
- * add `http://127.0.0.1:53712/callback` (and 53713–53715) as Redirect URIs,
- * enable the delegated Mail.Read, Mail.Send and Calendars.Read permissions,
- * and put the issued Application (client) ID into [CLIENT_ID]. Until then
- * [isConfigured] is false and the Connectors screen shows a "needs setup"
- * state instead of a broken connect button.
+ * The Azure app registration is USER-CONFIGURED (BYOK): the user pastes
+ * their Application (client) ID, tenant, and redirect URI once in
+ * Settings → Connectors → Outlook → Azure app setup
+ * ([OutlookAzureConfigStore]). Until the slot is filled [isConfigured]
+ * is false and the Connectors screen shows the setup panel instead of a
+ * broken connect button.
+ *
+ * Two redirect modes:
+ * - Loopback (default): http://127.0.0.1:53712/callback (…53715 fallback).
+ *   Register all four in the Azure app. A tiny localhost server captures
+ *   the code — RFC 8252.
+ * - Custom scheme: any `unibot://…` URI (e.g. `unibot://oauth/outlook`),
+ *   captured by the app's existing intent filter. The code/state arrive via
+ *   [onCustomSchemeCallback], which resumes the pending [authorize] call.
  */
 object OutlookOAuth {
 
     private const val TAG = "OutlookOAuth"
 
-    private const val AUTH_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-    private const val TOKEN_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-
-    /**
-     * TODO: register an app at portal.azure.com and paste the Application
-     * (client) ID here. The app must be a public/native client with Redirect
-     * URIs http://127.0.0.1:53712/callback … :53715/callback registered.
-     */
-    const val CLIENT_ID = ""
-
-    fun isConfigured(): Boolean = CLIENT_ID.isNotBlank()
+    val configStore = OutlookAzureConfigStore()
 
     private const val LOOPBACK_PORT = 53712
     private val FALLBACK_PORTS = listOf(53713, 53714, 53715)
@@ -75,54 +73,143 @@ object OutlookOAuth {
             .build()
     }
 
+    /** True once the user has filled the Azure app slot in settings. */
+    fun isConfigured(context: Context): Boolean = configStore.isConfigured(context)
+
+    fun loadConfig(context: Context): OutlookAzureConfig = configStore.load(context)
+
+    fun saveConfig(context: Context, config: OutlookAzureConfig) =
+        configStore.save(context, config)
+
+    private fun authEndpoint(tenant: String) =
+        "https://login.microsoftonline.com/$tenant/oauth2/v2.0/authorize"
+
+    private fun tokenEndpoint(tenant: String) =
+        "https://login.microsoftonline.com/$tenant/oauth2/v2.0/token"
+
+    /**
+     * Pending custom-scheme continuation. Set by [authorize] when the user
+     * configured a `unibot://` redirect URI; resumed by
+     * [onCustomSchemeCallback] from MainActivity's deep-link path.
+     */
+    @Volatile
+    private var pendingCustomScheme: Continuation<Pair<String, String?>?>? = null
+
+    /**
+     * Called from the app's deep-link path for `unibot://oauth/outlook`
+     * redirects. Returns true when a pending Outlook authorize consumed it.
+     */
+    fun onCustomSchemeCallback(code: String, state: String?): Boolean {
+        val cont = pendingCustomScheme ?: return false
+        pendingCustomScheme = null
+        if (code.isBlank()) {
+            AppLogger.warning(TAG, "[CustomScheme] no code in redirect")
+            cont.resume(null)
+        } else {
+            cont.resume(code to state)
+        }
+        return true
+    }
+
     /** Run the full authorize flow. Never throws. Must be called from a coroutine. */
     suspend fun authorize(context: Context): Result {
-        if (!isConfigured()) {
+        val config = configStore.load(context)
+        if (!config.isConfigured) {
             return Result.Failed(
-                "Outlook needs setup: register an app at portal.azure.com " +
-                    "and set CLIENT_ID in OutlookOAuth.kt",
+                "Outlook needs setup: open Settings → Connectors → Outlook → " +
+                    "Azure app setup and paste your Application (client) ID.",
             )
         }
         return withContext(Dispatchers.IO) {
             val pkce = McpPkce.newPkce()
-            var server: OAuthCallbackServer? = null
-            try {
-                val callback = suspendCancellableCoroutine<Pair<String, String?>?> { cont ->
-                    val srv = OAuthCallbackServer(LOOPBACK_PORT, FALLBACK_PORTS) { code, state ->
-                        if (cont.isActive) cont.resume(code to state)
-                    }
-                    server = srv
-                    srv.onExternalCancel = { if (cont.isActive) cont.resume(null) }
-                    srv.start()
-                    cont.invokeOnCancellation {
-                        srv.stop()
-                        server = null
-                    }
-                    val authUrl = buildAuthUrl(pkce, redirectUri(srv.boundPort))
-                    CustomTabsIntent.Builder().setShowTitle(true).build()
-                        .launchUrl(context, Uri.parse(authUrl))
-                    AppLogger.info(TAG, "[Authorize] opened Custom Tab")
-                } ?: return@withContext Result.Cancelled
-
-                val (code, state) = callback
-                if (state != null && state != pkce.state) {
-                    AppLogger.warning(TAG, "[Authorize] state mismatch")
-                    return@withContext Result.Failed("State mismatch in the sign-in callback.")
-                }
-                exchangeCode(code, redirectUri(server?.boundPort ?: LOOPBACK_PORT), pkce.verifier)
-            } finally {
-                server?.stop()
+            val tenant = config.tenant.ifBlank { OutlookAzureConfig.DEFAULT_TENANT }
+            if (config.redirectUri.isBlank()) {
+                authorizeLoopback(context, config, tenant, pkce)
+            } else {
+                authorizeCustomScheme(context, config, tenant, pkce)
             }
         }
     }
 
+    private suspend fun authorizeLoopback(
+        context: Context,
+        config: OutlookAzureConfig,
+        tenant: String,
+        pkce: McpPkce.PkceParams,
+    ): Result {
+        var server: OAuthCallbackServer? = null
+        try {
+            val callback = suspendCancellableCoroutine<Pair<String, String?>?> { cont ->
+                val srv = OAuthCallbackServer(LOOPBACK_PORT, FALLBACK_PORTS) { code, state ->
+                    if (cont.isActive) cont.resume(code to state)
+                }
+                server = srv
+                srv.onExternalCancel = { if (cont.isActive) cont.resume(null) }
+                srv.start()
+                cont.invokeOnCancellation {
+                    srv.stop()
+                    server = null
+                }
+                val authUrl = buildAuthUrl(
+                    config, tenant, pkce, redirectUri(server.boundPort),
+                )
+                CustomTabsIntent.Builder().setShowTitle(true).build()
+                    .launchUrl(context, Uri.parse(authUrl))
+                AppLogger.info(TAG, "[Authorize] opened Custom Tab (loopback)")
+            } ?: return Result.Cancelled
+
+            val (code, state) = callback
+            if (state != null && state != pkce.state) {
+                AppLogger.warning(TAG, "[Authorize] state mismatch")
+                return Result.Failed("State mismatch in the sign-in callback.")
+            }
+            return exchangeCode(
+                config, tenant, code,
+                redirectUri(server?.boundPort ?: LOOPBACK_PORT), pkce.verifier,
+            )
+        } finally {
+            server?.stop()
+        }
+    }
+
+    private suspend fun authorizeCustomScheme(
+        context: Context,
+        config: OutlookAzureConfig,
+        tenant: String,
+        pkce: McpPkce.PkceParams,
+    ): Result {
+        val callback = suspendCancellableCoroutine<Pair<String, String?>?> { cont ->
+            pendingCustomScheme = cont
+            cont.invokeOnCancellation { pendingCustomScheme = null }
+            val authUrl = buildAuthUrl(config, tenant, pkce, config.redirectUri)
+            CustomTabsIntent.Builder().setShowTitle(true).build()
+                .launchUrl(context, Uri.parse(authUrl))
+            AppLogger.info(TAG, "[Authorize] opened Custom Tab (custom scheme)")
+        } ?: return Result.Cancelled
+
+        val (code, state) = callback
+        if (state != null && state != pkce.state) {
+            AppLogger.warning(TAG, "[Authorize] state mismatch")
+            return Result.Failed("State mismatch in the sign-in callback.")
+        }
+        return exchangeCode(config, tenant, code, config.redirectUri, pkce.verifier)
+    }
+
     private fun redirectUri(port: Int) = "http://127.0.0.1:$port/callback"
 
-    private fun buildAuthUrl(pkce: McpPkce.PkceParams, redirectUri: String): String {
+    fun loopbackRedirectUris(): List<String> =
+        listOf(LOOPBACK_PORT).plus(FALLBACK_PORTS).map { redirectUri(it) }
+
+    private fun buildAuthUrl(
+        config: OutlookAzureConfig,
+        tenant: String,
+        pkce: McpPkce.PkceParams,
+        redirectUri: String,
+    ): String {
         fun enc(v: String) = URLEncoder.encode(v, "UTF-8")
         return buildString {
-            append(AUTH_ENDPOINT)
-            append("?client_id=").append(enc(CLIENT_ID))
+            append(authEndpoint(tenant))
+            append("?client_id=").append(enc(config.clientId))
             append("&response_type=code")
             append("&redirect_uri=").append(enc(redirectUri))
             append("&scope=").append(enc(SCOPES))
@@ -132,14 +219,20 @@ object OutlookOAuth {
         }
     }
 
-    private fun exchangeCode(code: String, redirectUri: String, verifier: String): Result {
+    private fun exchangeCode(
+        config: OutlookAzureConfig,
+        tenant: String,
+        code: String,
+        redirectUri: String,
+        verifier: String,
+    ): Result {
         fun enc(v: String) = URLEncoder.encode(v, "UTF-8")
         val form = "grant_type=authorization_code" +
             "&code=${enc(code)}" +
             "&redirect_uri=${enc(redirectUri)}" +
-            "&client_id=${enc(CLIENT_ID)}" +
+            "&client_id=${enc(config.clientId)}" +
             "&code_verifier=${enc(verifier)}"
-        return postTokenForm(form, "authorize")
+        return postTokenForm(config, tenant, form, "authorize")
     }
 
     /** Usable access token for [store], refreshing silently when expired. Null = not connected. */
@@ -148,20 +241,24 @@ object OutlookOAuth {
             val stored = store.getTokens(context) ?: return@withContext null
             if (!stored.needsRefresh()) return@withContext stored.accessToken
             val refresh = stored.refreshToken ?: return@withContext null
-            refreshAccessToken(context, store, refresh)
+            val config = configStore.load(context)
+            val tenant = config.tenant.ifBlank { OutlookAzureConfig.DEFAULT_TENANT }
+            refreshAccessToken(context, config, tenant, store, refresh)
         }
 
     private fun refreshAccessToken(
         context: Context,
+        config: OutlookAzureConfig,
+        tenant: String,
         store: OutlookTokenStore,
         refreshToken: String,
     ): String? {
         fun enc(v: String) = URLEncoder.encode(v, "UTF-8")
         val form = "grant_type=refresh_token" +
             "&refresh_token=${enc(refreshToken)}" +
-            "&client_id=${enc(CLIENT_ID)}"
+            "&client_id=${enc(config.clientId)}"
         val request = Request.Builder()
-            .url(TOKEN_ENDPOINT)
+            .url(tokenEndpoint(tenant))
             .post(form.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
             .build()
         return try {
@@ -191,9 +288,14 @@ object OutlookOAuth {
         }
     }
 
-    private fun postTokenForm(form: String, op: String): Result {
+    private fun postTokenForm(
+        config: OutlookAzureConfig,
+        tenant: String,
+        form: String,
+        op: String,
+    ): Result {
         val request = Request.Builder()
-            .url(TOKEN_ENDPOINT)
+            .url(tokenEndpoint(tenant))
             .post(form.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
             .build()
         return try {

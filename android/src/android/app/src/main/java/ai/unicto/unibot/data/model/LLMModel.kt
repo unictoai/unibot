@@ -258,9 +258,31 @@ data class LLMModel(
             LLMModel("deepseek-r1", "DeepSeek R1", "Chutes", supportsReasoning = true),
         )
 
+        // Item 45 — newly launched / verified free-tier providers.
+        // Conservative 4096-token output caps: these are free tiers with
+        // modest rate limits, and the wire clamp treats the declared cap
+        // as authoritative.
+        // Pollinations — https://text.pollinations.ai/openai (keyless)
+        val allPollinations = listOf(
+            LLMModel("openai", "Pollinations GPT", "Pollinations", maxOutputTokens = 4096),
+            LLMModel("mistral", "Pollinations Mistral", "Pollinations", maxOutputTokens = 4096),
+        )
+
+        // Hugging Face Inference Router — https://router.huggingface.co/v1
+        val allHuggingFace = listOf(
+            LLMModel("meta-llama/Llama-3.3-70B-Instruct", "Llama 3.3 70B Instruct", "Hugging Face", maxOutputTokens = 4096),
+            LLMModel("Qwen/Qwen3-32B", "Qwen3 32B", "Hugging Face", maxOutputTokens = 4096),
+        )
+
+        // Aion Labs — https://api.aionlabs.ai/v1 (permanent free tier)
+        val allAionLabs = listOf(
+            LLMModel("aion-3.0-mini", "Aion 3.0 Mini", "Aion Labs", maxOutputTokens = 4096),
+            LLMModel("aion-3.0", "Aion 3.0", "Aion Labs", maxOutputTokens = 4096),
+        )
+
         val allModels = allAnthropic + allGemini + allOpenAI + allOpenRouter + allXAI + allKimi +
             allGroq + allCerebras + allMistral + allGithubModels + allSambaNova + allNvidiaNim + allDeepSeek +
-            allZai + allNebius + allChutes
+            allZai + allNebius + allChutes + allPollinations + allHuggingFace + allAionLabs
 
         /**
          * Heuristic display-name formatter for API model ids.

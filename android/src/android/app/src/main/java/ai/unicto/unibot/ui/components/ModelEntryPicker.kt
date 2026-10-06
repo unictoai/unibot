@@ -495,6 +495,10 @@ fun providerDotColor(providerType: ProviderType?): Color = when (providerType) {
     ProviderType.zai -> Color(0xFF00ACC1)
     ProviderType.nebius -> Color(0xFF5E35B1)
     ProviderType.chutes -> Color(0xFF00897B)
+    // Item 45 — new free-tier providers.
+    ProviderType.pollinations -> Color(0xFF26A69A)
+    ProviderType.huggingFace -> Color(0xFFFFC107)
+    ProviderType.aionLabs -> Color(0xFF7E57C2)
     // [T-android-provider-type-parity] Responses API instances are
     // OpenAI under the hood — same green dot. Undrivable types share
     // the neutral gray used for "no provider".

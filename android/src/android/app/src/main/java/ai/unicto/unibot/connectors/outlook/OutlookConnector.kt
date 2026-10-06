@@ -61,7 +61,13 @@ object OutlookConnector {
 
     fun isConnected(context: Context): Boolean = store.isConnected(context)
 
-    fun isConfigured(): Boolean = OutlookOAuth.isConfigured()
+    fun isConfigured(context: Context): Boolean = OutlookOAuth.isConfigured(context)
+
+    fun loadAzureConfig(context: Context): OutlookAzureConfig =
+        OutlookOAuth.loadConfig(context)
+
+    fun saveAzureConfig(context: Context, config: OutlookAzureConfig) =
+        OutlookOAuth.saveConfig(context, config)
 
     suspend fun authorize(context: Context): OutlookOAuth.Result {
         val r = OutlookOAuth.authorize(context)

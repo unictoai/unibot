@@ -1533,6 +1533,10 @@ class ChatViewModel(
             qrConnected = QrTool.isConnected(context),
             // [v0.5.0-agentic-core] Real web_search tool for the agent loop.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
+            // Item 42 — MCP servers as tools. Snapshot is I/O-free (the
+            // getter's contract); McpToolBridge.refresh() populates it in
+            // the background (see init below).
+            mcpTools = ai.unicto.unibot.tools.McpToolBridge.snapshot(),
         )
     /**
      * Per-session loop detector. Reset alongside [agentHistory] whenever the
@@ -4044,6 +4048,17 @@ class ChatViewModel(
         // [P2-prompt-library] Seed the preset library (built-ins + customs)
         // before the @-mention combine subscribes to it.
         PromptLibraryStore.ensureInit(context)
+        // Item 42 — keep the MCP tool snapshot warm: refresh on start and
+        // whenever the server list changes (user adds/toggles a server in
+        // Settings → MCP). Network I/O stays off the agent-turn path.
+        mcpRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.servers.collect {
+                    ai.unicto.unibot.tools.McpToolBridge.invalidate()
+                    ai.unicto.unibot.tools.McpToolBridge.refresh(context, repo)
+                }
+            }
+        }
         loadSession()
         // [v12-B] Chat templates: a template tap stages starter text keyed by
         // the fresh draft id just before navigation creates this VM. Consume
@@ -10502,6 +10517,20 @@ class ChatViewModel(
         // bridge, which is now where checkPermission runs.
         val toolTitle = try { JSONObject(argsJson).optString("tool_title", name) } catch (_: Exception) { name }
 
+        // Item 42 — MCP tools are namespaced mcp_<server>_<tool>. The
+        // registry is dynamic (user-configured servers), so they can't be
+        // enumerated as const branches in the when below — and a boolean
+        // condition is invalid in a subject-when, hence the pre-check.
+        if (name.startsWith(ai.unicto.unibot.tools.McpToolBridge.PREFIX)) {
+            val repo = mcpRepository
+            if (repo == null) {
+                return ToolExecutionResult(
+                    "Error: MCP is not available in this chat", false, toolTitle = toolTitle,
+                )
+            }
+            return ai.unicto.unibot.tools.McpToolBridge.execute(name, argsJson, context, repo)
+        }
+
         return when (name) {
             FileReadTool.NAME -> {
                 val result = FileReadTool.execute(argsJson, activeSessionId, context)
@@ -10539,11 +10568,21 @@ class ChatViewModel(
             GmailTool.SEARCH_NAME -> GmailTool.executeSearch(argsJson, context)
             GmailTool.READ_NAME -> GmailTool.executeRead(argsJson, context)
             GmailTool.SEND_NAME -> GmailTool.executeSend(argsJson, context)
+            // Item 43 — apply the user's auto-label rules on demand.
+            GmailTool.APPLY_LABEL_RULES_NAME -> GmailTool.executeApplyLabelRules(argsJson, context)
             // [unibot-connectors] Drive + Calendar tools.
             DriveTool.SEARCH_NAME -> DriveTool.executeSearch(argsJson, context)
             DriveTool.READ_NAME -> DriveTool.executeRead(argsJson, context)
+            // Item 36 — Drive folder browse + attach-to-chat.
+            DriveTool.LIST_NAME -> DriveTool.executeList(argsJson, context)
+            DriveTool.ATTACH_NAME -> DriveTool.executeAttach(argsJson, context, activeSessionId)
             CalendarTool.LIST_NAME -> CalendarTool.executeList(argsJson, context)
             CalendarTool.CREATE_NAME -> CalendarTool.executeCreate(argsJson, context)
+            // Item 37 — two-way Calendar: edit + delete (confirmation runs
+            // through the normal tool-approval path). Item 46 — quick add.
+            CalendarTool.EDIT_NAME -> CalendarTool.executeEdit(argsJson, context)
+            CalendarTool.DELETE_NAME -> CalendarTool.executeDelete(argsJson, context)
+            CalendarTool.QUICK_ADD_NAME -> CalendarTool.executeQuickAdd(argsJson, context)
             // [unibot-connectors] GitHub + Telegram (token-based) tools.
             GitHubTool.REPOS_NAME -> GitHubTool.executeRepos(argsJson, context)
             GitHubTool.READ_NAME -> GitHubTool.executeRead(argsJson, context)
@@ -10556,6 +10595,11 @@ class ChatViewModel(
             YouTubeTool.SEARCH_NAME -> YouTubeTool.executeSearch(argsJson, context)
             YouTubeTool.CHANNEL_NAME -> YouTubeTool.executeChannel(argsJson, context)
             YouTubeTool.VIDEO_NAME -> YouTubeTool.executeVideo(argsJson, context)
+            // Item 38 — transcripts for summarization + Watch Later management.
+            YouTubeTool.TRANSCRIPT_NAME -> YouTubeTool.executeTranscript(argsJson, context)
+            YouTubeTool.WATCHLATER_LIST_NAME -> YouTubeTool.executeWatchLaterList(argsJson, context)
+            YouTubeTool.WATCHLATER_ADD_NAME -> YouTubeTool.executeWatchLaterAdd(argsJson, context)
+            YouTubeTool.WATCHLATER_REMOVE_NAME -> YouTubeTool.executeWatchLaterRemove(argsJson, context)
             // [v1.0-wave4] Creator tools — on-device generators, no connection needed.
             CreatorTools.CAPTIONS_NAME -> CreatorTools.executeCaptions(argsJson)
             CreatorTools.HOOKS_NAME -> CreatorTools.executeHooks(argsJson)
@@ -10716,6 +10760,8 @@ class ChatViewModel(
             qrConnected = QrTool.isConnected(context),
             // [v0.5.0-agentic-core] Workers can search the web too.
             webSearchEnabled = ai.unicto.unibot.local.LocalCapabilities.isWebSearchEnabled(context),
+            // Item 42 — MCP tools for delegate workers too (I/O-free snapshot).
+            mcpTools = ai.unicto.unibot.tools.McpToolBridge.snapshot(),
         )
         val workerMessages = mutableListOf(
             LLMMessage(

@@ -93,6 +93,12 @@ sealed class DeepLinkAction {
      * so every existing caller keeps the old behaviour.
      */
     data class Ask(val text: String, val newChat: Boolean = false) : DeepLinkAction()
+    /**
+     * Item 35: custom-scheme OAuth redirect target for the Outlook
+     * connector. Carries no navigation — MainActivity resumes the pending
+     * [ai.unicto.unibot.connectors.outlook.OutlookOAuth] authorize call.
+     */
+    data class OutlookOAuthCallback(val code: String, val state: String?) : DeepLinkAction()
 
     /**
      * T183: any settings screen reachable by route string. Extends the
@@ -156,6 +162,17 @@ object DeepLinkHandler {
 
         return when (host) {
             "share" -> DeepLinkAction.OpenShare
+            // Item 35: custom-scheme OAuth redirect for the Outlook
+            // connector (`unibot://oauth/outlook?code=…&state=…`), used when
+            // the user configured a unibot:// redirect URI in the Azure app
+            // slot instead of the default loopback addresses.
+            "oauth" -> when (path.removePrefix("/")) {
+                "outlook" -> DeepLinkAction.OutlookOAuthCallback(
+                    code = uri.getQueryParameter("code").orEmpty(),
+                    state = uri.getQueryParameter("state"),
+                )
+                else -> DeepLinkAction.Unknown
+            }
             // v1.4.0 item 11 — `unibot://swarm` opens the swarm space
             // (mission-complete notification tap target).
             "swarm" -> DeepLinkAction.OpenSwarm
@@ -185,6 +202,19 @@ object DeepLinkHandler {
                 newChat = isNewChatParam(uri.getQueryParameter("new")),
             )
             "settings" -> parseSettingsPath(uri)
+            // Item 46 — one-tap "add to calendar" from any message:
+            // `unibot://calendar/add?text=Dentist+tomorrow+3pm` opens a chat
+            // with the quick-add prompt prefilled (never auto-sent — the
+            // user reviews it in the composer, same contract as `ask`).
+            "calendar" -> when (path.removePrefix("/")) {
+                "add" -> {
+                    val text = uri.getQueryParameter("text").orEmpty()
+                    DeepLinkAction.Ask(
+                        text = if (text.isBlank()) "" else "Add to calendar: $text",
+                    )
+                }
+                else -> DeepLinkAction.Unknown
+            }
             "session" -> {
                 // unibot://session/<sessionId>                → OpenSession
                 // unibot://session/<sessionId>/<resource-path> → OpenHtmlPreview

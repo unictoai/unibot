@@ -38,6 +38,11 @@ data class BrowserActionInput(
     /** When true on screenshot, stretch viewport to full document.scrollHeight before capture. */
     val fullPage: Boolean = false,
     /**
+     * Item 40 — instruction shown in the hand-over banner
+     * (wait_for_user), e.g. "Sign in to ExampleBank, then tap Done".
+     */
+    val message: String? = null,
+    /**
      * Cookies to write (set_cookies). Each entry has keys name + value
      * (required) and optional domain, path, secure, http_only, expires
      * (Unix seconds). Values are loosely typed (String / Boolean / Number).
@@ -76,6 +81,7 @@ data class BrowserActionInput(
                     scrollCount = if (obj.has("scroll_count")) obj.optInt("scroll_count") else null,
                     timeoutMs = if (obj.has("timeout")) obj.optInt("timeout") else null,
                     fullPage = obj.optBoolean("full_page", false),
+                    message = obj.optString("message").ifEmpty { null },
                     cookies = parseCookies(obj),
                 )
             } catch (_: Exception) {

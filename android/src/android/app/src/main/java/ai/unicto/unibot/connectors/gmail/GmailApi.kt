@@ -150,6 +150,86 @@ object GmailApi {
 
     // -- internals ---------------------------------------------------------------
 
+    // -- Labels (item 43: auto-label rules) ------------------------------------
+
+    /**
+     * Ensure a user label exists; returns its id. Creates it when missing.
+     * Needs the gmail.modify scope.
+     */
+    suspend fun ensureLabel(context: Context, name: String): ApiResult<String> =
+        withContext(Dispatchers.IO) {
+            val t = token(context) ?: return@withContext ApiResult.NotConnected()
+            runCatching {
+                http.newCall(authed("$BASE/labels", t).get().build()).execute().use { resp ->
+                    val text = resp.body?.string().orEmpty()
+                    if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                    val labels = JSONObject(text).optJSONArray("labels") ?: JSONArray()
+                    for (i in 0 until labels.length()) {
+                        val l = labels.optJSONObject(i) ?: continue
+                        if (l.optString("name", "").equals(name, ignoreCase = true)) {
+                            return@withContext ApiResult.Ok(l.optString("id", ""))
+                        }
+                    }
+                }
+                val payload = JSONObject().apply {
+                    put("name", name)
+                    put("labelListVisibility", "labelShow")
+                    put("messageListVisibility", "show")
+                }.toString().toRequestBody("application/json".toMediaType())
+                http.newCall(authed("$BASE/labels", t).post(payload).build()).execute().use { resp ->
+                    val text = resp.body?.string().orEmpty()
+                    if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                    val id = JSONObject(text).optString("id", "")
+                    if (id.isEmpty()) return@withContext ApiResult.Error("Label created but no id returned.")
+                    ApiResult.Ok(id)
+                }
+            }.getOrElse { e ->
+                AppLogger.warning(TAG, "[ensureLabel] ${e.message}")
+                ApiResult.Error("Gmail label setup failed: ${e.message}")
+            }
+        }
+
+    /**
+     * Apply [labelId] to messages matching [query] (Gmail search syntax).
+     * Returns the number of messages labeled.
+     */
+    suspend fun applyLabelToMatching(
+        context: Context,
+        query: String,
+        labelId: String,
+        maxMessages: Int = 50,
+    ): ApiResult<Int> = withContext(Dispatchers.IO) {
+        val t = token(context) ?: return@withContext ApiResult.NotConnected()
+        runCatching {
+            val url = "$BASE/messages?q=${android.net.Uri.encode(query)}" +
+                "&maxResults=${maxMessages.coerceIn(1, 100)}&fields=messages/id"
+            val ids = http.newCall(authed(url, t).get().build()).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                val arr = JSONObject(text).optJSONArray("messages") ?: JSONArray()
+                (0 until arr.length()).mapNotNull {
+                    arr.optJSONObject(it)?.optString("id", "")?.takeIf { id -> id.isNotBlank() }
+                }
+            }
+            if (ids.isEmpty()) return@withContext ApiResult.Ok(0)
+            val payload = JSONObject().apply {
+                put("ids", JSONArray(ids))
+                put("addLabelIds", JSONArray().put(labelId))
+            }.toString().toRequestBody("application/json".toMediaType())
+            http.newCall(
+                authed("$BASE/messages/batchModify", t).post(payload).build(),
+            ).execute().use { resp ->
+                if (!resp.isSuccessful && resp.code != 204) {
+                    return@withContext apiError(resp.code, resp.body?.string().orEmpty())
+                }
+                ApiResult.Ok(ids.size)
+            }
+        }.getOrElse { e ->
+            AppLogger.warning(TAG, "[applyLabel] ${e.message}")
+            ApiResult.Error("Gmail label apply failed: ${e.message}")
+        }
+    }
+
     private fun fetchMetadata(accessToken: String, id: String): ApiResult<MessageSummary> {
         http.newCall(
             authed("$BASE/messages/$id?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date", accessToken)

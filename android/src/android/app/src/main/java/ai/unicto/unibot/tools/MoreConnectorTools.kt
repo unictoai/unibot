@@ -20,6 +20,10 @@ object YouTubeTool {
     const val SEARCH_NAME = "youtube_search"
     const val CHANNEL_NAME = "youtube_channel"
     const val VIDEO_NAME = "youtube_video"
+    const val TRANSCRIPT_NAME = "youtube_transcript"
+    const val WATCHLATER_LIST_NAME = "youtube_watchlater_list"
+    const val WATCHLATER_ADD_NAME = "youtube_watchlater_add"
+    const val WATCHLATER_REMOVE_NAME = "youtube_watchlater_remove"
 
     fun isConnected(context: Context): Boolean = YouTubeConnector.isConnected(context)
 
@@ -53,6 +57,46 @@ object YouTubeTool {
             ),
             required = listOf("tool_title", "video_id"),
             propertyOrdering = listOf("tool_title", "video_id"),
+        ),
+        AgentToolDefinition(
+            name = TRANSCRIPT_NAME,
+            description = "Get a YouTube video's caption transcript as plain text, for summarizing the video. Works without extra permissions; fails when the video has no captions.",
+            parameters = mapOf(
+                "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user."),
+                "video_id" to AgentToolParam("string", "The YouTube video id (from youtube_search)."),
+            ),
+            required = listOf("tool_title", "video_id"),
+            propertyOrdering = listOf("tool_title", "video_id"),
+        ),
+        AgentToolDefinition(
+            name = WATCHLATER_LIST_NAME,
+            description = "List the user's YouTube Watch Later videos (newest-added first).",
+            parameters = mapOf(
+                "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user."),
+                "max_results" to AgentToolParam("integer", "Max videos to return (default 15, max 25)."),
+            ),
+            required = listOf("tool_title"),
+            propertyOrdering = listOf("tool_title", "max_results"),
+        ),
+        AgentToolDefinition(
+            name = WATCHLATER_ADD_NAME,
+            description = "Add a YouTube video to the user's Watch Later list. Only add videos the user asked to save.",
+            parameters = mapOf(
+                "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user."),
+                "video_id" to AgentToolParam("string", "The YouTube video id to save."),
+            ),
+            required = listOf("tool_title", "video_id"),
+            propertyOrdering = listOf("tool_title", "video_id"),
+        ),
+        AgentToolDefinition(
+            name = WATCHLATER_REMOVE_NAME,
+            description = "Remove a video from the user's Watch Later list. Only remove when the user explicitly asked.",
+            parameters = mapOf(
+                "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user."),
+                "playlist_item_id" to AgentToolParam("string", "The playlist item id from youtube_watchlater_list."),
+            ),
+            required = listOf("tool_title", "playlist_item_id"),
+            propertyOrdering = listOf("tool_title", "playlist_item_id"),
         ),
     )
 
@@ -107,6 +151,73 @@ object YouTubeTool {
                         "https://www.youtube.com/watch?v=${r.value.id}",
                     true, toolTitle = title,
                 )
+            is YouTubeConnector.ApiResult.NotConnected ->
+                ToolExecutionResult("Error: ${r.hint}", false, toolTitle = title)
+            is YouTubeConnector.ApiResult.Error ->
+                ToolExecutionResult("Error: ${r.message}", false, toolTitle = title)
+        }
+    }
+
+    suspend fun executeTranscript(argsJson: String, context: Context): ToolExecutionResult {
+        val title = titleOf(argsJson, TRANSCRIPT_NAME)
+        val id = param(argsJson, "video_id")
+        if (id.isEmpty()) return ToolExecutionResult("Error: 'video_id' is required", false, toolTitle = title)
+        return when (val r = YouTubeConnector.transcript(context, id)) {
+            is YouTubeConnector.ApiResult.Ok ->
+                ToolExecutionResult(r.value, true, toolTitle = title)
+            is YouTubeConnector.ApiResult.NotConnected ->
+                ToolExecutionResult("Error: ${r.hint}", false, toolTitle = title)
+            is YouTubeConnector.ApiResult.Error ->
+                ToolExecutionResult("Error: ${r.message}", false, toolTitle = title)
+        }
+    }
+
+    suspend fun executeWatchLaterList(argsJson: String, context: Context): ToolExecutionResult {
+        val title = titleOf(argsJson, WATCHLATER_LIST_NAME)
+        val max = JSONObject(argsJson).optInt("max_results", 15)
+        return when (val r = YouTubeConnector.watchLaterList(context, max)) {
+            is YouTubeConnector.ApiResult.Ok -> {
+                if (r.value.isEmpty()) {
+                    ToolExecutionResult("Watch Later is empty.", true, toolTitle = title)
+                } else {
+                    val out = buildString {
+                        appendLine("Watch Later (${r.value.size}):")
+                        r.value.forEach {
+                            appendLine("- ${it.title} (${it.channel})")
+                            appendLine("  video id: ${it.videoId} | item id: ${it.playlistItemId}")
+                        }
+                    }
+                    ToolExecutionResult(out, true, toolTitle = title)
+                }
+            }
+            is YouTubeConnector.ApiResult.NotConnected ->
+                ToolExecutionResult("Error: ${r.hint}", false, toolTitle = title)
+            is YouTubeConnector.ApiResult.Error ->
+                ToolExecutionResult("Error: ${r.message}", false, toolTitle = title)
+        }
+    }
+
+    suspend fun executeWatchLaterAdd(argsJson: String, context: Context): ToolExecutionResult {
+        val title = titleOf(argsJson, WATCHLATER_ADD_NAME)
+        val id = param(argsJson, "video_id")
+        if (id.isEmpty()) return ToolExecutionResult("Error: 'video_id' is required", false, toolTitle = title)
+        return when (val r = YouTubeConnector.watchLaterAdd(context, id)) {
+            is YouTubeConnector.ApiResult.Ok ->
+                ToolExecutionResult(r.value, true, toolTitle = title)
+            is YouTubeConnector.ApiResult.NotConnected ->
+                ToolExecutionResult("Error: ${r.hint}", false, toolTitle = title)
+            is YouTubeConnector.ApiResult.Error ->
+                ToolExecutionResult("Error: ${r.message}", false, toolTitle = title)
+        }
+    }
+
+    suspend fun executeWatchLaterRemove(argsJson: String, context: Context): ToolExecutionResult {
+        val title = titleOf(argsJson, WATCHLATER_REMOVE_NAME)
+        val id = param(argsJson, "playlist_item_id")
+        if (id.isEmpty()) return ToolExecutionResult("Error: 'playlist_item_id' is required", false, toolTitle = title)
+        return when (val r = YouTubeConnector.watchLaterRemove(context, id)) {
+            is YouTubeConnector.ApiResult.Ok ->
+                ToolExecutionResult(r.value, true, toolTitle = title)
             is YouTubeConnector.ApiResult.NotConnected ->
                 ToolExecutionResult("Error: ${r.hint}", false, toolTitle = title)
             is YouTubeConnector.ApiResult.Error ->

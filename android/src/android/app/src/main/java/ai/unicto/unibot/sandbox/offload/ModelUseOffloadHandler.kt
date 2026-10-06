@@ -1348,6 +1348,10 @@ class ModelUseOffloadHandler(
             ProviderType.zai,
             ProviderType.nebius,
             ProviderType.chutes,
+            // Item 45 — text-first free tiers, no image models.
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs,
             // [T-android-provider-type-parity] No image-param hint for types
             // this build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported, null -> ""

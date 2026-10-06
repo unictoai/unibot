@@ -95,6 +95,10 @@ internal object ProviderDebugMethods {
         ProviderType.zai -> "https://api.z.ai/api/paas/v4"
         ProviderType.nebius -> "https://api.studio.nebius.com/v1"
         ProviderType.chutes -> "https://llm.chutes.ai/v1"
+        // Item 45 — new free-tier canonical bases.
+        ProviderType.pollinations -> "https://text.pollinations.ai/openai"
+        ProviderType.huggingFace -> "https://router.huggingface.co/v1"
+        ProviderType.aionLabs -> "https://api.aionlabs.ai/v1"
         // [T-android-provider-type-parity] Responses API shares the OpenAI
         // host; undrivable types have no canonical base to report.
         ProviderType.openAIResponses -> "https://api.openai.com"

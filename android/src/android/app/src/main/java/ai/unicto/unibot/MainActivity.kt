@@ -896,6 +896,13 @@ class MainActivity : ComponentActivity() {
 
     private fun handleDeepLink(uri: Uri?) {
         val action = DeepLinkHandler.parse(uri)
+        // Item 35: Outlook OAuth custom-scheme redirect — resume the pending
+        // authorize call instead of navigating anywhere.
+        if (action is DeepLinkAction.OutlookOAuthCallback) {
+            ai.unicto.unibot.connectors.outlook.OutlookOAuth
+                .onCustomSchemeCallback(action.code, action.state)
+            return
+        }
         // v1.4.0 item 69: warm-start malformed link — the scheme claims
         // unibot but nothing handles it. Toast instead of silent ignore.
         if (action is DeepLinkAction.Unknown && uri != null &&

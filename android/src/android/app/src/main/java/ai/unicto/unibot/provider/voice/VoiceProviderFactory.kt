@@ -113,7 +113,10 @@ object VoiceProviderFactory {
             ProviderType.deepSeek,
             ProviderType.zai,
             ProviderType.nebius,
-            ProviderType.chutes -> null
+            ProviderType.chutes,
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs -> null
             // [T-android-provider-type-parity] No voice support for types this
             // build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported -> null

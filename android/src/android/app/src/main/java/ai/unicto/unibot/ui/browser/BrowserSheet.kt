@@ -255,8 +255,20 @@ fun BrowserSheet(
 
             // ── URL Bar ── (compact 36dp pill — OutlinedTextField defaults to
             // ~56dp which dominates the sheet header; users want to spend the
-            // space on the WebView.)
-            Row(
+            // space on the WebView.)            Row(
+
+            // -- Item 40: hand-over wait banner. The agent paused at a page it
+            // can't complete itself (login / CAPTCHA / payment) -- the user
+            // finishes in this browser and taps Done, or dismisses.
+            val handoverRequest by tabPool.handover.request.collectAsState()
+            if (handoverRequest != null) {
+                HandoverWaitBanner(
+                    request = handoverRequest!!,
+                    onDone = { tabPool.resolveHandover() },
+                    onDismiss = { tabPool.cancelHandover() },
+                )
+            }
+
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(secondaryBg)
@@ -867,6 +879,67 @@ private fun AgentBrowsingOverlay(accent: Color, onTakeover: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable(onClick = onTakeover),
             )
+        }
+    }
+}
+
+
+/**
+ * Item 40 — hand-over wait banner. Shown while the agent is paused at a
+ * login / CAPTCHA / payment page. The user completes the step in the
+ * visible browser and taps Done (the agent continues), or dismisses
+ * (the agent is told the wait was cancelled — never an error).
+ *
+ * Professional-UI rules: theme tokens only (surfaceContainerHigh,
+ * primary, onSurface / onSurfaceVariant, titleSmall / bodySmall), one
+ * 12dp radius from the app shape scale, 48dp-min targets via the
+ * Material3 buttons, no decorative motion.
+ */
+@Composable
+private fun HandoverWaitBanner(
+    request: ai.unicto.unibot.browser.HandoverWaitController.Request,
+    onDone: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.browser_handover_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = request.message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (!request.pageUrl.isNullOrBlank()) {
+            Text(
+                text = request.pageUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                maxLines = 1,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.Button(onClick = onDone) {
+                Text(stringResource(R.string.browser_handover_done))
+            }
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.browser_handover_dismiss))
+            }
         }
     }
 }

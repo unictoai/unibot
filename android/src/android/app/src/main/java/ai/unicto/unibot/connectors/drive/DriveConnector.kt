@@ -140,6 +140,140 @@ object DriveConnector {
             }
         }
 
+    /**
+     * Browse a folder's contents. [folderId] "root" = My Drive top level;
+     * pass a folder id from search/list to descend. Folders sort first.
+     */
+    suspend fun list(
+        context: Context,
+        folderId: String = "root",
+        maxResults: Int = 25,
+    ): ApiResult<List<DriveFile>> = withContext(Dispatchers.IO) {
+        val t = token(context) ?: return@withContext ApiResult.NotConnected()
+        val n = maxResults.coerceIn(1, 50)
+        val q = "'$folderId' in parents and trashed = false"
+        val url = "$BASE/files?q=${android.net.Uri.encode(q)}" +
+            "&pageSize=$n&orderBy=folder desc,modifiedTime desc" +
+            "&fields=files(id,name,mimeType,modifiedTime,size)"
+        runCatching {
+            http.newCall(authed(url, t).get().build()).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                val arr = JSONObject(text).optJSONArray("files") ?: JSONArray()
+                ApiResult.Ok((0 until arr.length()).mapNotNull { i ->
+                    val f = arr.optJSONObject(i) ?: return@mapNotNull null
+                    DriveFile(
+                        id = f.optString("id", ""),
+                        name = f.optString("name", ""),
+                        mimeType = f.optString("mimeType", ""),
+                        modifiedTime = f.optString("modifiedTime", ""),
+                        size = f.optString("size", ""),
+                    )
+                })
+            }
+        }.getOrElse { e ->
+            AppLogger.warning(TAG, "[list] ${e.message}")
+            ApiResult.Error("Drive list failed: ${e.message}")
+        }
+    }
+
+    /** Metadata for one file (used by attach to pick a download strategy). */
+    suspend fun metadata(context: Context, fileId: String): ApiResult<DriveFile> =
+        withContext(Dispatchers.IO) {
+            val t = token(context) ?: return@withContext ApiResult.NotConnected()
+            runCatching {
+                http.newCall(
+                    authed(
+                        "$BASE/files/$fileId?fields=id,name,mimeType,modifiedTime,size",
+                        t,
+                    ).get().build(),
+                ).execute().use { resp ->
+                    val text = resp.body?.string().orEmpty()
+                    if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                    val f = JSONObject(text)
+                    ApiResult.Ok(
+                        DriveFile(
+                            id = f.optString("id", ""),
+                            name = f.optString("name", ""),
+                            mimeType = f.optString("mimeType", ""),
+                            modifiedTime = f.optString("modifiedTime", ""),
+                            size = f.optString("size", ""),
+                        ),
+                    )
+                }
+            }.getOrElse { e ->
+                AppLogger.warning(TAG, "[metadata] ${e.message}")
+                ApiResult.Error("Drive metadata failed: ${e.message}")
+            }
+        }
+
+    /**
+     * Download raw bytes. Google Docs/Sheets/Slides are exported
+     * (PDF for docs, XLSX for sheets, PPTX for slides) so the file stays
+     * openable when attached to chat. Size-capped at 25 MB.
+     */
+    suspend fun download(
+        context: Context,
+        fileId: String,
+        maxBytes: Int = 25 * 1024 * 1024,
+    ): ApiResult<DownloadedFile> = withContext(Dispatchers.IO) {
+        val t = token(context) ?: return@withContext ApiResult.NotConnected()
+        runCatching {
+            val meta = when (val m = metadata(context, fileId)) {
+                is ApiResult.Ok -> m.value
+                is ApiResult.NotConnected -> return@withContext m
+                is ApiResult.Error -> return@withContext m
+            }
+            val (url, ext) = when {
+                meta.mimeType == "application/vnd.google-apps.document" ->
+                    "$BASE/files/$fileId/export?mimeType=application/pdf" to ".pdf"
+                meta.mimeType == "application/vnd.google-apps.spreadsheet" ->
+                    "$BASE/files/$fileId/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" to ".xlsx"
+                meta.mimeType == "application/vnd.google-apps.presentation" ->
+                    "$BASE/files/$fileId/export?mimeType=application/vnd.openxmlformats-officedocument.presentationml.presentation" to ".pptx"
+                meta.mimeType == "application/vnd.google-apps.folder" ->
+                    return@withContext ApiResult.Error("Cannot attach a folder — attach files inside it instead.")
+                else -> "$BASE/files/$fileId?alt=media" to ""
+            }
+            http.newCall(authed(url, t).get().build()).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    return@withContext apiError(
+                        resp.code, resp.body?.string().orEmpty(),
+                    )
+                }
+                val body = resp.body ?: return@withContext ApiResult.Error("Empty download.")
+                // Stream with a cap instead of trusting Content-Length.
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(32 * 1024)
+                var total = 0
+                body.byteStream().use { stream ->
+                    while (true) {
+                        val n = stream.read(buf)
+                        if (n < 0) break
+                        total += n
+                        if (total > maxBytes) {
+                            return@withContext ApiResult.Error(
+                                "File is larger than ${maxBytes / 1024 / 1024} MB — too big to attach.",
+                            )
+                        }
+                        out.write(buf, 0, n)
+                    }
+                }
+                val name = meta.name.ifBlank { "drive-file-$fileId" } + ext
+                ApiResult.Ok(DownloadedFile(name, meta.mimeType, out.toByteArray()))
+            }
+        }.getOrElse { e ->
+            AppLogger.warning(TAG, "[download] ${e.message}")
+            ApiResult.Error("Drive download failed: ${e.message}")
+        }
+    }
+
+    data class DownloadedFile(
+        val name: String,
+        val mimeType: String,
+        val bytes: ByteArray,
+    )
+
     private fun <T> apiError(code: Int, body: String): ApiResult<T> {
         val detail = runCatching {
             JSONObject(body).optJSONObject("error")?.optString("message", "")

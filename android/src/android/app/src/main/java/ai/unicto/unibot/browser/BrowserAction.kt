@@ -25,7 +25,13 @@ enum class BrowserAction(val value: String) {
     GET_COOKIES("get_cookies"),
     SET_COOKIES("set_cookies"),
     SCROLL_AND_COLLECT("scroll_and_collect"),
-    WAIT_FOR_DOM_STABLE("wait_for_dom_stable");
+    WAIT_FOR_DOM_STABLE("wait_for_dom_stable"),
+    /**
+     * Item 40 — hand-over wait: the agent pauses (not fails) at a
+     * login / CAPTCHA / 2FA / payment page until the user finishes in the
+     * visible browser and taps Done. Never opens a new page.
+     */
+    WAIT_FOR_USER("wait_for_user");
 
     /**
      * [T-browser-readaction-follow-tab-and-yolo-android] True when this action

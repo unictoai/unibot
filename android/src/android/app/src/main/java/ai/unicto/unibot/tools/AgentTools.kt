@@ -77,8 +77,14 @@ object AgentTools {
         // when the user disables it in Settings — the model then can't even
         // attempt the call.
         webSearchEnabled: Boolean = true,
+        // Item 42 — MCP client tools (mcp_<server>_<tool>), resolved by
+        // McpToolBridge from the enabled URL-based servers. Empty by
+        // default: no MCP servers, no tools.
+        mcpTools: List<AgentToolDefinition> = emptyList(),
         // [v1.4.0-poweruser] Markdown skills surfaced as real agent tools.
         // The caller builds these via SkillToolAdapter.definitionsFor(skills)
+        // (invalid skills are already filtered out there). Empty by default
+        // so every existing call site keeps its current tool list.
         skillTools: List<AgentToolDefinition> = emptyList(),
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
@@ -92,8 +98,12 @@ object AgentTools {
         if (webSearchEnabled) {
             add(WebSearchTool.definition())
         }
+        // Item 42 — user-configured MCP servers as tools.
+        addAll(mcpTools)
         // [v1.4.0-poweruser] Markdown skills as `skill_<name>` tools. Built
         // by the caller via SkillToolAdapter.definitionsFor — the adapter
+        // already enforces the typed, narrow tool surface, so appending here
+        // is safe.
         addAll(skillTools)
         // [v1.0-wave4] Creator tools — pure on-device generators for the
         // creator businesses (captions, hooks, replies, titles, hashtags,
@@ -245,6 +255,7 @@ object AgentTools {
             "Use get_cookies to retrieve cookies for the current page URL / current site root domain only (including HttpOnly cookies). get_cookies supports optional 'keywords' (filter by cookie name) and 'fuzzy' (true=contains match, false=exact match, default true). It returns only a summary and an offload env file path — raw cookie values are NOT included in the tool response. To reuse cookies in shell commands: `. /var/minis/offloads/env_cookies_xxx.sh && command`. You may define alias variables when needed. " +
             "Use set_cookies to write cookies into the current page's cookie store via the native cookie store (so even HttpOnly cookies, which JS cannot set, land). Pass a 'cookies' array of objects, each with name + value (required) and optional domain (defaults to the current page host), path (defaults to '/'), secure, http_only, and expires (Unix timestamp in seconds; omit for a session cookie). " +
             "Use wait_for_dom_stable to wait until the page DOM stops changing (useful after navigation or interactions that trigger async data loading — polls every 0.5s, resolves when mutation rate gradient is stable for 3+ intervals, default timeout 10s). " +
+            "Use wait_for_user when you reach a login, CAPTCHA / 2FA, consent, or payment page you cannot complete yourself: pass a short 'message' telling the user what to do — the agent PAUSES (never fails), the app shows the user the live browser with a Done button, and the call returns when they tap Done (or tells you they dismissed / it timed out, so you can ask what happened). " +
             "Use tab_id to target a specific tab (defaults to the most recently used tab).",
         parameters = mapOf(
             "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user (e.g. 'Open Wikipedia homepage', 'Take screenshot of current page'). Use the same language as the user."),
@@ -267,12 +278,13 @@ object AgentTools {
             "fuzzy" to AgentToolParam("boolean", "Whether keyword matching is fuzzy (contains-all) or exact-any (for get_cookies, default: true)."),
             "cookies" to AgentToolParam("string", "For set_cookies: a JSON array of cookie objects to write. Pass it as a JSON array (a JSON-encoded string of the array is also accepted). Each object: {\"name\": str (required), \"value\": str (required), \"domain\": str (optional, defaults to current page host), \"path\": str (optional, defaults to \"/\"), \"secure\": bool (optional), \"http_only\": bool (optional — sets an HttpOnly cookie that JS cannot read/set), \"expires\": int (optional, Unix timestamp in seconds; omit for a session cookie)}. Field-name variants from common cookie exports are accepted: httpOnly (=http_only), expirationDate (=expires), sameSite, and case/camel variants — so you can paste cookies verbatim from browser extensions (EditThisCookie / Cookie-Editor) or Playwright/Puppeteer storage."),
             "timeout" to AgentToolParam("integer", "Timeout in seconds for wait_for_dom_stable (default: 10). The action polls every 0.5s and resolves when DOM mutation rate stabilizes."),
+            "message" to AgentToolParam("string", "Instruction shown to the user for wait_for_user (e.g. 'Sign in to ExampleBank, then tap Done'). The agent pauses until they tap Done."),
             "viewport_width" to AgentToolParam("integer", "Viewport width in CSS pixels for set_viewport (e.g. 1920). Required together with viewport_height unless reset=true."),
             "viewport_height" to AgentToolParam("integer", "Viewport height in CSS pixels for set_viewport (e.g. 1080). Required together with viewport_width unless reset=true."),
             "reset" to AgentToolParam("boolean", "For set_viewport: when true, clear the session-level viewport override and fall back to the global browser setting."),
         ),
         required = listOf("tool_title", "action"),
-        propertyOrdering = listOf("tool_title", "action", "tab_id", "url", "selector", "text", "coordinate_x", "coordinate_y", "direction", "amount", "scroll_count", "item_selector", "script", "user_agent", "max_depth", "keywords", "fuzzy", "cookies", "timeout", "viewport_width", "viewport_height", "reset"),
+        propertyOrdering = listOf("tool_title", "action", "tab_id", "url", "selector", "text", "coordinate_x", "coordinate_y", "direction", "amount", "scroll_count", "item_selector", "script", "user_agent", "max_depth", "keywords", "fuzzy", "cookies", "timeout", "message", "viewport_width", "viewport_height", "reset"),
     )
 
     // Aligned with iOS AIChatViewModel.swift:5059-5067

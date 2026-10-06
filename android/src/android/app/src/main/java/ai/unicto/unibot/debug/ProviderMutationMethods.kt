@@ -223,6 +223,10 @@ internal object ProviderMutationMethods {
             ProviderType.zai -> "https://api.z.ai/api/paas/v4"
             ProviderType.nebius -> "https://api.studio.nebius.com/v1"
             ProviderType.chutes -> "https://llm.chutes.ai/v1"
+            // Item 45 — new free-tier canonical bases.
+            ProviderType.pollinations -> "https://text.pollinations.ai/openai"
+            ProviderType.huggingFace -> "https://router.huggingface.co/v1"
+            ProviderType.aionLabs -> "https://api.aionlabs.ai/v1"
             ProviderType.antigravity, ProviderType.unsupported -> ""
         }
         val probeURL = when (instance.providerType) {
@@ -245,7 +249,10 @@ internal object ProviderMutationMethods {
             ProviderType.deepSeek,
             ProviderType.zai,
             ProviderType.nebius,
-            ProviderType.chutes -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
+            ProviderType.chutes,
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
             // No probe endpoint for a type this build cannot drive.
             ProviderType.antigravity, ProviderType.unsupported -> baseURL
         }
@@ -277,7 +284,10 @@ internal object ProviderMutationMethods {
             ProviderType.deepSeek,
             ProviderType.zai,
             ProviderType.nebius,
-            ProviderType.chutes -> if (!key.isNullOrEmpty()) builder.header("Authorization", "Bearer $key")
+            ProviderType.chutes,
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs -> if (!key.isNullOrEmpty()) builder.header("Authorization", "Bearer $key")
             // [T-android-provider-type-parity] No auth scheme known for a type
             // this build cannot drive; the probe will simply fail.
             ProviderType.antigravity, ProviderType.unsupported -> { /* no auth */ }

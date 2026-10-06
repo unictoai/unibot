@@ -2,6 +2,7 @@ package ai.unicto.unibot.tools
 
 import android.content.Context
 import ai.unicto.unibot.connectors.gmail.GmailApi
+import ai.unicto.unibot.connectors.gmail.GmailLabelApplier
 import ai.unicto.unibot.connectors.gmail.GmailStore
 import ai.unicto.unibot.data.model.AgentToolDefinition
 import ai.unicto.unibot.data.model.AgentToolParam
@@ -22,6 +23,7 @@ object GmailTool {
     const val SEARCH_NAME = "gmail_search"
     const val READ_NAME = "gmail_read"
     const val SEND_NAME = "gmail_send"
+    const val APPLY_LABEL_RULES_NAME = "gmail_apply_label_rules"
 
     fun isConnected(context: Context): Boolean = GmailStore.isConnected(context)
 
@@ -60,6 +62,16 @@ object GmailTool {
             ),
             required = listOf("tool_title", "to", "subject", "body"),
             propertyOrdering = listOf("tool_title", "to", "subject", "body"),
+        ),
+        AgentToolDefinition(
+            name = APPLY_LABEL_RULES_NAME,
+            description = "Apply the user's Gmail auto-label rules right now (the same rules that run every 2 hours in the background). " +
+                "Use when the user says \"label my mail\" or asks what the rules would do. Reports per-rule counts.",
+            parameters = mapOf(
+                "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user."),
+            ),
+            required = listOf("tool_title"),
+            propertyOrdering = listOf("tool_title"),
         ),
     )
 
@@ -141,5 +153,28 @@ object GmailTool {
             is GmailApi.ApiResult.Error ->
                 ToolExecutionResult("Error: ${r.message}", false, toolTitle = toolTitle)
         }
+    }
+
+    suspend fun executeApplyLabelRules(argsJson: String, context: Context): ToolExecutionResult {
+        val args = JSONObject(argsJson)
+        val toolTitle = args.optString("tool_title", APPLY_LABEL_RULES_NAME)
+        if (!GmailStore.isConnected(context)) {
+            return ToolExecutionResult(
+                "Error: Gmail is not connected. Ask the user to connect it in Settings → Connectors.",
+                false, toolTitle = toolTitle,
+            )
+        }
+        val report = GmailLabelApplier.applyAll(context)
+        if (report.rulesRun == 0) {
+            return ToolExecutionResult(
+                "No enabled label rules. The user can add some in Settings → Connectors → Gmail → Label rules.",
+                true, toolTitle = toolTitle,
+            )
+        }
+        val out = buildString {
+            appendLine("Applied ${report.rulesRun} rule(s): ${report.labeledTotal} message(s) labeled.")
+            report.perRule.forEach { (name, n) -> appendLine("- $name: $n labeled") }
+        }
+        return ToolExecutionResult(out.trimEnd(), true, toolTitle = toolTitle)
     }
 }

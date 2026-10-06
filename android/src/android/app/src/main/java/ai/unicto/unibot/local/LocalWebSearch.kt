@@ -103,12 +103,39 @@ object LocalWebSearch {
         val snippets = SNIPPET_RE.findAll(html).toList()
         return links.take(maxResults).mapIndexedNotNull { i, m ->
             val href = unescapeHtml(m.groupValues[1])
-            val url = realUrl(href) ?: return@mapIndexedNotNull null
+            val url = realUrl(href)?.let(::stripTrackingParams) ?: return@mapIndexedNotNull null
             val title = cleanText(m.groupValues[2]).take(140)
             val snippet = snippets.getOrNull(i)?.let { cleanText(it.groupValues[1]).take(200) } ?: ""
             if (title.isBlank()) null else WebResult(title, snippet, url)
         }
     }
+
+    /**
+     * Privacy: strip marketing/tracking query params before a result URL is
+     * handed to the model or rendered in chat. Pure — unit-tested.
+     */
+    internal fun stripTrackingParams(url: String): String {
+        val qIdx = url.indexOf('?')
+        if (qIdx < 0) return url
+        val base = url.substring(0, qIdx)
+        val fragment = url.substringAfter('#', "")
+        val query = url.substring(qIdx + 1).substringBefore('#')
+        val kept = query.split('&').filter { param ->
+            val name = param.substringBefore('=').lowercase()
+            name !in TRACKING_PARAMS && !name.startsWith("utm_")
+        }
+        val rebuilt = base + (if (kept.isNotEmpty()) "?" + kept.joinToString("&") else "") +
+            (if (fragment.isNotEmpty()) "#$fragment" else "")
+        return rebuilt
+    }
+
+    private val TRACKING_PARAMS = setOf(
+        // Google / Meta / Microsoft / misc click IDs
+        "gclid", "gbraid", "wbraid", "fbclid", "msclkid", "igshid",
+        "mc_cid", "mc_eid", "_ga", "dclid", "yclid", "twclid",
+        // common affiliate / ref markers
+        "ref", "referrer", "aff_id", "affid", "affiliate_id",
+    )
 
     /** DuckDuckGo wraps destinations as //duckduckgo.com/l/?uddg=<encoded>; unwrap it. */
     private fun realUrl(href: String): String? {

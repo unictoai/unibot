@@ -583,6 +583,9 @@
     <string name="chat_input_placeholder_hint_3">Try dragging text into the chat to send it</string>
     <string name="chat_input_placeholder_hint_4">Long-press anywhere in a reply to select and copy it all</string>
     <string name="browser_takeover">Takeover</string>
+    <string name="browser_handover_title">The agent is waiting for you</string>
+    <string name="browser_handover_done">Done</string>
+    <string name="browser_handover_dismiss">Dismiss</string>
     <string name="browser_settings_done">Done</string>
     <string name="browser_settings_user_agent">User Agent</string>
     <string name="browser_settings_ua_mobile_chrome">Mobile Chrome (Android)</string>
@@ -1971,6 +1974,9 @@
     <string name="add_provider_subtitle_zai">Limited-time free GLM models — GLM-4.6 / 4.5</string>
     <string name="add_provider_subtitle_nebius">Free credits for new accounts — Llama, Qwen, DeepSeek</string>
     <string name="add_provider_subtitle_chutes">Free API access — decentralized open-model inference</string>
+    <string name="add_provider_subtitle_pollinations">Free, no key needed — community-run open models</string>
+    <string name="add_provider_subtitle_huggingface">Recurring free credits — open models via the HF router</string>
+    <string name="add_provider_subtitle_aionlabs">Permanent free tier — 15 RPM, 20K tokens/day</string>
     <!-- [v1.2-free-tier] Provider detail: get-a-key button + quota honesty. -->
     <string name="provider_detail_get_free_key">Get free key</string>
     <string name="provider_detail_free_quota_note">Free limits change often — check the provider\'s docs for current quotas.</string>

@@ -125,7 +125,10 @@ object ProviderFactory {
             ProviderType.deepSeek,
             ProviderType.zai,
             ProviderType.nebius,
-            ProviderType.chutes -> {
+            ProviderType.chutes,
+            ProviderType.pollinations,
+            ProviderType.huggingFace,
+            ProviderType.aionLabs -> {
                 val base = basePath ?: instance.providerType.defaultBaseUrl
                     ?: "https://api.openai.com/v1"
                 OpenAIProvider(

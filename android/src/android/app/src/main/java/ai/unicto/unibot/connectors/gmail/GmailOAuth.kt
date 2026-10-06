@@ -44,7 +44,11 @@ object GmailOAuth {
 
     const val SCOPE_READONLY = "https://www.googleapis.com/auth/gmail.readonly"
     const val SCOPE_SEND = "https://www.googleapis.com/auth/gmail.send"
-    private const val SCOPES = "$SCOPE_READONLY $SCOPE_SEND"
+    // Item 43 — auto-label rules need messages.modify (apply labels).
+    // Sensitive-class scope like send; users who connected before this
+    // re-authorize once.
+    const val SCOPE_MODIFY = "https://www.googleapis.com/auth/gmail.modify"
+    private const val SCOPES = "$SCOPE_READONLY $SCOPE_SEND $SCOPE_MODIFY"
 
     private const val LOOPBACK_PORT = 53682
     private val FALLBACK_PORTS = listOf(53683, 53684, 53685)

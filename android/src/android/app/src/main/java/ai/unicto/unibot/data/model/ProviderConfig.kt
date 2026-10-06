@@ -41,6 +41,15 @@ enum class ProviderType(val displayName: String, val modelsDevKey: String? = nul
     /** Chutes.ai — free API access, decentralized inference. https://chutes.ai */
     chutes("Chutes", "chutes"),
 
+    // Item 45 — newly launched / newly verified free-tier providers.
+    // Appended (never inserted): name-based DB round-trip stays safe.
+    /** Pollinations.ai — free, keyless OpenAI-compatible text API. https://pollinations.ai */
+    pollinations("Pollinations"),
+    /** Hugging Face Inference Router — recurring free credits. https://huggingface.co */
+    huggingFace("Hugging Face", "huggingface"),
+    /** Aion Labs — permanent free tier, 15 RPM / 20K tokens/day. https://www.aionlabs.ai */
+    aionLabs("Aion Labs"),
+
     // [T-android-provider-type-parity] The cases below exist on iOS but were
     // missing here. They are declared so a cross-platform restore or sync can
     // DECODE them: without a case, kotlinx.serialization throws on the unknown
@@ -92,7 +101,7 @@ enum class ProviderType(val displayName: String, val modelsDevKey: String? = nul
             // with the Responses endpoint forced on.
             anthropic, gemini, openAI, openRouter, xAI, kimiCode, openAIResponses,
             groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek,
-            zai, nebius, chutes -> true
+            zai, nebius, chutes, pollinations, huggingFace, aionLabs -> true
             antigravity, unsupported -> false
         }
 
@@ -114,6 +123,9 @@ enum class ProviderType(val displayName: String, val modelsDevKey: String? = nul
             zai -> LLMModel.allZai
             nebius -> LLMModel.allNebius
             chutes -> LLMModel.allChutes
+            pollinations -> LLMModel.allPollinations
+            huggingFace -> LLMModel.allHuggingFace
+            aionLabs -> LLMModel.allAionLabs
             // No built-in catalog for the decode-only types; models restored
             // alongside the instance still appear as custom entries.
             openAIResponses, antigravity, unsupported -> emptyList()
@@ -136,6 +148,9 @@ enum class ProviderType(val displayName: String, val modelsDevKey: String? = nul
             zai -> "https://api.z.ai/api/paas/v4"
             nebius -> "https://api.studio.nebius.com/v1"
             chutes -> "https://llm.chutes.ai/v1"
+            pollinations -> "https://text.pollinations.ai/openai"
+            huggingFace -> "https://router.huggingface.co/v1"
+            aionLabs -> "https://api.aionlabs.ai/v1"
             else -> null
         }
 
@@ -155,6 +170,9 @@ enum class ProviderType(val displayName: String, val modelsDevKey: String? = nul
             zai -> "https://z.ai"
             nebius -> "https://studio.nebius.com"
             chutes -> "https://chutes.ai"
+            pollinations -> "https://pollinations.ai"
+            huggingFace -> "https://huggingface.co"
+            aionLabs -> "https://www.aionlabs.ai"
             else -> null
         }
 
@@ -165,7 +183,7 @@ enum class ProviderType(val displayName: String, val modelsDevKey: String? = nul
     val isFreeTier: Boolean
         get() = when (this) {
             groq, cerebras, mistral, githubModels, sambaNova, nvidiaNim, deepSeek,
-            zai, nebius, chutes -> true
+            zai, nebius, chutes, pollinations, huggingFace, aionLabs -> true
             else -> false
         }
 
@@ -364,7 +382,9 @@ data class ProviderInstance(
     val allowsEmptyAPIKey: Boolean
         get() = credentialType == ProviderCredential.apiKey &&
             !customBaseURL.isNullOrBlank() &&
-            (providerType == ProviderType.openAI || providerType == ProviderType.anthropic)
+            (providerType == ProviderType.openAI || providerType == ProviderType.anthropic ||
+                // Item 45: Pollinations' OpenAI-compatible endpoint is keyless.
+                providerType == ProviderType.pollinations)
 
     /**
      * [T-android-image-endpoint-mode] Whether the "Image Generation" endpoint

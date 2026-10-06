@@ -125,7 +125,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_gmail_desc),
                 isConnected = { ctx -> GmailStore.isConnected(ctx) },
                 accountEmail = { ctx -> GmailStore.accountEmail(ctx) },
-                isConfigured = { GmailOAuth.isConfigured() },
+                isConfigured = { _ -> GmailOAuth.isConfigured() },
                 onConnect = { ctx ->
                     when (val r = GmailOAuth.authorize(ctx)) {
                         is GmailOAuth.Result.Success -> ConnectOutcome.Ok
@@ -136,13 +136,18 @@ fun ConnectorsScreen(
                 onDisconnect = { ctx -> GmailOAuth.disconnect(ctx) },
                 dataAccess = "Read, send, and search your emails",
             )
+            // Item 43: auto-label rules live here — same pattern as the
+            // Outlook Azure setup panel below.
+            GmailLabelRulesPanel(
+                modifier = Modifier.padding(start = 52.dp),
+            )
             ConnectorRow(
                 logoRes = R.drawable.ic_connector_drive,
                 name = stringResource(R.string.ub_connectors_drive),
                 description = stringResource(R.string.ub_connectors_drive_desc),
                 isConnected = { ctx -> DriveConnector.isConnected(ctx) },
                 accountEmail = { ctx -> DriveConnector.store.accountEmail(ctx) },
-                isConfigured = { true },
+                isConfigured = { _ -> true },
                 onConnect = { ctx ->
                     when (val r = DriveConnector.authorize(ctx)) {
                         is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
@@ -159,7 +164,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_calendar_desc),
                 isConnected = { ctx -> CalendarConnector.isConnected(ctx) },
                 accountEmail = { ctx -> CalendarConnector.store.accountEmail(ctx) },
-                isConfigured = { true },
+                isConfigured = { _ -> true },
                 onConnect = { ctx ->
                     when (val r = CalendarConnector.authorize(ctx)) {
                         is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
@@ -187,7 +192,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_youtube_desc),
                 isConnected = { ctx -> YouTubeConnector.isConnected(ctx) },
                 accountEmail = { ctx -> YouTubeConnector.store.accountEmail(ctx) },
-                isConfigured = { true },
+                isConfigured = { _ -> true },
                 onConnect = { ctx ->
                     when (val r = YouTubeConnector.authorize(ctx)) {
                         is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
@@ -205,7 +210,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_photos_desc),
                 isConnected = { ctx -> PhotosConnector.isConnected(ctx) },
                 accountEmail = { ctx -> PhotosConnector.store.accountEmail(ctx) },
-                isConfigured = { true },
+                isConfigured = { _ -> true },
                 onConnect = { ctx ->
                     when (val r = PhotosConnector.authorize(ctx)) {
                         is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
@@ -256,7 +261,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_spotify_desc),
                 isConnected = { ctx -> SpotifyConnector.isConnected(ctx) },
                 accountEmail = { ctx -> SpotifyConnector.store.accountEmail(ctx) },
-                isConfigured = { SpotifyConnector.isConfigured() },
+                isConfigured = { _ -> SpotifyConnector.isConfigured() },
                 onConnect = { ctx ->
                     when (val r = SpotifyConnector.authorize(ctx)) {
                         is SpotifyOAuth.Result.Success -> ConnectOutcome.Ok
@@ -274,7 +279,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_outlook_desc),
                 isConnected = { ctx -> OutlookConnector.isConnected(ctx) },
                 accountEmail = { ctx -> OutlookConnector.store.accountEmail(ctx) },
-                isConfigured = { OutlookConnector.isConfigured() },
+                isConfigured = { ctx -> OutlookConnector.isConfigured(ctx) },
                 onConnect = { ctx ->
                     when (val r = OutlookConnector.authorize(ctx)) {
                         is OutlookOAuth.Result.Success -> ConnectOutcome.Ok
@@ -284,6 +289,13 @@ fun ConnectorsScreen(
                 },
                 onDisconnect = { ctx -> OutlookConnector.disconnect(ctx) },
                 dataAccess = "Read and send mail",
+            )
+            // Item 35: the Azure app slot lives here. The row above checks
+            // isConfigured(context) at tap time, so saving the client ID
+            // below lights up its Connect button immediately.
+            OutlookAzureSetupPanel(
+                onConfiguredChanged = {},
+                modifier = Modifier.padding(start = 52.dp),
             )
             TokenConnectorRow(
                 logoRes = R.drawable.ic_connector_notion,
@@ -377,7 +389,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_dropbox_desc),
                 isConnected = { ctx -> DropboxConnector.isConnected(ctx) },
                 accountEmail = { ctx -> DropboxConnector.store.accountEmail(ctx) },
-                isConfigured = { DropboxConnector.isConfigured() },
+                isConfigured = { _ -> DropboxConnector.isConfigured() },
                 onConnect = { ctx ->
                     when (val r = DropboxConnector.authorize(ctx)) {
                         is DropboxOAuth.Result.Success -> ConnectOutcome.Ok
@@ -394,7 +406,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_onedrive_desc),
                 isConnected = { ctx -> OneDriveConnector.isConnected(ctx) },
                 accountEmail = { ctx -> OneDriveConnector.store.accountEmail(ctx) },
-                isConfigured = { OneDriveConnector.isConfigured() },
+                isConfigured = { _ -> OneDriveConnector.isConfigured() },
                 onConnect = { ctx ->
                     when (val r = OneDriveConnector.authorize(ctx)) {
                         is OneDriveOAuth.Result.Success -> ConnectOutcome.Ok
@@ -411,7 +423,7 @@ fun ConnectorsScreen(
                 description = stringResource(R.string.ub_connectors_gtasks_desc),
                 isConnected = { ctx -> GTasksConnector.isConnected(ctx) },
                 accountEmail = { ctx -> GTasksConnector.store.accountEmail(ctx) },
-                isConfigured = { true },
+                isConfigured = { _ -> true },
                 onConnect = { ctx ->
                     when (val r = GTasksConnector.authorize(ctx)) {
                         is GoogleOAuth.Result.Success -> ConnectOutcome.Ok
@@ -565,7 +577,7 @@ private fun ConnectorRow(
     description: String,
     isConnected: (android.content.Context) -> Boolean,
     accountEmail: (android.content.Context) -> String?,
-    isConfigured: () -> Boolean,
+    isConfigured: (android.content.Context) -> Boolean,
     onConnect: suspend (android.content.Context) -> ConnectOutcome,
     onDisconnect: suspend (android.content.Context) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
@@ -647,7 +659,7 @@ private fun ConnectorRow(
             } else {
                 UnibotTextButton(onClick = {
                     haptics.tap()
-                    if (!isConfigured()) {
+                    if (!isConfigured(context)) {
                         error = context.getString(R.string.ub_connectors_not_configured)
                         haptics.error()
                         return@UnibotTextButton

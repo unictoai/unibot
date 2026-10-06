@@ -139,6 +139,64 @@ object CalendarConnector {
 
     // -- internals ---------------------------------------------------------------
 
+    /**
+     * Edit an event. Only non-null fields are changed. [start]/[end] accept
+     * "yyyy-MM-dd HH:mm" in the device's timezone, or full RFC 3339.
+     */
+    suspend fun update(
+        context: Context,
+        id: String,
+        summary: String? = null,
+        start: String? = null,
+        end: String? = null,
+        description: String? = null,
+        location: String? = null,
+    ): ApiResult<String> = withContext(Dispatchers.IO) {
+        val t = token(context) ?: return@withContext ApiResult.NotConnected()
+        runCatching {
+            val body = JSONObject().apply {
+                summary?.let { put("summary", it) }
+                start?.let { put("start", JSONObject().put("dateTime", toRfc3339(it))) }
+                end?.let { put("end", JSONObject().put("dateTime", toRfc3339(it))) }
+                description?.let { put("description", it) }
+                location?.let { put("location", it) }
+            }.toString().toRequestBody("application/json".toMediaType())
+            val eid = android.net.Uri.encode(id)
+            http.newCall(authed("$BASE/events/$eid", t).patch(body).build()).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) return@withContext apiError(resp.code, text)
+                val ev = parseEvent(JSONObject(text))
+                ApiResult.Ok(
+                    if (ev != null) "Updated: ${ev.summary} (${ev.start} → ${ev.end})."
+                    else "Event updated.",
+                )
+            }
+        }.getOrElse { e ->
+            AppLogger.warning(TAG, "[update] ${e.message}")
+            ApiResult.Error("Calendar update failed: ${e.message}")
+        }
+    }
+
+    /** Delete an event by id. */
+    suspend fun delete(context: Context, id: String): ApiResult<String> =
+        withContext(Dispatchers.IO) {
+            val t = token(context) ?: return@withContext ApiResult.NotConnected()
+            runCatching {
+                val eid = android.net.Uri.encode(id)
+                http.newCall(authed("$BASE/events/$eid", t).delete().build())
+                    .execute().use { resp ->
+                        if (resp.isSuccessful || resp.code == 204) {
+                            ApiResult.Ok("Event deleted.")
+                        } else {
+                            apiError(resp.code, resp.body?.string().orEmpty())
+                        }
+                    }
+            }.getOrElse { e ->
+                AppLogger.warning(TAG, "[delete] ${e.message}")
+                ApiResult.Error("Calendar delete failed: ${e.message}")
+            }
+        }
+
     private fun parseEvent(j: JSONObject): CalEvent? {
         val id = j.optString("id", "")
         if (id.isEmpty()) return null

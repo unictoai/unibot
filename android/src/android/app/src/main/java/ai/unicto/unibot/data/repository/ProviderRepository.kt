@@ -2295,7 +2295,10 @@ class ProviderRepository(private val context: Context) {
                     ProviderType.deepSeek,
                     ProviderType.zai,
                     ProviderType.nebius,
-                    ProviderType.chutes -> OpenAIModelsApi.fetchModels(
+                    ProviderType.chutes,
+                    ProviderType.pollinations,
+                    ProviderType.huggingFace,
+                    ProviderType.aionLabs -> OpenAIModelsApi.fetchModels(
                         apiKey,
                         baseURL ?: instance.providerType.defaultBaseUrl
                             ?: "https://api.openai.com/v1",
