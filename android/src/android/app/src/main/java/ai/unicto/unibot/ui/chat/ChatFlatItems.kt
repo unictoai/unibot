@@ -473,6 +473,17 @@ internal sealed class FlatChatItem {
         override val contentType = "ub_allowance"
     }
 
+    /**
+     * v1.4.0 item 93 (power-user handoff) — inline question-card host attached
+     * to an assistant message. [cardId] is the QuestionCardStore id carried in
+     * the message metadata (`question_card_id`); the host reads live state
+     * from the store, so answering here updates every other surface.
+     */
+    data class QuestionCard(val messageId: String, val cardId: String) : FlatChatItem() {
+        override val key = "qcard:$messageId"
+        override val contentType = "question_card"
+    }
+
     data class AssistantTyping(val messageId: String) : FlatChatItem() {
         override val key = "typing:$messageId"
         override val contentType = "typing"
@@ -857,6 +868,13 @@ internal fun buildFlatChatItems(
         // Inline error banner
         message.error?.let {
             out.add(dedupe(FlatChatItem.AssistantError(message.id, it, message.errorKind, message.errorRaw)))
+        }
+
+        // v1.4.0 item 93 (power-user handoff) — inline question-card host.
+        // Rendered wherever an assistant message carries the card payload
+        // (metadata key `question_card_id`).
+        message.questionCardId?.let { cardId ->
+            out.add(dedupe(FlatChatItem.QuestionCard(message.id, cardId)))
         }
 
         // [P2-branching] Action row under every settled assistant turn:

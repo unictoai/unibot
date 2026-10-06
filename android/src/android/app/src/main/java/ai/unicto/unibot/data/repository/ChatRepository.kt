@@ -500,6 +500,9 @@ class ChatRepository(internal val dao: ChatDao) {
         tokenUsage: String? = null,
         reasoningContent: String? = null,
         modelSnapshot: ModelAttributionSnapshot? = null,
+        // v1.4.0 item 93 (power-user handoff) — question card attached to an
+        // assistant message; the in-chat host renders from this link.
+        questionCardId: String? = null,
     ): MessageEntity {
         // [P1-incognito] Never touch the database: hand back an in-memory
         // row (callers key UI state and in-flight turn updates off its id)
@@ -519,6 +522,7 @@ class ChatRepository(internal val dao: ChatDao) {
                 modelDisplayName = modelSnapshot?.displayName,
                 providerType = modelSnapshot?.providerTypeRaw,
                 providerInstanceId = modelSnapshot?.providerInstanceId,
+                questionCardId = questionCardId,
             )
             ai.unicto.unibot.ui.chat.IncognitoSessions.trackMessage(sessionId, ghost.id)
             return ghost
@@ -549,6 +553,7 @@ class ChatRepository(internal val dao: ChatDao) {
             modelDisplayName = modelSnapshot?.displayName,
             providerType = modelSnapshot?.providerTypeRaw,
             providerInstanceId = modelSnapshot?.providerInstanceId,
+            questionCardId = questionCardId,
         )
         dao.insertMessage(message)
         // [T-android-preview-flicker-toolresult] Only overwrite the preview

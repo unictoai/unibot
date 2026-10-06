@@ -189,7 +189,22 @@ internal fun ChatViewModel.filteredSlashCommands(): List<SlashCommand> {
             isMode = true,
         )
     }
-    val all = base + skillRows + mcpRows + modeRows
+    // v1.4.0 item 94 (power-user handoff) — user-defined slash commands from
+    // SlashCommandStore, merged after the mode rows. Tapping fills the
+    // composer with "/<trigger> " (typing aid, like skill rows); the send
+    // path expands it via SlashCommandExpander before the normal send.
+    val customRows: List<SlashCommand> = slashCommandStore.forSlashMenu()
+        .sortedBy { it.trigger.lowercase() }
+        .map { entry ->
+            SlashCommand(
+                id = "custom:${entry.id}",
+                icon = androidx.compose.material.icons.Icons.Filled.Terminal,
+                title = entry.trigger,
+                subtitle = entry.description.ifBlank { "Custom command" },
+                isCustom = true,
+            )
+        }
+    val all = base + skillRows + mcpRows + modeRows + customRows
     return if (filter.isEmpty()) all else all.filter { it.title.lowercase().contains(filter) }
 }
 

@@ -148,6 +148,15 @@ class ChatViewModel(
     val mcpRepository: ai.unicto.unibot.data.repository.MCPRepository? = null,
 ) : ViewModel() {
 
+    /**
+     * v1.4.0 item 94 (power-user handoff) — user-defined slash commands.
+     * Internal so ChatViewModelSlashExt.filteredSlashCommands can merge them
+     * into the `/` menu; lazily built on the app context.
+     */
+    internal val slashCommandStore: ai.unicto.unibot.slashcommands.SlashCommandStore by lazy {
+        ai.unicto.unibot.slashcommands.SlashCommandStore(context)
+    }
+
     companion object {
         internal const val TAG = "ChatViewModel"
 
@@ -2196,8 +2205,11 @@ class ChatViewModel(
         // they're a typing aid. Fill the composer with the literal slash
         // command; the user then taps Send and the model handles the skill via
         // the existing SKILL.md fragment injection in runAgentLoop.
-        if (cmd.isSkill) {
-            AppLogger.info(TAG, "[Slash] tap skill id=${cmd.id} title=${cmd.title} → composer fill only")
+        // v1.4.0 item 94 (power-user handoff): custom slash-command rows work
+        // the same way — tap fills "/<trigger> ", and the send path expands it
+        // via SlashCommandExpander before the normal send.
+        if (cmd.isSkill || cmd.isCustom) {
+            AppLogger.info(TAG, "[Slash] tap custom/skill id=${cmd.id} title=${cmd.title} → composer fill only")
             savedInputBeforeSlash = null
             _showSlashMenu.value = false
             _slashMenuSelectedIndex.value = -1
@@ -6823,19 +6835,26 @@ class ChatViewModel(
     }
 
     fun sendMessage(text: String) {
+        // v1.4.0 item 94 (power-user handoff) — expand a leading /trigger into
+        // the custom command's full prompt before the normal send path.
+        // Built-ins (/compact et al.) are intercepted before this; unknown or
+        // disabled triggers pass through untouched.
+        val outgoing = ai.unicto.unibot.slashcommands.SlashCommandExpander.expand(
+            text, slashCommandStore.enabled(),
+        )?.prompt ?: text
         // unibot: "change your avatar to …" (and a pick while the options are
         // up) is handled in the app, not by the model.
-        if (ubInterceptAvatar(text)) return
+        if (ubInterceptAvatar(outgoing)) return
         // [v0.5.0-agentic-core] "remember that …" / "forget …" never reach
         // the model — persisted locally with a confirmation line.
-        if (ubInterceptRemember(text)) return
+        if (ubInterceptRemember(outgoing)) return
         // [T-android-v125-model-filter] Never send on a dead/filtered-out
         // model id — fall back first so the turn can't 404.
         ensureValidModelSelection()
         // unibot: during the first conversation the text goes to the model as
         // it is; the model says what it meant in a `unibot-naming` block and
         // ubAfterTurn moves the phase (see FirstConversation).
-        sendMessage(text, skipContextCheck = false)
+        sendMessage(outgoing, skipContextCheck = false)
     }
 
     /**
@@ -7171,6 +7190,38 @@ class ChatViewModel(
             content = text,
             toolBlocks = listOf(AssistantBlock(id = "${entity.id}_text", kind = "text", content = text)),
         )
+    }
+
+    /**
+     * v1.4.0 item 93 (power-user handoff) — start a question card inside this
+     * chat. The card is started via [QuestionCardEngine.start] and persisted
+     * in QuestionCardStore (so it survives restarts); an assistant message
+     * carrying its id (`question_card_id` metadata) is appended and persisted,
+     * so QuestionCardHost renders inline in the message list. When the card
+     * completes, ChatScreen feeds the compiled summary back via sendMessage.
+     */
+    fun startQuestionCard(def: ai.unicto.unibot.questioncards.QuestionCardDef) {
+        val sid = realSessionId.ifEmpty { sessionId }
+        if (sid.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val card = ai.unicto.unibot.questioncards.QuestionCardEngine.start(def, sid)
+            ai.unicto.unibot.questioncards.QuestionCardStore(context).upsert(card)
+            val intro = def.title.ifBlank { "A few questions" }
+            val parts = listOf<AgentContentPart>(AgentContentPart.Text(intro))
+            val entity = chatRepository.appendMessage(
+                sid, "assistant", buildAssistantPartsJson(parts), questionCardId = card.id,
+            )
+            agentHistory.add(LLMMessage(role = LLMMessage.Role.ASSISTANT, content = intro, contentParts = parts))
+            withContext(Dispatchers.Main) {
+                _messages.value = _messages.value + ChatMessage(
+                    id = entity.id,
+                    role = "assistant",
+                    content = intro,
+                    toolBlocks = listOf(AssistantBlock(id = "${entity.id}_text", kind = "text", content = intro)),
+                    questionCardId = card.id,
+                )
+            }
+        }
     }
     // ───────────────────────────────────────────────────────────────────────
 

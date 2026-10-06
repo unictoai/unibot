@@ -374,6 +374,14 @@ data class SlashCommand(
      * filling the composer.
      */
     val isMode: Boolean = false,
+    /**
+     * v1.4.0 item 94 (power-user handoff) — true when this row was
+     * synthesized from a user-defined slash command
+     * ([SlashCommandStore.forSlashMenu]). Tapping fills the composer with
+     * `/<trigger> ` (typing aid, like skill rows); the send path expands it
+     * via [SlashCommandExpander] before the normal send.
+     */
+    val isCustom: Boolean = false,
 )
 
 data class AssistantBlock(

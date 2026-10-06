@@ -5170,6 +5170,16 @@ fun ChatScreen(
                                     },
                                 ),
                             )
+                            // v1.4.0 item 93 (power-user handoff) — inline
+                            // question-card host. When the card completes, its
+                            // compiled summary is fed back into the agent loop
+                            // as the user's reply.
+                            is FlatChatItem.QuestionCard -> ai.unicto.unibot.ui.questioncards.QuestionCardHost(
+                                cardId = item.cardId,
+                                onCompleted = { summary ->
+                                    safeMutate { viewModel.sendMessage(summary) }
+                                },
+                            )
                             // [P2-branching] Sibling pager + regenerate/fork
                             // row under the assistant turn. UI lives in
                             // MessageBranching.kt; the VM callbacks are safe
@@ -5831,15 +5841,20 @@ fun ChatScreen(
                                 // Section divider between builtins and
                                 // installed Skills (mirrors iOS divider
                                 // at the first skill row). Drawn as the
-                                // top of the skill row, not between every
-                                // row — keeps the menu visually grouped
+                                // top of the first grouped row, not between
+                                // every row — keeps the menu visually grouped
                                 // without splitting every command.
-                                if (cmd.isSkill && index > 0 && !filteredSlashCommands[index - 1].isSkill) {
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = ChatColors.toolBorder,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    )
+                                // v1.4.0 item 94: custom slash commands get
+                                // the same grouping divider.
+                                if ((cmd.isSkill || cmd.isCustom) && index > 0) {
+                                    val prev = filteredSlashCommands[index - 1]
+                                    if (!prev.isSkill && !prev.isCustom) {
+                                        HorizontalDivider(
+                                            thickness = 0.5.dp,
+                                            color = ChatColors.toolBorder,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        )
+                                    }
                                 }
                                 val isThinking = cmd.id == "thinking"
                                 val isThinkingActive = isThinking && thinkingLevelState.isEnabled && thinkingSupported
@@ -5867,8 +5882,9 @@ fun ChatScreen(
                                                     // back up + grab focus so
                                                     // they can keep typing
                                                     // without an extra tap on
-                                                    // the composer.
-                                                    if (cmd.isSkill) {
+                                                    // the composer. Same for
+                                                    // custom slash commands.
+                                                    if (cmd.isSkill || cmd.isCustom) {
                                                         try {
                                                             inputFocusRequester.requestFocus()
                                                         } catch (_: IllegalStateException) {
