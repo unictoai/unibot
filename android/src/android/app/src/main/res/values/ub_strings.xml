@@ -901,6 +901,8 @@
     <string name="ub_prompt_library_use_in_chat">Use in chat</string>
     <string name="ub_prompt_library_hint_text">Type @ in the composer to insert a text snippet.</string>
     <string name="ub_prompt_library_hint_mode">Type / in the composer to switch a mode on or off.</string>
+    <string name="ub_prompt_library_search">Search prompts…</string>
+    <string name="ub_prompt_library_no_results">No prompts match your search.</string>
     <string name="ub_compare_title">Compare Models</string>
     <string name="ub_compare_prompt_hint">Ask anything…</string>
     <string name="ub_compare_send">Compare</string>

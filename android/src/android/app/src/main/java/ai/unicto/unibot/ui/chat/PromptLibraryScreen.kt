@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -68,11 +69,21 @@ fun PromptLibraryScreen(onBack: () -> Unit) {
     var editorPreset by remember { mutableStateOf<PromptPreset?>(null) }
     var editorIsNew by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<PromptPreset?>(null) }
+    // v1.4.0 item 95 (power-user handoff) — the "searchable" part: filter both
+    // sections by name, description, or content. One-tap insert stays on the
+    // row tap (prefillComposer) — search only narrows the list.
+    var query by remember { mutableStateOf("") }
 
     val modes = presets.filter { it.kind == PresetKind.MODE }
         .sortedWith(compareBy({ !it.builtIn }, { it.createdAt }))
     val texts = presets.filter { it.kind == PresetKind.TEXT }
         .sortedWith(compareBy({ !it.builtIn }, { it.createdAt }))
+    val q = query.trim().lowercase()
+    fun matches(p: PromptPreset): Boolean =
+        q.isEmpty() || p.name.lowercase().contains(q) ||
+            p.description.lowercase().contains(q) || p.content.lowercase().contains(q)
+    val shownModes = modes.filter(::matches)
+    val shownTexts = texts.filter(::matches)
 
     Column(modifier = Modifier.fillMaxSize()) {
         MuseTopAppBar(
@@ -102,13 +113,32 @@ fun PromptLibraryScreen(onBack: () -> Unit) {
                 .padding(bottom = 24.dp),
         ) {
             Spacer(modifier = Modifier.height(8.dp))
+            // v1.4.0 item 95 — search across the whole library.
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.ub_prompt_library_search)) },
+                leadingIcon = {
+                    Icon(Icons.Outlined.Search, contentDescription = null)
+                },
+                singleLine = true,
+            )
+            if (q.isNotEmpty() && shownModes.isEmpty() && shownTexts.isEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                EmptyHint(stringResource(R.string.ub_prompt_library_no_results))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             MuseSectionLabel(stringResource(R.string.ub_prompt_library_modes))
             Spacer(modifier = Modifier.height(8.dp))
             MuseCard {
-                if (modes.isEmpty()) {
-                    EmptyHint(stringResource(R.string.ub_prompt_library_empty))
+                if (shownModes.isEmpty()) {
+                    EmptyHint(
+                        if (q.isNotEmpty()) stringResource(R.string.ub_prompt_library_no_results)
+                        else stringResource(R.string.ub_prompt_library_empty),
+                    )
                 } else {
-                    modes.forEachIndexed { i, preset ->
+                    shownModes.forEachIndexed { i, preset ->
                         if (i > 0) MuseRowDivider()
                         val isActive = preset.id == activeModeId
                         MuseRow(
@@ -152,10 +182,13 @@ fun PromptLibraryScreen(onBack: () -> Unit) {
             MuseSectionLabel(stringResource(R.string.ub_prompt_library_texts))
             Spacer(modifier = Modifier.height(8.dp))
             MuseCard {
-                if (texts.isEmpty()) {
-                    EmptyHint(stringResource(R.string.ub_prompt_library_empty))
+                if (shownTexts.isEmpty()) {
+                    EmptyHint(
+                        if (q.isNotEmpty()) stringResource(R.string.ub_prompt_library_no_results)
+                        else stringResource(R.string.ub_prompt_library_empty),
+                    )
                 } else {
-                    texts.forEachIndexed { i, preset ->
+                    shownTexts.forEachIndexed { i, preset ->
                         if (i > 0) MuseRowDivider()
                         MuseRow(
                             title = preset.name,
