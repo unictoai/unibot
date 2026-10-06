@@ -2,7 +2,7 @@ package ai.unicto.unibot.ui.chat
 
 /**
  * v1.4.0 item 13 — friendly error cards for HTTP statuses that used to
- * surface as raw "[$code] {json}" text.
+ * surface as raw provider JSON text.
  *
  * Every card is plain language plus ONE fix action. The numeric code and
  * the raw provider body never appear in the banner — they travel in

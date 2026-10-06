@@ -66,7 +66,7 @@ object ProviderFactory {
                     // Codex OAuth mode — Responses API with refresh-aware token provider
                     val oauthManager = OpenAIOAuthManager(context, instance.id)
                     OpenAIProvider(
-                        oauthTokenProvider = { oauthManager.validAccessToken() ?: throw ai.unicto.unibot.data.model.LLMError.OAuthExpired() } // v1.4.0 item 15: expired sign-in, not a bad key,
+                        oauthTokenProvider = { oauthManager.validAccessToken() ?: throw ai.unicto.unibot.data.model.LLMError.OAuthExpired() }, // v1.4.0 item 15: expired sign-in, not a bad key
                         model = model,
                         codexAccountId = oauthManager.accountId,
                     )
