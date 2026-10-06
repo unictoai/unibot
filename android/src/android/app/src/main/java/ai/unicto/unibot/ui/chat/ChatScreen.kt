@@ -4349,6 +4349,8 @@ fun ChatScreen(
                     is FlatChatItem.AssistantMarkdownBlock -> grayedMap[originalMessageId(messageId)] == true
                     is FlatChatItem.AssistantThinking -> grayedMap[originalMessageId(messageId)] == true
                     is FlatChatItem.AssistantToolUse -> grayedMap[originalMessageId(messageId)] == true
+                    // v1.4.0 item 80 — a folded tool run grays with its message.
+                    is FlatChatItem.ToolRunGroup -> grayedMap[originalMessageId(messageId)] == true
                     is FlatChatItem.AssistantInfo -> false  // system rows never grayed
                     is FlatChatItem.UnibotNaming -> false // unibot
                     is FlatChatItem.UnibotAvatarOptions -> false // unibot
@@ -4784,6 +4786,70 @@ fun ChatScreen(
                                     },
                                 ),
                         ) {
+                        // v1.4.0 item 80 — single tool-block renderer, shared
+                        // by the unfolded path and the fold group's expanded
+                        // content. Declared locally so it captures the item
+                        // scope (isStreaming, safeMutate, viewModel, …)
+                        // without threading a dozen parameters.
+                        @Composable
+                        fun ToolUseRow(toolItem: FlatChatItem.AssistantToolUse) {
+                            if (toolItem.block.toolName == "web_search") {
+                                // [v0.5.0-agentic-core] Web searches render as
+                                // a tappable Sources card, not a tool pill.
+                                ai.unicto.unibot.ui.chat.WebSearchSourcesCard(
+                                    block = toolItem.block,
+                                )
+                            } else if (ai.unicto.unibot.ui.chat.isCreatorToolName(toolItem.block.toolName)) {
+                                // [v1.0-wave4] Creator tools render as
+                                // animated result cards, not tool pills.
+                                ai.unicto.unibot.ui.chat.CreatorCard(
+                                    block = toolItem.block,
+                                )
+                            } else ToolCallPill(
+                                block = toolItem.block,
+                                allToolBlocks = toolItem.allToolBlocks,
+                                onRetry = if (toolItem.isLastCancelled && !isStreaming && !canResume) ({ safeMutate { viewModel.retryLast() } }) else null,
+                                // T14: route per-card stop to the global
+                                // cancelStream(). The button only renders
+                                // when the block is RUNNING/STREAMING — see
+                                // ToolCallPill `isRunning && onStop != null`
+                                // — so passing it unconditionally is safe.
+                                onStop = { viewModel.cancelStream() },
+                                onOpenTerminalWithCommand = onOpenTerminalWithCommand,
+                                // T261: route detail open through ViewModel so
+                                // the sheet is hoisted out of LazyColumn item
+                                // scope (otherwise the sheet snaps shut when
+                                // the pill scrolls off-screen and Compose
+                                // disposes the item).
+                                onOpenDetail = { viewModel.openToolDetail(it) },
+                                // [T-android-rerun-from-tool-block-position]
+                                // Re-run cuts at THIS tool_use block: keep the
+                                // blocks before it in the same turn, drop it +
+                                // everything after, then regenerate. The block
+                                // id (== tool_use id for a tool_use block) is
+                                // the stable anchor. Gated off while streaming
+                                // (mutating an in-flight turn corrupts agent
+                                // state, same rule as Retry on the user bubble).
+                                // safeMutate tears down the selection toolbar
+                                // before the truncation reshuffles the list.
+                                onRerunFromHere = if (!isStreaming) ({
+                                    coroutineScope.launch {
+                                        tracedScrollToItem("RERUN-FROM-TOOL", 0, 0)
+                                    }
+                                    safeMutate { viewModel.rerunFromToolBlock(toolItem.messageId, toolItem.block.id) }
+                                }) else null,
+                                onCopyDetails = {
+                                    val text = formatToolDetailsForClipboard(toolItem.block)
+                                    val cb = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    cb.setPrimaryClip(android.content.ClipData.newPlainText("tool", text))
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        context.getString(R.string.tool_longpress_copied_toast),
+                                        android.widget.Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                            )
+                        }
                         when (item) {
                             is FlatChatItem.UserBubble -> {
                                 // [v0.4.2-first-impression] User bubbles glide
@@ -5030,62 +5096,30 @@ fun ChatScreen(
                                     )
                                 }
                             }
-                            is FlatChatItem.AssistantToolUse -> if (item.block.toolName == "web_search") {
-                                // [v0.5.0-agentic-core] Web searches render as
-                                // a tappable Sources card, not a tool pill.
-                                ai.unicto.unibot.ui.chat.WebSearchSourcesCard(
-                                    block = item.block,
-                                )
-                            } else if (ai.unicto.unibot.ui.chat.isCreatorToolName(item.block.toolName)) {
-                                // [v1.0-wave4] Creator tools render as
-                                // animated result cards, not tool pills.
-                                ai.unicto.unibot.ui.chat.CreatorCard(
-                                    block = item.block,
-                                )
-                            } else ToolCallPill(
-                                block = item.block,
-                                allToolBlocks = item.allToolBlocks,
-                                onRetry = if (item.isLastCancelled && !isStreaming && !canResume) ({ safeMutate { viewModel.retryLast() } }) else null,
-                                // T14: route per-card stop to the global
-                                // cancelStream(). The button only renders
-                                // when the block is RUNNING/STREAMING — see
-                                // ToolCallPill `isRunning && onStop != null`
-                                // — so passing it unconditionally is safe.
-                                onStop = { viewModel.cancelStream() },
-                                onOpenTerminalWithCommand = onOpenTerminalWithCommand,
-                                // T261: route detail open through ViewModel so
-                                // the sheet is hoisted out of LazyColumn item
-                                // scope (otherwise the sheet snaps shut when
-                                // the pill scrolls off-screen and Compose
-                                // disposes the item).
-                                onOpenDetail = { viewModel.openToolDetail(it) },
-                                // [T-android-rerun-from-tool-block-position]
-                                // Re-run cuts at THIS tool_use block: keep the
-                                // blocks before it in the same turn, drop it +
-                                // everything after, then regenerate. The block
-                                // id (== tool_use id for a tool_use block) is
-                                // the stable anchor. Gated off while streaming
-                                // (mutating an in-flight turn corrupts agent
-                                // state, same rule as Retry on the user bubble).
-                                // safeMutate tears down the selection toolbar
-                                // before the truncation reshuffles the list.
-                                onRerunFromHere = if (!isStreaming) ({
-                                    coroutineScope.launch {
-                                        tracedScrollToItem("RERUN-FROM-TOOL", 0, 0)
+                            is FlatChatItem.AssistantToolUse -> ToolUseRow(item)
+                            // v1.4.0 item 80 — folded tool-call run: one
+                            // quiet summary line; the per-tool rows render
+                            // as the expandable detail (same renderer as
+                            // the unfolded path above).
+                            is FlatChatItem.ToolRunGroup -> {
+                                val summaries = remember(item) {
+                                    item.items.map { toolItem ->
+                                        ai.unicto.unibot.data.model.ToolCallSummary(
+                                            name = toolItem.block.toolTitle.ifBlank { toolItem.block.toolName },
+                                            succeeded = toolItem.block.toolStatus ==
+                                                ai.unicto.unibot.ui.chat.ToolBlockStatus.SUCCESS,
+                                            durationMs = toolItem.block.durationMs.takeIf { it > 0 },
+                                        )
                                     }
-                                    safeMutate { viewModel.rerunFromToolBlock(item.messageId, item.block.id) }
-                                }) else null,
-                                onCopyDetails = {
-                                    val text = formatToolDetailsForClipboard(item.block)
-                                    val cb = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    cb.setPrimaryClip(android.content.ClipData.newPlainText("tool", text))
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        context.getString(R.string.tool_longpress_copied_toast),
-                                        android.widget.Toast.LENGTH_SHORT,
-                                    ).show()
-                                },
-                            )
+                                }
+                                ai.unicto.unibot.ui.components.ToolRunFoldRow(
+                                    summary = ai.unicto.unibot.data.model.ToolRunFoldSummary(summaries),
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        item.items.forEach { toolItem -> ToolUseRow(toolItem) }
+                                    }
+                                }
+                            }
                             is FlatChatItem.AssistantInfo -> FallbackInfoBlock(
                                 block = item.block,
                                 // Only the compact-divider info block should

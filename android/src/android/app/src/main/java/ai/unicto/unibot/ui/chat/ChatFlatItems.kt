@@ -434,6 +434,22 @@ internal sealed class FlatChatItem {
         override val contentType = "tool"
     }
 
+    /**
+     * v1.4.0 item 80 — folded tool-call run. A maximal run of consecutive,
+     * settled [AssistantToolUse] rows for one message collapses into this
+     * single row; the renderer wraps it in `ToolRunFoldRow` with the
+     * per-tool rows as the expandable detail. The members keep their
+     * original rows (retry/rerun/detail closures intact) for the expanded
+     * content.
+     */
+    data class ToolRunGroup(
+        val messageId: String,
+        val items: List<AssistantToolUse>,
+    ) : FlatChatItem() {
+        override val key = "toolrun:$messageId"
+        override val contentType = "toolrun"
+    }
+
     data class AssistantInfo(
         val messageId: String,
         val block: AssistantBlock,
@@ -629,6 +645,10 @@ internal fun buildFlatChatItems(
             )
             is FlatChatItem.AssistantThinking -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantToolUse -> item.copy(messageId = "${item.messageId}#$n")
+            // v1.4.0 item 80 — groups are created by foldToolRuns after the
+            // dedupe pass; the key is unique by construction ("toolrun:"
+            // prefix never collides with a per-block "tool:" key).
+            is FlatChatItem.ToolRunGroup -> item
             is FlatChatItem.AssistantInfo -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.UnibotNaming -> item.copy(messageId = "${item.messageId}#$n") // unibot
             is FlatChatItem.UnibotAvatarOptions -> item.copy(messageId = "${item.messageId}#$n") // unibot
@@ -906,5 +926,58 @@ internal fun buildFlatChatItems(
             }
         }
     }
+    // v1.4.0 item 80 — collapse settled tool runs into fold groups as the
+    // final step, after every row (and its dedupe key) is final.
+    return foldToolRuns(out)
+}
+
+/**
+ * v1.4.0 item 80 — collapse maximal runs of consecutive settled tool-use
+ * rows into [FlatChatItem.ToolRunGroup].
+ *
+ * A run folds only when it holds >= 2 tool blocks for the SAME message and
+ * every block is settled (SUCCESS/FAILED/CANCELLED/TIMEOUT). Streaming,
+ * pending, and running blocks — and single tool calls — always render as
+ * today, so the fold can never hide in-flight tool activity or change the
+ * look of a one-tool turn.
+ *
+ * Pure function over the row list: the full build and the incremental
+ * (fromIndex) build fold identically, so frozen-prefix keys stay stable.
+ */
+internal fun foldToolRuns(items: List<FlatChatItem>): List<FlatChatItem> {
+    if (items.size < 2) return items
+    val out = ArrayList<FlatChatItem>(items.size)
+    var i = 0
+    while (i < items.size) {
+        val item = items[i]
+        if (item !is FlatChatItem.AssistantToolUse) {
+            out.add(item)
+            i++
+            continue
+        }
+        var j = i + 1
+        while (j < items.size) {
+            val next = items[j]
+            if (next is FlatChatItem.AssistantToolUse && next.messageId == item.messageId) j++
+            else break
+        }
+        // The scan above guarantees every element in [i, j) is an
+        // AssistantToolUse for this message; filterIsInstance only
+        // recovers the static type for the compiler.
+        val run = items.subList(i, j).filterIsInstance<FlatChatItem.AssistantToolUse>()
+        if (run.size >= 2 && run.all { it.block.toolStatus.isFoldable }) {
+            out.add(FlatChatItem.ToolRunGroup(item.messageId, run))
+        } else {
+            out.addAll(run)
+        }
+        i = j
+    }
     return out
 }
+
+/** Settled statuses are safe to fold; anything in flight (or unknown) renders live. */
+private val ToolBlockStatus?.isFoldable: Boolean
+    get() = this == ToolBlockStatus.SUCCESS ||
+        this == ToolBlockStatus.FAILED ||
+        this == ToolBlockStatus.CANCELLED ||
+        this == ToolBlockStatus.TIMEOUT
