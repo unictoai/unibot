@@ -127,11 +127,16 @@ object CalendarQuickAddParser {
         }
         // "Oct 8" / "8 Oct" / "2026-10-08" / "10/08".
         extractMonthDay(s, now)?.let { return it }
-        // "in N days/weeks".
-        Regex("in\\s+(\\d+)\\s*(day|week)s?\\b").find(s)?.let { m ->
+        // "in N days/weeks" — and "in N minutes/hours" (today; the time
+        // extractor anchors the clock time relatively).
+        Regex("in\\s+(\\d+)\\s*(minute|min|hour|hr|day|week)s?\\b").find(s)?.let { m ->
             val n = m.groupValues[1].toIntOrNull() ?: return@let
             val c = now.clone() as Calendar
-            c.add(Calendar.DAY_OF_YEAR, if (m.groupValues[2] == "week") n * 7 else n)
+            when (m.groupValues[2]) {
+                "week" -> c.add(Calendar.DAY_OF_YEAR, n * 7)
+                "day" -> c.add(Calendar.DAY_OF_YEAR, n)
+                // minutes/hours → later today
+            }
             return midnight(c)
         }
         return null
@@ -230,6 +235,21 @@ object CalendarQuickAddParser {
             if (h > 23) return@let
             return Triple(h * 60, null, m.value)
         }
+        // Trailing bare hour after a day word: "Gym tomorrow 3".
+        // Ambiguous, so default to the afternoon (3 → 3pm); a trailing
+        // number that is part of a date ("Party on 2026-10-07") can't
+        // match because a day word must directly precede it.
+        Regex("(?:tomorrow|today|tonight|day after tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\\s+(\\d{1,2})\\s*$")
+            .find(s)?.let { m ->
+                val h = m.groupValues[1].toIntOrNull() ?: return@let
+                val hour = when {
+                    h in 1..11 -> h + 12
+                    h == 12 -> 12
+                    h in 13..23 -> h
+                    else -> return@let
+                }
+                return Triple(hour * 60, null, m.value)
+            }
         return null
     }
 
@@ -268,6 +288,9 @@ object CalendarQuickAddParser {
         for (p in patterns) t = p.replace(t, " ")
         // Leading "on"/"at" leftovers.
         t = Regex("(?i)^\\s*(on|at)\\s+").replace(t, "")
+        // Trailing preposition leftovers ("Call mom on 2026-10-07" →
+        // "Call mom on" → "Call mom").
+        t = Regex("(?i)\\s+(on|at|from|to|by)\\s*$").replace(t, "")
         return t
     }
 }
