@@ -943,6 +943,8 @@ internal fun buildFlatChatItems(
  *
  * Pure function over the row list: the full build and the incremental
  * (fromIndex) build fold identically, so frozen-prefix keys stay stable.
+ * Group keys ("toolrun:<messageId>") are independent of member count, so
+ * a run that gains a newly-settled block keeps its LazyColumn identity.
  */
 internal fun foldToolRuns(items: List<FlatChatItem>): List<FlatChatItem> {
     if (items.size < 2) return items
