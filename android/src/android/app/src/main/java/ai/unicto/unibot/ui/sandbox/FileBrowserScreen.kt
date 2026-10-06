@@ -163,7 +163,8 @@ fun FileBrowserScreen(
                         // illustration plus a real action (go up one level)
                         // instead of the hand-rolled icon + text.
                         EmptyState(
-                            icon = FolderOutlined,
+                            // Alias import (extension val needs its receiver).
+                            icon = Icons.Outlined.FolderOutlined,
                             title = stringResource(R.string.filebrowser_empty_folder),
                             hint = stringResource(R.string.filebrowser_empty_folder_hint),
                             ctaLabel = if (state.canGoBack) stringResource(R.string.filebrowser_empty_go_up) else null,

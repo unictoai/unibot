@@ -533,7 +533,7 @@ fun UnibotHome(
                         onOffline = { navController.safeNavigate(ai.unicto.unibot.ui.local.ROUTE_ON_DEVICE_MODELS) },
                         onSendPrompt = { text ->
                             FirstRunSetup.markSourceChosen(context)
-                            pendingPrefill = text // fires once the main chat's ViewModel exists
+                            pendingPrefill = PrefillTarget(null, text) // fires once the main chat's ViewModel exists
                             OnboardingTour.markSeen(context)
                             tourDismissed = true
                         },
