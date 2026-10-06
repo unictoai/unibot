@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Extension
 import ai.unicto.unibot.data.BPETokenizer
@@ -198,7 +199,7 @@ internal fun ChatViewModel.filteredSlashCommands(): List<SlashCommand> {
         .map { entry ->
             SlashCommand(
                 id = "custom:${entry.id}",
-                icon = androidx.compose.material.icons.Icons.Filled.Terminal,
+                icon = Icons.Filled.Terminal,
                 title = entry.trigger,
                 subtitle = entry.description.ifBlank { "Custom command" },
                 isCustom = true,

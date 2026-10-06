@@ -5,6 +5,7 @@ import ai.unicto.unibot.data.db.ChatDao
 import ai.unicto.unibot.data.db.ChatSessionEntity
 import ai.unicto.unibot.data.db.FolderEntity
 import ai.unicto.unibot.data.db.MessageEntity
+import ai.unicto.unibot.data.db.MessageTokenUsageRow
 import ai.unicto.unibot.data.model.ModelAttributionSnapshot
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID

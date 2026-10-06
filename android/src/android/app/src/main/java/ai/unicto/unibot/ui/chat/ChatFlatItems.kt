@@ -637,6 +637,9 @@ internal fun buildFlatChatItems(
             is FlatChatItem.UnibotAllowance -> item.copy(messageId = "${item.messageId}#$n") // unibot
             is FlatChatItem.AssistantTyping -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantError -> item.copy(messageId = "${item.messageId}#$n")
+            // v1.4.0 chat handoff — question cards: remap the message id so
+            // the key (qcard:messageId) stays unique.
+            is FlatChatItem.QuestionCard -> item.copy(messageId = "${item.messageId}#$n")
             // [P2-branching] Never remap: the ids address DB rows and
             // _messages entries. Key collisions can't happen — the key
             // embeds the unique assistant message id.

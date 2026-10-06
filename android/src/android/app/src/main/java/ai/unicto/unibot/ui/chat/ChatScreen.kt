@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.VideoFile
@@ -4341,6 +4342,9 @@ fun ChatScreen(
                     is FlatChatItem.BranchActions -> false
                     // [v0.5.0-agentic-core] Chips row never grayed.
                     is FlatChatItem.FollowUpChips -> false
+                    // v1.4.0 chat handoff — question cards are live
+                    // interactive rows, never grayed.
+                    is FlatChatItem.QuestionCard -> false
                 }
                 // SelectionContainer must wrap the WHOLE LazyColumn — placing
                 // it per-item breaks long-press because items get disposed
