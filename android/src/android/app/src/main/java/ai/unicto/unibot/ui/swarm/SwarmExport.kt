@@ -2,7 +2,6 @@ package ai.unicto.unibot.ui.swarm
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Paint
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
@@ -209,7 +208,7 @@ fun exportMissionPdf(context: Context, state: SwarmUiState): Uri {
     while (firstLine < lineCount) {
         val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
             pageWidth, pageHeight, document.pages.size + 1,
-        ).build()
+        ).create()
         val page = document.startPage(pageInfo)
         val canvas = page.canvas
         canvas.drawColor(0xFFFFFFFF.toInt())
