@@ -7932,7 +7932,7 @@ class ChatViewModel(
             val sid = realSessionId.ifEmpty { sessionId }
             if (sid.isNotEmpty()) {
                 viewModelScope.launch(Dispatchers.IO) {
-                    try { chatRepository.updateLastAssistantError(sid, safeError) }
+                    try { chatRepository.updateLastAssistantError(sid, safeError, errorKind) }
                     catch (e: Exception) { Log.w(TAG, "persist error_info failed: ${e.message}") }
                 }
             }
@@ -13922,6 +13922,12 @@ Media downloads (video/audio from a link) — follow this ladder in order:
                 // a non-null "" would render an empty banner. Defends against any
                 // legacy/other-writer "" row.
                 error = entity.errorInfo?.takeIf { it.isNotBlank() },
+                // v1.4.0 item 26 — restore the machine-readable kind so a
+                // restored 404/413 never offers a futile Retry again.
+                errorKind = entity.errorKind?.takeIf { it.isNotBlank() },
+                // v1.4.0 item 93 (power-user handoff) — restore the card link
+                // so the in-chat question-card host renders after a reload.
+                questionCardId = entity.questionCardId?.takeIf { it.isNotBlank() },
             )
         }.let { messages ->
             // Merge consecutive assistant messages into one:
@@ -13960,6 +13966,10 @@ Media downloads (video/audio from a link) — follow this ladder in order:
                         // to the LAST assistant row of the turn, so the later row
                         // (`msg`) wins; fall back to `prev` if only it carried one.
                         error = msg.error ?: prev.error,
+                        // v1.4.0 item 26 — the kind travels with the sticker.
+                        errorKind = msg.errorKind ?: prev.errorKind,
+                        // v1.4.0 item 93 — same for the question-card link.
+                        questionCardId = msg.questionCardId ?: prev.questionCardId,
                     )
                 } else {
                     merged.add(msg)

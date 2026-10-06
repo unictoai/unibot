@@ -34,6 +34,15 @@ data class MessageEntity(
     // (mirrors iOS messages.error_info / ChatMessage.error). Null for normal
     // rows; device-local, never synced to iCloud.
     @ColumnInfo(name = "error_info") val errorInfo: String? = null,
+    // v1.4.0 item 26 — machine-readable error kind beside [errorInfo]
+    // (ChatMessage.errorKind). Persisted so a restored 404/413 never shows a
+    // futile Retry again. Null = no special UI.
+    @ColumnInfo(name = "error_kind") val errorKind: String? = null,
+    // v1.4.0 item 93 (power-user handoff) — question card attached to this
+    // assistant message (ChatMessage.questionCardId). The card itself lives
+    // in QuestionCardStore; this keeps the in-chat host rendering after a
+    // reload. Null for ordinary messages.
+    @ColumnInfo(name = "question_card_id") val questionCardId: String? = null,
     // [T-token-attribution-snapshot] Which model actually produced this
     // message, captured AT WRITE TIME as an immutable snapshot.
     //

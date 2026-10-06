@@ -465,10 +465,10 @@ class ChatRepository(internal val dao: ChatDao) {
     suspend fun getMessageById(id: String): MessageEntity? = dao.getMessageById(id)
 
     /** [T-error-persist-android] Set/clear the error sticker on a row by id. */
-    suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?) {
+    suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?, errorKind: String? = null) {
         // [P1-incognito] In-memory-only row; nothing to sticker.
         if (ai.unicto.unibot.ui.chat.IncognitoSessions.isIncognitoMessage(messageId)) return
-        dao.updateMessageErrorInfo(messageId, errorInfo)
+        dao.updateMessageErrorInfo(messageId, errorInfo, errorKind)
     }
 
     /**
@@ -476,9 +476,9 @@ class ChatRepository(internal val dao: ChatDao) {
      * assistant row. See [ChatDao.updateLastAssistantError]. No-op when no
      * assistant row exists yet.
      */
-    suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?) {
+    suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?, errorKind: String? = null) {
         if (incognito(sessionId)) return // [P1-incognito]
-        dao.updateLastAssistantError(sessionId, errorInfo)
+        dao.updateLastAssistantError(sessionId, errorInfo, errorKind)
     }
 
     /**

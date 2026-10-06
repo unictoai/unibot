@@ -318,8 +318,10 @@ interface ChatDao {
     // [T-error-persist-android] Write/clear the terminal error sticker on a
     // specific message row by id. Used when the persisted DB id is known
     // (clear-on-retry via sourceDbIds).
-    @Query("UPDATE messages SET error_info = :errorInfo WHERE id = :messageId")
-    suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?)
+    // v1.4.0 item 26: also stamps the machine-readable kind so a restored
+    // 404/413 never offers a futile Retry again.
+    @Query("UPDATE messages SET error_info = :errorInfo, error_kind = :errorKind WHERE id = :messageId")
+    suspend fun updateMessageErrorInfo(messageId: String, errorInfo: String?, errorKind: String? = null)
 
     /**
      * [T-error-persist-android] Stamp the error sticker onto the LAST assistant
@@ -333,14 +335,14 @@ interface ChatDao {
      * first-turn failure before any turn persisted).
      */
     @Query("""
-        UPDATE messages SET error_info = :errorInfo
+        UPDATE messages SET error_info = :errorInfo, error_kind = :errorKind
         WHERE id = (
             SELECT id FROM messages
             WHERE session_id = :sessionId AND role = 'assistant'
             ORDER BY sort_order DESC LIMIT 1
         )
     """)
-    suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?)
+    suspend fun updateLastAssistantError(sessionId: String, errorInfo: String?, errorKind: String? = null)
 
     // ─── Message variants (P2 branching) ────────────────────────────────
     // Archived sibling responses, anchored to the USER message that prompted

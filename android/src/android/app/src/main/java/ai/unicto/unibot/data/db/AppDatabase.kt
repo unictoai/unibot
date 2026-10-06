@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FolderEntity::class,
         MessageVariantEntity::class,
     ],
-    version = 13,
+    version = 14,
     // [T-android-downgrade-compat] Kept ON so MigrationTestHelper and CI can
     // validate every migration (and its downgrade counterpart) against the
     // committed schema json. Without it the upgrade/downgrade chain has no
@@ -347,6 +347,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v1.4.0 items 26 + 93 — persist the machine-readable error kind and
+         * the question-card link on message rows.
+         *
+         * Two nullable columns, no DEFAULT. `ADD COLUMN` is an O(1) metadata
+         * change in SQLite — existing rows are untouched and simply read NULL,
+         * which is exactly "no special error UI" / "no card". A `NOT NULL
+         * DEFAULT ''` would make old rows indistinguishable from new rows
+         * that genuinely have no kind/card.
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN error_kind TEXT")
+                db.execSQL("ALTER TABLE messages ADD COLUMN question_card_id TEXT")
+            }
+        }
+
+        /**
+         * [T-android-downgrade-compat] Downgrade 14 → 13. Deliberately a NO-OP,
+         * same rationale as MIGRATION_12_11 / MIGRATION_13_12: the additive
+         * columns are left in place so an older build can open a newer
+         * database and a later upgrade back loses nothing.
+         */
+        val MIGRATION_14_13 = object : Migration(14, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Intentionally empty — see the doc comment above.
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -358,10 +387,13 @@ abstract class AppDatabase : RoomDatabase() {
                     // MIGRATION_11_12 — registering it is what lets an older
                     // build open a newer database instead of failing to start.
                     // MIGRATION_13_12 is the same for the P2 message_variants table.
+                    // MIGRATION_14_13 is the same for the v1.4.0 error_kind /
+                    // question_card_id columns.
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
                         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
                         MIGRATION_11_12, MIGRATION_12_11, MIGRATION_12_13, MIGRATION_13_12,
+                        MIGRATION_13_14, MIGRATION_14_13,
                     )
                     .build()
                     .also { INSTANCE = it }

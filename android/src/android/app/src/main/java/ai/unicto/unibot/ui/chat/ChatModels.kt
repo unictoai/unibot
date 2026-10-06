@@ -226,9 +226,9 @@ data class ChatMessage(
     val thinkingLevel: ai.unicto.unibot.data.model.ThinkingLevel? = null,
     val error: String? = null,
     // [T-android-v124-413] Machine-readable error kind, set alongside [error]
-    // when the failure needs special UI (recovery actions). Currently only
-    // [ERROR_KIND_REQUEST_TOO_LARGE]. In-memory only — not persisted to the DB;
-    // after a reload the banner falls back to the (friendly) text + Retry.
+    // when the failure needs special UI (recovery actions). Persisted to the
+    // DB (v1.4.0 item 26) so a restored 404/413 never offers a futile Retry
+    // again; restored via loadSessionMessages.
     val errorKind: String? = null,
     // v1.4.0 item 13 — the raw provider payload behind a friendly card
     // ("[402] {json}"). Never rendered; the error banner's long-press copies
