@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Hearing
 import androidx.compose.material.icons.outlined.RecordVoiceOver
@@ -72,6 +73,7 @@ fun VoiceConversationSettingsScreen(
     val autoListen by VoiceConversationPrefs.autoListen.collectAsState()
     val speakOnly by VoiceConversationPrefs.speakOnlyInVoiceMode.collectAsState()
     val autoDetect by VoiceConversationPrefs.autoDetectLanguage.collectAsState()
+    val offlineMode by VoiceConversationPrefs.offlineMode.collectAsState()
     val voiceId by VoiceConversationPrefs.voiceId.collectAsState()
 
     Scaffold(
@@ -208,6 +210,27 @@ fun VoiceConversationSettingsScreen(
                                 checked = autoDetect,
                                 onCheckedChange = {
                                     VoiceConversationPrefs.setAutoDetectLanguage(it)
+                                },
+                            )
+                        },
+                    )
+                    MuseRowDivider()
+                    // Voice theme item 31: fully-offline voice chat. When on,
+                    // the conversation only starts with all three on-device
+                    // legs ready (STT + local model + voice) — zero network.
+                    MuseRow(
+                        title = stringResource(R.string.ub_voice_offline_mode_title),
+                        value = stringResource(R.string.ub_voice_offline_mode_desc),
+                        onClick = {
+                            VoiceConversationPrefs.setOfflineMode(!offlineMode)
+                        },
+                        icon = Icons.Outlined.CloudOff,
+                        chevron = false,
+                        trailing = {
+                            Switch(
+                                checked = offlineMode,
+                                onCheckedChange = {
+                                    VoiceConversationPrefs.setOfflineMode(it)
                                 },
                             )
                         },

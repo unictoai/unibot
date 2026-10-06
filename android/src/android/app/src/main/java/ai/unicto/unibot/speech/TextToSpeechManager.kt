@@ -32,6 +32,16 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
         // [T-android-tts-intranumber-guard] The sentence-boundary set moved to
         // SpeechSentenceSplitter.SENTENCE_ENDERS — a single source of truth
         // shared with ReadAloudPlayer, so the two TTS paths can't drift.
+
+        /**
+         * Voice theme item 34: explicit TTS language override from the voice
+         * bar's language switch ([ai.unicto.unibot.ui.voice.VoiceLanguageSheet]).
+         * When set, it wins over the per-utterance auto-detect below; a
+         * picked system voice ([preferredVoiceName]) still wins over both.
+         * Process-wide so every read-aloud player honors it.
+         */
+        @Volatile
+        var preferredLanguageOverride: java.util.Locale? = null
     }
 
     // @Volatile: written on the binder thread in onInit / nulled on main in
@@ -74,6 +84,19 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
 
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
+
+    /**
+     * Voice theme item 33: karaoke word progress. The engine reports
+     * onRangeStart (API 26+) with the character offset into the current
+     * utterance; this flow carries the utterance text plus the spoken word's
+     * char range, resolved via [utteranceTexts]. Null when nothing is being
+     * spoken (or the engine never reports ranges — some OEM engines don't).
+     */
+    private val _spokenWord = MutableStateFlow<SpokenWord?>(null)
+    val spokenWord: StateFlow<SpokenWord?> = _spokenWord.asStateFlow()
+
+    /** Utterance id → spoken text, so onRangeStart offsets resolve to words. */
+    private val utteranceTexts = mutableMapOf<String, String>()
 
     private var isPaused = false
     private var pendingTexts = mutableListOf<String>()
@@ -204,7 +227,11 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
         // flight and no progress callback ever coming — ReadAloudPlayer's
         // completion poll then spun forever and the whole read-aloud queue
         // wedged for the rest of the process.
-        val rc = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, generateUtteranceId())
+        // Voice theme item 33: remember the utterance text for karaoke word
+        // progress (onRangeStart only gives an id + offset).
+        val utteranceId = generateUtteranceId()
+        rememberUtteranceText(utteranceId, text)
+        val rc = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
         if (rc != TextToSpeech.SUCCESS) {
             Log.w(TAG, "speak rejected by engine (rc=$rc len=${text.length})")
             _isSpeaking.value = false
@@ -238,7 +265,11 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
 
         val params = buildSpeechParams()
         // [T-android-tts-rom-compat] Same rejected-enqueue guard as speak().
-        val rc = tts?.speak(text, TextToSpeech.QUEUE_ADD, params, generateUtteranceId())
+        // Voice theme item 33: remember the utterance text for karaoke word
+        // progress (onRangeStart only gives an id + offset).
+        val utteranceId = generateUtteranceId()
+        rememberUtteranceText(utteranceId, text)
+        val rc = tts?.speak(text, TextToSpeech.QUEUE_ADD, params, utteranceId)
         if (rc != TextToSpeech.SUCCESS) {
             Log.w(TAG, "speakQueued rejected by engine (rc=$rc len=${text.length})")
             // Only clear the flag when nothing else is in flight — a QUEUE_ADD
@@ -308,6 +339,8 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
         // utterances, or they'd blurt out the moment onInit lands.
         synchronized(queueLock) { preInitQueue.clear() }
         _isSpeaking.value = false
+        // Voice theme item 33: karaoke ends with the speech.
+        _spokenWord.value = null
     }
 
     /**
@@ -384,6 +417,12 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
                 Log.w(TAG, "preferred voice '$wanted' not found on this engine — falling back to auto language")
             }
         }
+        // Voice theme item 34: explicit language override from the voice
+        // bar's language switch beats the per-utterance heuristic.
+        preferredLanguageOverride?.let { override ->
+            tts?.setLanguage(override)
+            return
+        }
         val locale = if (HAN_REGEX.containsMatchIn(text)) {
             Locale.SIMPLIFIED_CHINESE
         } else {
@@ -400,11 +439,44 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
 
     private fun generateUtteranceId(): String = UUID.randomUUID().toString()
 
+    /**
+     * Voice theme item 33: bound the utterance-text map (one entry per
+     * utterance; long read-aloud sessions would otherwise grow it forever).
+     */
+    private fun rememberUtteranceText(utteranceId: String, text: String) {
+        if (utteranceTexts.size > 64) utteranceTexts.clear()
+        utteranceTexts[utteranceId] = text
+    }
+
     private fun createProgressListener(): UtteranceProgressListener =
         object : UtteranceProgressListener() {
 
             override fun onStart(utteranceId: String?) {
                 _isSpeaking.value = true
+                // Voice theme item 33: publish the utterance text immediately
+                // (word range follows via onRangeStart); the karaoke UI shows
+                // the sentence even on engines that never report ranges.
+                val text = utteranceId?.let { utteranceTexts[it] }
+                Handler(Looper.getMainLooper()).post {
+                    _spokenWord.value = text?.let { SpokenWord(it, null) }
+                }
+            }
+
+            /**
+             * Voice theme item 33: karaoke word progress (API 26+). The
+             * engine reports the char offset of the spoken frame; resolve it
+             * to the containing word via [WordBoundaryTracker].
+             */
+            override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
+                val text = utteranceId?.let { utteranceTexts[it] } ?: return
+                // Some engines report the frame END or a mid-word offset;
+                // anchor on the frame start and resolve the containing word.
+                val range = WordBoundaryTracker.wordAt(text, start.coerceIn(0, text.length - 1))
+                    ?: return
+                Handler(Looper.getMainLooper()).post {
+                    _spokenWord.value = SpokenWord(text, range)
+                }
             }
 
             override fun onDone(utteranceId: String?) {
@@ -420,6 +492,8 @@ class TextToSpeechManager : TextToSpeech.OnInitListener {
                     // Only mark as not speaking if nothing else is queued
                     if (pausedAtIndex >= pendingTexts.size) {
                         _isSpeaking.value = false
+                        // Voice theme item 33: karaoke ends with the utterance.
+                        _spokenWord.value = null
                     }
                 }
             }

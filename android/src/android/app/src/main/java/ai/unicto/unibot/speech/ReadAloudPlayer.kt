@@ -107,6 +107,27 @@ class ReadAloudPlayer(context: Context) {
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
 
+    private val _currentUtteranceText = MutableStateFlow<String?>(null)
+
+    /**
+     * Voice theme item 33: karaoke state for the speech-player capsule — the
+     * sentence being spoken, plus the current word range on the system-engine
+     * path (provider audio has no word timings, so the range is null there
+     * and the UI highlights nothing). Each player owns its
+     * [TextToSpeechManager], so [TextToSpeechManager.spokenWord] is already
+     * player-scoped.
+     */
+    val spokenWord: StateFlow<SpokenWord?> = kotlinx.coroutines.flow.combine(
+        _currentUtteranceText,
+        system.spokenWord,
+    ) { text, sys ->
+        sys ?: text?.let { SpokenWord(it, null) }
+    }.stateIn(
+        scope,
+        kotlinx.coroutines.flow.SharingStarted.Eagerly,
+        null,
+    )
+
     /**
      * Rolling buffer for streaming input. Mirrors [TextToSpeechManager]'s own
      * buffer, but lives here so the sentence split happens BEFORE the routing
@@ -324,6 +345,17 @@ class ReadAloudPlayer(context: Context) {
     // -- internals --
 
     private suspend fun speakOne(text: String) {
+        // Voice theme item 33: karaoke — the capsule shows this sentence
+        // while it speaks (word range follows on the system-engine path).
+        _currentUtteranceText.value = text
+        try {
+            speakOneInner(text)
+        } finally {
+            _currentUtteranceText.value = null
+        }
+    }
+
+    private suspend fun speakOneInner(text: String) {
         val entry = runCatching {
             (appContext as? UnibotApp)?.providerRepository?.resolveVoiceOutputEntry()
         }.getOrNull()

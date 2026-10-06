@@ -8,6 +8,8 @@ import ai.unicto.unibot.speech.RecognitionError
 import ai.unicto.unibot.speech.SherpaTtsEngine
 import ai.unicto.unibot.speech.SpeechRecognitionManager
 import ai.unicto.unibot.speech.VoiceTextSanitizer
+import ai.unicto.unibot.speech.friendlyMessage
+import ai.unicto.unibot.speech.isUserFacingSttMessage
 import ai.unicto.unibot.ui.chat.ChatMessage
 import ai.unicto.unibot.ui.chat.ChatViewModel
 import kotlinx.coroutines.Job
@@ -48,14 +50,44 @@ class VoiceConversationViewModel(
     // (broken recognition service on ROMs with no real speech service)
     // apart from a genuinely missing grant.
     private val hasMicPermission: () -> Boolean,
+    // Voice theme item 27: realtime voice degrades on low-RAM devices —
+    // sentence-streaming TTS doubles peak native footprint (LLM + TTS
+    // synthesizing the next sentence while the model still streams), so
+    // low-RAM phones speak the full reply once instead.
+    private val isLowRamDevice: () -> Boolean = { false },
+    // Voice theme item 31: readiness probes for the fully-offline route
+    // (on-device STT + local LLM + on-device TTS). Null = offline routing
+    // unavailable; the badge simply never claims offline.
+    private val offlineProbes: OfflineProbes? = null,
 ) : ViewModel() {
+
+    /**
+     * Voice theme item 31: the three on-device legs of the offline route.
+     * Supplied by the screen (which owns the Context the managers need).
+     */
+    data class OfflineProbes(
+        /** On-device STT usable right now (whisper model downloaded, or system engine offline). */
+        val isSttReady: () -> Boolean,
+        /** A local LLM is downloaded and selected, so sendMessage routes locally. */
+        val isLlmReady: () -> Boolean,
+        /** On-device TTS usable right now (sherpa voice downloaded). */
+        val isTtsReady: () -> Boolean,
+        /**
+         * Make the local route active (select a downloaded model) when none
+         * is. Returns true when the local route is (now) active.
+         */
+        val ensureLocalLlm: () -> Boolean,
+    )
 
     sealed interface State {
         data object Idle : State
         data object Listening : State
         data object Thinking : State
         data object Speaking : State
-        data class Error(val message: String) : State
+        // Voice theme item 29: the machine-readable kind travels with the
+        // message so the error card can gate Retry by kind (auth failures
+        // offer "Update key", not a futile Retry). Null for unkinded failures.
+        data class Error(val message: String, val kind: String? = null) : State
         // [v1.1.2] Mic permission denied (or "don't ask again"). The UI shows
         // a graceful card with rationale + a Settings deep-link — never a raw
         // "RECORD_AUDIO required" dead-end.
@@ -102,6 +134,68 @@ class VoiceConversationViewModel(
     /** Re-evaluate [onDeviceBadge] (TTS readiness can change out-of-band). */
     fun refreshBadge() {
         badgeTick.value++
+        refreshOfflineStatus()
+    }
+
+    // ─── Voice theme item 31: explicit offline route ──────────────────────
+
+    private val _offlineStatus =
+        MutableStateFlow(ai.unicto.unibot.speech.OfflineVoiceStatus(emptyList()))
+    /**
+     * Per-leg readiness of the fully-offline route (on-device STT + local
+     * LLM + on-device TTS). Empty legs when [offlineProbes] is null. The UI
+     * renders this as a checklist so the offline path is explicit, and the
+     * view-model gates [VoiceConversationPrefs.offlineMode] on
+     * [ai.unicto.unibot.speech.OfflineVoiceStatus.allReady].
+     */
+    val offlineStatus: StateFlow<ai.unicto.unibot.speech.OfflineVoiceStatus> =
+        _offlineStatus.asStateFlow()
+
+    private fun refreshOfflineStatus() {
+        val probes = offlineProbes ?: return
+        _offlineStatus.value = ai.unicto.unibot.speech.OfflineVoiceRoute.evaluate(
+            sttReady = runCatching { probes.isSttReady() }.getOrDefault(false),
+            llmReady = runCatching { probes.isLlmReady() }.getOrDefault(false),
+            ttsReady = runCatching { probes.isTtsReady() }.getOrDefault(false),
+        )
+    }
+
+    // ─── Voice theme item 27: streaming TTS queue + background discipline ──
+
+    /**
+     * Sentence queue for realtime speech: completed sentences are spoken as
+     * the model streams them, instead of waiting for the full reply. Owned
+     * by the turn in [sendToChat]; [interrupt]/[stopConversation]/errors
+     * clear it so a stale utterance can never resume a dead turn.
+     */
+    private val ttsQueue = VoiceSpeakQueue()
+
+    /**
+     * Turn generation for the TTS pump: [interrupt]/[stopConversation] bump
+     * it, so a pump call or utterance callback from a dead turn no-ops
+     * instead of speaking into the new turn (the enqueue→pump window is
+     * small but real).
+     */
+    private var ttsGen = 0
+
+    /**
+     * Battery discipline: the realtime loop must never hold the mic or play
+     * audio in the background. On background we stop the whole conversation
+     * (the agent turn itself keeps running in the shared ChatViewModel); on
+     * foreground we re-arm the mic only if the loop was active.
+     */
+    private var pausedForBackground = false
+
+    fun onBackgrounded() {
+        if (!conversationActive) return
+        pausedForBackground = true
+        stopConversation()
+    }
+
+    fun onForegrounded() {
+        if (!pausedForBackground) return
+        pausedForBackground = false
+        if (VoiceConversationPrefs.autoListen.value) startConversation(sessionId)
     }
 
     /** True while a downloaded TTS voice is ready to speak. */
@@ -126,15 +220,27 @@ class VoiceConversationViewModel(
         private const val QUIET_THRESHOLD = 0.12f
         /** Max wait for the assistant's reply before surfacing an error. */
         private const val REPLY_TIMEOUT_MS = 180_000L
+        /**
+         * Voice theme item 28: error/turn poll cadence. 150 ms keeps LLM
+         * errors surfacing in a blink without hot-spinning the flow reads.
+         */
+        private const val POLL_MS = 150L
+        /** Stream-quiet window before a turn counts as finished. */
+        private const val STREAM_QUIET_MS = 1_000L
 
         fun factory(
             chatViewModel: ChatViewModel,
             ensureMicPermission: suspend () -> Boolean,
             hasMicPermission: () -> Boolean,
+            isLowRamDevice: () -> Boolean = { false },
+            offlineProbes: OfflineProbes? = null,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                VoiceConversationViewModel(chatViewModel, ensureMicPermission, hasMicPermission) as T
+                VoiceConversationViewModel(
+                    chatViewModel, ensureMicPermission, hasMicPermission,
+                    isLowRamDevice, offlineProbes,
+                ) as T
         }
     }
 
@@ -174,6 +280,36 @@ class VoiceConversationViewModel(
                 _state.value = State.NoSttModel
                 return@launch
             }
+            // Voice theme item 31: explicit offline mode. When the user asked
+            // for fully-offline voice, every leg must be ready — starting a
+            // cloud turn here would silently break the "zero network" promise.
+            // The UI renders offlineStatus as a checklist with the real
+            // recovery (download the missing leg); Retry re-checks.
+            val probes = offlineProbes
+            if (VoiceConversationPrefs.offlineMode.value && probes != null) {
+                refreshOfflineStatus()
+                val status = _offlineStatus.value
+                if (!status.allReady) {
+                    val missing = status.legs.filterNot { it.ready }
+                        .joinToString(", ") { it.label }
+                    _state.value = State.Error(
+                        "Offline voice isn't fully ready yet — missing: $missing.",
+                    )
+                    return@launch
+                }
+                // Pin the loop to the on-device legs: whisper STT + the local
+                // LLM route (sendMessage auto-routes once a local model is
+                // active) + sherpa TTS.
+                SpeechRecognitionManager.availableEngines()
+                    .firstOrNull { it.id == WHISPER_ENGINE_ID && it.isAvailable }
+                    ?.let { SpeechRecognitionManager.selectEngine(WHISPER_ENGINE_ID) }
+                if (!runCatching { probes.ensureLocalLlm() }.getOrDefault(false)) {
+                    _state.value = State.Error(
+                        "Couldn't activate the on-device model. Download one first.",
+                    )
+                    return@launch
+                }
+            }
             startListening()
         }
     }
@@ -181,10 +317,14 @@ class VoiceConversationViewModel(
     /** Stop everything and park in [State.Idle]. */
     fun stopConversation() {
         conversationActive = false
+        ttsGen++
         sendJob?.cancel()
         sendJob = null
         silenceJob?.cancel()
         silenceJob = null
+        // Voice theme item 27: drop queued sentences too — a stale pump
+        // callback must never resume speech after the turn died.
+        ttsQueue.clear()
         SpeechRecognitionManager.stopRecording()
         SherpaTtsEngine.stop()
         _partialTranscript.value = ""
@@ -219,6 +359,11 @@ class VoiceConversationViewModel(
      * interrupted turn is simply dropped.
      */
     fun interrupt() {
+        // Voice theme item 27: bump the pump generation first so an
+        // in-flight utterance's completion callback finds nothing to pump,
+        // then clear the queue and stop the engine.
+        ttsGen++
+        ttsQueue.clear()
         SherpaTtsEngine.stop()
         sendJob?.cancel()
         sendJob = null
@@ -270,7 +415,12 @@ class VoiceConversationViewModel(
                 _state.value = if (error == RecognitionError.PERMISSION_DENIED) {
                     State.PermissionDenied
                 } else {
-                    State.Error(message ?: "Voice input failed ($error).")
+                    // Voice theme item 30: friendly one-liners — raw engine
+                    // strings and NETWORK enums become plain sentences.
+                    State.Error(
+                        message?.takeIf { it.isUserFacingSttMessage() }
+                            ?: error.friendlyMessage(),
+                    )
                 }
             },
         )
@@ -363,82 +513,205 @@ class VoiceConversationViewModel(
     }
 
     // ─── Thinking → Speaking ─────────────────────────────────────────────
+    // Voice theme item 27: realtime voice. The reply is spoken
+    // sentence-by-sentence AS the model streams (via ttsQueue + the sherpa
+    // engine chained on utterance completion), so the first sentence is
+    // audible long before generation finishes. On low-RAM devices the queue
+    // stays parked until the turn ends and the full reply speaks once —
+    // cheaper peak footprint, same result.
+    //
+    // Voice theme item 28: LLM errors surface INSTANTLY. The old code waited
+    // for a fresh assistant message with content; an error frame on an
+    // otherwise empty message never satisfied that, so the UI sat on
+    // "thinking" until the 180 s timeout. Now every poll checks the
+    // top-level error flow AND the fresh message's error/kind, and throws
+    // immediately — the voice card appears in ~150 ms with the kind attached
+    // (item 29).
 
     private fun sendToChat(userText: String) {
         sendJob?.cancel()
         sendJob = viewModelScope.launch {
             val beforeIds = chatViewModel.messages.value.map { it.id }.toSet()
             _lastExchange.value = userText to (_lastExchange.value?.second.orEmpty())
+            ttsQueue.clear()
+            val gen = ++ttsGen
+            // Low-RAM degrade: park sentence streaming, speak once at the end.
+            val streamTts = !runCatching { isLowRamDevice() }.getOrDefault(false)
             chatViewModel.sendMessage(userText)
             val reply: String = try {
-                awaitAssistantReply(beforeIds)
+                awaitReplyStreaming(beforeIds, streamTts, gen)
             } catch (e: TimeoutCancellationException) {
+                ttsQueue.clear()
                 _state.value = State.Error("The reply took too long. Tap to try again.")
                 return@launch
             } catch (e: VoiceReplyException) {
-                _state.value = State.Error(e.message ?: "Couldn't get a reply.")
+                ttsQueue.clear()
+                _state.value = State.Error(e.message ?: "Couldn't get a reply.", e.kind)
                 return@launch
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
+                ttsQueue.clear()
                 _state.value = State.Error("Couldn't get a reply: ${e.message}")
                 return@launch
             }
             _lastExchange.value = userText to reply
             _turnsCompleted.value++
-            // Speak the final text; sanitizer strips markdown/emoji for the ear.
-            val spoken = VoiceTextSanitizer.sanitize(reply).trim()
-            if (spoken.isEmpty()) {
-                // Tool-only turn with nothing speakable — just keep listening.
-                if (VoiceConversationPrefs.autoListen.value) startListening()
-                else _state.value = State.Idle
+            if (!streamTts) {
+                // Low-RAM path: the turn streamed silently; speak it once now.
+                speakFullReply(reply)
                 return@launch
             }
-            _state.value = State.Speaking
-            // onDone fires on a background thread — hop back to the scope.
-            SherpaTtsEngine.speak(spoken) {
-                viewModelScope.launch { onSpeakDone() }
+            // Streaming path: the queue spoke every sentence. If nothing was
+            // ever speakable (tool-only turn), the state never left Thinking —
+            // re-arm the mic instead of stranding the loop.
+            if (_state.value is State.Speaking) {
+                onSpeakDone()
+            } else if (VoiceConversationPrefs.autoListen.value) {
+                startListening()
+            } else {
+                _state.value = State.Idle
             }
         }
     }
 
     /**
-     * Wait for the new assistant turn: first a fresh assistant message with
-     * content, then for streaming to settle (stable-quiet for 1 s, so tool
-     * loops that pause between chunks don't cut the reply short).
+     * Pump the TTS queue: speak the next queued sentence, chaining on the
+     * utterance completion callback. No-op when the turn died (generation
+     * bumped or queue cleared) or the conversation stopped — a stale callback
+     * can never resume speech. Runs on whatever thread the engine callback
+     * uses; StateFlow writes are thread-safe.
      */
-    private suspend fun awaitAssistantReply(beforeIds: Set<String>): String =
+    private fun pumpTtsQueue(gen: Int) {
+        if (gen != ttsGen || !conversationActive) {
+            ttsQueue.clear()
+            return
+        }
+        val next = ttsQueue.takeNext() ?: return
+        _state.value = State.Speaking
+        // SherpaTtsEngine.speak sanitizes (no spoken markdown/emoji) and
+        // flushes any in-flight utterance; we only ever call it from here,
+        // strictly after the previous onDone, so ordering is exact.
+        SherpaTtsEngine.speak(next) {
+            ttsQueue.markSpoken()
+            pumpTtsQueue(gen)
+        }
+    }
+
+    /** Low-RAM fallback (item 27): speak the whole reply once, like before. */
+    private fun speakFullReply(reply: String) {
+        val spoken = VoiceTextSanitizer.sanitize(reply).trim()
+        if (spoken.isEmpty()) {
+            // Tool-only turn with nothing speakable — just keep listening.
+            if (VoiceConversationPrefs.autoListen.value) startListening()
+            else _state.value = State.Idle
+            return
+        }
+        _state.value = State.Speaking
+        // onDone fires on a background thread — hop back to the scope.
+        SherpaTtsEngine.speak(spoken) {
+            viewModelScope.launch { onSpeakDone() }
+        }
+    }
+
+    /**
+     * Wait for the assistant's reply, feeding [ttsQueue] sentence-by-sentence
+     * from the live stream when [streamTts] is on.
+     *
+     * The reply id is resolved from the streaming side-channel first
+     * (per-token text rides `streamingById`, keyed by message id — the
+     * canonical list stays static mid-turn), falling back to the canonical
+     * message list. Completion = the chat is quiet for 1 s (so tool loops
+     * that pause between chunks don't cut the reply short) AND the TTS queue
+     * drained.
+     *
+     * @throws VoiceReplyException the moment an LLM error surfaces — on the
+     *   top-level error flow or on the fresh message — carrying its kind.
+     */
+    private suspend fun awaitReplyStreaming(beforeIds: Set<String>, streamTts: Boolean, gen: Int): String =
         withTimeout(REPLY_TIMEOUT_MS) {
+            val sentenceBuffer = StringBuilder()
+            var consumedUpTo = 0
             var replyId: String? = null
-            while (replyId == null) {
-                // A hard send failure (no provider, network down) surfaces on
-                // the VM's error flow without ever producing a message — don't
-                // sit out the full timeout on those.
-                chatViewModel.error.value?.let { throw VoiceReplyException(it) }
-                val msg: ChatMessage? = chatViewModel.messages.value.firstOrNull {
-                    it.role == "assistant" && it.id !in beforeIds &&
-                        it.content.isNotBlank() && !it.isInternalBridge
-                }
-                if (msg != null) {
-                    replyId = msg.id
-                } else {
-                    delay(200)
-                }
-            }
             var quietSince = 0L
+
             while (true) {
+                // Item 28: surface errors the moment they land — never sit on
+                // "thinking" after the chat already failed.
+                chatViewModel.error.value?.let { text ->
+                    throw VoiceReplyException(chatViewModel.lastErrorKind.value, text)
+                }
+                val canonical: ChatMessage? = chatViewModel.messages.value.firstOrNull {
+                    it.role == "assistant" && it.id !in beforeIds && !it.isInternalBridge
+                }
+                // An error frame on an otherwise empty message: the old code
+                // waited here until the 180 s timeout. Throw now, with kind.
+                canonical?.error?.let { text ->
+                    throw VoiceReplyException(canonical.errorKind, text)
+                }
+                if (replyId == null) {
+                    replyId = chatViewModel.streamingById.value.keys
+                        .firstOrNull { it !in beforeIds }
+                        ?: canonical?.id
+                }
+                val liveText: String = replyId?.let { id ->
+                    chatViewModel.streamingById.value[id]?.content
+                        ?: chatViewModel.messages.value.firstOrNull { it.id == id }?.content
+                }.orEmpty()
+
+                if (liveText.length > consumedUpTo) {
+                    val delta = liveText.substring(consumedUpTo)
+                    consumedUpTo = liveText.length
+                    if (streamTts) {
+                        sentenceBuffer.append(delta)
+                        val sentences =
+                            ai.unicto.unibot.speech.SpeechSentenceSplitter
+                                .extractCompleteSentences(sentenceBuffer, streaming = true)
+                        if (sentences.isNotEmpty()) {
+                            ttsQueue.enqueueSentences(sentences)
+                            pumpTtsQueue(gen)
+                        }
+                    }
+                }
+
+                // Completion: the agent loop is quiet AND (streaming path)
+                // every queued sentence finished speaking.
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (!chatViewModel.isStreaming.value) {
                     if (quietSince == 0L) quietSince = now
-                    if (now - quietSince > 1_000L) break
+                    if (now - quietSince > STREAM_QUIET_MS) {
+                        // Flush the tail (a fragment with no terminator).
+                        val tail = liveText.substring(consumedUpTo.coerceAtMost(liveText.length))
+                        if (streamTts && tail.isNotBlank()) {
+                            ttsQueue.enqueueSentences(listOf(tail))
+                            pumpTtsQueue(gen)
+                        }
+                        // Wait for the spoken queue to drain (bounded by the
+                        // outer timeout).
+                        while (streamTts && !ttsQueue.isDrained) {
+                            if (!conversationActive) throw VoiceReplyException(
+                                null, "Conversation stopped.",
+                            )
+                            delay(100)
+                        }
+                        break
+                    }
                 } else {
                     quietSince = 0L
                 }
-                delay(200)
+                delay(POLL_MS)
             }
-            chatViewModel.messages.value.firstOrNull { it.id == replyId }?.content
-                ?: chatViewModel.messages.value.firstOrNull {
-                    it.role == "assistant" && it.id !in beforeIds
-                }?.content.orEmpty()
+
+            val id = replyId
+            val full: String = id?.let { rid ->
+                chatViewModel.messages.value.firstOrNull { it.id == rid }?.content
+            }.orEmpty()
+            // A mid-stream error could have landed after the last poll: never
+            // hand an errored turn back as a successful reply.
+            chatViewModel.messages.value.firstOrNull { it.id == id }?.error?.let { text ->
+                val kind = chatViewModel.messages.value.firstOrNull { it.id == id }?.errorKind
+                throw VoiceReplyException(kind, text)
+            }
+            full
         }
 
     private fun onSpeakDone() {
@@ -450,12 +723,17 @@ class VoiceConversationViewModel(
 
     override fun onCleared() {
         conversationActive = false
+        ttsGen++
+        ttsQueue.clear()
         sendJob?.cancel()
         silenceJob?.cancel()
         SpeechRecognitionManager.stopRecording()
         SherpaTtsEngine.stop()
     }
 
-    /** A hard send failure surfaced on [ChatViewModel.error]. */
-    private class VoiceReplyException(message: String) : Exception(message)
+    /**
+     * A failed turn. [kind] is the chat error-kind taxonomy value (may be
+     * null) so the UI can gate Retry vs fix actions.
+     */
+    private class VoiceReplyException(val kind: String?, message: String) : Exception(message)
 }

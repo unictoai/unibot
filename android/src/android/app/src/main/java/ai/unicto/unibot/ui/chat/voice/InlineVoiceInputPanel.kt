@@ -69,6 +69,8 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.speech.RecognitionState
 import ai.unicto.unibot.speech.SpeechRecognitionManager
+import ai.unicto.unibot.speech.friendlyMessage
+import ai.unicto.unibot.speech.isUserFacingSttMessage
 import ai.unicto.unibot.ui.theme.ChatColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -377,7 +379,11 @@ fun InlineVoiceInputPanel(
                     ai.unicto.unibot.speech.RecognitionError.NO_MATCH -> {}
                     ai.unicto.unibot.speech.RecognitionError.PERMISSION_DENIED ->
                         permissionDenied = true
-                    else -> transcribeError = message ?: error.name
+                    // Voice theme item 30: friendly one-liners — raw engine
+                    // strings and NETWORK enums become plain sentences.
+                    else -> transcribeError =
+                        message?.takeIf { it.isUserFacingSttMessage() }
+                            ?: error.friendlyMessage()
                 }
             },
         )

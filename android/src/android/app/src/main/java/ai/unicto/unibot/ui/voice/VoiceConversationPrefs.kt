@@ -23,6 +23,8 @@ object VoiceConversationPrefs {
     private const val KEY_VOICE_ID = "voiceId"
     private const val KEY_MIC_RATIONALE_SHOWN = "micRationaleShown"
     private const val KEY_AUTO_DETECT_LANGUAGE = "autoDetectLanguage"
+    private const val KEY_OFFLINE_MODE = "offlineMode"
+    private const val KEY_TTS_LANGUAGE = "ttsLanguageTag"
 
     /** On-device voices offered by the voice conversation UI. The actual
      *  downloads are owned by the TTS voice manager (sibling work); these
@@ -74,6 +76,10 @@ object VoiceConversationPrefs {
         _speakOnlyInVoiceMode.value = sp.getBoolean(KEY_SPEAK_ONLY_IN_VOICE_MODE, false)
         _voiceId.value = sp.getString(KEY_VOICE_ID, null)
         _autoDetectLanguage.value = sp.getBoolean(KEY_AUTO_DETECT_LANGUAGE, false)
+        _offlineMode.value = sp.getBoolean(KEY_OFFLINE_MODE, false)
+        _ttsLanguage.value = sp.getString(KEY_TTS_LANGUAGE, null)
+            ?.let { runCatching { java.util.Locale.forLanguageTag(it) }.getOrNull() }
+            ?.takeIf { it.toLanguageTag().isNotBlank() }
     }
 
     fun setAutoListen(on: Boolean) {
@@ -94,6 +100,34 @@ object VoiceConversationPrefs {
     fun setAutoDetectLanguage(on: Boolean) {
         _autoDetectLanguage.value = on
         prefs?.edit()?.putBoolean(KEY_AUTO_DETECT_LANGUAGE, on)?.apply()
+    }
+
+    private val _offlineMode = MutableStateFlow(false)
+    /**
+     * Voice theme item 31: fully-offline voice chat. When on, the
+     * conversation only starts when every offline leg is ready (on-device
+     * STT + local LLM + on-device TTS — zero network), pinned to the whisper
+     * engine and the local LLM route. Off by default.
+     */
+    val offlineMode: StateFlow<Boolean> = _offlineMode.asStateFlow()
+
+    fun setOfflineMode(on: Boolean) {
+        _offlineMode.value = on
+        prefs?.edit()?.putBoolean(KEY_OFFLINE_MODE, on)?.apply()
+    }
+
+    private val _ttsLanguage = MutableStateFlow<java.util.Locale?>(null)
+    /**
+     * Voice theme item 34: explicit read-aloud TTS language from the voice
+     * bar's language switch. Null = "Auto" (per-utterance auto-detect).
+     * Applied to [ai.unicto.unibot.speech.TextToSpeechManager] via its
+     * process-wide override.
+     */
+    val ttsLanguage: StateFlow<java.util.Locale?> = _ttsLanguage.asStateFlow()
+
+    fun setTtsLanguage(locale: java.util.Locale?) {
+        _ttsLanguage.value = locale
+        prefs?.edit()?.putString(KEY_TTS_LANGUAGE, locale?.toLanguageTag())?.apply()
     }
 
     /** True once the first-entry mic rationale dialog has been shown. */

@@ -38,6 +38,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Stop
@@ -124,6 +126,9 @@ fun VoiceConversationScreen(
     onBack: () -> Unit,
     onOpenVoiceSettings: () -> Unit,
     onOpenReadAloudSettings: () -> Unit,
+    // Voice theme item 29: destination for the error card's fix actions
+    // ("Update key" / "Switch provider" / "Change model").
+    onOpenProviders: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -148,6 +153,32 @@ fun VoiceConversationScreen(
             // [v1.2] Lets the VM tell a bogus engine permission failure
             // apart from a genuinely missing grant.
             hasMicPermission = { isMicUsable(context) },
+            // Voice theme item 27: low-RAM degrade for realtime voice.
+            isLowRamDevice = {
+                ai.unicto.unibot.local.LlamaModelManager.isLowRamDevice(context)
+            },
+            // Voice theme item 31: probes for the explicit offline route.
+            offlineProbes = VoiceConversationViewModel.OfflineProbes(
+                isSttReady = {
+                    ai.unicto.unibot.speech.WhisperModelManager
+                        .activeModelFile(context) != null
+                },
+                isLlmReady = {
+                    ai.unicto.unibot.local.LlamaModelManager.activeModel(context) != null
+                },
+                isTtsReady = { SherpaTtsEngine.isReady },
+                ensureLocalLlm = {
+                    val mgr = ai.unicto.unibot.local.LlamaModelManager
+                    if (mgr.activeModel(context) != null) true
+                    else {
+                        val downloaded = mgr.models.firstOrNull { mgr.isDownloaded(context, it) }
+                        if (downloaded != null) {
+                            mgr.setLocalMode(context, downloaded)
+                            true
+                        } else false
+                    }
+                },
+            ),
         ),
     )
 
@@ -158,6 +189,11 @@ fun VoiceConversationScreen(
     val levels by SpeechRecognitionManager.audioLevels.collectAsState()
     val onDevice by vm.onDeviceBadge.collectAsState()
     val autoListen by vm.autoListen.collectAsState()
+    // Voice theme item 31: the explicit offline-route checklist.
+    val offlineStatus by vm.offlineStatus.collectAsState()
+    val offlineMode by VoiceConversationPrefs.offlineMode.collectAsState()
+    // Voice theme item 34: STT/TTS language sheet.
+    var showLanguageSheet by remember { mutableStateOf(false) }
 
     // [unibot-voice-history] When the screen goes away after at least one
     // completed voice turn, remember this session as a voice conversation.
@@ -181,6 +217,13 @@ fun VoiceConversationScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 ttsReady = SherpaTtsEngine.isReady
                 vm.refreshBadge()
+                // Voice theme item 27: resume the realtime loop cleanly after
+                // a background pause (only if it was active).
+                vm.onForegrounded()
+            } else if (event == Lifecycle.Event.ON_PAUSE) {
+                // Voice theme item 27: battery discipline — never hold the
+                // mic or play audio in the background.
+                vm.onBackgrounded()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -271,6 +314,14 @@ fun VoiceConversationScreen(
                         if (onDevice) {
                             OnDeviceBadge()
                             Spacer(Modifier.width(8.dp))
+                        }
+                        // Voice theme item 34: quick STT/TTS language switch
+                        // from the voice bar.
+                        IconButton(onClick = { showLanguageSheet = true }) {
+                            Icon(
+                                Icons.Filled.Language,
+                                contentDescription = stringResource(R.string.ub_voice_language_desc),
+                            )
                         }
                         IconButton(onClick = onOpenVoiceSettings) {
                             Icon(
@@ -403,22 +454,95 @@ fun VoiceConversationScreen(
                         Spacer(Modifier.height(12.dp))
                     }
 
-                    // Error card with retry.
+                    // Voice theme item 29: error card gates Retry by kind —
+                    // auth/quota failures offer fixes (update key / switch
+                    // provider), never a futile Retry. Reuses the chat
+                    // error-kind taxonomy via VoiceErrorPolicy.
                     (convState as? VoiceConversationViewModel.State.Error)?.let { err ->
+                        val card = VoiceErrorPolicy.forKind(err.kind, err.message)
                         MuseCard(inset = 0.dp) {
                             Column(
                                 Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Text(
-                                    text = err.message,
+                                    text = card.message,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.error,
                                     textAlign = TextAlign.Center,
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                TextButton(onClick = { vm.startConversation(sessionId) }) {
-                                    Text(stringResource(R.string.ub_voice_retry))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(
+                                        8.dp,
+                                        Alignment.CenterHorizontally,
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    VoiceErrorActionButton(
+                                        action = card.primaryAction,
+                                        primary = true,
+                                        onRetry = { vm.startConversation(sessionId) },
+                                        onOpenProviders = onOpenProviders,
+                                    )
+                                    card.secondaryAction?.let { secondary ->
+                                        VoiceErrorActionButton(
+                                            action = secondary,
+                                            primary = false,
+                                            onRetry = { vm.startConversation(sessionId) },
+                                            onOpenProviders = onOpenProviders,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // Voice theme item 31: the explicit offline-route
+                    // checklist. Shown when offline mode is on but not every
+                    // leg is ready — each missing leg names its recovery.
+                    if (offlineMode && !offlineStatus.allReady && offlineStatus.legs.isNotEmpty()) {
+                        MuseCard(inset = 0.dp) {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.ub_voice_offline_missing),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                offlineStatus.legs.forEach { leg ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(vertical = 2.dp),
+                                    ) {
+                                        Icon(
+                                            if (leg.ready) Icons.Filled.Check
+                                            else Icons.Outlined.Download,
+                                            contentDescription = null,
+                                            tint = if (leg.ready) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                text = leg.label,
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                            if (!leg.ready) {
+                                                Text(
+                                                    text = leg.hint,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -529,6 +653,47 @@ fun VoiceConversationScreen(
                         .padding(bottom = 20.dp),
                 )
             }
+        }
+    }
+
+    // Voice theme item 34: the STT/TTS language switch.
+    if (showLanguageSheet) {
+        VoiceLanguageSheet(onDismiss = { showLanguageSheet = false })
+    }
+}
+
+/**
+ * Voice theme item 29: one button per error-card action. Retry re-runs the
+ * turn; the fix actions all land on provider settings, where the user can
+ * update the key, pick another provider, or change the model.
+ */
+@Composable
+private fun VoiceErrorActionButton(
+    action: VoiceErrorAction,
+    primary: Boolean,
+    onRetry: () -> Unit,
+    onOpenProviders: () -> Unit,
+) {
+    val labelRes = when (action) {
+        VoiceErrorAction.RETRY -> R.string.ub_voice_retry
+        VoiceErrorAction.UPDATE_KEY -> R.string.ub_voice_update_key
+        VoiceErrorAction.SWITCH_PROVIDER -> R.string.ub_voice_switch_provider
+        VoiceErrorAction.CHANGE_MODEL -> R.string.ub_voice_change_model
+    }
+    val onClick: () -> Unit = when (action) {
+        VoiceErrorAction.RETRY -> onRetry
+        VoiceErrorAction.UPDATE_KEY,
+        VoiceErrorAction.SWITCH_PROVIDER,
+        VoiceErrorAction.CHANGE_MODEL,
+        -> onOpenProviders
+    }
+    if (primary) {
+        androidx.compose.material3.FilledTonalButton(onClick = onClick) {
+            Text(stringResource(labelRes))
+        }
+    } else {
+        TextButton(onClick = onClick) {
+            Text(stringResource(labelRes))
         }
     }
 }

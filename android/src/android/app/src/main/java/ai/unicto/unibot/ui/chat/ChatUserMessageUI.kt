@@ -374,6 +374,26 @@ internal fun UserMessageBubble(
                     )
                 }
 
+                // Voice theme item 32: the playable voice-note bubble above
+                // the transcript text. Only when the WAV still exists — the
+                // cache file is ephemeral, the transcript text is not.
+                if (message.voiceNotePath != null) {
+                    val noteFile = java.io.File(message.voiceNotePath!!)
+                    if (noteFile.exists()) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(bubbleBg)
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            ai.unicto.unibot.ui.chat.voice.VoiceNotePlayerRow(
+                                path = message.voiceNotePath!!,
+                                durationMs = message.voiceNoteDurationMs,
+                            )
+                        }
+                    }
+                }
+
                 if (message.content.isNotBlank()) {
                     // Queued: transparent bg + dashed border + dimmed text +
                     // a red withdraw button alongside. Mirrors iOS

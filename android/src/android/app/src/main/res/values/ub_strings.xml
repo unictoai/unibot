@@ -1143,5 +1143,25 @@
     <string name="ub_voice_no_engine">No voice engine is available. Download the offline voice model to talk fully on-device.</string>
     <string name="ub_voice_ready">Ready</string>
     <string name="ub_voice_offline_caption">Voices are downloaded to this phone and spoken fully offline.</string>
+    <!-- Voice theme v1.4.0: realtime voice, error cards, offline mode, voice notes, language switch -->
+    <string name="ub_voice_language_desc">Voice language</string>
+    <string name="ub_voice_language_title">Voice language</string>
+    <string name="ub_voice_language_listen">Listen in</string>
+    <string name="ub_voice_language_speak">Read aloud in</string>
+    <string name="ub_voice_update_key">Update key</string>
+    <string name="ub_voice_switch_provider">Switch provider</string>
+    <string name="ub_voice_change_model">Change model</string>
+    <string name="ub_voice_offline_mode_title">Offline voice mode</string>
+    <string name="ub_voice_offline_mode_desc">Talk fully on-device: offline recognition, local model, on-device voice. Zero network — needs all three downloaded.</string>
+    <string name="ub_voice_offline_ready">Fully offline — no network needed</string>
+    <string name="ub_voice_offline_missing">Still needed for offline mode</string>
+    <string name="ub_voice_note_recording">Recording… release to attach the voice note</string>
+    <string name="ub_voice_note_transcribing">Transcribing…</string>
+    <string name="ub_voice_note_failed">Couldn\'t transcribe the voice note.</string>
+    <string name="ub_voice_note_label">Voice note</string>
+    <string name="ub_voice_note_delete">Delete voice note</string>
+    <string name="ub_voice_note_play">Play voice note</string>
+    <string name="ub_voice_note_pause">Pause voice note</string>
+    <string name="ub_voice_low_ram">Low-memory mode: replies speak once finished</string>
 </resources>
 

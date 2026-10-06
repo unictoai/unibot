@@ -187,6 +187,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -972,6 +973,74 @@ fun ChatScreen(
     // AIChatView.showThinkingLevelSheet.
     var showThinkingLevelSheet by remember { mutableStateOf(false) }
     var showAttachMenu by remember { mutableStateOf(false) }
+    // Voice theme item 32: async voice note — record a voice message in
+    // chat; it transcribes on send. The recorder is process-cheap (created
+    // once); capture runs only while recording.
+    val voiceNoteRecorder = remember {
+        ai.unicto.unibot.speech.VoiceNoteRecorder(context)
+    }
+    var voiceNoteDraft by remember {
+        mutableStateOf<ai.unicto.unibot.speech.VoiceNoteRecorder.VoiceNote?>(null)
+    }
+    var noteElapsedMs by remember { mutableLongStateOf(0L) }
+    val noteRecording by voiceNoteRecorder.isRecording.collectAsState()
+    val voiceNoteSendState by viewModel.voiceNoteSendState.collectAsState()
+    // Elapsed timer for the recording bar.
+    LaunchedEffect(noteRecording) {
+        if (!noteRecording) {
+            noteElapsedMs = 0L
+            return@LaunchedEffect
+        }
+        val start = android.os.SystemClock.elapsedRealtime()
+        while (true) {
+            noteElapsedMs = android.os.SystemClock.elapsedRealtime() - start
+            kotlinx.coroutines.delay(250)
+        }
+    }
+    // The draft clears once the note is accepted for sending; a FAILED
+    // transcription keeps the draft so the user can retry or delete it.
+    var noteSending by remember { mutableStateOf(false) }
+    LaunchedEffect(voiceNoteSendState) {
+        when (voiceNoteSendState) {
+            ai.unicto.unibot.ui.chat.ChatViewModel.VoiceNoteSendState.TRANSCRIBING ->
+                noteSending = true
+            ai.unicto.unibot.ui.chat.ChatViewModel.VoiceNoteSendState.IDLE ->
+                if (noteSending) {
+                    noteSending = false
+                    voiceNoteDraft = null
+                }
+            ai.unicto.unibot.ui.chat.ChatViewModel.VoiceNoteSendState.FAILED ->
+                noteSending = false
+        }
+    }
+    // Release the recorder if the screen goes away mid-take.
+    DisposableEffect(Unit) {
+        onDispose { voiceNoteRecorder.cancel() }
+    }
+    /**
+     * Voice theme item 32: start a voice-note take. Runs the runtime mic
+     * permission flow first; the red recording bar appears while capturing.
+     */
+    fun startVoiceNoteRecording() {
+        // Never record over the dictation panel or an in-flight take.
+        if (ai.unicto.unibot.ui.chat.voice.VoiceModePrefs.isVoiceActive) return
+        if (voiceNoteRecorder.isRecording.value || voiceNoteDraft != null) return
+        coroutineScope.launch {
+            if (!ensureMicPermissionFlow()) return@launch
+            if (!voiceNoteRecorder.start()) {
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(R.string.ub_voice_note_failed),
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+    /** Finish the take: a usable recording becomes the composer draft. */
+    fun finishVoiceNoteRecording() {
+        val note = voiceNoteRecorder.stop()
+        if (note != null) voiceNoteDraft = note
+    }
     // DeepSeek-style: + toggles the Camera/Photo/Document tiles under the pill.
     var showAttachTiles by remember { mutableStateOf(false) }
     var showChatMenu by remember { mutableStateOf(false) }
@@ -1763,6 +1832,18 @@ fun ChatScreen(
     }
 
     val performSendOrEnqueue: (String) -> Unit = handler@{ rawText ->
+        // Voice theme item 32: a pending voice note transcribes on send.
+        // The draft clears only once the send is accepted (a FAILED
+        // transcription keeps it so the user can retry or delete it).
+        voiceNoteDraft?.let { note ->
+            lastSendTimeMs = System.currentTimeMillis()
+            viewModel.setInputText("")
+            releaseComposerAfterSend()
+            viewModel.sendVoiceNote(note)
+            noteSendForInputModePref()
+            userScrolledAway = false
+            return@handler
+        }
         if (viewModel.tryExecuteInputAsSlashCommand(rawText)) {
             viewModel.setInputText("")
             releaseComposerAfterSend()
@@ -6182,6 +6263,29 @@ fun ChatScreen(
                             }
                         }
                     }
+                    // Voice theme item 32: async voice note — the red recording
+                    // bar while capturing, and the draft chip (playable
+                    // preview + delete) once a take is recorded. The note
+                    // transcribes on send.
+                    if (noteRecording) {
+                        ai.unicto.unibot.ui.chat.voice.VoiceNoteRecorderBar(
+                            recorder = voiceNoteRecorder,
+                            elapsedMs = noteElapsedMs,
+                            onStop = { finishVoiceNoteRecording() },
+                            onCancel = { voiceNoteRecorder.cancel() },
+                        )
+                    }
+                    voiceNoteDraft?.let { draft ->
+                        ai.unicto.unibot.ui.chat.voice.VoiceNoteDraftChip(
+                            note = draft,
+                            transcribing = voiceNoteSendState ==
+                                ai.unicto.unibot.ui.chat.ChatViewModel.VoiceNoteSendState.TRANSCRIBING,
+                            onDelete = {
+                                draft.file.delete()
+                                voiceNoteDraft = null
+                            },
+                        )
+                    }
                     if (attachments.isNotEmpty()) {
                         LazyRow(
                             modifier = Modifier
@@ -6409,6 +6513,17 @@ fun ChatScreen(
                             // when focus drops so any IME composing
                             // buffer is committed/dropped before the
                             // empty inputText becomes visible.
+                            // Voice theme item 32: a pending voice note
+                            // transcribes on send, like the send button.
+                            voiceNoteDraft?.let { note ->
+                                lastSendTimeMs = System.currentTimeMillis()
+                                viewModel.setInputText("")
+                                releaseComposerAfterSend()
+                                viewModel.sendVoiceNote(note)
+                                noteSendForInputModePref()
+                                userScrolledAway = false
+                                return@handler true
+                            }
                             val toSend = inputText
                             lastSendTimeMs = System.currentTimeMillis()
                             viewModel.setInputText("")
@@ -6973,6 +7088,17 @@ fun ChatScreen(
                                             filePickerLauncher.launch(arrayOf("*/*"))
                                         },
                                     )
+                                    // Voice theme item 32: async voice note —
+                                    // record a voice message; it transcribes
+                                    // on send. Runtime mic permission flow.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ub_voice_note_label)) },
+                                        leadingIcon = { Icon(Icons.Default.Mic, contentDescription = null) },
+                                        onClick = {
+                                            showAttachMenu = false
+                                            startVoiceNoteRecording()
+                                        },
+                                    )
                                 }
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -7444,7 +7570,7 @@ fun ChatScreen(
                         // unibot: in the pill the mic gives way to the send
                         // arrow once there is something to send (or a stop
                         // square while the agent answers), as on Muse.
-                        val ubPillBusy = ubPill && (inputText.isNotBlank() || attachments.isNotEmpty() || isStreaming)
+                        val ubPillBusy = ubPill && (inputText.isNotBlank() || attachments.isNotEmpty() || voiceNoteDraft != null || isStreaming)
                         if (ai.unicto.unibot.speech.SpeechRecognitionManager.hasMicrophoneHardware && !ubPillBusy) {
                             MicButton(
                                 isRecording = !ai.unicto.unibot.ui.chat.voice.VoiceModePrefs.isVoiceActive &&
@@ -7483,7 +7609,7 @@ fun ChatScreen(
                         // satisfies the composer's send guard. Without this an
                         // image-only "look at this" send is impossible.
                         val hasText = inputText.isNotBlank()
-                        val hasContent = hasText || attachments.isNotEmpty()
+                        val hasContent = hasText || attachments.isNotEmpty() || voiceNoteDraft != null
                         val showStop = isStreaming && !hasContent
                         if (showStop) {
                             Box(
@@ -7574,6 +7700,16 @@ fun ChatScreen(
                             onClick = {
                                 showAttachTiles = false
                                 filePickerLauncher.launch(arrayOf("*/*"))
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Voice theme item 32: async voice note tile.
+                        AttachTile(
+                            label = stringResource(R.string.ub_voice_note_label),
+                            icon = Icons.Default.Mic,
+                            onClick = {
+                                showAttachTiles = false
+                                startVoiceNoteRecording()
                             },
                             modifier = Modifier.weight(1f),
                         )

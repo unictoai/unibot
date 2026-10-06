@@ -102,6 +102,29 @@ const val ERROR_KIND_MODEL_NOT_FOUND = "model_not_found"
 const val ERROR_KIND_OUTPUT_LIMIT = "output_limit_exceeded"
 
 /**
+ * Voice theme item 29: machine-readable kind for [ChatMessage.errorKind] —
+ * marks an auth failure (HTTP 401 / invalid API key) so the VOICE error card
+ * can offer "Update key" instead of a futile Retry. Chat's own banner keeps
+ * its current behavior (Retry still shown there — the chat theme owns that
+ * call); the kind is in-memory only, like the other kinds.
+ */
+const val ERROR_KIND_INVALID_KEY = "invalid_api_key"
+
+/**
+ * Voice theme item 29: machine-readable kind for [ChatMessage.errorKind] —
+ * marks HTTP 429 rate limiting so the VOICE error card offers "Switch
+ * provider" first. In-memory only.
+ */
+const val ERROR_KIND_RATE_LIMITED = "rate_limited"
+
+/**
+ * Voice theme item 29: machine-readable kind for [ChatMessage.errorKind] —
+ * marks pure connectivity failures so the VOICE error card keeps an honest
+ * Retry (this one CAN succeed). In-memory only.
+ */
+const val ERROR_KIND_NETWORK = "network"
+
+/**
  * [T-android-v127-provider-name] Resolve the provider name for the friendly
  * error cards. The provider INSTANCE's user-visible label ("Groq") wins; the
  * provider type name ("OpenAI") is only a fallback for when the instance
@@ -207,6 +230,13 @@ data class ChatMessage(
     // [ERROR_KIND_REQUEST_TOO_LARGE]. In-memory only — not persisted to the DB;
     // after a reload the banner falls back to the (friendly) text + Retry.
     val errorKind: String? = null,
+    // Voice theme item 32: async voice note attached to a user message.
+    // Absolute path of the recorded WAV (app cache) plus its duration; the
+    // bubble renders a playable row, and the transcript is the message text.
+    // Null for ordinary text messages. In-memory only (the cache file is
+    // ephemeral) — after a reload the bubble shows the transcript text.
+    val voiceNotePath: String? = null,
+    val voiceNoteDurationMs: Long = 0L,
     // Queued user prompt awaiting injection into the running agent loop.
     // Mirrors iOS ChatMessage.isQueued / queuedPromptId.
     val isQueued: Boolean = false,

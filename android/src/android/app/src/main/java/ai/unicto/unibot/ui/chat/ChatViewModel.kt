@@ -1086,6 +1086,26 @@ class ChatViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // Voice theme item 29: machine-readable kind of the latest send failure
+    // (chat ERROR_KIND_* taxonomy), for surfaces that gate actions by kind —
+    // the voice conversation's error card. Written in setInlineError alongside
+    // the text, cleared wherever _error is cleared at send start. In-memory
+    // only. Null when the last failure carried no kind.
+    private val _lastErrorKind = MutableStateFlow<String?>(null)
+    val lastErrorKind: StateFlow<String?> = _lastErrorKind.asStateFlow()
+
+    // Voice theme item 32: async voice note. Set by sendVoiceNote just before
+    // delegating to sendMessage so the user-message construction below can
+    // attach the recorded WAV to the bubble; cleared right after. Null for
+    // ordinary text sends.
+    private var pendingVoiceNote: ai.unicto.unibot.speech.VoiceNoteRecorder.VoiceNote? = null
+
+    /** Lifecycle of an in-flight async voice note send (item 32). */
+    enum class VoiceNoteSendState { IDLE, TRANSCRIBING, FAILED }
+
+    private val _voiceNoteSendState = MutableStateFlow(VoiceNoteSendState.IDLE)
+    val voiceNoteSendState: StateFlow<VoiceNoteSendState> = _voiceNoteSendState.asStateFlow()
+
     private val _modelName = MutableStateFlow("")
     val modelName: StateFlow<String> = _modelName.asStateFlow()
 
@@ -6793,6 +6813,45 @@ class ChatViewModel(
         sendMessage(text, skipContextCheck = false)
     }
 
+    /**
+     * Voice theme item 32: async voice note — record a voice message in chat;
+     * it transcribes on send.
+     *
+     * Transcribes [note] once ([ai.unicto.unibot.speech.VoiceNoteTranscriber]:
+     * on-device whisper first, then the user's voice-input provider), then
+     * sends the transcript as an ordinary turn with the playable note
+     * attached to the user bubble ([pendingVoiceNote] → [ChatMessage.voiceNotePath]).
+     * The composer shows the transcribing state via [voiceNoteSendState]; on
+     * transcription failure the note is kept (not sent) and the error is
+     * surfaced so the user can retry or delete it.
+     */
+    fun sendVoiceNote(note: ai.unicto.unibot.speech.VoiceNoteRecorder.VoiceNote) {
+        viewModelScope.launch {
+            _voiceNoteSendState.value = VoiceNoteSendState.TRANSCRIBING
+            val transcript = try {
+                ai.unicto.unibot.speech.VoiceNoteTranscriber.transcribe(
+                    context, note.file, providerRepository,
+                )
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _voiceNoteSendState.value = VoiceNoteSendState.FAILED
+                _error.value = e.message ?: "Couldn't transcribe the voice note."
+                return@launch
+            }
+            _voiceNoteSendState.value = VoiceNoteSendState.IDLE
+            // Stays set until the user-message construction below consumes
+            // it: the compact-then-send path re-invokes sendMessage
+            // asynchronously, so clearing here would drop the note.
+            pendingVoiceNote = note
+            try {
+                sendMessage(transcript.ifBlank { "Voice note" })
+            } catch (e: Exception) {
+                pendingVoiceNote = null
+                throw e
+            }
+        }
+    }
+
     // ─── unibot: changing the face from the chat ─────────────────────────
     // See ai.unicto.unibot.avatar.AvatarFlow. The request and the pick are
     // persisted as ordinary user/assistant messages (so the history stays
@@ -7272,6 +7331,9 @@ class ChatViewModel(
         var provider: LLMProvider = initialProvider
 
         _error.value = null
+        // Voice theme item 29: the kind travels with the text — a stale kind
+        // from a previous turn must never gate the next turn's error card.
+        _lastErrorKind.value = null
 
         val currentAttachments = _attachments.value
         clearAttachments()
@@ -7346,6 +7408,10 @@ class ChatViewModel(
             )
             val persistedUser = chatRepository.appendMessage(activeSessionId, "user", userPartsJson)
 
+            // Voice theme item 32: consume the pending voice note (if any) —
+            // the compact-then-send path re-invokes this function, so the
+            // note is cleared exactly when it is attached, never earlier.
+            val noteForThisTurn = pendingVoiceNote.also { pendingVoiceNote = null }
             val userMsg = ChatMessage(
                 id = persistedUser.id,
                 role = "user",
@@ -7367,6 +7433,10 @@ class ChatViewModel(
                 // ChatMessage.attachmentNames depends on.
                 attachmentNames = prepared.attachmentNames + (pasted?.uiNames ?: emptyList()),
                 attachmentUris = prepared.nonImageUris + (pasted?.uiUris ?: emptyList()),
+                // Voice theme item 32: the playable note for a voice-note
+                // send; null for ordinary text sends.
+                voiceNotePath = noteForThisTurn?.file?.absolutePath,
+                voiceNoteDurationMs = noteForThisTurn?.durationMs ?: 0L,
             )
             _messages.value = _messages.value + userMsg
             val imageParts = prepared.imageParts
@@ -7794,6 +7864,10 @@ class ChatViewModel(
         // realistic source. Coalesce to a generic non-empty message.
         // unibot: a turn refused for a spent allowance gets the plain sentence and the ways-on card.
         val safeError = ubAllowanceErrorText(errorText.ifBlank { context.getString(R.string.error_empty_response_generic) })
+        // Voice theme item 29: keep the machine-readable kind beside the text
+        // so kind-gated surfaces (voice error card) can read it without
+        // parsing the message.
+        _lastErrorKind.value = errorKind
         // T-streaming-side-channel: before mutating the canonical message,
         // drain any in-flight streaming delta so the error frame carries
         // the actual accumulated content (otherwise the user sees content
@@ -7871,6 +7945,19 @@ class ChatViewModel(
                 friendlyOutputLimitText(modelName, providerName, llmError.limit),
                 ERROR_KIND_OUTPUT_LIMIT,
             )
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.InvalidApiKey) {
+            // Voice theme item 29: tag the kind (text unchanged) so the voice
+            // error card can offer "Update key" instead of a futile Retry.
+            // Chat's own banner keeps its current behavior.
+            setInlineError(error.message ?: "Invalid API key", ERROR_KIND_INVALID_KEY)
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.RateLimited) {
+            // Voice theme item 29: tag the kind so the voice error card can
+            // offer "Switch provider" first. Text unchanged.
+            setInlineError(error.message ?: "Rate limited", ERROR_KIND_RATE_LIMITED)
+        } else if (llmError is ai.unicto.unibot.data.model.LLMError.NetworkError) {
+            // Voice theme item 29: tag the kind so the voice error card keeps
+            // an honest Retry for pure connectivity failures. Text unchanged.
+            setInlineError(error.message ?: "Network error", ERROR_KIND_NETWORK)
         } else {
             setInlineError(error.message ?: "Unknown error")
         }
