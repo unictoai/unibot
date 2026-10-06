@@ -24,8 +24,11 @@ import coil.memory.MemoryCache
  * Context. `UnibotApp.newImageLoader` applies it via [applyUnibotTuning].
  */
 object ImageCacheTuning {
-    /** Fixed memory-cache budget: 24 MB. */
-    const val MEMORY_CACHE_BYTES: Long = 24L * 1024 * 1024
+    /**
+     * Fixed memory-cache budget: 24 MB. Int because Coil 2's
+     * `MemoryCache.Builder.maxSizeBytes` takes an Int.
+     */
+    const val MEMORY_CACHE_BYTES: Int = 24 * 1024 * 1024
 
     /** Fixed disk-cache budget: 96 MB. */
     const val DISK_CACHE_BYTES: Long = 96L * 1024 * 1024
@@ -33,7 +36,7 @@ object ImageCacheTuning {
     /** Disk-cache directory name under [Context.getCacheDir]. */
     const val DISK_CACHE_DIR_NAME: String = "unibot_image_cache"
 
-    fun memoryCacheBytes(): Long = MEMORY_CACHE_BYTES
+    fun memoryCacheBytes(): Int = MEMORY_CACHE_BYTES
 
     fun diskCacheBytes(): Long = DISK_CACHE_BYTES
 }

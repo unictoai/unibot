@@ -16,7 +16,7 @@ class ImageCacheTuningTest {
 
     @Test
     fun `memory budget is fixed at 24 MB`() {
-        assertEquals(24L * 1024 * 1024, ImageCacheTuning.memoryCacheBytes())
+        assertEquals(24 * 1024 * 1024, ImageCacheTuning.memoryCacheBytes())
         assertEquals(ImageCacheTuning.MEMORY_CACHE_BYTES, ImageCacheTuning.memoryCacheBytes())
     }
 
@@ -27,7 +27,7 @@ class ImageCacheTuningTest {
         val heap256Mb = 256L * 1024 * 1024
         assertTrue(
             "memory cache must be <= 1/8 of a 256MB heap",
-            ImageCacheTuning.memoryCacheBytes() <= heap256Mb / 8,
+            ImageCacheTuning.memoryCacheBytes().toLong() <= heap256Mb / 8,
         )
     }
 
