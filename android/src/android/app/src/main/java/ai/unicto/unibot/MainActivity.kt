@@ -1025,6 +1025,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            // v1.4.0 item 11 — mission-complete notification tap
+            // (`unibot://swarm`) on the warm path. The cold-start path is
+            // handled in AppNavigation's initial-deep-link dispatch.
+            is DeepLinkAction.OpenSwarm -> {
+                nav.navigate(Routes.SWARM)
+            }
             is DeepLinkAction.OpenAlarmList -> {
                 // T297: unibot://views/alarm now opens the system Clock app
                 // directly via AlarmClock.ACTION_SHOW_ALARMS — the in-app

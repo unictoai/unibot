@@ -1052,24 +1052,6 @@ fun AppNavigation(
             )
         }
 
-        // unibot P6: project workspaces — list + detail.
-        composable(Routes.PROJECTS) {
-            ai.unicto.unibot.ui.projects.ProjectsScreen(
-                onBack = { navController.safePopBackStack() },
-                onOpenProject = { projectId ->
-                    navController.safeNavigate(Routes.projectDetail(projectId))
-                },
-            )
-        }
-        composable(Routes.PROJECT_DETAIL) { backStackEntry ->
-            val projectId = backStackEntry.arguments?.getString("projectId").orEmpty()
-            ai.unicto.unibot.ui.projects.ProjectDetailScreen(
-                projectId = projectId,
-                navController = navController,
-                onBack = { navController.safePopBackStack() },
-            )
-        }
-
         // [P2-compare] Side-by-side two-model comparison.
         composable(Routes.COMPARE) {
             ai.unicto.unibot.ui.chat.CompareScreen(
