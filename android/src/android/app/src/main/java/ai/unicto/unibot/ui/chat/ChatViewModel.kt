@@ -2432,6 +2432,20 @@ class ChatViewModel(
     }
 
     /**
+     * v1.4.0 item 25 — compaction failures get PLAIN text in the chat row
+     * plus a "Retry compaction" action (in the row's detail sheet). The
+     * technical detail rides in the payload behind [COMPACT_FAILED_PAYLOAD_PREFIX],
+     * never in the main text.
+     */
+    private fun appendCompactFailure(plainText: String, detail: String) {
+        appendSystemInfo(
+            text = plainText,
+            iconKind = "compact",
+            payload = COMPACT_FAILED_PAYLOAD_PREFIX + detail,
+        )
+    }
+
+    /**
      * Fold the current session history into a single summary stored in
      * `compact_markers`. Mirrors iOS `compactAll()` + Phase-B semantics:
      *
@@ -2680,7 +2694,10 @@ class ChatViewModel(
                 }.trim()
                 if (summary.isEmpty()) {
                     withContext(Dispatchers.Main) {
-                        appendSystemInfo("Compaction produced no output — try again later.", "compact")
+                        appendCompactFailure(
+                            "Compaction produced no summary — your chat is unchanged.",
+                            "The model returned an empty summary.",
+                        )
                     }
                     return@launch
                 }
@@ -2720,7 +2737,11 @@ class ChatViewModel(
                 if (verifiedAnchorIdx < 0) {
                     Log.w(TAG, "[Compact] No agentHistory entry has a DB-persisted dbMessageId; aborting")
                     withContext(Dispatchers.Main) {
-                        appendSystemInfo("Compact failed: could not anchor to a persisted message.", "compact")
+                        appendCompactFailure(
+                            "Couldn't compact — the messages weren't saved yet.",
+                            "No persisted message to anchor the summary to. " +
+                                "Try again after the next reply.",
+                        )
                     }
                     return@launch
                 }
@@ -2735,7 +2756,10 @@ class ChatViewModel(
                     ?: run {
                         Log.w(TAG, "[Compact] verified anchor at idx=$verifiedAnchorIdx lost dbMessageId; aborting")
                         withContext(Dispatchers.Main) {
-                            appendSystemInfo("Compact failed: anchor message id unavailable.", "compact")
+                            appendCompactFailure(
+                                "Couldn't compact — the messages weren't saved yet.",
+                                "Anchor message id unavailable. Try again after the next reply.",
+                            )
                         }
                         return@launch
                     }
@@ -2830,11 +2854,10 @@ class ChatViewModel(
                 val calls = compactCallsIssued.get()
                 Log.w(TAG, "[Compact] timed out after ${elapsed}s ($calls model call(s) issued)")
                 withContext(Dispatchers.Main) {
-                    appendSystemInfo(
-                        text = "Compaction timed out after ${elapsed}s " +
-                            "($calls model call(s) attempted). The model may be slow or " +
-                            "rate-limited — you can try compacting again.",
-                        iconKind = "compact",
+                    appendCompactFailure(
+                        "Compaction timed out — your chat is unchanged.",
+                        "Timed out after ${elapsed}s ($calls model call(s) attempted). " +
+                            "The model may be slow or rate-limited.",
                     )
                 }
             } catch (e: CancellationException) {
@@ -2852,9 +2875,9 @@ class ChatViewModel(
             } catch (e: Exception) {
                 Log.w(TAG, "Compact failed", e)
                 withContext(Dispatchers.Main) {
-                    appendSystemInfo(
-                        text = "Compaction failed: ${e.message ?: e.javaClass.simpleName}",
-                        iconKind = "compact",
+                    appendCompactFailure(
+                        "Compaction failed — your chat is unchanged.",
+                        e.readableMessage(),
                     )
                 }
             } finally {

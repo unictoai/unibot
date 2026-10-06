@@ -520,8 +520,20 @@ private fun BorderedMarkdownTable(
 // Same treatment iOS uses for compact-summary dividers, slash-command
 // notices, and model-switch fallback notices — no card, no attribution.
 
+/**
+ * v1.4.0 item 25 — payload marker for failed compactions. The human-readable
+ * technical detail follows the marker; the chat row itself only shows plain
+ * text, and the detail sheet offers "Retry compaction".
+ */
+const val COMPACT_FAILED_PAYLOAD_PREFIX = "compact_failed\n"
+
 @Composable
-internal fun FallbackInfoBlock(block: AssistantBlock, onRevert: (() -> Unit)? = null) {
+internal fun FallbackInfoBlock(
+    block: AssistantBlock,
+    onRevert: (() -> Unit)? = null,
+    // v1.4.0 item 25 — offered in the detail sheet for failed compactions.
+    onRetryCompact: (() -> Unit)? = null,
+) {
     val divider = ChatColors.separator
     val fg = ChatColors.secondaryText
     val icon = when (block.toolName) {
@@ -546,6 +558,15 @@ internal fun FallbackInfoBlock(block: AssistantBlock, onRevert: (() -> Unit)? = 
     // compact summary). Tapping opens a bottom sheet showing the full text.
     // Mirrors iOS compactDividerRow's info.circle button.
     val hasDetail = block.toolArgs.isNotEmpty()
+    // v1.4.0 item 25 — a failed compaction carries its technical detail
+    // behind the marker; the sheet shows the detail with a Retry action.
+    val isCompactFailure = block.toolName == "compact" &&
+        block.toolArgs.startsWith(COMPACT_FAILED_PAYLOAD_PREFIX)
+    val detailText = if (isCompactFailure) {
+        block.toolArgs.removePrefix(COMPACT_FAILED_PAYLOAD_PREFIX)
+    } else {
+        block.toolArgs
+    }
     var showDetail by remember(block.id) { mutableStateOf(false) }
 
     androidx.compose.ui.layout.SubcomposeLayout(
@@ -633,9 +654,12 @@ internal fun FallbackInfoBlock(block: AssistantBlock, onRevert: (() -> Unit)? = 
 
     if (showDetail && hasDetail) {
         CompactSummarySheet(
-            summary = block.toolArgs,
+            summary = detailText,
             onDismiss = { showDetail = false },
             onRevert = onRevert,
+            // v1.4.0 item 25 — failed compactions offer Retry in the sheet.
+            onRetryCompact = if (isCompactFailure) onRetryCompact else null,
+            isFailure = isCompactFailure,
         )
     }
 }
@@ -650,6 +674,10 @@ private fun CompactSummarySheet(
     summary: String,
     onDismiss: () -> Unit,
     onRevert: (() -> Unit)? = null,
+    // v1.4.0 item 25 — retry action for failed compactions (no confirm: a
+    // retry is harmless and the chat is unchanged by the failure).
+    onRetryCompact: (() -> Unit)? = null,
+    isFailure: Boolean = false,
 ) {
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
@@ -657,7 +685,7 @@ private fun CompactSummarySheet(
     val scope = rememberCoroutineScope()
 
     StandardChatSheet(
-        title = "Compact Summary",
+        title = if (isFailure) "Compaction failed" else "Compact Summary",
         onDismiss = onDismiss,
         leadingAction = {
             IconButton(onClick = {
@@ -706,6 +734,33 @@ private fun CompactSummarySheet(
                     Text(
                         text = "Revert Compact",
                         color = MaterialTheme.colorScheme.error,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+            // v1.4.0 item 25 — failed compactions offer a retry here. No
+            // confirm dialog: retrying is harmless and the chat is unchanged
+            // by the failure.
+            if (onRetryCompact != null) {
+                HorizontalDivider(color = ChatColors.separator)
+                UnibotTextButton(
+                    onClick = {
+                        onDismiss()
+                        onRetryCompact()
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Retry compaction",
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                     )

@@ -5072,6 +5072,13 @@ fun ChatScreen(
                                 onRevert = if (item.block.toolName == "compact") {
                                     { viewModel.revertCompact() }
                                 } else null,
+                                // v1.4.0 item 25 — failed compactions offer
+                                // "Retry compaction" in the detail sheet.
+                                onRetryCompact = if (item.block.toolName == "compact" &&
+                                    item.block.toolArgs.startsWith(COMPACT_FAILED_PAYLOAD_PREFIX)
+                                ) {
+                                    { viewModel.runCompactNow() }
+                                } else null,
                             )
                             // unibot: the first-conversation name chooser.
                             // A chip names the agent (and sends the name as the
