@@ -1,5 +1,12 @@
 package ai.unicto.unibot.ui.swarm
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -46,7 +53,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,6 +60,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,20 +70,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import ai.unicto.unibot.swarm.SwarmAgentState
 import ai.unicto.unibot.swarm.SwarmAgentStatus
+import ai.unicto.unibot.swarm.SwarmAttachment
+import ai.unicto.unibot.swarm.SwarmCrewPreset
+import ai.unicto.unibot.swarm.SwarmLaunchOptions
 import ai.unicto.unibot.swarm.SwarmLifecycle
+import ai.unicto.unibot.swarm.SwarmPrefs
+import ai.unicto.unibot.swarm.SwarmRepository
 import ai.unicto.unibot.swarm.SwarmUiState
 import ai.unicto.unibot.swarm.SwarmViewModel
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 
 /**
- * [v1.3.0-swarm] The dedicated swarm space — separate from normal chat.
+ * v1.4.0-swarm mega-drop: the dedicated swarm space — separate from normal chat.
  *
  * Information architecture (from the Kimi swarm research): the
  * orchestrator's task list FIRST, then agents spawning / per-agent
@@ -93,8 +107,33 @@ fun SwarmScreen(
     viewModel: SwarmViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * v1.4.0 item 12 — one-shot mission prefill ("Deep-dive this" from
+     * chat). Consumed once into the composer; the holder is cleared on
+     * read so a later visit starts clean.
+     */
+    initialMission: String? = null,
+    repository: SwarmRepository? = null,
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val repo = repository ?: viewModel.swarmRepositoryOrNull
+    // v1.4.0 item 11 — runtime notification permission, requested when the
+    // user enables completion notifications in Run settings. Checked fresh
+    // on every composition so granting it in system settings is picked up
+    // without an app restart.
+    val notificationsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { /* The notifier no-ops silently when denied — nothing to do here. */ }
+    val notificationsGranted =
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            true
+        } else {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        }
 
     Scaffold(
         modifier = modifier,
@@ -124,6 +163,15 @@ fun SwarmScreen(
                 SwarmResultView(
                     state = state,
                     onNewMission = viewModel::dismissResult,
+                    onShareTranscript = { agent ->
+                        shareTranscript(context, state, agent)
+                    },
+                    onShareMarkdown = {
+                        shareReport(context, state, asPdf = false)
+                    },
+                    onSharePdf = {
+                        shareReport(context, state, asPdf = true)
+                    },
                     modifier = contentModifier,
                 )
             // Active run: plan -> agent ID cards -> controls. CANCELLED lands
@@ -139,13 +187,31 @@ fun SwarmScreen(
                     onResume = viewModel::resume,
                     onCancel = viewModel::cancel,
                     onDismiss = viewModel::dismissResult,
+                    onApprovePlan = viewModel::approvePlan,
+                    onRejectPlan = viewModel::rejectPlan,
+                    onSteer = viewModel::steer,
+                    onShareTranscript = { agent ->
+                        shareTranscript(context, state, agent)
+                    },
                     modifier = contentModifier,
                 )
             // Idle: greeting + composer + crew presets (+ resume/error banners).
             else ->
                 SwarmIdleView(
                     state = state,
-                    onLaunch = viewModel::launch,
+                    initialMission = initialMission,
+                    repository = repo,
+                    notificationsGranted = notificationsGranted,
+                    onRequestNotificationsPermission = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationsPermissionLauncher.launch(
+                                Manifest.permission.POST_NOTIFICATIONS,
+                            )
+                        }
+                    },
+                    onLaunch = { mission, preset, options ->
+                        viewModel.launch(mission, preset, options)
+                    },
                     onResume = viewModel::resume,
                     // Discard needs the PAUSED-legal path: dismissResult()
                     // rejects interrupted (PAUSED) runs, so it would no-op
@@ -158,19 +224,88 @@ fun SwarmScreen(
     }
 }
 
+/** v1.4.0 item 5 — export the mission report and hand it to the share sheet. */
+private fun shareReport(context: Context, state: SwarmUiState, asPdf: Boolean) {
+    runCatching {
+        val uri = if (asPdf) {
+            exportMissionPdf(context, state)
+        } else {
+            exportMissionMarkdown(context, state)
+        }
+        shareFileUri(
+            context,
+            uri,
+            if (asPdf) "application/pdf" else "text/markdown",
+            if (asPdf) "Share mission report (PDF)" else "Share mission report (Markdown)",
+        )
+    }.onFailure {
+        Toast.makeText(context, "Export failed: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+}
+
+/** v1.4.0 item 8 — export one agent's full transcript and share it. */
+private fun shareTranscript(
+    context: Context,
+    state: SwarmUiState,
+    agent: SwarmAgentState,
+) {
+    runCatching {
+        val uri = exportAgentTranscript(context, state, agent)
+        shareFileUri(
+            context,
+            uri,
+            "text/markdown",
+            "Share ${agentCodename(agent.id)} transcript",
+        )
+    }.onFailure {
+        Toast.makeText(context, "Export failed: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+}
+
 // ─── Idle: greeting + composer + presets ─────────────────────────────────────
 
 @Composable
 private fun SwarmIdleView(
     state: SwarmUiState,
-    onLaunch: (String, ai.unicto.unibot.swarm.SwarmCrewPreset) -> Unit,
+    onLaunch: (String, SwarmCrewPreset, SwarmLaunchOptions) -> Unit,
     onResume: () -> Unit,
     onDiscard: () -> Unit,
     modifier: Modifier = Modifier,
+    initialMission: String? = null,
+    repository: SwarmRepository? = null,
+    notificationsGranted: Boolean = false,
+    onRequestNotificationsPermission: () -> Unit = {},
 ) {
-    var mission by remember { mutableStateOf("") }
+    // v1.4.0 item 12 — one-shot prefill from chat's "Deep-dive this".
+    var mission by remember { mutableStateOf(initialMission ?: "") }
     var presetId by remember { mutableStateOf("research") }
-    val preset = swarmPresetById(presetId) ?: SWARM_PRESETS.first()
+    var attachments by remember { mutableStateOf(listOf<SwarmAttachment>()) }
+    // v1.4.0 — run settings live in the repository; composer defaults
+    // follow them.
+    var prefs by remember(repository) {
+        mutableStateOf(repository?.loadPrefs() ?: SwarmPrefs())
+    }
+    var customCrews by remember(repository) {
+        mutableStateOf(repository?.listCustomCrews().orEmpty())
+    }
+    var history by remember(repository) {
+        mutableStateOf(repository?.listHistory().orEmpty())
+    }
+    // Refresh history every time we land back on idle (a finished mission
+    // was just recorded).
+    LaunchedEffect(state.lifecycle) {
+        if (state.lifecycle == SwarmLifecycle.IDLE) {
+            history = repository?.listHistory().orEmpty()
+            customCrews = repository?.listCustomCrews().orEmpty()
+        }
+    }
+
+    val allPresets = remember(customCrews) { SWARM_PRESETS + customCrews }
+    val preset = allPresets.firstOrNull { it.id == presetId } ?: SWARM_PRESETS.first()
+    // The stored presetId may point at a deleted custom crew — fall back
+    // to the first built-in rather than launching a crew that no longer
+    // exists.
+    val effectivePresetId = preset.id
 
     LazyColumn(
         modifier = modifier,
@@ -202,28 +337,106 @@ private fun SwarmIdleView(
                 )
             }
         }
+        // v1.4.0 item 9 — one-tap mission templates.
+        item {
+            SwarmTemplateGallery(
+                onUseTemplate = { template ->
+                    mission = template.mission
+                    presetId = template.presetId
+                },
+            )
+        }
         item {
             MissionComposer(
                 mission = mission,
                 onMissionChange = { mission = it },
-                onLaunch = { onLaunch(mission.trim(), preset) },
+                onLaunch = {
+                    onLaunch(
+                        mission.trim(),
+                        preset,
+                        SwarmLaunchOptions(
+                            requirePlanApproval = prefs.requirePlanApproval,
+                            maxWorkers = prefs.maxWorkers,
+                            attachments = attachments,
+                        ),
+                    )
+                },
                 launchEnabled = mission.isNotBlank(),
             )
         }
+        // v1.4.0 item 10 — attach documents as mission context.
         item {
-            Text(
-                text = "Crew",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AttachmentPickerRow(
+                attachments = attachments,
+                onAttachmentsChange = { attachments = it },
             )
         }
-        itemsIndexed(SWARM_PRESETS, key = { _, p -> p.id }) { index, itemPreset ->
-            PresetCard(
-                preset = itemPreset,
-                selected = itemPreset.id == presetId,
-                onSelect = { presetId = itemPreset.id },
-                modifier = Modifier.staggeredEntrance(index),
+        // v1.4.0 item 7 — crew picker with custom crews.
+        item {
+            SwarmCrewSection(
+                builtins = SWARM_PRESETS,
+                customCrews = customCrews,
+                selectedId = effectivePresetId,
+                onSelect = { presetId = it.id },
+                onSaveCustom = { name, roles ->
+                    val id = "custom-" + name.lowercase(java.util.Locale.US)
+                        .replace(Regex("[^a-z0-9]+"), "-").trim('-')
+                        .ifBlank { "crew" } + "-" + System.currentTimeMillis()
+                    val saved = SwarmCrewPreset(
+                        id = id,
+                        name = name,
+                        description = "Custom crew",
+                        roles = roles,
+                    )
+                    repository?.saveCustomCrew(saved)
+                    customCrews = repository?.listCustomCrews().orEmpty()
+                    presetId = id
+                },
+                onDeleteCustom = { doomed ->
+                    repository?.deleteCustomCrew(doomed.id)
+                    customCrews = repository?.listCustomCrews().orEmpty()
+                    if (presetId == doomed.id) presetId = SWARM_PRESETS.first().id
+                },
             )
+        }
+        // v1.4.0 items 2, 3, 11 — run settings.
+        if (repository != null) {
+            item {
+                SwarmRunSettingsSection(
+                    prefs = prefs,
+                    onPrefsChange = { updated ->
+                        prefs = updated
+                        repository.savePrefs(updated)
+                    },
+                    notificationsGranted = notificationsGranted,
+                    onRequestNotificationsPermission = onRequestNotificationsPermission,
+                )
+            }
+            // v1.4.0 item 4 — mission history with one-tap rerun.
+            item {
+                SwarmHistorySection(
+                    records = history,
+                    onRerun = { record ->
+                        onLaunch(
+                            record.mission,
+                            SwarmCrewPreset(
+                                id = record.crewId,
+                                name = record.crewName,
+                                description = "",
+                                roles = record.crewRoles,
+                            ),
+                            SwarmLaunchOptions(
+                                requirePlanApproval = prefs.requirePlanApproval,
+                                maxWorkers = prefs.maxWorkers,
+                            ),
+                        )
+                    },
+                    onClear = {
+                        repository.clearHistory()
+                        history = emptyList()
+                    },
+                )
+            }
         }
     }
 }
@@ -355,63 +568,6 @@ private fun MissionComposer(
     }
 }
 
-@Composable
-private fun PresetCard(
-    preset: ai.unicto.unibot.swarm.SwarmCrewPreset,
-    selected: Boolean,
-    onSelect: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val border = if (selected) {
-        BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-    } else {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    }
-    val container = if (selected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
-    }
-    Surface(
-        onClick = onSelect,
-        shape = MaterialTheme.shapes.large,
-        border = border,
-        color = container,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = preset.name,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    text = preset.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "${preset.roles.size} agents · " +
-                        preset.roles.distinct().joinToString(", ") { roleDisplayName(it) },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            RadioButton(
-                selected = selected,
-                onClick = null,
-            )
-        }
-    }
-}
-
 // ─── Active run: plan -> agent ID cards -> controls ──────────────────────────
 
 @Composable
@@ -421,6 +577,10 @@ private fun SwarmActiveView(
     onResume: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
+    onApprovePlan: (List<String>) -> Unit,
+    onRejectPlan: () -> Unit,
+    onSteer: (String) -> Unit,
+    onShareTranscript: (SwarmAgentState) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -448,11 +608,38 @@ private fun SwarmActiveView(
             }
             // Restored from a checkpoint (the engine lands these at PAUSED):
             // say plainly where the run stands.
-            if (state.canResume) {
+            if (state.canResume && !state.awaitingApproval) {
                 Text(
                     text = "Interrupted — resume to continue from the last checkpoint.",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.attachments.isNotEmpty()) {
+                Text(
+                    text = "${state.attachments.size} attached document(s) · " +
+                        "up to ${state.maxWorkers} parallel workers",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        // v1.4.0 item 6 — steer the running swarm without restarting it.
+        if (state.lifecycle == SwarmLifecycle.PLANNING ||
+            state.lifecycle == SwarmLifecycle.RUNNING ||
+            state.lifecycle == SwarmLifecycle.PAUSED
+        ) {
+            SteeringInputRow(
+                onSteer = onSteer,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            if (state.steeringNotes.isNotEmpty()) {
+                Text(
+                    text = "${state.steeringNotes.size} steering note(s) active — " +
+                        "new steps follow them.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
         }
@@ -461,6 +648,18 @@ private fun SwarmActiveView(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // v1.4.0 item 2 — the approval gate: the decomposed plan, shown
+            // for review BEFORE any worker runs. Approve (with edits) or
+            // reject; the agent list below stays read-only until then.
+            if (state.awaitingApproval) {
+                item {
+                    PlanApprovalCard(
+                        plan = state.proposedPlan,
+                        onApprove = onApprovePlan,
+                        onReject = onRejectPlan,
+                    )
+                }
+            }
             // (a) The orchestrator's task list — visible FIRST, before agents.
             item {
                 PlanSection(state = state)
@@ -470,17 +669,22 @@ private fun SwarmActiveView(
             itemsIndexed(state.agents, key = { _, agent -> agent.id }) { index, agent ->
                 AgentCard(
                     agent = agent,
+                    onShareTranscript = { onShareTranscript(agent) },
                     modifier = Modifier.staggeredEntrance(index),
                 )
             }
         }
-        ControlsRow(
-            lifecycle = state.lifecycle,
-            onPause = onPause,
-            onResume = onResume,
-            onCancel = onCancel,
-            onDismiss = onDismiss,
-        )
+        // At the approval gate the card owns the controls (Approve/Reject) —
+        // Pause/Resume/Cancel would fight it.
+        if (!state.awaitingApproval) {
+            ControlsRow(
+                lifecycle = state.lifecycle,
+                onPause = onPause,
+                onResume = onResume,
+                onCancel = onCancel,
+                onDismiss = onDismiss,
+            )
+        }
     }
 }
 
@@ -514,10 +718,10 @@ private fun LifecyclePill(
 }
 
 /**
- * The decomposition, surfaced prominently during/after PLANNING — the
- * "plan first, approve, then swarm" cautious path. A true approval gate
- * (engine pausing for approval) is a v1.3.x follow-up; for now the plan is
- * highly visible before results stream.
+ * The decomposition, surfaced prominently during/after PLANNING. With the
+ * v1.4.0 plan-approval gate enabled, the run parks here at PAUSED and the
+ * PlanApprovalCard above owns approve/reject — this section stays the
+ * read-only task list either way.
  */
 @Composable
 private fun PlanSection(
@@ -558,7 +762,11 @@ private fun PlanSection(
         }
         if (state.lifecycle == SwarmLifecycle.PLANNING) {
             Text(
-                text = "The crew works from this plan. Step-by-step approval is on the roadmap.",
+                text = if (state.requirePlanApproval) {
+                    "You'll review the plan before any agent runs."
+                } else {
+                    "The crew works from this plan. Enable plan review in Run settings to approve it first."
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -655,6 +863,7 @@ private fun MiniStatusIndicator(
 private fun AgentCard(
     agent: SwarmAgentState,
     modifier: Modifier = Modifier,
+    onShareTranscript: (() -> Unit)? = null,
 ) {
     var expanded by remember(agent.id) { mutableStateOf(false) }
     val incompleteNote = extractIncompleteNote(agent.result, agent.detail)
@@ -807,6 +1016,15 @@ private fun AgentCard(
                     }
                     if (incompleteNote != null) {
                         IncompleteBadge(note = incompleteNote)
+                    }
+                    // v1.4.0 item 8 — the full step log, not just the summary.
+                    if (onShareTranscript != null && agent.log.isNotEmpty()) {
+                        TextButton(
+                            onClick = onShareTranscript,
+                            modifier = Modifier.align(Alignment.Start),
+                        ) {
+                            Text("Share full transcript")
+                        }
                     }
                 }
             }
@@ -1018,6 +1236,9 @@ private fun ControlsRow(
 private fun SwarmResultView(
     state: SwarmUiState,
     onNewMission: () -> Unit,
+    onShareTranscript: (SwarmAgentState) -> Unit,
+    onShareMarkdown: () -> Unit,
+    onSharePdf: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Agents whose output stands with an incomplete note — surfaced as a
@@ -1059,6 +1280,20 @@ private fun SwarmResultView(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
+        // v1.4.0 item 5 — mission report export via the share sheet.
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Export report",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ReportExportRow(
+                    onShareMarkdown = onShareMarkdown,
+                    onSharePdf = onSharePdf,
+                )
+            }
+        }
         if (flagged.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1098,6 +1333,12 @@ private fun SwarmResultView(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        // v1.4.0 item 8 — full transcript per agent.
+                        if (agent.log.isNotEmpty()) {
+                            TextButton(onClick = { onShareTranscript(agent) }) {
+                                Text("Transcript")
+                            }
+                        }
                     }
                 }
                 HorizontalDivider()

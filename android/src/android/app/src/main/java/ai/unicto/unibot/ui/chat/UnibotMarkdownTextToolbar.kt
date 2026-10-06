@@ -85,6 +85,13 @@ internal class UnibotMarkdownTextToolbar(
      */
     private val onReadFromStart: ((String) -> Unit)? = null,
     /**
+     * v1.4.0 item 12 — "Deep-dive this": turn the selection into a swarm
+     * mission. Receives the currently-selected substring (same clipboard
+     * round-trip as [addSelectionToInput]); the host stashes it as a swarm
+     * prefill and navigates to the swarm space. Null hides the action.
+     */
+    private val onDeepDive: ((String) -> Unit)? = null,
+    /**
      * [T-android-readaloud-selection-vs-reply] Whether a reply is streaming
      * right now. A lambda, not a Boolean: this toolbar is constructed once
      * inside `remember`, so a captured value would freeze at construction time
@@ -139,6 +146,17 @@ internal class UnibotMarkdownTextToolbar(
         val sink = onAddToInput ?: return
         withSelection(sink)
     }
+
+    /**
+     * v1.4.0 item 12 — hand the selected substring to the host's deep-dive
+     * sink (swarm prefill + navigate). No-op when not wired.
+     */
+    internal fun deepDiveSelection() {
+        val sink = onDeepDive ?: return
+        withSelection(sink)
+    }
+
+    internal val canDeepDive: Boolean get() = onDeepDive != null
 
     /**
      * [T-android-selection-readaloud] Speak just the selected substring (not the
@@ -337,6 +355,17 @@ internal fun UnibotMarkdownTextToolbarHost(toolbar: UnibotMarkdownTextToolbar) {
                         label = stringResource(R.string.selection_add_to_chat_input),
                     ) {
                         toolbar.addSelectionToInput()
+                        toolbar.hide()
+                    }
+                }
+                // v1.4.0 item 12 — "Deep-dive this": the selection becomes a
+                // swarm mission (prefilled composer in the swarm space).
+                if (toolbar.canDeepDive) {
+                    ToolbarDivider()
+                    ToolbarButton(
+                        label = stringResource(R.string.selection_deep_dive),
+                    ) {
+                        toolbar.deepDiveSelection()
                         toolbar.hide()
                     }
                 }

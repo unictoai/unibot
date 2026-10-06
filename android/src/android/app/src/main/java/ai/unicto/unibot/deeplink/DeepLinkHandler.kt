@@ -52,6 +52,12 @@ sealed class DeepLinkAction {
     data class CreateEnvironmentVariable(val key: String, val value: String, val note: String) : DeepLinkAction()
     data object OpenPermissionSettings : DeepLinkAction()
     data class OpenSession(val sessionId: String) : DeepLinkAction()
+    /**
+     * v1.4.0 item 11 — open the swarm space. Posted by
+     * SwarmCompletionNotifier so tapping a mission-complete notification
+     * lands on the report.
+     */
+    data object OpenSwarm : DeepLinkAction()
 
     /**
      * App-icon long-press quick actions (mirrors iOS QuickActionRouter).
@@ -118,6 +124,9 @@ object DeepLinkHandler {
 
         return when (host) {
             "share" -> DeepLinkAction.OpenShare
+            // v1.4.0 item 11 — `unibot://swarm` opens the swarm space
+            // (mission-complete notification tap target).
+            "swarm" -> DeepLinkAction.OpenSwarm
             "views" -> when (path) {
                 "/alarm" -> DeepLinkAction.OpenAlarmList
                 else -> DeepLinkAction.Unknown

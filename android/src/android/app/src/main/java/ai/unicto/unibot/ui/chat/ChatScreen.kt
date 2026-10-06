@@ -4200,6 +4200,17 @@ fun ChatScreen(
                         // [T-android-readaloud-selection-vs-reply] Whole-reply
                         // replay, hidden while streaming via isStreamingNow.
                         onReadFromStart = { fullText -> selectionReader.speak(fullText) },
+                        // v1.4.0 item 12 — "Deep-dive this": stash the
+                        // selection as the swarm prefill, then open the
+                        // swarm space through the existing navigation
+                        // callback. The swarm screen consumes the prefill
+                        // once into its composer.
+                        onDeepDive = { snippet ->
+                            ai.unicto.unibot.ui.swarm.SwarmMissionPrefill.set(
+                                "Deep-dive into this:\n\n$snippet",
+                            )
+                            onSwarmClick()
+                        },
                         isStreamingNow = { viewModel.isStreaming.value },
                         selectionController = selectionController,
                     )
@@ -5050,6 +5061,16 @@ fun ChatScreen(
                         // exists.
                         onReadFromStart = if (isStreaming) null else {
                             { fullText -> selectionReader.speak(fullText) }
+                        },
+                        // v1.4.0 item 12 — "Deep-dive this": stash the
+                        // selection as the swarm prefill, then open the
+                        // swarm space. Suppressed while streaming (the
+                        // reply isn't finished yet).
+                        onDeepDive = if (isStreaming) null else { snippet ->
+                            ai.unicto.unibot.ui.swarm.SwarmMissionPrefill.set(
+                                "Deep-dive into this:\n\n$snippet",
+                            )
+                            onSwarmClick()
                         },
                     ),
                 )
@@ -7389,6 +7410,20 @@ fun ChatScreen(
                             // sides centre it between the leading (+, /) and
                             // trailing (keyboard, mic/send) button groups.
                             Spacer(modifier = Modifier.weight(1f))
+                        }
+
+                        // Voice theme item 33: karaoke follow-along for long
+                        // replies — the sentence being read aloud, with the
+                        // spoken word highlighted. Only while read-replies is
+                        // on; the X stops playback.
+                        val karaokeWord by replyTts.spokenWord.collectAsState()
+                        karaokeWord?.let { spoken ->
+                            if (readReplies) {
+                                ai.unicto.unibot.ui.chat.voice.ReadAloudKaraokeBar(
+                                    spokenWord = spoken,
+                                    onStop = { replyTts.stop() },
+                                )
+                            }
                         }
 
                         // [T-android-voice-entry-always-available] The voice /

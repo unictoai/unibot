@@ -25,6 +25,19 @@ data class SwarmAgentCheckpoint(
     val detail: String = "",
     val tokensUsed: Int = 0,
     val result: String = "",
+    /** v1.4.0 item 8 — the agent's step-by-step transcript log. */
+    val log: List<String> = emptyList(),
+)
+
+/**
+ * v1.4.0: an attached document as checkpointed (content is size-capped at
+ * attach time, so the blob stays small).
+ */
+@Serializable
+data class SwarmAttachmentCheckpoint(
+    val id: String,
+    val name: String,
+    val text: String,
 )
 
 @Serializable
@@ -39,9 +52,23 @@ data class SwarmCheckpointData(
     /** Stitched final document, when the run reached the stitch step. */
     val stitchedResult: String = "",
     val totalTokens: Int = 0,
+    /** v1.4.0 item 7 — lets a deleted custom preset still resume. */
+    val crewName: String = "",
+    val crewRoles: List<String> = emptyList(),
+    /** v1.4.0 item 2 — plan-approval gate state. */
+    val proposedPlan: List<String> = emptyList(),
+    val planApproved: Boolean = false,
+    val awaitingApproval: Boolean = false,
+    val requirePlanApproval: Boolean = false,
+    /** v1.4.0 item 3 — worker-parallelism ceiling for the mission. */
+    val maxWorkers: Int = 1,
+    /** v1.4.0 item 6 — mid-run steering notes. */
+    val steeringNotes: List<String> = emptyList(),
+    /** v1.4.0 item 10 — attached documents. */
+    val attachments: List<SwarmAttachmentCheckpoint> = emptyList(),
 ) {
     companion object {
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
     }
 }
 
@@ -79,10 +106,22 @@ object SwarmCheckpoint {
                     detail = it.detail,
                     tokensUsed = it.tokensUsed,
                     result = it.result,
+                    log = it.log.takeLast(50),
                 )
             },
             stitchedResult = state.stitchedResult,
             totalTokens = state.totalTokens,
+            crewName = state.crew?.name.orEmpty(),
+            crewRoles = state.crew?.roles.orEmpty(),
+            proposedPlan = state.proposedPlan,
+            planApproved = state.planApproved,
+            awaitingApproval = state.awaitingApproval,
+            requirePlanApproval = state.requirePlanApproval,
+            maxWorkers = state.maxWorkers,
+            steeringNotes = state.steeringNotes,
+            attachments = state.attachments.map {
+                SwarmAttachmentCheckpoint(id = it.id, name = it.name, text = it.text)
+            },
         )
     }
 
@@ -97,6 +136,12 @@ object SwarmCheckpoint {
      * goes back to QUEUED: a crashed step is re-run whole, never resumed
      * half-way; completed (DONE) steps keep their results and are never
      * re-run.
+     *
+     * v1.4.0: a checkpoint whose preset id is not a built-in (a custom crew
+     * since deleted, or a crew from a newer app version) is reconstructed
+     * from the stored crew name + roles, so the run can still resume.
+     * Approval-gate state (proposed plan, awaiting flag) is restored so the
+     * user lands back at the review step, not mid-run.
      */
     fun toUiState(data: SwarmCheckpointData): SwarmUiState? {
         val lifecycle = runCatching { SwarmLifecycle.valueOf(data.lifecycle) }.getOrNull()
@@ -105,7 +150,15 @@ object SwarmCheckpoint {
             lifecycle != SwarmLifecycle.RUNNING &&
             lifecycle != SwarmLifecycle.PAUSED
         ) return null
-        val preset = SwarmRoles.presetById(data.crewId) ?: return null
+        val preset = SwarmRoles.presetById(data.crewId)
+            ?: data.crewRoles.takeIf { it.isNotEmpty() }?.let { roles ->
+                SwarmCrewPreset(
+                    id = data.crewId,
+                    name = data.crewName.ifBlank { data.crewId },
+                    description = "Restored custom crew",
+                    roles = roles,
+                )
+            } ?: return null
         val agents = data.agents.mapNotNull { a ->
             val status = runCatching { SwarmAgentStatus.valueOf(a.status) }.getOrNull()
                 ?: return null
@@ -123,6 +176,7 @@ object SwarmCheckpoint {
                 detail = "",
                 tokensUsed = a.tokensUsed,
                 result = a.result,
+                log = a.log,
             )
         }
         return SwarmUiState(
@@ -133,6 +187,15 @@ object SwarmCheckpoint {
             stitchedResult = data.stitchedResult,
             totalTokens = data.totalTokens,
             canResume = true,
+            proposedPlan = data.proposedPlan,
+            awaitingApproval = data.awaitingApproval,
+            planApproved = data.planApproved,
+            requirePlanApproval = data.requirePlanApproval,
+            maxWorkers = data.maxWorkers.coerceIn(1, 8),
+            steeringNotes = data.steeringNotes,
+            attachments = data.attachments.map {
+                SwarmAttachment(id = it.id, name = it.name, text = it.text)
+            },
         )
     }
 }

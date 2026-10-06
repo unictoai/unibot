@@ -42,6 +42,18 @@ class SwarmEngine(
     private val checkpointStore: SwarmCheckpointStore,
     private val scope: CoroutineScope,
     private val workerMaxOutputTokens: Int = WORKER_MAX_OUTPUT_TOKENS_DEFAULT,
+    /**
+     * v1.4.0: persistence for settings, custom crews and mission history.
+     * Null (tests, legacy callers) disables history recording.
+     */
+    private val repository: SwarmRepository? = null,
+    /**
+     * v1.4.0: fired once when a run reaches DONE or FAILED (never on
+     * user-cancelled runs) — the ViewModel wires the completion
+     * notification here. Invoked synchronously on the run coroutine;
+     * implementations must not throw (the engine guards the call).
+     */
+    private val onTerminal: ((SwarmUiState) -> Unit)? = null,
 ) {
     private val _uiState = MutableStateFlow(SwarmUiState())
     val uiState: StateFlow<SwarmUiState> = _uiState.asStateFlow()
@@ -83,7 +95,14 @@ class SwarmEngine(
     }
 
     /** Start a run. Only legal from IDLE. */
-    fun launch(mission: String, preset: SwarmCrewPreset): Boolean {
+    fun launch(mission: String, preset: SwarmCrewPreset): Boolean =
+        launch(mission, preset, SwarmLaunchOptions())
+
+    /**
+     * Start a run with v1.4.0 launch options (plan-approval gate, worker
+     * cap, attachments). Only legal from IDLE.
+     */
+    fun launch(mission: String, preset: SwarmCrewPreset, options: SwarmLaunchOptions): Boolean {
         synchronized(lock) {
             if (_uiState.value.lifecycle != SwarmLifecycle.IDLE) {
                 println("[swarm] launch rejected: lifecycle is ${_uiState.value.lifecycle}, must be IDLE")
@@ -99,7 +118,19 @@ class SwarmEngine(
                     currentStep = "Queued",
                 )
             }
-            setUiState(SwarmUiState(mission = mission, crew = preset, agents = agents))
+            val safeAttachments = options.attachments
+                .take(SwarmAttachment.MAX_ATTACHMENTS)
+                .map { it.copy(text = it.text.take(SwarmAttachment.MAX_CHARS_PER_ATTACHMENT)) }
+            setUiState(
+                SwarmUiState(
+                    mission = mission,
+                    crew = preset,
+                    agents = agents,
+                    maxWorkers = options.maxWorkers.coerceIn(1, 8),
+                    requirePlanApproval = options.requirePlanApproval,
+                    attachments = safeAttachments,
+                ),
+            )
             if (!transitionTo(SwarmLifecycle.PLANNING)) return false
             pauseRequested = false
             subtasks = emptyList()
@@ -143,6 +174,95 @@ class SwarmEngine(
     }
 
     /**
+     * v1.4.0 item 2 — approve the decomposed plan and start the workers.
+     * Legal only from PAUSED with [SwarmUiState.awaitingApproval] set (the
+     * plan-approval gate). The plan may be edited first: [edited] is
+     * normalized to exactly one subtask per role (trim extras, pad with
+     * the mission text) so a malformed edit can never deadlock the run.
+     * An empty edit keeps the manager's proposed plan unchanged.
+     */
+    fun approvePlan(edited: List<String>): Boolean {
+        synchronized(lock) {
+            val st = _uiState.value
+            if (st.lifecycle != SwarmLifecycle.PAUSED || !st.awaitingApproval) {
+                println("[swarm] approvePlan rejected: lifecycle is ${st.lifecycle}, awaitingApproval=${st.awaitingApproval}")
+                return false
+            }
+            if (runJob?.isActive == true) {
+                println("[swarm] approvePlan rejected: a run is already active")
+                return false
+            }
+            val roleIds = st.crew?.roles.orEmpty()
+            val plan = normalizePlan(
+                edited.ifEmpty { st.proposedPlan },
+                roleIds,
+                st.mission,
+            )
+            subtasks = plan
+            _uiState.update {
+                it.copy(
+                    proposedPlan = plan,
+                    awaitingApproval = false,
+                    planApproved = true,
+                    canResume = false,
+                    error = null,
+                )
+            }
+            checkpoint()
+            if (!transitionTo(SwarmLifecycle.RUNNING)) return false
+            pauseRequested = false
+            runJob = scope.launch { runSwarm() }
+            return true
+        }
+    }
+
+    /**
+     * v1.4.0 item 2 — reject the decomposed plan. Routes through cancel():
+     * the run lands CANCELLED with nothing executed and the rejection is
+     * recorded in the mission history like any other cancelled run.
+     */
+    fun rejectPlan(): Boolean {
+        if (_uiState.value.lifecycle != SwarmLifecycle.PAUSED ||
+            !_uiState.value.awaitingApproval
+        ) {
+            println("[swarm] rejectPlan rejected: not at the approval gate")
+            return false
+        }
+        _uiState.update { it.copy(awaitingApproval = false, proposedPlan = emptyList()) }
+        return cancel()
+    }
+
+    /**
+     * v1.4.0 item 6 — inject a new instruction into a running swarm without
+     * restarting it. Legal from RUNNING/PLANNING/PAUSED. The note is
+     * appended to [SwarmUiState.steeringNotes] (newest last, capped) and
+     * checkpointed; every subsequent worker and revision prompt carries the
+     * notes as a MANAGER STEERING section. Steps already finished are not
+     * re-run — steering shapes what happens next, it does not rewrite the
+     * past.
+     */
+    fun steer(instruction: String): Boolean {
+        val trimmed = instruction.trim()
+        if (trimmed.isEmpty()) {
+            println("[swarm] steer rejected: empty instruction")
+            return false
+        }
+        val lc = _uiState.value.lifecycle
+        if (lc != SwarmLifecycle.RUNNING && lc != SwarmLifecycle.PLANNING &&
+            lc != SwarmLifecycle.PAUSED
+        ) {
+            println("[swarm] steer rejected: lifecycle is $lc")
+            return false
+        }
+        _uiState.update { st ->
+            st.copy(steeringNotes = (st.steeringNotes + trimmed).takeLast(MAX_STEERING_NOTES))
+        }
+        checkpoint()
+        println("[swarm] steering note added (${_uiState.value.steeringNotes.size} total)")
+        return true
+    }
+
+    /**
      * Stop the run. Marks CANCELLED; partial worker results stay visible.
      * Cancels the in-flight coroutine so no work leaks past cancel().
      */
@@ -161,6 +281,7 @@ class SwarmEngine(
             if (job == null || job.isCompleted) {
                 // Nothing in flight (e.g. a restored PAUSED run): transition now.
                 transitionTo(SwarmLifecycle.CANCELLED)
+                recordHistory(SwarmMissionRecord.OUTCOME_CANCELLED)
                 checkpointStore.clear()
             }
         }
@@ -229,11 +350,25 @@ class SwarmEngine(
                 updatePendingAgents { it.copy(currentStep = "Planning", detail = "Manager decomposing mission") }
                 val raw = callLlm(
                     system = MANAGER_SYSTEM,
-                    user = planPrompt(st.mission, roleIds),
+                    user = planPrompt(st.mission, roleIds, attachmentsContext(st.attachments)),
                     maxTokens = PLAN_MAX_OUTPUT_TOKENS,
                     stepLabel = "plan",
                 )
-                parsePlan(raw.text, roleIds, st.mission).also { subtasks = it }
+                parsePlan(raw.text, roleIds, st.mission).also {
+                    subtasks = it
+                    logPlan(it)
+                }
+            }
+            // v1.4.0 item 2 — plan-approval gate. The gate is state-driven
+            // (requirePlanApproval + planApproved live on the UI state and
+            // in the checkpoint), so a restored run re-gates exactly like
+            // the original. The lifecycle parks at PAUSED — no new states.
+            if (st.requirePlanApproval && !st.planApproved) {
+                _uiState.update { it.copy(proposedPlan = finalPlan, awaitingApproval = true) }
+                checkpoint()
+                transitionTo(SwarmLifecycle.PAUSED)
+                checkpoint()
+                return
             }
             if (pauseRequested || !coroutineContext.isActive) {
                 transitionTo(SwarmLifecycle.PAUSED)
@@ -267,10 +402,13 @@ class SwarmEngine(
                 checkpoint()
             }
             transitionTo(SwarmLifecycle.DONE)
+            recordHistory(SwarmMissionRecord.OUTCOME_DONE)
+            fireTerminal()
             checkpointStore.clear()
         } catch (e: CancellationException) {
             // cancel(): land CANCELLED, keep partial results visible.
             transitionTo(SwarmLifecycle.CANCELLED)
+            recordHistory(SwarmMissionRecord.OUTCOME_CANCELLED)
             checkpointStore.clear()
             throw e
         } catch (e: Exception) {
@@ -287,7 +425,50 @@ class SwarmEngine(
     private fun fail(message: String) {
         _uiState.update { it.copy(error = message) }
         transitionTo(SwarmLifecycle.FAILED)
+        recordHistory(SwarmMissionRecord.OUTCOME_FAILED)
+        fireTerminal()
         checkpointStore.clear()
+    }
+
+    /**
+     * v1.4.0 item 4 — record a finished mission in the history. Null-safe:
+     * with no repository (tests, legacy callers) this is a no-op. Guarded
+     * against double-recording — each terminal path calls it exactly once.
+     */
+    private fun recordHistory(outcome: String) {
+        val repo = repository ?: return
+        val st = _uiState.value
+        val crew = st.crew ?: return
+        runCatching {
+            repo.recordHistory(
+                SwarmMissionRecord(
+                    id = java.util.UUID.randomUUID().toString(),
+                    mission = st.mission,
+                    crewId = crew.id,
+                    crewName = crew.name,
+                    crewRoles = crew.roles,
+                    outcome = outcome,
+                    totalTokens = st.totalTokens,
+                    agentCount = st.agents.size,
+                    finishedAtMillis = System.currentTimeMillis(),
+                ),
+            )
+        }.onFailure {
+            println("[swarm] history record failed: ${it.message}")
+        }
+    }
+
+    /**
+     * v1.4.0 item 11 — notify the terminal hook (the ViewModel posts the
+     * completion notification from here). Fires on DONE and FAILED only —
+     * a user-cancelled run needs no ping. Never throws into the engine.
+     */
+    private fun fireTerminal() {
+        val cb = onTerminal ?: return
+        val snapshot = _uiState.value
+        runCatching { cb(snapshot) }.onFailure {
+            println("[swarm] onTerminal callback failed: ${it.message}")
+        }
     }
 
     // ─── worker step: execute → verify → (one bounded revision) ────────────
@@ -295,17 +476,27 @@ class SwarmEngine(
     private suspend fun runWorkerStep(index: Int, roleId: String, subtask: String) {
         val role = SwarmRoles.byId(roleId) ?: SwarmRoles.fallback(roleId)
         val mission = _uiState.value.mission
+        // v1.4.0 items 6+10: steering notes and attached documents ride
+        // along on every worker and revision prompt, captured fresh per
+        // step so a mid-run steer() reaches the very next step.
+        val steering = steeringContext(_uiState.value.steeringNotes)
+        val docs = attachmentsContext(_uiState.value.attachments)
         updateAgent(index) {
             it.copy(status = SwarmAgentStatus.WORKING, currentStep = "Working", detail = "Running subtask")
         }
+        logAgent(index, "Worker call started")
         val prior = priorResults(index)
         var output = callLlm(
             system = role.systemPrompt,
-            user = workerPrompt(role, mission, subtask, prior),
+            user = workerPrompt(role, mission, subtask, prior, steering, docs),
             maxTokens = workerMaxOutputTokens,
             stepLabel = "worker:${role.id}",
         )
         addTokens(index, output)
+        logAgent(
+            index,
+            "Worker call finished (${output.promptTokens} prompt + ${output.completionTokens} completion tokens)",
+        )
 
         // Reflector pass (MobileAgent v2): the verifier role checks every
         // worker except itself; the manager checks the verifier and crews
@@ -315,6 +506,11 @@ class SwarmEngine(
         }
         val (verdict, verifyCall) = verify(roleId, mission, subtask, output.text)
         addTokens(index, verifyCall)
+        logAgent(
+            index,
+            if (verdict.passed) "Verifier verdict: PASS"
+            else "Verifier verdict: FAIL — ${verdict.reason}",
+        )
 
         var note = ""
         if (!verdict.passed) {
@@ -327,13 +523,18 @@ class SwarmEngine(
                     detail = "Applying review feedback (single revision)",
                 )
             }
+            logAgent(index, "Revision call started")
             val revised = callLlm(
                 system = role.systemPrompt,
-                user = revisionPrompt(role, mission, subtask, prior, output.text, verdict.reason),
+                user = revisionPrompt(role, mission, subtask, prior, output.text, verdict.reason, steering, docs),
                 maxTokens = workerMaxOutputTokens,
                 stepLabel = "worker:${role.id}:revision",
             )
             addTokens(index, revised)
+            logAgent(
+                index,
+                "Revision call finished (${revised.promptTokens} prompt + ${revised.completionTokens} completion tokens)",
+            )
             output = revised
             // Shared BEST_EFFORT_NOTE_MARKER: the UI detects this exact
             // substring to render the explicit "incomplete" terminal state.
@@ -344,6 +545,7 @@ class SwarmEngine(
         updateAgent(index) {
             it.copy(status = SwarmAgentStatus.DONE, currentStep = "Done", detail = "", result = finalText)
         }
+        logAgent(index, "Step complete — result ${finalText.length} chars")
     }
 
     private suspend fun verify(
@@ -373,7 +575,7 @@ class SwarmEngine(
         if (parts.isBlank()) return "(no worker results to stitch)"
         val call = callLlm(
             system = MANAGER_SYSTEM,
-            user = stitchPrompt(st.mission, parts),
+            user = stitchPrompt(st.mission, parts, attachmentsContext(st.attachments)),
             maxTokens = STITCH_MAX_OUTPUT_TOKENS,
             stepLabel = "stitch",
         )
@@ -489,12 +691,45 @@ class SwarmEngine(
         }
     }
 
+    /**
+     * v1.4.0 item 8 — append a timestamped entry to an agent's step log
+     * (the full agent transcript). Capped per agent so the checkpoint blob
+     * stays small; oldest entries fall off first.
+     */
+    private fun logAgent(index: Int, message: String) {
+        val entry = "[${LOG_TIME_FORMAT.format(java.util.Date())}] $message"
+        updateAgent(index) { agent ->
+            agent.copy(log = (agent.log + entry).takeLast(MAX_LOG_ENTRIES_PER_AGENT))
+        }
+    }
+
+    /** v1.4.0 item 8 — log the manager's decomposition onto every agent's transcript. */
+    private fun logPlan(plan: List<String>) {
+        val entry = "[${LOG_TIME_FORMAT.format(java.util.Date())}] " +
+            "Manager decomposed mission into ${plan.size} subtask(s)"
+        _uiState.update { st ->
+            st.copy(
+                agents = st.agents.map { agent ->
+                    agent.copy(log = (agent.log + entry).takeLast(MAX_LOG_ENTRIES_PER_AGENT))
+                },
+            )
+        }
+    }
+
     companion object {
         const val WORKER_MAX_OUTPUT_TOKENS_DEFAULT = 4096
         private const val PLAN_MAX_OUTPUT_TOKENS = 2048
         private const val VERIFY_MAX_OUTPUT_TOKENS = 512
         private const val STITCH_MAX_OUTPUT_TOKENS = 8192
         private const val PRIOR_RESULT_CHAR_CAP = 1500
+
+        /** v1.4.0 item 6 — cap on mid-run steering notes per mission. */
+        private const val MAX_STEERING_NOTES = 10
+
+        /** v1.4.0 item 8 — cap on transcript log entries per agent. */
+        private const val MAX_LOG_ENTRIES_PER_AGENT = 50
+
+        private val LOG_TIME_FORMAT = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
 
         /**
          * Deterministic lifecycle: IDLE → PLANNING → RUNNING → (PAUSED ↔
@@ -528,16 +763,24 @@ class SwarmEngine(
             "Be strict but fair: fail only on real defects (wrong facts, missing required parts, " +
             "internal contradictions), not on style preferences."
 
-        internal fun planPrompt(mission: String, roleIds: List<String>): String {
+        internal fun planPrompt(mission: String, roleIds: List<String>, docs: String = ""): String {
             val example = roleIds.mapIndexed { i, r -> "${i + 1}. <subtask for $r>" }
                 .joinToString("\n")
-            return "MISSION DECOMPOSITION\n" +
-                "Mission: $mission\n" +
-                "Crew roles in order: ${roleIds.joinToString(", ")}\n" +
-                "Decompose the mission into exactly ${roleIds.size} ordered subtasks — one per crew " +
-                "role, in the order listed.\n" +
-                "Reply with ONLY a numbered list, one subtask per line, like:\n$example\n" +
-                "No preamble, no commentary, no extra lines."
+            return buildString {
+                appendLine("MISSION DECOMPOSITION")
+                appendLine("Mission: $mission")
+                appendLine("Crew roles in order: ${roleIds.joinToString(", ")}")
+                if (docs.isNotBlank()) {
+                    appendLine()
+                    appendLine(docs)
+                }
+                appendLine("Decompose the mission into exactly ${roleIds.size} ordered subtasks — one per crew ")
+                append("role, in the order listed. When attached documents are present, make sure the ")
+                appendLine("decomposition covers them.")
+                appendLine("Reply with ONLY a numbered list, one subtask per line, like:")
+                appendLine(example)
+                append("No preamble, no commentary, no extra lines.")
+            }
         }
 
         internal fun workerPrompt(
@@ -545,15 +788,25 @@ class SwarmEngine(
             mission: String,
             subtask: String,
             prior: String,
+            steering: String = "",
+            docs: String = "",
         ): String = buildString {
             appendLine("WORKER SUBTASK")
             appendLine("Role: ${role.displayName} (${role.id})")
             appendLine("Mission: $mission")
             appendLine("Your subtask: $subtask")
+            if (docs.isNotBlank()) {
+                appendLine()
+                appendLine(docs)
+            }
             if (prior.isNotBlank()) {
                 appendLine()
                 appendLine("Results from earlier agents (for context):")
                 appendLine(prior)
+            }
+            if (steering.isNotBlank()) {
+                appendLine()
+                appendLine(steering)
             }
             appendLine()
             append("Complete ONLY your subtask. Reply with your result as concise structured text ")
@@ -567,15 +820,25 @@ class SwarmEngine(
             prior: String,
             previousOutput: String,
             reviewReason: String,
+            steering: String = "",
+            docs: String = "",
         ): String = buildString {
             appendLine("WORKER SUBTASK — REVISION (single and final attempt)")
             appendLine("Role: ${role.displayName} (${role.id})")
             appendLine("Mission: $mission")
             appendLine("Your subtask: $subtask")
+            if (docs.isNotBlank()) {
+                appendLine()
+                appendLine(docs)
+            }
             if (prior.isNotBlank()) {
                 appendLine()
                 appendLine("Results from earlier agents (for context):")
                 appendLine(prior)
+            }
+            if (steering.isNotBlank()) {
+                appendLine()
+                appendLine(steering)
             }
             appendLine()
             appendLine("Your previous output FAILED automated review: $reviewReason")
@@ -593,12 +856,18 @@ class SwarmEngine(
                 "Does the output fully and correctly complete the subtask? Reply with exactly one " +
                 "line: PASS — or: FAIL: <one-sentence reason>."
 
-        internal fun stitchPrompt(mission: String, parts: String): String =
-            "STITCH RESULTS\n" +
-                "Mission: $mission\n" +
-                "Worker results:\n$parts\n" +
-                "Stitch these into ONE clean, coherent document that answers the mission. Remove " +
-                "duplication, keep headings, preserve key facts and numbers. Reply with only the document."
+        internal fun stitchPrompt(mission: String, parts: String, docs: String = ""): String =
+            buildString {
+                appendLine("STITCH RESULTS")
+                appendLine("Mission: $mission")
+                if (docs.isNotBlank()) {
+                    appendLine(docs)
+                }
+                appendLine("Worker results:")
+                appendLine(parts)
+                append("Stitch these into ONE clean, coherent document that answers the mission. Remove ")
+                append("duplication, keep headings, preserve key facts and numbers. Reply with only the document.")
+            }
     }
 }
 

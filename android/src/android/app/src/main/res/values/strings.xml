@@ -1240,9 +1240,18 @@
     <string name="notif_config_confirm_body_single">A change needs your review — open unibot to approve or reject.</string>
     <string name="notif_config_confirm_body_multi">%d changes need your review — open unibot to approve or reject.</string>
     <string name="notif_task_failed_body">Task ended with an error. Tap to open the chat.</string>
+    <!-- v1.4.0 item 11 — swarm mission completion notifications -->
+    <string name="notif_swarm_completed_channel_name">Swarm Missions</string>
+    <string name="notif_swarm_completed_channel_description">Notifies when a swarm mission finishes while the app is backgrounded.</string>
+    <string name="notif_swarm_completed_title">Swarm mission complete</string>
+    <string name="notif_swarm_failed_title">Swarm mission failed</string>
+    <string name="notif_swarm_completed_default_title">Swarm mission</string>
+    <string name="notif_swarm_completed_body">%1$s — tap to view the mission report.</string>
 
     <!-- T-selection-add-to-input — long-press text selection menu action -->
     <string name="selection_add_to_chat_input">Add to Chat Input</string>
+    <!-- v1.4.0 item 12 — selection menu action: turn the selection into a swarm mission -->
+    <string name="selection_deep_dive">Deep-dive this</string>
     <!-- T-android-readaloud-selection-vs-reply — the pair mirrors iOS's
          "Read Selection" / "Read from Start". Bare "Read Aloud" was ambiguous
          once a whole-reply action sat beside it. -->

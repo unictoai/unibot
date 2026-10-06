@@ -885,6 +885,14 @@ data class SelectionToolbarActions(
      * half-arrived answer would narrate a truncated text.
      */
     val onReadFromStart: ((String) -> Unit)? = null,
+    /**
+     * v1.4.0 item 12 — "Deep-dive this": turn the selected text into a
+     * swarm mission. Receives the selected plain text (falling back to the
+     * owning message's markdown when the selection can't be scoped, like
+     * onReadFromStart). The caller stashes it as a swarm prefill and
+     * navigates to the swarm space. Null hides the button.
+     */
+    val onDeepDive: ((String) -> Unit)? = null,
 )
 
 @Composable
@@ -1094,6 +1102,10 @@ fun UnibotSelectionToolbarHost(
                     ai.unicto.unibot.R.string.markdown_table_copy_table)
                 val labelCopyTableImage = androidx.compose.ui.res.stringResource(
                     ai.unicto.unibot.R.string.markdown_table_copy_table_image)
+                // v1.4.0 item 12 — "Deep-dive this" turns the selection into
+                // a swarm mission.
+                val labelDeepDive = androidx.compose.ui.res.stringResource(
+                    ai.unicto.unibot.R.string.selection_deep_dive)
 
                 // Actions are collected into a list first so the bar can show a
                 // few and push the rest into an overflow menu. Ordered by how
@@ -1236,6 +1248,19 @@ fun UnibotSelectionToolbarHost(
                         add(SelectionAction(labelAddToInput) {
                             val text = controller.selectedPlainText()
                             if (text.isNotEmpty()) actions.onAddToInput.invoke(text)
+                            controller.clearSelection()
+                        })
+                    }
+                    // v1.4.0 item 12 — "Deep-dive this": the selection (or
+                    // the whole owning message as fallback) becomes a swarm
+                    // mission. Ordered right after Add to Input — both hand
+                    // the selection to another surface.
+                    if (actions?.onDeepDive != null) {
+                        add(SelectionAction(labelDeepDive) {
+                            val text = controller.selectedPlainText().ifEmpty {
+                                actions.resolveSelectionMarkdown().orEmpty()
+                            }
+                            if (text.isNotEmpty()) actions.onDeepDive.invoke(text)
                             controller.clearSelection()
                         })
                     }

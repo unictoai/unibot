@@ -372,6 +372,11 @@ fun AppNavigation(
             is DeepLinkAction.OpenPermissionSettings -> {
                 navController.safeNavigate(Routes.PERMISSIONS)
             }
+            // v1.4.0 item 11 — mission-complete notification tap lands in
+            // the swarm space (the finished report is showing there).
+            is DeepLinkAction.OpenSwarm -> {
+                navController.safeNavigate(Routes.SWARM)
+            }
             // OpenHtmlPreview is handled by setting startDestination
             // (see below) so the NavHost mounts directly into the right
             // chat — no safeNavigate dance, no sessions-list flash.
@@ -1037,6 +1042,21 @@ fun AppNavigation(
         composable(Routes.SWARM) {
             val context = LocalContext.current
             val providerConfig by providerRepository.config.collectAsState()
+            // v1.4.0 — swarm repository (settings, custom crews, history)
+            // and the mission-completion notifier, both app-context scoped.
+            val swarmRepository = remember(context) {
+                ai.unicto.unibot.swarm.SharedPrefsSwarmRepository(context)
+            }
+            val swarmCompletionNotifier = remember(context) {
+                ai.unicto.unibot.notification.SwarmCompletionNotifier(
+                    context = context,
+                    enabled = { swarmRepository.loadPrefs().completionNotificationsEnabled },
+                    isAppForeground = {
+                        (context.applicationContext as? ai.unicto.unibot.UnibotApp)
+                            ?.isAppForeground() ?: true
+                    },
+                )
+            }
             val swarmProvider = remember(providerConfig) {
                 ai.unicto.unibot.ui.swarm.resolveSwarmLlmProvider(providerRepository, context)
             }
@@ -1051,11 +1071,24 @@ fun AppNavigation(
                         factory = ai.unicto.unibot.swarm.SwarmViewModel.factory(
                             context,
                             swarmProvider,
+                            // v1.4.0 — mission history + completion
+                            // notifications. The repository backs settings,
+                            // custom crews and history; the notifier posts
+                            // when a mission finishes while backgrounded
+                            // (deep-link unibot://swarm on tap).
+                            repository = swarmRepository,
+                            onTerminal = { terminalState ->
+                                swarmCompletionNotifier.notifyCompleted(terminalState)
+                            },
                         ),
                     )
                 ai.unicto.unibot.ui.swarm.SwarmScreen(
                     viewModel = swarmViewModel,
                     onBack = { navController.safePopBackStack() },
+                    // v1.4.0 item 12 — one-shot prefill from chat's
+                    // "Deep-dive this" action.
+                    initialMission = ai.unicto.unibot.ui.swarm.SwarmMissionPrefill.take(),
+                    repository = swarmRepository,
                 )
             }
         }
@@ -1098,6 +1131,8 @@ fun AppNavigation(
                 onBack = { navController.safePopBackStack() },
                 onOpenVoiceSettings = { navController.safeNavigate(Routes.VOICE_SETTINGS) },
                 onOpenReadAloudSettings = { navController.safeNavigate(Routes.READ_ALOUD) },
+                // Voice theme item 29: error-card fix actions land here.
+                onOpenProviders = { navController.safeNavigate(Routes.PROVIDER_LIST) },
             )
         }
 
