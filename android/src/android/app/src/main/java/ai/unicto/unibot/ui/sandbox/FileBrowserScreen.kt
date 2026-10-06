@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.outlined.Folder as FolderOutlined
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -68,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.components.SkeletonList
 import ai.unicto.unibot.ui.components.UnibotTextButton
 
@@ -157,19 +159,17 @@ fun FileBrowserScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Filled.Folder,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                stringResource(R.string.filebrowser_empty_folder),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
+                        // v1.4.0 item 67: the shared branded empty state —
+                        // illustration plus a real action (go up one level)
+                        // instead of the hand-rolled icon + text.
+                        EmptyState(
+                            icon = FolderOutlined,
+                            title = stringResource(R.string.filebrowser_empty_folder),
+                            hint = stringResource(R.string.filebrowser_empty_folder_hint),
+                            ctaLabel = if (state.canGoBack) stringResource(R.string.filebrowser_empty_go_up) else null,
+                            onCta = if (state.canGoBack) ({ viewModel.goBack() }) else null,
+                            modifier = Modifier.padding(horizontal = 32.dp),
+                        )
                     }
                 }
 

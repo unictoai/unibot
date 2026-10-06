@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -53,6 +54,7 @@ import ai.unicto.unibot.swarm.SwarmMissionRecord
 import ai.unicto.unibot.swarm.SwarmPrefs
 import ai.unicto.unibot.swarm.SwarmRoles
 import ai.unicto.unibot.swarm.SwarmTemplate
+import ai.unicto.unibot.ui.components.EmptyState
 
 // ─── Section header ─────────────────────────────────────────────────────────
 
@@ -443,6 +445,9 @@ internal fun SwarmHistorySection(
     onRerun: (SwarmMissionRecord) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    // v1.4.0 item 67: the empty state's action — focuses the mission
+    // composer so the user can start their first mission.
+    onNewMission: () -> Unit = {},
 ) {
     Column(
         modifier = modifier,
@@ -460,10 +465,13 @@ internal fun SwarmHistorySection(
             }
         }
         if (records.isEmpty()) {
-            Text(
-                text = "No missions yet. Finished missions land here — rerun any of them with one tap.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            EmptyState(
+                icon = Icons.Outlined.History,
+                title = "No missions yet",
+                hint = "Finished missions land here — rerun any of them with one tap.",
+                ctaLabel = "New mission",
+                onCta = onNewMission,
+                modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
             records.forEach { record ->

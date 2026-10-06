@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.Button
@@ -70,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
+import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.markdown.MarkdownText
 import ai.unicto.unibot.ui.theme.ChatColors
 import ai.unicto.unibot.sysfiles.MemoryImport
@@ -99,7 +101,7 @@ fun MuseTopBar(title: String, onBack: () -> Unit, trailing: (@Composable () -> U
         )
         Text(
             text = title,
-            fontSize = 17.sp,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -143,7 +145,7 @@ fun SystemFilesScreen(onBack: () -> Unit, onOpen: (SystemFiles) -> Unit, onImpor
             ) {
                 Text(
                     stringResource(if (byRecent) R.string.ub_sysfiles_sort_recent else R.string.ub_sysfiles_sort_name),
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = ChatColors.secondaryText,
                     modifier = Modifier.weight(1f),
                 )
@@ -167,7 +169,7 @@ fun SystemFilesScreen(onBack: () -> Unit, onOpen: (SystemFiles) -> Unit, onImpor
             Spacer(Modifier.height(12.dp))
             Text(
                 stringResource(R.string.ub_sysfiles_footer),
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodySmall,
                 lineHeight = 18.sp,
                 color = ChatColors.secondaryText,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
@@ -192,9 +194,9 @@ private fun FileRow(kind: SystemFiles, subtitle: String, onClick: () -> Unit, on
         FileBadge(if (kind == SystemFiles.HEARTBEAT) "♥" else "MD")
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(kind.fileName, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text(kind.fileName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(2.dp))
-            Text(subtitle, fontSize = 13.sp, color = ChatColors.secondaryText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = ChatColors.secondaryText, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box {
             Surface(onClick = { menu = true }, shape = CircleShape, color = Color.Transparent) {
@@ -235,7 +237,7 @@ private fun FileBadge(label: String) {
             .background(MuseTones.fill, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ChatColors.secondaryText, letterSpacing = 0.5.sp)
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = ChatColors.secondaryText, letterSpacing = 0.5.sp)
     }
 }
 
@@ -307,7 +309,7 @@ fun SystemFileScreen(kind: SystemFiles, onBack: () -> Unit, onOpenMemory: () -> 
                     onValueChange = { draft = it },
                     textStyle = LocalTextStyle.current.copy(
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp,
+                        fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                         lineHeight = 21.sp,
                         color = MaterialTheme.colorScheme.onSurface,
                     ),
@@ -318,7 +320,7 @@ fun SystemFileScreen(kind: SystemFiles, onBack: () -> Unit, onOpenMemory: () -> 
                                 Text(
                                     stringResource(R.string.ub_sysfile_edit_hint, kind.fileName),
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 14.sp,
+                                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                                     lineHeight = 21.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 )
@@ -361,16 +363,25 @@ fun SystemFileScreen(kind: SystemFiles, onBack: () -> Unit, onOpenMemory: () -> 
                 AboutQuote(stringResource(kind.about))
                 Spacer(Modifier.height(18.dp))
                 if (content.isBlank()) {
-                    Text(
-                        stringResource(if (kind.editable) R.string.ub_sysfile_empty_editable else R.string.ub_sysfile_empty),
-                        fontSize = 15.sp,
-                        color = ChatColors.secondaryText,
+                    // v1.4.0 item 67: proper empty illustration + action
+                    // (editable files offer "Write"; generated files just
+                    // explain themselves).
+                    EmptyState(
+                        icon = Icons.Outlined.Description,
+                        title = stringResource(R.string.ub_sysfile_empty_title),
+                        hint = stringResource(
+                            if (kind.editable) R.string.ub_sysfile_empty_editable
+                            else R.string.ub_sysfile_empty,
+                        ),
+                        ctaLabel = if (kind.editable) stringResource(R.string.ub_sysfile_empty_write) else null,
+                        onCta = if (kind.editable) ({ editing = true }) else null,
+                        modifier = Modifier.padding(vertical = 24.dp),
                     )
                 } else {
                     MarkdownText(
                         markdown = content,
                         color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 23.sp),
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                 }
                 Spacer(Modifier.height(32.dp))
@@ -387,9 +398,10 @@ private fun AboutQuote(text: String) {
         Spacer(Modifier.width(14.dp))
         Text(
             text = buildAnnotatedAbout(stringResource(R.string.ub_sysfile_about_lead), text),
-            fontSize = 14.sp,
-            lineHeight = 21.sp,
-            fontStyle = FontStyle.Italic,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                lineHeight = 21.sp,
+                fontStyle = FontStyle.Italic,
+            ),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
             modifier = Modifier.weight(1f),
         )
@@ -424,13 +436,13 @@ fun MemoryImportScreen(onBack: () -> Unit) {
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp),
         ) {
-            Text(stringResource(R.string.ub_import_intro), fontSize = 15.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface)
+            Text(stringResource(R.string.ub_import_intro), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(18.dp))
             StepLabel("1", stringResource(R.string.ub_import_step1))
             Spacer(Modifier.height(8.dp))
             Surface(shape = RoundedCornerShape(14.dp), color = MuseTones.fill, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
-                    Text(prompt, fontSize = 14.sp, lineHeight = 21.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(prompt, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 21.sp), color = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Surface(
@@ -444,7 +456,7 @@ fun MemoryImportScreen(onBack: () -> Unit) {
                             Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
                                 Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.ub_import_copy_prompt), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                                Text(stringResource(R.string.ub_import_copy_prompt), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -482,9 +494,9 @@ fun MemoryImportScreen(onBack: () -> Unit) {
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action, contentColor = Color.White),
                 modifier = Modifier.fillMaxWidth().height(46.dp),
-            ) { Text(stringResource(R.string.ub_import_append), fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
+            ) { Text(stringResource(R.string.ub_import_append), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
             Spacer(Modifier.height(10.dp))
-            Text(stringResource(R.string.ub_import_footer), fontSize = 13.sp, lineHeight = 18.sp, color = ChatColors.secondaryText)
+            Text(stringResource(R.string.ub_import_footer), style = MaterialTheme.typography.bodySmall, color = ChatColors.secondaryText)
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -494,9 +506,9 @@ fun MemoryImportScreen(onBack: () -> Unit) {
 private fun StepLabel(n: String, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(22.dp).background(MuseTones.action, CircleShape), contentAlignment = Alignment.Center) {
-            Text(n, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(n, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
         }
         Spacer(Modifier.width(10.dp))
-        Text(text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+        Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
     }
 }

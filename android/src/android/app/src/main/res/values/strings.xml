@@ -437,6 +437,9 @@
     <!-- T172 — sandbox / sessions / browser / terminal i18n -->
     <string name="filebrowser_title">Files</string>
     <string name="filebrowser_empty_folder">Empty folder</string>
+    <!-- v1.4.0 item 67: empty-folder illustration hint + action -->
+    <string name="filebrowser_empty_folder_hint">There are no files here yet. Files the agent creates for this chat appear in this folder.</string>
+    <string name="filebrowser_empty_go_up">Go up</string>
     <string name="filebrowser_delete_title">Delete \"%1$s\"?</string>
     <string name="filebrowser_delete_message">This action cannot be undone.</string>
     <string name="filebrowser_error_title">Error</string>

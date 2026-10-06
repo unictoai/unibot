@@ -393,7 +393,6 @@ private fun TextPreview(item: FileItem) {
                             text = content!!,
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
                                 lineHeight = 18.sp,
                             ),
                             softWrap = false,
@@ -687,7 +686,6 @@ private fun CsvPreview(item: FileItem) {
                                     text = cell,
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 12.sp,
                                         fontWeight = if (rowIdx == 0) FontWeight.Bold else FontWeight.Normal,
                                     ),
                                     modifier = Modifier.padding(end = 16.dp).width(140.dp),
@@ -782,7 +780,6 @@ private fun JsonPreview(item: FileItem) {
                         text = pretty!!,
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
                             lineHeight = 18.sp,
                         ),
                         softWrap = false,
@@ -1010,7 +1007,6 @@ private fun ArchivePreview(item: FileItem) {
                                     e.name,
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 12.sp,
                                     ),
                                     maxLines = 1,
                                 )

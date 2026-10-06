@@ -274,6 +274,9 @@
     <string name="ub_sysfile_saved">Saved</string>
     <string name="ub_sysfile_empty">Nothing here yet.</string>
     <string name="ub_sysfile_empty_editable">Nothing here yet. Tap the pencil to write it, or let the agent fill it in as you talk.</string>
+    <!-- v1.4.0 item 67: empty-file illustration title + CTA -->
+    <string name="ub_sysfile_empty_title">Empty file</string>
+    <string name="ub_sysfile_empty_write">Start writing</string>
     <string name="ub_heartbeat_intro">What runs on its own, and when. Rendered from the routines; edit them from Goals → Routines.</string>
     <string name="ub_heartbeat_routines">Routines</string>
     <string name="ub_heartbeat_goal_checks">Goal checks</string>

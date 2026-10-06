@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +37,10 @@ import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.components.openExternalUrl
 
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(
+    onBack: () -> Unit,
+    onWhatsNew: () -> Unit,
+) {
     val context = LocalContext.current
     val tileBlue = ChatColors.thinking
 
@@ -98,6 +102,14 @@ fun AboutScreen(onBack: () -> Unit) {
         }
 
         SettingsSection(header = stringResource(R.string.about_links)) {
+            // v1.4.0 item 72: the bundled "What's new" changelog.
+            SettingsRow(
+                icon = Icons.Outlined.NewReleases,
+                iconColor = tileBlue,
+                title = "What's new",
+                subtitle = "What changed in this version",
+                onClick = onWhatsNew,
+            )
             SettingsRow(
                 icon = Icons.Outlined.Code,
                 iconColor = tileBlue,

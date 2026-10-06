@@ -27,12 +27,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.ui.theme.ChatColors
 import ai.unicto.unibot.ui.avatar.AgentAvatarDisc
 import ai.unicto.unibot.ui.avatar.AgentMood
@@ -134,25 +132,23 @@ fun MuseNamePill(
     ) {
         Text(
             text = name,
-            fontSize = 14.sp,
-            lineHeight = 18.sp,
-            fontWeight = FontWeight.Normal,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+            ),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
         )
         if (statusLine != null) {
             Spacer(Modifier.height(2.dp))
             Text(
                 text = statusLine,
-                fontSize = 11.5.sp,
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.Normal,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                ),
                 color = statusColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
             )
         }
     }
@@ -205,8 +201,7 @@ fun MuseRoundButton(
 fun MusePageTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        fontSize = 26.sp,
-        lineHeight = 32.sp,
+        style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier.padding(horizontal = 20.dp, vertical = 6.dp),

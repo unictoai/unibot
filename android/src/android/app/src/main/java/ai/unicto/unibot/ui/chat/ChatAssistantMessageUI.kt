@@ -61,6 +61,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -101,6 +102,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.AppShortcut
@@ -487,6 +490,13 @@ internal fun InlineErrorBanner(
     onRefreshModels: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    // v1.4.0 item 68: tap-to-expand. Long errors collapse to 3 lines (5 for
+    // the 413 card); tapping expands to the full text. The expand affordance
+    // only arms when the text actually overflows — a short banner stays a
+    // display-only row with no fake press feedback (item 71).
+    var expanded by remember(error) { mutableStateOf(false) }
+    var canExpand by remember(error) { mutableStateOf(false) }
+    val collapsedLines = if (isRequestTooLarge) 5 else 3
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -494,7 +504,7 @@ internal fun InlineErrorBanner(
             .clip(RoundedCornerShape(12.dp))
             .background(UbColors.error.copy(alpha = 0.12f))
             .combinedClickable(
-                onClick = {},
+                onClick = { if (canExpand) expanded = !expanded },
                 onLongClick = {
                     // [v1.0-wave5-privacy] Route through ClipboardGuard so the
                     // "Auto-clear clipboard" toggle wipes the copy after 60s.
@@ -504,6 +514,8 @@ internal fun InlineErrorBanner(
                         error,
                     )
                 },
+                indication = if (canExpand) LocalIndication.current else null,
+                interactionSource = remember(error) { MutableInteractionSource() },
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
@@ -518,12 +530,21 @@ internal fun InlineErrorBanner(
             Text(
                 text = error,
                 color = UbColors.error,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
-                maxLines = if (isRequestTooLarge) 5 else 3,
+                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
+                maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
                 overflow = TextOverflow.Ellipsis,
+                onTextLayout = { canExpand = canExpand || it.hasVisualOverflow },
                 modifier = Modifier.weight(1f),
             )
+            if (canExpand) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = UbColors.error.copy(alpha = 0.7f),
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
             if (onRetry != null && !isRequestTooLarge && !isModelNotFound && !isOutputLimit) {
                 Spacer(modifier = Modifier.width(8.dp))
                 ErrorPillButton(

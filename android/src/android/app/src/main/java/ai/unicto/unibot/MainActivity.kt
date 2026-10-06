@@ -698,6 +698,11 @@ class MainActivity : ComponentActivity() {
                 // root-level `.sheet(item: gate.pending)`.
                 ai.unicto.unibot.ui.settings.ConfigConfirmDialogHost()
 
+                // v1.4.0 item 72: "What's new" — one dialog per version bump.
+                // Declared before the splash overlay so the brand beat plays
+                // first; the dialog surfaces right after.
+                ai.unicto.unibot.ui.settings.WhatsNewHost(navController = navController)
+
                 // [P1-app-lock] Foreground gate: full-screen lock overlay
                 // above everything while the app is locked.
                 val appLocked by ai.unicto.unibot.guard.AppLock.locked.collectAsState()

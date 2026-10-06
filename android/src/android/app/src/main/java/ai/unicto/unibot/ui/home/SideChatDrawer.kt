@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,11 +17,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
@@ -34,6 +33,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
@@ -49,13 +49,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.db.ChatSessionEntity
 import ai.unicto.unibot.data.repository.ChatRepository
@@ -63,10 +62,14 @@ import java.text.DateFormat
 import java.util.Date
 
 /**
- * Muse's chats drawer: the agent's name, the "main chat" row, then side chats by topic, with
- * search, settings and "new" along the bottom. The archive glyph beside the section title opens
- * the full OpenMinis session list (folders, groups, search, bulk actions) — nothing upstream is
- * lost, it just moved one tap away.
+ * v1.4.0 item 66 — the nav drawer with real hierarchy: three grouped
+ * sections (destinations, side chats, actions) separated by hairlines,
+ * section labels in a muted label role, 48dp rows, theme typography and
+ * shape tokens throughout.
+ *
+ * Destination order is contractual: Main chat, Devices, then the v1.3.5
+ * Swarm entry directly below Devices (do not move it), then Coding when a
+ * coding computer is online.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -114,116 +117,67 @@ fun SideChatDrawer(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
+        // ── Header ──────────────────────────────────────────────────
         Text(
             text = agentName,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 14.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 12.dp),
         )
 
-        // Main chat row — selected when it is what the chat tab shows.
+        // ── Section: destinations ───────────────────────────────────
         val mainSelected = currentSessionId == null || currentSessionId == mainSessionId
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .padding(horizontal = 12.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (mainSelected) MuseTones.fill else MuseTones.surface)
-                .clickable(onClick = onOpenMain)
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-        ) {
-            Icon(Icons.Outlined.Home, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.size(12.dp))
-            Text(
-                text = stringResource(R.string.ub_drawer_main_chat),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
+        DrawerRow(
+            icon = Icons.Outlined.Home,
+            title = stringResource(R.string.ub_drawer_main_chat),
+            selected = mainSelected,
+            onClick = onOpenMain,
+        )
+        if (onDevices != null) {
+            DrawerRow(
+                icon = Icons.Outlined.Devices,
+                title = stringResource(R.string.ub_devices_title),
+                hint = when {
+                    !hubConnected -> stringResource(R.string.ub_devices_off)
+                    othersOnline == 0 -> stringResource(R.string.ub_hub_service_alone_short)
+                    else -> pluralStringResource(R.plurals.ub_hub_service_devices, othersOnline, othersOnline)
+                },
+                onClick = onDevices,
             )
         }
-
-        // unibot: Devices — the account's other Muses, one tap away like a chat (docs/every-device.md)
-        if (onDevices != null) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable(onClick = onDevices)
-                    .padding(horizontal = 16.dp, vertical = 18.dp),
-            ) {
-                Icon(Icons.Outlined.Devices, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurface)
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    text = stringResource(R.string.ub_devices_title),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = when {
-                        !hubConnected -> stringResource(R.string.ub_devices_off)
-                        othersOnline == 0 -> stringResource(R.string.ub_hub_service_alone_short)
-                        else -> pluralStringResource(R.plurals.ub_hub_service_devices, othersOnline, othersOnline)
-                    },
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        // v1.3.5 Swarm — the agent swarm space, one tap away like a chat,
-        // directly below Devices.
+        // v1.3.5 Swarm — directly below Devices. Position is contractual.
         if (onSwarm != null) {
             SwarmDrawerRow(onSwarm = onSwarm)
         }
-
         // v1.4.0-knowledge item 47 — the personal knowledge base, directly
         // below Swarm.
         if (onKnowledge != null) {
             KnowledgeDrawerRow(onKnowledge = onKnowledge)
         }
-
-        // unibot: Coding — the coding agents on the account's computers, shown once one is online
         if (onCoding != null && codingComputers > 0) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable(onClick = onCoding)
-                    .padding(horizontal = 16.dp, vertical = 18.dp),
-            ) {
-                Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onSurface)
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    text = stringResource(R.string.ub_coding_title),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = codingComputers.toString(),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            DrawerRow(
+                icon = Icons.Outlined.Terminal,
+                title = stringResource(R.string.ub_coding_title),
+                hint = codingComputers.toString(),
+                onClick = onCoding,
+            )
         }
 
+        HorizontalDivider(
+            color = MuseTones.hairline,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        )
+
+        // ── Section: side chats ─────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 26.dp, end = 12.dp, top = 12.dp),
+            modifier = Modifier.padding(start = 20.dp, end = 8.dp),
         ) {
             Text(
                 text = stringResource(R.string.ub_drawer_side_chats),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
@@ -236,6 +190,46 @@ fun SideChatDrawer(
                 )
             }
         }
+        // Search lives with the list it filters, not in the bottom strip.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 48.dp)
+                .clip(MaterialTheme.shapes.small)
+                .background(MuseTones.fill)
+                .padding(horizontal = 16.dp),
+        ) {
+            Icon(
+                Icons.Outlined.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Box(Modifier.weight(1f)) {
+                if (query.isEmpty()) {
+                    Text(
+                        stringResource(R.string.ub_drawer_search),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
 
         if (sideChats.isEmpty()) {
             Column(
@@ -247,25 +241,27 @@ fun SideChatDrawer(
                     Icons.Outlined.Forum,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(32.dp),
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.ub_drawer_empty_title),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.ub_drawer_empty_body),
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
         } else {
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+            ) {
                 items(sideChats, key = { it.id }) { session ->
                     SideChatRow(
                         session = session,
@@ -277,53 +273,96 @@ fun SideChatDrawer(
             }
         }
 
-        // Bottom strip: settings · search · new
+        HorizontalDivider(
+            color = MuseTones.hairline,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        )
+
+        // ── Section: actions ────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp, top = 6.dp),
+                .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
         ) {
             IconButton(onClick = onSettings) {
-                Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.ub_drawer_settings), tint = MaterialTheme.colorScheme.onSurface)
+                Icon(
+                    Icons.Outlined.Settings,
+                    contentDescription = stringResource(R.string.ub_drawer_settings),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
             if (onSystemFiles != null) {
                 IconButton(onClick = onSystemFiles) {
-                    Icon(Icons.Outlined.Description, contentDescription = stringResource(R.string.ub_sysfiles_title), tint = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .clip(CircleShape)
-                    .background(MuseTones.fill)
-                    .padding(horizontal = 12.dp),
-            ) {
-                Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(8.dp))
-                Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            stringResource(R.string.ub_drawer_search),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 15.sp,
-                        )
-                    }
-                    BasicTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        singleLine = true,
-                        textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.fillMaxWidth(),
+                    Icon(
+                        Icons.Outlined.Description,
+                        contentDescription = stringResource(R.string.ub_sysfiles_title),
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
+            Spacer(Modifier.weight(1f))
             IconButton(onClick = onNewChat) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.ub_drawer_new_chat), tint = MaterialTheme.colorScheme.onSurface)
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.ub_drawer_new_chat),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
+        }
+    }
+}
+
+/**
+ * One destination row: 48dp minimum, icon + title + optional trailing hint,
+ * selected state via the fill tone. Shared by every drawer destination so
+ * the section reads as one list.
+ */
+@Composable
+private fun DrawerRow(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    hint: String? = null,
+    selected: Boolean = false,
+    iconTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(MaterialTheme.shapes.small)
+            .background(if (selected) MuseTones.fill else MuseTones.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = iconTint,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (hint != null) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -341,25 +380,26 @@ private fun SideChatRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 1.dp)
+                .padding(horizontal = 12.dp, vertical = 2.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .defaultMinSize(minHeight = 48.dp)
+                .clip(MaterialTheme.shapes.small)
                 .background(if (selected) MuseTones.fill else MuseTones.surface)
                 .combinedClickable(onClick = onClick, onLongClick = { menu = true })
-                .padding(horizontal = 14.dp, vertical = 11.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
                 text = session.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.ub_drawer_untitled),
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.size(10.dp))
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = relativeDay(session.updatedAt),
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

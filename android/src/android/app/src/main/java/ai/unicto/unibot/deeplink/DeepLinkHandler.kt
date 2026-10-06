@@ -82,8 +82,13 @@ sealed class DeepLinkAction {
      * composer (via HomeBus, same path as the profile page's pre-typed
      * request). Used by the Quick-ask home-screen widget and the
      * `ai.unicto.unibot.ASK` Tasker broadcast.
+     *
+     * v1.4.0 item 73 — `&new=1`: open a FRESH draft chat with [text]
+     * prefilled instead of reusing the main chat, so a question asked from
+     * the widget never pollutes the main conversation. Defaults to false,
+     * so every existing caller keeps the old behaviour.
      */
-    data class Ask(val text: String) : DeepLinkAction()
+    data class Ask(val text: String, val newChat: Boolean = false) : DeepLinkAction()
 
     /**
      * T183: any settings screen reachable by route string. Extends the
@@ -169,7 +174,12 @@ object DeepLinkHandler {
             // v0.2.0 P3: quick-ask — `unibot://ask?text=...` (widget / Tasker).
             // The text is prefilled, never auto-sent: the user reviews it
             // in the composer before anything runs.
-            "ask" -> DeepLinkAction.Ask(text = uri.getQueryParameter("text").orEmpty())
+            // v1.4.0 item 73: `&new=1` opens a fresh draft chat with the
+            // text instead of prefilling the main chat.
+            "ask" -> DeepLinkAction.Ask(
+                text = uri.getQueryParameter("text").orEmpty(),
+                newChat = isNewChatParam(uri.getQueryParameter("new")),
+            )
             "settings" -> parseSettingsPath(uri)
             "session" -> {
                 // unibot://session/<sessionId>                → OpenSession

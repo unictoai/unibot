@@ -3,10 +3,10 @@ package ai.unicto.unibot.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.LibraryBooks
@@ -23,9 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.swarm.SharedPrefsSwarmCheckpointStore
 import ai.unicto.unibot.swarm.SwarmDrawerHint
@@ -68,22 +66,24 @@ internal fun SwarmDrawerRow(onSwarm: () -> Unit) {
         modifier = Modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onSwarm)
-            .padding(horizontal = 16.dp, vertical = 18.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Icon(
             Icons.Outlined.AutoAwesome,
             contentDescription = null,
-            modifier = Modifier.size(26.dp),
+            modifier = Modifier.size(22.dp),
             tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.size(12.dp))
         Text(
             text = stringResource(R.string.ub_drawer_swarm),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         Text(
@@ -92,7 +92,7 @@ internal fun SwarmDrawerRow(onSwarm: () -> Unit) {
                     pluralStringResource(R.plurals.ub_swarm_agents, h.agentCount, h.agentCount)
                 SwarmDrawerHint.Idle -> stringResource(R.string.ub_swarm_idle)
             },
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -120,6 +120,7 @@ internal fun KnowledgeDrawerRow(onKnowledge: () -> Unit) {
         modifier = Modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
             .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onKnowledge)
             .padding(horizontal = 16.dp, vertical = 12.dp),

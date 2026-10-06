@@ -20,6 +20,13 @@ object HomeBus {
         data class ShowSession(val sessionId: String) : Request()
         /** Show the main chat with [text] typed into the composer and the keyboard up. */
         data class PrefillComposer(val text: String) : Request()
+        /**
+         * v1.4.0 item 73 — open a FRESH draft chat with [text] typed into
+         * its composer and the keyboard up. The widget's quick-ask uses this
+         * so a question asked from the home screen never pollutes the main
+         * chat.
+         */
+        data class PrefillNewChat(val text: String) : Request()
     }
 
     private val _requests = MutableSharedFlow<Request>(replay = 1, extraBufferCapacity = 8)
@@ -30,6 +37,9 @@ object HomeBus {
     fun showSession(sessionId: String) { _requests.tryEmit(Request.ShowSession(sessionId)) }
 
     fun prefillComposer(text: String) { _requests.tryEmit(Request.PrefillComposer(text)) }
+
+    /** v1.4.0 item 73 — prefill a fresh draft chat (see [Request.PrefillNewChat]). */
+    fun prefillNewChat(text: String) { _requests.tryEmit(Request.PrefillNewChat(text)) }
 
     @Suppress("EXPERIMENTAL_API_USAGE")
     fun handled() { _requests.resetReplayCache() }

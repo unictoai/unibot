@@ -48,6 +48,7 @@ import ai.unicto.unibot.data.model.LLMUsage
 import ai.unicto.unibot.data.model.ModelGroup
 import ai.unicto.unibot.data.model.RoutingStrategy
 import ai.unicto.unibot.data.model.hasImageInput
+import ai.unicto.unibot.data.model.readableMessage
 import ai.unicto.unibot.data.model.ThinkingLevel
 import ai.unicto.unibot.R
 import ai.unicto.unibot.data.repository.ChatRepository
@@ -1393,6 +1394,15 @@ class ChatViewModel(
     private var streamJob: Job? = null
     private var currentProvider: LLMProvider? = null
     private var currentModel: LLMModel? = null
+
+    /**
+     * v1.4.0 item 76 — the active model's context window in tokens, for the
+     * composer's context-usage glow. Uses the model metadata when present,
+     * otherwise the id-based heuristic; 0 when no model is resolved yet
+     * (the glow hides itself).
+     */
+    val currentContextWindowTokens: Int
+        get() = currentModel?.let { ai.unicto.unibot.data.model.inferContextWindowTokens(it) } ?: 0
 
     /**
      * [unibot-delegate] Multi-agent recursion guard. > 0 while a `delegate`
@@ -7971,7 +7981,9 @@ class ChatViewModel(
             // an honest Retry for pure connectivity failures. Text unchanged.
             setInlineError(error.message ?: "Network error", ERROR_KIND_NETWORK)
         } else {
-            setInlineError(error.message ?: "Unknown error")
+            // v1.4.0 item 70: readableMessage() also guards blank messages,
+            // so a null/empty cause can never surface as "Unknown error: null".
+            setInlineError(error.readableMessage())
         }
     }
 

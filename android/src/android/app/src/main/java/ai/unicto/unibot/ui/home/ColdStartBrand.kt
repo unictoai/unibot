@@ -11,41 +11,53 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.ui.avatar.AgentAvatar
 import ai.unicto.unibot.ui.avatar.AgentMood
 import ai.unicto.unibot.ui.theme.ChatColors
+import ai.unicto.unibot.ui.theme.Motion
+import ai.unicto.unibot.ui.theme.animationsEnabled
 
 /**
  * Branded cold start: the dragon face (breathing, IDLE mood) + "unibot"
  * wordmark + a shimmering "waking up…" line, instead of the old blank
  * Surface. Shown while the home shell loads config/sessions — usually under
  * a second.
+ *
+ * v1.4.0 item 65: typography roles (no inline sizes), the shimmer loop on
+ * the [Motion.Slow] token, and the ambient sweep gated on
+ * [animationsEnabled] so "Remove animations" gets a static line.
  */
 @Composable
 fun ColdStartBrand() {
     val violet = ChatColors.thinking
-    val transition = rememberInfiniteTransition(label = "coldstart")
-    val sweep by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "coldstart_sweep",
-    )
+    val animated = animationsEnabled()
+    val sweep by if (animated) {
+        val transition = rememberInfiniteTransition(label = "coldstart")
+        transition.animateFloat(
+            initialValue = -1f,
+            targetValue = 2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(Motion.Slow * 3, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "coldstart_sweep",
+        )
+    } else {
+        remember { mutableStateOf(0.5f) }
+    }
     Surface(color = ChatColors.background, modifier = Modifier.fillMaxSize()) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -57,15 +69,14 @@ fun ColdStartBrand() {
                 Spacer(Modifier.height(20.dp))
                 Text(
                     text = "unibot",
-                    fontSize = 28.sp,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = ChatColors.primaryText,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "waking up…",
-                    fontSize = 14.sp,
-                    style = TextStyle(
+                    style = MaterialTheme.typography.bodyMedium.copy(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 violet.copy(alpha = 0.45f),

@@ -68,6 +68,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -277,6 +279,9 @@ private fun SwarmIdleView(
     onRequestNotificationsPermission: () -> Unit = {},
 ) {
     // v1.4.0 item 12 — one-shot prefill from chat's "Deep-dive this".
+    // v1.4.0 item 67: the history empty state's "New mission" action
+    // focuses the composer.
+    val composerFocus = remember { FocusRequester() }
     var mission by remember { mutableStateOf(initialMission ?: "") }
     var presetId by remember { mutableStateOf("research") }
     var attachments by remember { mutableStateOf(listOf<SwarmAttachment>()) }
@@ -362,6 +367,7 @@ private fun SwarmIdleView(
                     )
                 },
                 launchEnabled = mission.isNotBlank(),
+                focusRequester = composerFocus,
             )
         }
         // v1.4.0 item 10 — attach documents as mission context.
@@ -435,6 +441,8 @@ private fun SwarmIdleView(
                         repository.clearHistory()
                         history = emptyList()
                     },
+                    // v1.4.0 item 67: empty-state action focuses the composer.
+                    onNewMission = { composerFocus.requestFocus() },
                 )
             }
         }
@@ -537,6 +545,9 @@ private fun MissionComposer(
     onLaunch: () -> Unit,
     launchEnabled: Boolean,
     modifier: Modifier = Modifier,
+    // v1.4.0 item 67: lets the history empty state's "New mission" action
+    // focus the composer.
+    focusRequester: FocusRequester = FocusRequester(),
 ) {
     Column(
         modifier = modifier,
@@ -550,7 +561,7 @@ private fun MissionComposer(
             minLines = 3,
             maxLines = 6,
             shape = MaterialTheme.shapes.large,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
         )
         Button(
             onClick = onLaunch,

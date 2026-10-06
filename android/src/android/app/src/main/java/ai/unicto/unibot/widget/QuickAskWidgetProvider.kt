@@ -23,6 +23,9 @@ import ai.unicto.unibot.R
  * with the voice input mic auto-triggered (DeepLinkHandler.NewVoiceChat →
  * DeepLinkCoordinator.ChatAction.START_VOICE). The text-field + send
  * behavior is unchanged.
+ *
+ * v1.4.0 item 73 — the sheet now fires `unibot://ask?text=...&new=1`, so
+ * the question lands in a FRESH draft chat instead of the main chat.
  */
 class QuickAskWidgetProvider : AppWidgetProvider() {
 

@@ -194,6 +194,8 @@ object Routes {
     /** v0.2.0 P3: Automation help — Tasker intents, widgets, background approvals. */
     const val AUTOMATION = "automation"
     const val ABOUT = "about"
+    /** v1.4.0 item 72: "What's new" changelog screen. */
+    const val WHATS_NEW = "whats_new"
     // v1.4.0-onboarding Onboarding & help theme screens.
     const val HELP_CENTER = "help_center"
     const val BYOK_WIZARD = "byok_wizard"
@@ -408,9 +410,15 @@ fun AppNavigation(
             // home shell mounts the main chat by itself; HomeBus replays
             // the prefill to the shell's collector even if it subscribes
             // a frame later. Never auto-sends.
+            // v1.4.0 item 73: `&new=1` prefills a fresh draft chat instead
+            // of the main chat.
             is DeepLinkAction.Ask -> {
                 if (initialDeepLink.text.isNotBlank()) {
-                    ai.unicto.unibot.ui.home.HomeBus.prefillComposer(initialDeepLink.text)
+                    if (initialDeepLink.newChat) {
+                        ai.unicto.unibot.ui.home.HomeBus.prefillNewChat(initialDeepLink.text)
+                    } else {
+                        ai.unicto.unibot.ui.home.HomeBus.prefillComposer(initialDeepLink.text)
+                    }
                 }
             }
             else -> {}
@@ -2003,7 +2011,17 @@ fun AppNavigation(
         }
 
         composable(Routes.ABOUT) {
-            AboutScreen(onBack = { navController.safePopBackStack() })
+            AboutScreen(
+                onBack = { navController.safePopBackStack() },
+                onWhatsNew = { navController.safeNavigate(Routes.WHATS_NEW) },
+            )
+        }
+
+        // v1.4.0 item 72: "What's new" changelog screen.
+        composable(Routes.WHATS_NEW) {
+            ai.unicto.unibot.ui.settings.WhatsNewScreen(
+                onBack = { navController.safePopBackStack() },
+            )
         }
 
         // v1.4.0-onboarding In-app help center: searchable offline FAQ, tour replay, model check.

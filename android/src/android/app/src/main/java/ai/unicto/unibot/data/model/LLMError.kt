@@ -1,8 +1,26 @@
 package ai.unicto.unibot.data.model
 
+/**
+ * v1.4.0 item 70 — never render a literal "null" (or a blank) inside a
+ * user-facing error string. Exception messages are nullable AND often blank
+ * (e.g. `IOException()` with no detail); interpolating them raw produced
+ * "Unknown error: null" / "Network error: null" in the chat banners.
+ * [readableMessage] is the single choke point every error class below uses.
+ */
+internal fun Throwable?.readableMessage(): String =
+    this?.message?.takeIf { it.isNotBlank() } ?: "Unknown error"
+
+/**
+ * Appends the cause's detail only when it actually says something —
+ * otherwise the empty string, so prefixed errors degrade to the bare
+ * label ("Network error") instead of "Network error: null".
+ */
+internal fun Throwable?.detailSuffix(): String =
+    this?.message?.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()
+
 sealed class LLMError(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class InvalidApiKey(val detail: String = "") : LLMError(if (detail.isBlank()) "Invalid API key" else "Invalid API key: $detail")
-    class NetworkError(cause: Throwable) : LLMError("Network error: ${cause.message}", cause)
+    class NetworkError(cause: Throwable) : LLMError("Network error${cause.detailSuffix()}", cause)
     class ProviderError(val detail: String) : LLMError("Provider error: $detail")
     /**
      * [T-android-v124-413] HTTP 413 — the request (usually a long agent
@@ -36,11 +54,11 @@ sealed class LLMError(message: String, cause: Throwable? = null) : Exception(mes
      */
     class OutputLimitExceeded(val limit: Int = 0, val detail: String = "") :
         LLMError(if (detail.isBlank()) "Output limit exceeded" else "Output limit exceeded: $detail")
-    class DecodingError(cause: Throwable) : LLMError("Decoding error: ${cause.message}", cause)
+    class DecodingError(cause: Throwable) : LLMError("Decoding error${cause.detailSuffix()}", cause)
     class RateLimited : LLMError("Rate limited — please try again later")
     class TransientError(val detail: String) : LLMError("Transient error: $detail")
     class Cancelled : LLMError("Request was cancelled")
-    class Unknown(cause: Throwable?) : LLMError("Unknown error: ${cause?.message}", cause)
+    class Unknown(cause: Throwable?) : LLMError("Unknown error${cause.detailSuffix()}", cause)
 
     /** Pure connectivity failure — the request didn't land at all. */
     val isNetworkError: Boolean get() = this is NetworkError

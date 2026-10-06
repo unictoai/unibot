@@ -139,7 +139,10 @@ fun UnibotHome(
     }
 
     // Requests from cards inside messages, idea sheets, etc.
-    var pendingPrefill by remember { mutableStateOf<String?>(null) }
+    // v1.4.0 item 73: a prefill targets either the main chat (null id) or a
+    // fresh draft session (non-null id).
+    data class PrefillTarget(val sessionId: String?, val text: String)
+    var pendingPrefill by remember { mutableStateOf<PrefillTarget?>(null) }
     LaunchedEffect(Unit) {
         HomeBus.requests.collect { req ->
             when (req) {
@@ -147,7 +150,16 @@ fun UnibotHome(
                 is HomeBus.Request.ShowSession -> showSession(req.sessionId)
                 is HomeBus.Request.PrefillComposer -> {
                     showMain()
-                    pendingPrefill = req.text
+                    pendingPrefill = PrefillTarget(null, req.text)
+                }
+                is HomeBus.Request.PrefillNewChat -> {
+                    // Fresh draft id, same "__new__" shape as the quick-action
+                    // new-chat path in MainActivity. showSession mounts the
+                    // chat tab on it; the VM below resolves the same
+                    // process-level instance ChatScreen will use.
+                    val draftId = "__new__${UUID.randomUUID()}"
+                    showSession(draftId)
+                    pendingPrefill = PrefillTarget(draftId, req.text)
                 }
             }
             HomeBus.handled()
@@ -199,13 +211,30 @@ fun UnibotHome(
             ),
         )
     }
-    // The profile page's "Change avatar": the request pre-typed, keyboard up, once the main
-    // chat's ViewModel is there to take it.
-    LaunchedEffect(pendingPrefill, mainVm) {
-        val text = pendingPrefill ?: return@LaunchedEffect
-        val vm = mainVm ?: return@LaunchedEffect
+    // The profile page's "Change avatar": the request pre-typed, keyboard up, once the target
+    // chat's ViewModel is there to take it. v1.4.0 item 73: a PrefillNewChat
+    // target resolves the draft session's own VM (same process-level store
+    // ChatScreen uses) instead of the main chat's.
+    val prefillVm: ChatViewModel? = if (phase != HomePhase.HOME) null else pendingPrefill?.sessionId?.let { id ->
+        viewModel(
+            viewModelStoreOwner = ChatViewModelStore.ownerFor(id),
+            factory = ChatViewModel.factory(
+                sessionId = id,
+                chatRepository = chatRepository,
+                providerRepository = providerRepository,
+                appContext = context.applicationContext,
+                memoryRepository = memoryRepository,
+                skillRepository = skillRepository,
+                mcpRepository = mcpRepository,
+            ),
+        )
+    }
+    LaunchedEffect(pendingPrefill, mainVm, prefillVm) {
+        val target = pendingPrefill ?: return@LaunchedEffect
+        val vm = if (target.sessionId == null) mainVm else prefillVm
+        vm ?: return@LaunchedEffect
         pendingPrefill = null
-        vm.ubPrefillComposer(text)
+        vm.ubPrefillComposer(target.text)
     }
     val streaming by (mainVm?.isStreaming ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsState()
     val error by (mainVm?.error ?: remember { kotlinx.coroutines.flow.MutableStateFlow<String?>(null) }).collectAsState()
@@ -339,7 +368,7 @@ fun UnibotHome(
                 // one cross-fade rather than a cut to the canvas.
                 val chatAlpha by animateFloatAsState(
                     targetValue = if (chatVisible) 1f else 0f,
-                    animationSpec = tween(if (chatVisible) 120 else 220),
+                    animationSpec = tween(if (chatVisible) Motion.Instant else Motion.Quick),
                     label = "chatAlpha",
                 )
                 Box(
@@ -395,7 +424,7 @@ fun UnibotHome(
                 if (tab != HomeTab.CHAT) pageTab = tab
                 AnimatedVisibility(
                     visible = !chatVisible,
-                    enter = fadeIn(tween(160)),
+                    enter = fadeIn(tween(Motion.Quick)),
                     exit = fadeOut(tween(Motion.Instant)),
                     modifier = Modifier.fillMaxSize().zIndex(1f),
                 ) {
@@ -474,7 +503,7 @@ fun UnibotHome(
 
     AnimatedContent(
         targetState = phase,
-        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+        transitionSpec = { fadeIn(tween(Motion.Quick)) togetherWith fadeOut(tween(Motion.Quick)) },
         label = "ubHomePhase",
     ) { current ->
         when (current) {
