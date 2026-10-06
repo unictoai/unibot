@@ -106,7 +106,7 @@ class SwarmCheckpointTest {
         assertNull(SwarmCheckpoint.toUiState(data.copy(lifecycle = "DONE")))
         assertNull(SwarmCheckpoint.toUiState(data.copy(lifecycle = "IDLE")))
         assertNull(SwarmCheckpoint.toUiState(data.copy(lifecycle = "BOGUS")))
-        assertNull(SwarmCheckpoint.toUiState(data.copy(crewId = "no-such-preset")))
+        assertNull(SwarmCheckpoint.toUiState(data.copy(crewId = "no-such-preset", crewRoles = emptyList())))
     }
 
     @Test

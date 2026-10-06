@@ -55,12 +55,15 @@ object KeyValidator {
      * which case the caller should skip validation rather than guess.
      */
     fun endpointFor(type: ProviderType, baseOverride: String?): String? {
+        // Gemini's validation endpoint is fixed (the v1beta models
+        // collection); it has no defaultBaseUrl/officialBase, so resolve
+        // it before the base-or-null early return below.
+        if (type == ProviderType.gemini) return "https://generativelanguage.googleapis.com/v1beta/models"
         val base = baseOverride?.trim()?.takeIf { it.isNotBlank() }
             ?: type.defaultBaseUrl
             ?: officialBase(type)
             ?: return null
         return when (type) {
-            ProviderType.gemini -> "https://generativelanguage.googleapis.com/v1beta/models"
             ProviderType.anthropic -> base.trimEnd('/') + "/v1/models"
             else -> base.trimEnd('/') + "/models"
         }
