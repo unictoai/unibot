@@ -1,6 +1,8 @@
 package ai.unicto.unibot.deeplink
 
 import android.net.Uri
+import android.util.Log
+import ai.unicto.unibot.privacy.UrlTokenAudit
 import ai.unicto.unibot.ui.navigation.Routes
 
 /**
@@ -113,11 +115,32 @@ sealed class DeepLinkAction {
 }
 
 object DeepLinkHandler {
+    /**
+     * v1.4.0 item 73 — pure predicate for the `unibot://ask` `new` query
+     * parameter, kept separate so it stays unit-testable on the JVM
+     * (android.net.Uri is unavailable in unit tests).
+     */
+    fun isNewChatParam(value: String?): Boolean =
+        value?.trim()?.lowercase() == "1" || value?.trim()?.lowercase() == "true"
+
     fun parse(uri: Uri?): DeepLinkAction {
         // Accept the legacy minis:// scheme too: old chats may still contain
         // minis:// links. Everything generated is unibot://.
         if (uri == null || (uri.scheme != "unibot" && uri.scheme != "minis")) {
             return DeepLinkAction.Unknown
+        }
+        // Privacy item 64 — audit the incoming deep link for credential-like
+        // parameters. Parameter NAMES are logged at warning level; values
+        // never are. The link itself is left intact: first-party flows (e.g.
+        // environments?create_key=…) intentionally carry one-time values,
+        // and redacting them here would break the flow the user just tapped.
+        val leaks = UrlTokenAudit.auditDeepLink(uri.toString())
+        if (leaks.isNotEmpty()) {
+            Log.w(
+                "DeepLinkAudit",
+                "incoming deep link carries credential-like parameter(s): " +
+                    leaks.joinToString() + " — values never logged",
+            )
         }
         val host = uri.host ?: return DeepLinkAction.Unknown
         val path = uri.path.orEmpty()

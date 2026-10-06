@@ -30,13 +30,22 @@ object ClipboardGuard {
      * current clip with an empty one only if the clipboard still holds OUR
      * clip; if the user copied something else in the meantime we leave it
      * alone.
+     *
+     * Privacy item 64: URLs inside the copied text are swept for
+     * credential-like parameters ([UrlTokenAudit]) and redacted BEFORE the
+     * copy lands on the clipboard. Values are never logged — only the count
+     * of redacted parameters.
      */
     fun copyWithAutoClear(context: Context, label: String, text: String) {
+        val safeText = UrlTokenAudit.redactUrlsInText(text)
+        if (safeText != text) {
+            Log.w(TAG, "redacted credential-like URL parameter(s) before copying ($label) — values never logged")
+        }
         val appContext = context.applicationContext
         val clipboard =
             appContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                 ?: return
-        val clip = ClipData.newPlainText(label, text)
+        val clip = ClipData.newPlainText(label, safeText)
         clipboard.setPrimaryClip(clip)
 
         if (!PrivacyPrefs.clipboardAutoClear) return

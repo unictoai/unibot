@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.LocaleList
 import android.provider.Settings
+import android.widget.Toast
 import ai.unicto.unibot.accessibility.AccessibilityRecoveryManager
 import android.graphics.Color
 import androidx.activity.ComponentActivity
@@ -508,6 +509,14 @@ class MainActivity : ComponentActivity() {
         ai.unicto.unibot.privacy.PrivacyNetworkGate.localOnlyEnabled =
             ai.unicto.unibot.privacy.PrivacyPrefs.localOnly.value
         ai.unicto.unibot.privacy.PrivacyNetworkGate.refreshAllowlist(applicationContext)
+        // v1.4.0 privacy items 58/62 — mirror the persisted kill switch and
+        // on-device-only mode into the gate (correct from the first
+        // request), and start the on-device weekly privacy report store.
+        ai.unicto.unibot.privacy.PrivacyNetworkGate.killSwitchEngaged =
+            ai.unicto.unibot.privacy.PrivacyPrefs.killSwitch.value
+        ai.unicto.unibot.privacy.PrivacyNetworkGate.onDeviceOnlyEnabled =
+            ai.unicto.unibot.privacy.PrivacyPrefs.onDeviceOnly.value
+        ai.unicto.unibot.privacy.WeeklyPrivacyReport.init(applicationContext)
         // FLAG_SECURE now; later flips arrive via the StateFlow collect below.
         applyPrivacyScreenshotFlag()
         lifecycleScope.launch {
@@ -528,6 +537,15 @@ class MainActivity : ComponentActivity() {
         // onNewIntent; the deep-link parse below still opens the session.
         ai.unicto.unibot.notification.QuickReplyHandler.handleIntent(this, intent)
         val explicitDeepLink = DeepLinkHandler.parse(intent?.data)
+        // v1.4.0 item 69: a link that claims the unibot scheme but parses to
+        // nothing used to die silently. Explain itself instead — once, here
+        // on the cold path (the warm path toasts inside handleDeepLink).
+        if (explicitDeepLink is DeepLinkAction.Unknown && intent?.data != null &&
+            (intent.data?.scheme == "unibot" || intent.data?.scheme == "minis")
+        ) {
+            Toast.makeText(this, R.string.ub_deeplink_malformed, Toast.LENGTH_LONG).show()
+            AppLogger.warning("DeepLink", "malformed unibot link ignored: ${intent.data}")
+        }
         val launchDeepLink = if (explicitDeepLink !is DeepLinkAction.Unknown) {
             explicitDeepLink
         } else {
@@ -873,6 +891,15 @@ class MainActivity : ComponentActivity() {
 
     private fun handleDeepLink(uri: Uri?) {
         val action = DeepLinkHandler.parse(uri)
+        // v1.4.0 item 69: warm-start malformed link — the scheme claims
+        // unibot but nothing handles it. Toast instead of silent ignore.
+        if (action is DeepLinkAction.Unknown && uri != null &&
+            (uri.scheme == "unibot" || uri.scheme == "minis")
+        ) {
+            Toast.makeText(this, R.string.ub_deeplink_malformed, Toast.LENGTH_LONG).show()
+            AppLogger.warning("DeepLink", "malformed unibot link ignored: $uri")
+            return
+        }
         val nav = navController ?: return
         when (action) {
             is DeepLinkAction.OpenTerminal -> {
@@ -943,16 +970,26 @@ class MainActivity : ComponentActivity() {
             // home shell and prefills the main chat's composer via HomeBus —
             // the same path the profile page's pre-typed request uses.
             // Never auto-sends: the user reviews the text first.
+            // v1.4.0 item 73: `&new=1` opens a fresh draft chat with the
+            // text prefilled (the shell switches to the draft itself); in
+            // wide windows (no shell) it falls back to the main-chat path.
             is DeepLinkAction.Ask -> {
-                if (ai.unicto.unibot.ui.home.HomeShell.active) {
-                    nav.popBackStack(Routes.SESSION_LIST, inclusive = false)
-                } else {
-                    nav.navigate(Routes.SESSION_LIST) {
-                        popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                val shellActive = ai.unicto.unibot.ui.home.HomeShell.active
+                if (action.newChat && shellActive) {
+                    if (action.text.isNotBlank()) {
+                        ai.unicto.unibot.ui.home.HomeBus.prefillNewChat(action.text)
                     }
-                }
-                if (action.text.isNotBlank()) {
-                    ai.unicto.unibot.ui.home.HomeBus.prefillComposer(action.text)
+                } else {
+                    if (shellActive) {
+                        nav.popBackStack(Routes.SESSION_LIST, inclusive = false)
+                    } else {
+                        nav.navigate(Routes.SESSION_LIST) {
+                            popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                        }
+                    }
+                    if (action.text.isNotBlank()) {
+                        ai.unicto.unibot.ui.home.HomeBus.prefillComposer(action.text)
+                    }
                 }
             }
             is DeepLinkAction.OpenAlarmList -> {

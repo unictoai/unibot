@@ -38,6 +38,8 @@ object PrivacyPrefs {
     private const val KEY_SCREENSHOT_BLOCK = "screenshot_block"
     private const val KEY_CLIPBOARD_AUTO_CLEAR = "clipboard_auto_clear"
     private const val KEY_AUTO_DELETE_DEFAULT_HOURS = "auto_delete_default_hours"
+    private const val KEY_KILL_SWITCH = "kill_switch_engaged"
+    private const val KEY_ON_DEVICE_ONLY = "on_device_only"
 
     /** Per-chat auto-delete: "auto_delete_hours:<sessionId>" → hours, 0/absent = follow default. */
     private fun autoDeleteKey(sessionId: String) = "auto_delete_hours:$sessionId"
@@ -65,6 +67,8 @@ object PrivacyPrefs {
             // the user's real choices, not compile-time defaults.
             _localOnly.value = sp.getBoolean(KEY_LOCAL_ONLY, false)
             _screenshotBlock.value = sp.getBoolean(KEY_SCREENSHOT_BLOCK, false)
+            _killSwitch.value = sp.getBoolean(KEY_KILL_SWITCH, false)
+            _onDeviceOnly.value = sp.getBoolean(KEY_ON_DEVICE_ONLY, false)
         }
     }
 
@@ -85,6 +89,26 @@ object PrivacyPrefs {
 
     /** When true, MainActivity applies FLAG_SECURE (no screenshots/screen recordings). */
     val screenshotBlock: StateFlow<Boolean> = _screenshotBlock.asStateFlow()
+
+    private val _killSwitch = MutableStateFlow(false)
+
+    /**
+     * Kill switch (privacy item 58): one tap severs all network app-wide.
+     * Persisted deliberately — a kill the user engaged must survive a
+     * process restart, and the banner + Quick Settings tile always show the
+     * live state so it can never look "mysteriously offline".
+     */
+    val killSwitch: StateFlow<Boolean> = _killSwitch.asStateFlow()
+
+    private val _onDeviceOnly = MutableStateFlow(false)
+
+    /**
+     * On-device-only mode (privacy item 62): the persistent twin of the
+     * kill switch. Every remote host is blocked, so only on-device models
+     * and on-device voice can run. Unlike local-only mode, no provider
+     * allowlist applies — nothing may leave the phone.
+     */
+    val onDeviceOnly: StateFlow<Boolean> = _onDeviceOnly.asStateFlow()
 
     /** Copies are wiped from the clipboard 60s after copying (see ClipboardGuard). */
     var clipboardAutoClear: Boolean
@@ -116,6 +140,20 @@ object PrivacyPrefs {
     fun setScreenshotBlock(block: Boolean) {
         prefs?.edit()?.putBoolean(KEY_SCREENSHOT_BLOCK, block)?.apply()
         _screenshotBlock.value = block
+    }
+
+    fun setKillSwitch(engaged: Boolean) {
+        prefs?.edit()?.putBoolean(KEY_KILL_SWITCH, engaged)?.apply()
+        _killSwitch.value = engaged
+        // The gate reads this flag directly, so network behaviour changes
+        // the moment the toggle flips — no restart, no re-login.
+        PrivacyNetworkGate.killSwitchEngaged = engaged
+    }
+
+    fun setOnDeviceOnly(enabled: Boolean) {
+        prefs?.edit()?.putBoolean(KEY_ON_DEVICE_ONLY, enabled)?.apply()
+        _onDeviceOnly.value = enabled
+        PrivacyNetworkGate.onDeviceOnlyEnabled = enabled
     }
 
     // -- per-chat state --------------------------------------------------------

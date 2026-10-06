@@ -12,23 +12,38 @@ import okhttp3.Interceptor
 import java.io.IOException
 
 /**
+ * Thrown by [checkAllowed] when a request is refused by one of the privacy
+ * gates (kill switch, on-device-only mode, or local-only mode). Extends
+ * [IOException] so every existing catch site keeps working; the message names
+ * the exact gate and the way out, which is what the UI shows the user.
+ */
+class NetworkBlockedException(message: String) : IOException(message)
+
+/**
  * Wave 5 (v1.0) — privacy core. Two jobs, deliberately small and honest:
  *
- * 1. **Traffic log** — a ring buffer of the last 100 outbound hosts, kept
- *    IN MEMORY ONLY. It records the destination host + a coarse category;
- *    never the URL path, query, headers, or body. The log is the raw material
- *    for Settings → Privacy → Network traffic log, and it dies with the
+ * 1. **Traffic log** — a ring buffer of the last 100 outbound requests,
+ *    kept IN MEMORY ONLY. Each entry records metadata only: destination
+ *    host, HTTP method, a coarse category, byte counts (from content-length
+ *    when the wire reports one), the chat session on screen, and whether a
+ *    privacy gate blocked it. Never the URL path, query, headers, or body.
+ *    The log is the raw material for Settings → Privacy → Network traffic
+ *    log (including the per-session inspector), and it dies with the
  *    process.
  *
- * 2. **Local-only gate** — when [PrivacyPrefs.localOnly] is on, every
- *    request through a WIRED client (the AI providers, web search, and the
- *    update checker) whose host is not in the allowlist (AI-provider hosts
- *    only) is refused with an IOException. 127.0.0.1/localhost always pass
- *    because the OAuth login dance needs the loopback redirect. Connector
- *    API clients are not wired yet, so connector traffic is not gated —
- *    the UI says exactly that. This is best-effort client-side gating of
- *    this app's own HTTP clients — it does not claim to stop the OS, other
- *    apps, or raw sockets.
+ * 2. **Network gates** — when a gate mode is on, every request through a
+ *    WIRED client whose host is not permitted is refused with a
+ *    [NetworkBlockedException] (an IOException whose message names the gate).
+ *    Three modes, strongest first: the kill switch (item 58 — one tap severs
+ *    all remote network, toggled from the Quick Settings tile or Settings →
+ *    Privacy), on-device-only mode (item 62 — the persistent twin: every
+ *    remote host blocked, only on-device models and voice run), and the
+ *    original local-only gate (AI-provider hosts only, from the allowlist).
+ *    127.0.0.1/localhost always pass because the OAuth login dance needs
+ *    the loopback redirect. Connector API clients are not wired yet, so
+ *    connector traffic is not gated — the UI says exactly that. This is
+ *    best-effort client-side gating of this app's own HTTP clients — it
+ *    does not claim to stop the OS, other apps, or raw sockets.
  *
  * Wire the interceptors into each OkHttp client via [interceptors]; the
  * DuckDuckGo search client (HttpURLConnection, not OkHttp) calls [record]
@@ -49,12 +64,24 @@ object PrivacyNetworkGate {
      * when the host maps to one ([connectorFor]). Null for AI providers,
      * update checks, and anything unattributed. No path, query, headers,
      * or body.
+     *
+     * v1.4.0 privacy items 55/56 extend the entry with request metadata only:
+     * [method] (GET/POST/…), [bytesUp]/[bytesDown] from content-length when
+     * the wire reports one (0 when chunked/unknown — the UI labels byte
+     * counts approximate), [sessionId] of the chat on screen when the request
+     * was made (null when none), and [blocked] when a privacy gate refused
+     * the request. Still no path, query, headers, or body — ever.
      */
     data class TrafficEntry(
         val host: String,
         val category: Category,
         val timestampMs: Long,
         val connector: String? = null,
+        val method: String = "GET",
+        val bytesUp: Long = 0L,
+        val bytesDown: Long = 0L,
+        val sessionId: String? = null,
+        val blocked: Boolean = false,
     )
 
     /** Last 100 entries, newest last. In-memory only — never written to disk. */
@@ -70,6 +97,28 @@ object PrivacyNetworkGate {
      */
     @Volatile
     var localOnlyEnabled: Boolean = false
+
+    /**
+     * v1.4.0 privacy item 58 — kill switch. When true, EVERY remote host is
+     * refused (loopback excepted: 127.0.0.1 never leaves the device, and the
+     * OAuth login dance needs the loopback redirect). Mirrored from
+     * [PrivacyPrefs.setKillSwitch] and seeded on cold start; persisted so a
+     * kill the user engaged survives a process restart, and always paired
+     * with the on-screen banner while engaged.
+     */
+    @Volatile
+    var killSwitchEngaged: Boolean = false
+
+    /**
+     * v1.4.0 privacy item 62 — on-device-only mode. Persistent version of
+     * the kill switch's "no network" posture: blocks every remote host, so
+     * only on-device models and on-device voice can run. Mirrored from
+     * [PrivacyPrefs.setOnDeviceOnly] and seeded on cold start. Unlike
+     * [localOnlyEnabled], no provider allowlist applies — AI-provider hosts
+     * are blocked too, because nothing may leave the phone.
+     */
+    @Volatile
+    var onDeviceOnlyEnabled: Boolean = false
 
     /** Hosts that may connect while local-only mode is on. Guarded by [gateLock]. */
     private val gateLock = Any()
@@ -147,15 +196,40 @@ object PrivacyNetworkGate {
 
     /** Append [host] to the in-memory ring buffer. Never throws. */
     fun record(host: String) {
+        recordFull(
+            TrafficEntry(
+                host = host,
+                category = classify(host),
+                timestampMs = System.currentTimeMillis(),
+                connector = connectorFor(host),
+                sessionId = currentSessionId(),
+            )
+        )
+    }
+
+    /**
+     * Append a fully-populated [TrafficEntry] to the in-memory ring buffer.
+     * Never throws. This is the entry point the rich logging interceptor
+     * uses; [record] stays for the HttpURLConnection call sites that only
+     * know the host.
+     */
+    fun recordFull(entry: TrafficEntry) {
         try {
-            // [v12-D] Attribute the entry to its connector at the logging
-            // call-site, so the traffic log can filter per connector.
-            val entry = TrafficEntry(host, classify(host), System.currentTimeMillis(), connectorFor(host))
             _log.value = (_log.value + entry).takeLast(MAX_ENTRIES)
         } catch (t: Throwable) {
             Log.w(TAG, "traffic record failed: ${t.message}")
         }
     }
+
+    /**
+     * The id of the chat currently on screen, for per-session traffic
+     * attribution (privacy item 55). Read-only: chat code is never modified
+     * from here — when no session is active (or the lookup fails) the entry
+     * is simply untagged.
+     */
+    private fun currentSessionId(): String? = runCatching {
+        ai.unicto.unibot.ui.chat.ChatViewModelStore.activeSessionId
+    }.getOrNull()
 
     /** Drop the whole log (the UI's "Clear" button). */
     fun clear() {
@@ -165,20 +239,42 @@ object PrivacyNetworkGate {
     // -- gating -----------------------------------------------------------------
 
     /**
-     * Throws [IOException] when local-only mode is on and [host] is not
-     * allowed. Loopback always passes (OAuth login needs the 127.0.0.1
-     * redirect), and IPV6 loopback too.
+     * Throws [NetworkBlockedException] when a privacy gate refuses [host].
+     * Gate order, strongest first:
+     *
+     * 1. Kill switch (item 58) — refuses every remote host. One tap in the
+     *    Quick Settings tile or Settings → Privacy severs all network
+     *    app-wide; requests fail fast with a clear "network killed" state.
+     * 2. On-device-only mode (item 62) — refuses every remote host, so only
+     *    on-device models and voice can run. The persistent twin of the
+     *    kill switch; both share this gate mechanism, not a VPN.
+     * 3. Local-only mode — refuses hosts outside the provider allowlist.
+     *
+     * Loopback (127.0.0.1/localhost/::1) always passes: it never leaves the
+     * device, and the OAuth login dance needs the loopback redirect. This is
+     * best-effort client-side gating of this app's own HTTP clients — it
+     * does not claim to stop the OS, other apps, or raw sockets.
      */
     @Throws(IOException::class)
     fun checkAllowed(host: String) {
-        if (!localOnlyEnabled) return
         val normalized = host.lowercase()
-        val allowed = normalized == "127.0.0.1" ||
-            normalized == "localhost" ||
-            normalized == "::1" ||
-            synchronized(gateLock) { normalized in allowlist }
+        if (normalized == "127.0.0.1" || normalized == "localhost" || normalized == "::1") return
+        if (killSwitchEngaged) {
+            throw NetworkBlockedException(
+                "Network killed — the kill switch is on. " +
+                    "Turn it off in Settings → Privacy to reconnect."
+            )
+        }
+        if (onDeviceOnlyEnabled) {
+            throw NetworkBlockedException(
+                "Blocked by On-device-only mode — only on-device models and " +
+                    "voice can run while it is on."
+            )
+        }
+        if (!localOnlyEnabled) return
+        val allowed = synchronized(gateLock) { normalized in allowlist }
         if (!allowed) {
-            throw IOException("Blocked by Local-only mode")
+            throw NetworkBlockedException("Blocked by Local-only mode")
         }
     }
 
@@ -186,15 +282,54 @@ object PrivacyNetworkGate {
      * The pair to wire into every OkHttp client:
      * `client.addInterceptor(logging).addInterceptor(gate)`.
      *
-     * Logging runs first so a blocked request still shows up in the traffic
-     * log (the user can see what local-only mode refused). Both interceptors
-     * are application interceptors: they see every call, including retries.
+     * The logging interceptor runs first: it records the attempt (method,
+     * host, byte counts, session — metadata only, never bodies), runs the
+     * gate check itself so a blocked request is logged WITH its blocked
+     * flag, then proceeds. The standalone gate interceptor stays as a
+     * second line for the same check — idempotent, and it keeps the
+     * long-standing wiring contract intact. Both are application
+     * interceptors: they see every call, including retries.
+     *
+     * Every attempt — allowed, blocked, or failed — also feeds
+     * [WeeklyPrivacyReport], which aggregates the on-device weekly report.
      */
     fun interceptors(): Pair<Interceptor, Interceptor> {
         val logging = Interceptor { chain ->
             val request = chain.request()
-            record(request.url.host)
-            chain.proceed(request)
+            val host = request.url.host
+            val base = TrafficEntry(
+                host = host,
+                category = classify(host),
+                timestampMs = System.currentTimeMillis(),
+                connector = connectorFor(host),
+                method = request.method,
+                // contentLength() may throw on exotic bodies — never let
+                // telemetry break the request it observes.
+                bytesUp = runCatching {
+                    request.body?.contentLength()?.takeIf { it >= 0 } ?: 0L
+                }.getOrDefault(0L),
+                sessionId = currentSessionId(),
+            )
+            try {
+                checkAllowed(host)
+            } catch (blocked: IOException) {
+                recordFull(base.copy(blocked = true))
+                WeeklyPrivacyReport.record(host, base.bytesUp, 0L)
+                throw blocked
+            }
+            try {
+                val response = chain.proceed(request)
+                val bytesDown = response.body?.contentLength()?.takeIf { it >= 0 } ?: 0L
+                recordFull(base.copy(bytesDown = bytesDown))
+                WeeklyPrivacyReport.record(host, base.bytesUp, bytesDown)
+                response
+            } catch (e: IOException) {
+                // A real network failure, not a gate block: the attempt still
+                // happened, so it still belongs in the log and the report.
+                recordFull(base)
+                WeeklyPrivacyReport.record(host, base.bytesUp, 0L)
+                throw e
+            }
         }
         val gate = Interceptor { chain ->
             val request = chain.request()

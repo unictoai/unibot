@@ -711,6 +711,20 @@
             </intent-filter>
         </service>
 
+        <!-- Privacy item 58: kill-switch tile — one tap severs all network
+             app-wide via the app-level gate (not a VPN). User-added from the
+             QS editor; BIND_QUICK_SETTINGS_TILE is the required permission. -->
+        <service
+            android:name=".qs.UnibotKillSwitchTileService"
+            android:exported="true"
+            android:label="@string/qs_tile_kill_switch"
+            android:icon="@drawable/ic_shortcut_new_chat"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- P6: autofill service — strictly opt-in (in-app toggle + the user
              must also pick unibot in system autofill settings). Fills only
              name/email/phone from the on-device profile; never saves forms,

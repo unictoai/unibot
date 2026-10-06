@@ -621,7 +621,15 @@ fun SettingsScreen(
     // the GLOBAL default; a per-chat override (chat "…" menu) wins for its
     // chat. Deleting here is permanent — the sweep runs on app start.
     if (showAutoDeletePicker) {
-        val options = listOf(0L to "Never", 1L to "1 hour", 24L to "1 day", 168L to "1 week")
+        val options = listOf(
+            0L to "Never",
+            1L to "1 hour",
+            24L to "1 day",
+            168L to "1 week",
+            // Privacy item 60 — the backlog's retention policy: 30/90 days or never.
+            720L to "30 days",
+            2160L to "90 days",
+        )
         AlertDialog(
             onDismissRequest = { showAutoDeletePicker = false },
             title = { Text("Auto-delete chats") },

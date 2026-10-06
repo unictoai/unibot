@@ -4,6 +4,7 @@ import ai.unicto.unibot.ui.theme.UbColors
 import ai.unicto.unibot.data.repository.ChatRepository
 import ai.unicto.unibot.local.FactMemoryStore
 import ai.unicto.unibot.privacy.PrivacyPrefs
+import ai.unicto.unibot.privacy.WeeklyPrivacyReport
 import ai.unicto.unibot.ui.home.MuseTones
 import ai.unicto.unibot.ui.muse.MuseCaption
 import ai.unicto.unibot.ui.muse.MuseCard
@@ -24,6 +25,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +40,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.Power
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -92,6 +96,8 @@ fun PrivacyDashboardScreen(
     val context = LocalContext.current
     val haptics = rememberHaptic()
     val localOnly by PrivacyPrefs.localOnly.collectAsState()
+    val killSwitch by PrivacyPrefs.killSwitch.collectAsState()
+    val onDeviceOnly by PrivacyPrefs.onDeviceOnly.collectAsState()
 
     var chatCount by remember { mutableIntStateOf(-1) }
     var memoryCount by remember { mutableIntStateOf(-1) }
@@ -132,8 +138,14 @@ fun PrivacyDashboardScreen(
             PrivacyHero()
             MuseGap()
 
+            // -- Weekly report ------------------------------------------------
+            // Privacy item 56: generated on-device from the in-memory traffic
+            // log aggregates. Nothing is uploaded — the card says so.
+            WeeklyReportCard()
+            MuseGap()
+
             // -- On this device -------------------------------------------
-            MuseCard(modifier = Modifier.staggeredEntrance(1)) {
+            MuseCard(modifier = Modifier.staggeredEntrance(2)) {
                 MuseRow(
                     title = "Chats",
                     icon = Icons.Outlined.ChatBubbleOutline,
@@ -165,7 +177,7 @@ fun PrivacyDashboardScreen(
             MuseGap()
 
             // -- Network ----------------------------------------------------
-            MuseCard(modifier = Modifier.staggeredEntrance(2)) {
+            MuseCard(modifier = Modifier.staggeredEntrance(3)) {
                 MuseRow(
                     title = "Network traffic log",
                     icon = Icons.Outlined.SwapHoriz,
@@ -192,15 +204,160 @@ fun PrivacyDashboardScreen(
                         )
                     },
                 )
+                MuseRowDivider()
+                MuseRow(
+                    title = "Kill switch",
+                    icon = Icons.Outlined.Power,
+                    onClick = {
+                        haptics.toggle()
+                        PrivacyPrefs.setKillSwitch(!killSwitch)
+                    },
+                    chevron = false,
+                    value = if (killSwitch) "On" else "Off",
+                    trailing = {
+                        Switch(
+                            checked = killSwitch,
+                            onCheckedChange = {
+                                haptics.toggle()
+                                PrivacyPrefs.setKillSwitch(it)
+                            },
+                        )
+                    },
+                )
+                MuseRowDivider()
+                MuseRow(
+                    title = "On-device-only mode",
+                    icon = Icons.Outlined.Smartphone,
+                    onClick = {
+                        haptics.toggle()
+                        PrivacyPrefs.setOnDeviceOnly(!onDeviceOnly)
+                    },
+                    chevron = false,
+                    value = if (onDeviceOnly) "On" else "Off",
+                    trailing = {
+                        Switch(
+                            checked = onDeviceOnly,
+                            onCheckedChange = {
+                                haptics.toggle()
+                                PrivacyPrefs.setOnDeviceOnly(it)
+                            },
+                        )
+                    },
+                )
             }
             MuseCaption(
                 text = "Local-only mode lets only your AI provider's servers connect — " +
                     "web search and update checks stop while it is on. " +
+                    "The kill switch severs all network immediately (also in the " +
+                    "Quick Settings tile); on-device-only mode keeps it severed " +
+                    "so only on-device models and voice run. " +
                     "Connector traffic is not gated in this version.",
             )
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+/**
+ * Privacy item 56 — the weekly privacy report card. Counts come from
+ * [WeeklyPrivacyReport], which is fed by the network gate's interceptor and
+ * aggregated entirely on this phone. The card says exactly that.
+ */
+@Composable
+private fun WeeklyReportCard() {
+    var report by remember { mutableStateOf<WeeklyPrivacyReport.Report?>(null) }
+    LaunchedEffect(Unit) {
+        report = runCatching { WeeklyPrivacyReport.currentReport() }.getOrNull()
+    }
+    val r = report
+    MuseCard(modifier = Modifier.staggeredEntrance(1)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text = "This week",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            if (r == null || r.isEmpty) {
+                Text(
+                    text = "No network activity recorded yet. Every request " +
+                        "this app makes will be counted here — on this phone only.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp,
+                )
+            } else {
+                Text(
+                    text = "${r.requests} requests · ${formatBytes(r.bytesUp)} up · " +
+                        "${formatBytes(r.bytesDown)} down",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                ReportRow("To your providers", "${r.providerRequests}")
+                ReportRow("To connectors & login", "${r.connectorRequests}")
+                ReportRow("Updates & web search", "${r.updateSearchRequests}")
+                ReportRow("Other hosts", "${r.otherRequests}")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "To trackers",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = "${formatBytes(r.trackerBytes)} — none bundled",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = UbColors.success,
+                    )
+                }
+            }
+        }
+    }
+    MuseCaption(
+        text = "Generated on this device from the in-memory traffic log. " +
+            "Byte counts are approximate (content-length when the server " +
+            "reports one). Nothing is uploaded.",
+    )
+}
+
+@Composable
+private fun ReportRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    val b = bytes.coerceAtLeast(0)
+    return when {
+        b < 1024 -> "$b B"
+        b < 1024 * 1024 -> String.format("%.1f KB", b / 1024.0)
+        b < 1024 * 1024 * 1024 -> String.format("%.1f MB", b / (1024.0 * 1024.0))
+        else -> String.format("%.2f GB", b / (1024.0 * 1024.0 * 1024.0))
     }
 }
 

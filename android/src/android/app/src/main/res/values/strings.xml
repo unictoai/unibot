@@ -1325,6 +1325,10 @@
     <!-- [P1-qs-tile] Quick Settings tile labels -->
     <string name="qs_tile_voice_ask">Voice ask</string>
     <string name="qs_tile_new_chat">New chat</string>
+    <!-- v1.4.0 item 69: malformed unibot:// deep link explains itself -->
+    <string name="ub_deeplink_malformed">Couldn\u2019t open that link \u2014 it isn\u2019t a valid unibot:// link. Links look like unibot://ask?text=hello or unibot://settings.</string>
+    <!-- Privacy item 58: kill-switch Quick Settings tile label -->
+    <string name="qs_tile_kill_switch">Kill switch</string>
     <string name="chat_new_chat_stop_dialog_body">A task is running in this chat. Starting a new chat will stop it.</string>
     <string name="chat_new_chat_stop_dialog_confirm">Stop &amp; New Chat</string>
     <string name="chat_menu_clear_chat">Clear Chat</string>

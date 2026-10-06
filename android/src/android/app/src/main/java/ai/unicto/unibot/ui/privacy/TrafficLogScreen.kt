@@ -73,10 +73,18 @@ fun TrafficLogScreen(onBack: () -> Unit) {
         entries.mapNotNull { it.connector }.distinct().sorted()
     }
     val effectiveSelection = selectedConnector?.takeIf { it in connectors }
-    val visibleEntries = if (effectiveSelection == null) {
-        entries
-    } else {
-        entries.filter { it.connector == effectiveSelection }
+    // Privacy item 55 — per-session inspector: null = All sessions. Built
+    // from the session ids actually tagged in the log, so chips never
+    // promise empty sets. Entries made while no chat was on screen are
+    // untagged and only appear under "All sessions".
+    var selectedSession by remember { mutableStateOf<String?>(null) }
+    val sessions = remember(entries) {
+        entries.mapNotNull { it.sessionId }.distinct()
+    }
+    val effectiveSession = selectedSession?.takeIf { it in sessions }
+    val visibleEntries = entries.filter { entry ->
+        (effectiveSelection == null || entry.connector == effectiveSelection) &&
+            (effectiveSession == null || entry.sessionId == effectiveSession)
     }
 
     Scaffold(
@@ -131,8 +139,9 @@ fun TrafficLogScreen(onBack: () -> Unit) {
                 item {
                     MuseCaption(
                         text = "Memory only — never saved to disk. " +
-                            "Only the destination host is logged; paths, queries, " +
-                            "headers, and bodies are never recorded.",
+                            "Method, host, approximate byte counts, and the chat " +
+                            "session are logged; paths, queries, headers, and " +
+                            "bodies are never recorded.",
                     )
                 }
                 // [v12-D] Connector filter chips (All + each connector seen).
@@ -167,16 +176,55 @@ fun TrafficLogScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+                // Privacy item 55 — per-session filter chips (All sessions +
+                // each session tagged in the log).
+                if (sessions.isNotEmpty()) {
+                    item {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = effectiveSession == null,
+                                    onClick = {
+                                        haptics.tap()
+                                        selectedSession = null
+                                    },
+                                    label = { Text("All sessions") },
+                                )
+                            }
+                            items(sessions) { sessionId ->
+                                FilterChip(
+                                    selected = effectiveSession == sessionId,
+                                    onClick = {
+                                        haptics.tap()
+                                        selectedSession = sessionId
+                                    },
+                                    label = { Text("Chat ${sessionId.take(8)}") },
+                                )
+                            }
+                        }
+                    }
+                }
                 if (visibleEntries.isEmpty()) {
                     // [v12-D] A filter that matches nothing (e.g. right after
-                    // Clear) gets its own honest empty state.
+                    // Clear) gets its own honest empty state. Privacy item 55:
+                    // names whichever filter(s) are active.
                     item {
                         EmptyState(
                             icon = Icons.Outlined.Shield,
-                            title = stringResource(
-                                R.string.v12_privacy_no_traffic_from,
-                                effectiveSelection.orEmpty(),
-                            ),
+                            title = when {
+                                effectiveSelection != null && effectiveSession != null ->
+                                    "No traffic from $effectiveSelection in chat ${effectiveSession.take(8)}"
+                                effectiveSelection != null -> stringResource(
+                                    R.string.v12_privacy_no_traffic_from,
+                                    effectiveSelection,
+                                )
+                                effectiveSession != null ->
+                                    "No traffic from chat ${effectiveSession.take(8)}"
+                                else -> "No traffic"
+                            },
                             hint = stringResource(R.string.v12_privacy_no_traffic_from_hint),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -220,18 +268,44 @@ private fun TrafficRow(
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = entry.host,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // Privacy item 55 — a blocked request stays visible in
+                    // the log with its badge, so the user can see what a
+                    // gate refused.
+                    if (entry.blocked) {
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                text = "Blocked",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
+                }
+                // Privacy item 55 — request inspector line: method, byte
+                // counts, connector attribution, and when. Byte counts are
+                // approximate (content-length when the server reports one).
                 Text(
-                    text = entry.host,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-                // [v12-D] Per-connector attribution: "Telegram · 3 min ago".
-                Text(
-                    text = if (entry.connector != null) {
-                        "${entry.connector} · ${timeAgo(entry.timestampMs)}"
-                    } else {
-                        timeAgo(entry.timestampMs)
+                    text = buildString {
+                        append(entry.method)
+                        append(" · ↑").append(formatBytesShort(entry.bytesUp))
+                        append(" ↓").append(formatBytesShort(entry.bytesDown))
+                        if (entry.connector != null) {
+                            append(" · ").append(entry.connector)
+                        }
+                        append(" · ").append(timeAgo(entry.timestampMs))
                     },
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -283,5 +357,15 @@ private fun timeAgo(timestampMs: Long): String {
         seconds < 60 -> "$seconds seconds ago"
         seconds < 3600 -> "${seconds / 60} minutes ago"
         else -> "${seconds / 3600} hours ago"
+    }
+}
+
+/** Compact byte count for the inspector line ("12.4 KB", "3 B"). */
+private fun formatBytesShort(bytes: Long): String {
+    val b = bytes.coerceAtLeast(0)
+    return when {
+        b < 1024 -> "$b B"
+        b < 1024 * 1024 -> String.format("%.1f KB", b / 1024.0)
+        else -> String.format("%.1f MB", b / (1024.0 * 1024.0))
     }
 }

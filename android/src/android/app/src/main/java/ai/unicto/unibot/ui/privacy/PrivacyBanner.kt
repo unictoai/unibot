@@ -27,18 +27,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Wave 5 (v1.0) — privacy core. A small persistent banner shown while
- * Local-only mode is on.
+ * Wave 5 (v1.0) — privacy core. A small persistent banner shown while any
+ * network gate is active: local-only mode, the kill switch (item 58), or
+ * on-device-only mode (item 62). The kill switch and on-device-only states
+ * take precedence in the copy because they sever ALL network.
  *
  * Tapping it opens the privacy dashboard — it deliberately does NOT offer
- * a one-tap disable, so the mode can't be switched off by an accidental
- * tap; the user turns it off explicitly in Settings → Privacy.
+ * a one-tap disable, so a gate can't be switched off by an accidental tap;
+ * the user turns it off explicitly in Settings → Privacy.
  */
 @Composable
 fun PrivacyBanner(onOpenDashboard: () -> Unit) {
     val localOnly by PrivacyPrefs.localOnly.collectAsState()
-    if (!localOnly) return
+    val killSwitch by PrivacyPrefs.killSwitch.collectAsState()
+    val onDeviceOnly by PrivacyPrefs.onDeviceOnly.collectAsState()
+    if (!localOnly && !killSwitch && !onDeviceOnly) return
     val haptics = rememberHaptic()
+    val message = when {
+        killSwitch -> "Kill switch is on — all network is severed"
+        onDeviceOnly -> "On-device-only mode — only on-device models and voice run"
+        else -> "Local-only mode is on — only your AI provider can connect"
+    }
 
     Row(
         modifier = Modifier
@@ -62,7 +71,7 @@ fun PrivacyBanner(onOpenDashboard: () -> Unit) {
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            text = "Local-only mode is on — only your AI provider can connect",
+            text = message,
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
