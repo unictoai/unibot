@@ -65,7 +65,7 @@ class LLMErrorNullSafetyTest {
             LLMError.OutputLimitExceeded(),
             LLMError.RateLimited(),
             LLMError.TransientError("x"),
-            LLMError.Cancelled,
+            LLMError.Cancelled(),
         )
         errors.forEach { error ->
             val msg = error.message.orEmpty()
