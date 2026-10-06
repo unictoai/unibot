@@ -180,6 +180,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -559,6 +560,12 @@ fun ChatScreen(
      * to the provider detail route for [instanceId].
      */
     onOpenProvider: (instanceId: String) -> Unit = {},
+    /**
+     * v1.4.0 item 81 — guided fix for the "No provider configured"
+     * snackbar: the caller opens the provider list when the user taps the
+     * snackbar's "Set up" action (see NoProviderGuidance).
+     */
+    onOpenProviderList: () -> Unit = {},
     /**
      * v1.4.0 items 23/24 — open the provider health dashboard + quota
      * tracker from the chat "…" menu.
@@ -2540,9 +2547,22 @@ fun ChatScreen(
     }
 
     // Show top-level error in snackbar (only for errors without an assistant message)
+    // v1.4.0 item 81 — "No provider configured" carries a guided fix: the
+    // snackbar shows a "Set up" action that opens the provider list.
     LaunchedEffect(error) {
-        error?.let {
-            snackbarHostState.showSnackbar(it)
+        error?.let { errText ->
+            val fix = ai.unicto.unibot.provider.NoProviderGuidance.guidedFixFor(errText)
+            if (fix != null) {
+                val result = snackbarHostState.showSnackbar(
+                    message = errText,
+                    actionLabel = fix.actionLabel,
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    onOpenProviderList()
+                }
+            } else {
+                snackbarHostState.showSnackbar(errText)
+            }
             viewModel.clearError()
         }
     }

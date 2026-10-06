@@ -961,6 +961,9 @@ fun ChatSplitScaffoldRoute(
                 onOpenProviderHealth = {
                     navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_PROVIDER_HEALTH)
                 },
+                // v1.4.0 item 81 — guided fix for the "No provider
+                // configured" snackbar: "Set up" opens the provider list.
+                onOpenProviderList = { navController.safeNavigate(Routes.PROVIDER_LIST) },
                 // [Wave 8] Starred messages + chat stats leave the pair.
                 onStarredClick = {
                     navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES)

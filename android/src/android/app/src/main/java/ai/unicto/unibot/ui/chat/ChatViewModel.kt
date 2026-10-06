@@ -9847,8 +9847,12 @@ class ChatViewModel(
                     if (e is CancellationException && e.cause == null) throw e  // real job cancellation
                     val actual = unwrapFlowException(e)
                     val isRateLimit = actual is ai.unicto.unibot.data.model.LLMError.RateLimited
+                    // v1.4.0 item 79 — the 5xx surface lives on the error
+                    // itself now (LLMError.isServerError, backed by the
+                    // httpStatus the providers stamp); no regex on the
+                    // detail text.
                     val is5xx = actual is ai.unicto.unibot.data.model.LLMError.ProviderError &&
-                        actual.detail.contains(Regex("[5][0-9]{2}"))
+                        actual.isServerError
                     // Auto-retry on transient network/5xx/transient errors on the SAME provider
                     // before considering a fallback (mirrors iOS streamWithAutoRetry).
                     // Rate limits are provider-level signals that should trigger fallback immediately,
@@ -9865,7 +9869,15 @@ class ChatViewModel(
                             _autoRetryAttempt.value = retryAttempt
                             // Show the error inline on the streaming assistant message during countdown.
                             // Keeps isStreaming=true so the UI doesn't tear down the streaming state.
-                            setTransientInlineError("$errDesc — retrying ($retryAttempt/${AUTO_RETRY_DELAYS_SEC.size})…")
+                            // v1.4.0 item 82 — the countdown line comes from the
+                            // error's own contract (friendly label + attempt
+                            // counter); fall back to the raw detail only for
+                            // non-LLMError throwables.
+                            val countdownText =
+                                (actual as? ai.unicto.unibot.data.model.LLMError)
+                                    ?.retryCountdownText(retryAttempt, AUTO_RETRY_DELAYS_SEC.size)
+                                    ?: "$errDesc — retrying ($retryAttempt/${AUTO_RETRY_DELAYS_SEC.size})…"
+                            setTransientInlineError(countdownText)
                         }
                         try {
                             for (remaining in delaySec downTo 1) {

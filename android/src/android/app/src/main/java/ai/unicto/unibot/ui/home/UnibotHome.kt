@@ -410,6 +410,9 @@ fun UnibotHome(
                             onStarredClick = { navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_STARRED_MESSAGES) },
                             onStatsClick = { navController.safeNavigate(ai.unicto.unibot.ui.chat.ROUTE_CHAT_STATS) },
                             onOpenVoiceConversation = { navController.safeNavigate(Routes.voiceConversation(sid)) },
+                            // v1.4.0 item 81 — guided fix for the "No provider
+                            // configured" snackbar: "Set up" opens the provider list.
+                            onOpenProviderList = { navController.safeNavigate(Routes.PROVIDER_LIST) },
                             // [v1.3.0-swarm] Agent swarm space.
                             onSwarmClick = { navController.safeNavigate(Routes.SWARM) },
                             ubHome = NmHomeChrome(isMainChat = isMainChat, onOpenDrawer = { openDrawer() }),
