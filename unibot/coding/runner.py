@@ -28,6 +28,7 @@ from typing import Any
 
 from unibot.coding.agents import AGENTS, Session, read_session, which
 from unibot.logger import logger
+from unibot.tools.shell import scrubbed_env
 
 RUN_TIMEOUT_S = 20 * 60
 OUTPUT_LIMIT = 200_000  # characters of agent text kept per run
@@ -420,7 +421,14 @@ async def start_run(
                 stdin=asyncio.subprocess.DEVNULL,
                 cwd=run.workspace or None,
                 start_new_session=(sys.platform != "win32"),
-                env={**os.environ, "NO_COLOR": "1", "CI": "1"},
+                # the agent runs with --force (its shell commands auto-approved): it
+                # must not inherit the parent's credentials (UNIBOT_*, LLM API keys,
+                # SSH_AUTH_SOCK …). Its own login lives in its config dir, which the
+                # scrubbed environment keeps (HOME, PATH).
+                env={**scrubbed_env(), "NO_COLOR": "1", "CI": "1"},
+                # stream-json lines are long (a large tool result echoed back); the
+                # default 64 KiB reader limit would raise LimitOverrunError on them
+                limit=16 * 1024 * 1024,
             )
         except FileNotFoundError as exc:
             run.status, run.error, run.ended_at = "failed", str(exc), time.time()
@@ -482,6 +490,23 @@ async def start_run(
             run.status, run.error, run.ended_at = "failed", "the agent took too long", time.time()
             await emit(RunEvent("error", run.error))
             return run
+        except (asyncio.LimitOverrunError, ValueError) as exc:
+            # a JSON line longer than the stream limit (or any other read failure):
+            # kill the CLI — it may be running --force — and fail the run instead of
+            # letting the exception escape with the process still alive
+            run.stop()
+            run.status, run.error, run.ended_at = (
+                "failed",
+                f"could not read the agent's output ({exc})",
+                time.time(),
+            )
+            await emit(RunEvent("error", run.error))
+            return run
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            # the user pressed stop: take the CLI (and the helpers it forked, via the
+            # process group) down too, then let the cancellation propagate
+            run.stop()
+            raise
         if run.status == "stopped":
             run.ended_at = time.time()
             await emit(RunEvent("error", "stopped", extra={"stopped": True}))

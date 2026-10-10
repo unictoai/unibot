@@ -44,14 +44,10 @@ def _is_private_host(host: str) -> bool:
         return True
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-            or ip.is_unspecified
-        ):
+        # not globally routable: loopback, private, link-local, reserved,
+        # multicast, unspecified — and the ranges the flag enumeration misses,
+        # notably 100.64.0.0/10 (CGNAT, also Tailscale node addresses)
+        if not ip.is_global:
             return True
     return False
 
@@ -161,7 +157,12 @@ class WebFetch(BaseTool):
     timeout: float = 30.0
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
-        url = str(args.get("url", ""))
+        url = str(args.get("url", "")).strip()
+        # normalised the same way execute() does: otherwise host_of() sees no host
+        # in a scheme-less URL, the taint check prompts needlessly and a grant binds
+        # to the whole tool instead of the host
+        if url and not url.lower().startswith(("http://", "https://")):
+            url = "https://" + url
         return CallAssessment(
             risk=RiskLevel.MODERATE,
             egress=True,

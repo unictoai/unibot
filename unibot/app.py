@@ -260,7 +260,11 @@ class UnibotApp:
         tools = ToolCollection(
             Terminate(),
             AskUser(ui=self.ui),
-            Files(workspace=ws, extra_roots=list(s.agent.extra_roots)),
+            Files(
+                workspace=ws,
+                extra_roots=list(s.agent.extra_roots),
+                data_dir=s.data_dir,
+            ),
             Shell(workspace=ws, sandbox=self.sandbox),
             PythonExecute(workspace=ws, sandbox=self.sandbox),
             WebSearch(provider=WebSearchProvider(s.connectors.search, vault=self.vault)),

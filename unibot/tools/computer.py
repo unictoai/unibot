@@ -162,6 +162,18 @@ class ComputerAct(BaseTool):
             warnings.append("a click with no `label`: nothing says what is under the cursor")
         if action == "type" and args.get("submit"):
             risk, egress = RiskLevel.SENSITIVE, True
+        if action == "type" and not args.get("submit"):
+            # pyautogui and xdotool type "\n" as Enter: a newline in the text submits
+            # just like submit=True, so it gets the same sensitive treatment
+            text = str(args.get("text") or "")
+            if "\n" in text or "\r" in text:
+                risk, egress = RiskLevel.SENSITIVE, True
+                warnings.append("the typed text contains a newline, which submits it")
+        if action == "open_app":
+            # open_app starts a program on this computer, outside any sandbox and
+            # with the full parent environment — never a moderate auto-run
+            risk = RiskLevel.SENSITIVE
+            warnings.append("open_app starts a program on this computer")
         if action == "key":
             combo = tuple(str(k).lower() for k in args.get("keys") or [])
             if combo == ("enter",) or combo == ("return",):

@@ -375,6 +375,8 @@ class MCPServerSettings(BaseModel):
     risk: RiskLevel = RiskLevel.MODERATE
     egress: bool = False
     reads_private_data: bool = False
+    # seconds a tool call may take before it is abandoned
+    timeout: float = 120.0
     # per-tool overrides, by the tool's own name on the server
     tools: dict[str, MCPToolPolicy] = Field(default_factory=dict)
 

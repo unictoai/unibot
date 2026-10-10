@@ -292,3 +292,34 @@ def test_shared_directories_are_bound_and_mirrored_under_the_box_home(
     assert s.sandbox.share == [Path("~/.lark-cli")] and s.sandbox.share_read_only == [
         Path("~/.nvm")
     ]
+
+
+def test_masked_data_dir_rebinds_writable_roots_underneath(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """With extra_roots=["~"] the data dir (~/.unibot) sits under a bound root, so it
+    gets a --tmpfs mask — but the default workspace lives *under* the data dir, and
+    bwrap applies mounts in order, so the mask would hide the workspace bind. The
+    writable roots under the mask must be bound again *after* it."""
+    monkeypatch.setattr("unibot.sandbox.shutil.which", lambda _name: "/usr/bin/bwrap")
+    monkeypatch.setattr("unibot.sandbox.platform.system", lambda: "Linux")
+    data = tmp_path / ".unibot"
+    ws = data / "workspace"  # the real default layout: <data_dir>/workspace
+    # tmp_path stands in for ~: an ancestor of the data dir, as extra_roots=["~"] is
+    box = Sandbox(
+        SandboxSettings(), workspace=ws, extra_roots=[tmp_path], data_dir=data, probe=False
+    )
+    assert box.active
+    argv = box.wrap(["/bin/sh", "-c", "echo hi"], network=False, cwd=ws)
+    tmpfs_at = next(i for i, a in enumerate(argv) if a == "--tmpfs" and argv[i + 1] == str(data))
+    ws_rebind = next(
+        i
+        for i, a in enumerate(argv)
+        if a == "--bind-try" and argv[i + 1] == str(ws) and i > tmpfs_at
+    )
+    assert tmpfs_at < ws_rebind
+    # …but the data dir itself is never re-bound writable: the mask must hold
+    assert not any(
+        a == "--bind-try" and argv[i + 1] == str(data) and i > tmpfs_at
+        for i, a in enumerate(argv[:-1])
+    )

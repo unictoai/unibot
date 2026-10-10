@@ -29,6 +29,7 @@ from unibot.config import MCPServerSettings
 from unibot.logger import logger
 from unibot.schema import ToolResult
 from unibot.tools.base import BaseTool, CallAssessment
+from unibot.tools.shell import scrubbed_env
 
 _NAME_RE = re.compile(r"[^a-zA-Z0-9_-]")
 
@@ -51,6 +52,7 @@ class MCPTool(BaseTool):
     session: Any
     server: str
     original_name: str
+    timeout_s: float = 120.0
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         base = super().assess(args)
@@ -62,7 +64,13 @@ class MCPTool(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         # Always send an object, even an empty one: servers built on zod (12306-mcp's
         # `get-current-date`, for one) reject a call with no `arguments` at all.
-        result = await self.session.call_tool(self.original_name, dict(kwargs))
+        # A hung server must not block the agent turn forever (mcp 1.x takes the
+        # timeout as seconds; mcp 2.x as a timedelta — float works for the former).
+        result = await self.session.call_tool(
+            self.original_name,
+            dict(kwargs),
+            read_timeout_seconds=float(self.timeout_s),
+        )
         parts: list[str] = []
         for item in getattr(result, "content", None) or []:
             itype = getattr(item, "type", "")
@@ -143,6 +151,7 @@ class MCPManager:
                     session=session,
                     server=cfg.name,
                     original_name=t.name,
+                    timeout_s=cfg.timeout,
                 )
                 self.tools.append(tool)
             logger.info("MCP server '{}' connected with {} tools", cfg.name, len(listed.tools))
@@ -173,13 +182,18 @@ class MCPManager:
             return streams[0], streams[1]
         if not cfg.command:
             raise ValueError(f"MCP server '{cfg.name}' needs either `command` or `url`")
-        import os
 
         from mcp import StdioServerParameters
         from mcp.client.stdio import stdio_client
 
+        # The server is third-party code (often npx): it gets the scrubbed
+        # environment plus the per-server env the user configured — never the
+        # parent's credentials (UNIBOT_*, LLM API keys …). With no env configured
+        # it keeps the mcp library's safe default.
         params = StdioServerParameters(
-            command=cfg.command, args=cfg.args, env={**os.environ, **cfg.env} if cfg.env else None
+            command=cfg.command,
+            args=cfg.args,
+            env={**scrubbed_env(), **cfg.env} if cfg.env else None,
         )
         streams = await self._stack.enter_async_context(stdio_client(params))
         return streams[0], streams[1]

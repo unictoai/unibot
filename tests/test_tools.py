@@ -13,6 +13,35 @@ from unibot.tools.shell import code_reach, scrubbed_env
 from unibot.tools.web import fetch_public, host_of, html_to_markdown
 
 
+def _boxed_python(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PythonExecute:
+    """A PythonExecute inside a working network-blocking sandbox: the only place the
+    reach heuristic decides the risk (unboxed, every script is sensitive)."""
+    monkeypatch.setattr("unibot.sandbox.shutil.which", lambda _name: "/usr/bin/bwrap")
+    monkeypatch.setattr("unibot.sandbox.platform.system", lambda: "Linux")
+    from unibot.config import SandboxSettings
+    from unibot.sandbox import Sandbox
+
+    box = Sandbox(SandboxSettings(), workspace=tmp_path, probe=False)
+    assert box.active and box.blocks_network
+    return PythonExecute(workspace=tmp_path, sandbox=box)
+
+
+def test_python_execute_unboxed_is_always_sensitive(tmp_path: Path):
+    """The reach regexes miss 'import json, urllib.request' and open('../vault.key'),
+    so outside a network-blocking sandbox no script may auto-run: every script is
+    sensitive with egress, and the heuristic only ever raises the risk inside the box."""
+    py = PythonExecute(workspace=tmp_path)
+    for code in [
+        "import json, urllib.request",
+        "import sys, subprocess",
+        "import json, socket",
+        "open('../vault.key').read()",
+        "print('just math', 1 + 1)",
+    ]:
+        a = py.assess({"code": code})
+        assert a.risk == RiskLevel.SENSITIVE and a.egress, code
+
+
 async def test_files_workspace_scoping(tmp_path: Path):
     ws = tmp_path / "ws"
     ws.mkdir()
@@ -122,8 +151,8 @@ async def test_python_and_shell_children_cannot_read_secrets(tmp_path: Path, mon
         assert r.ok and r.output.startswith("[] [yes]")
 
 
-def test_python_reach_decides_the_risk(tmp_path: Path):
-    py = PythonExecute(workspace=tmp_path)
+def test_python_reach_decides_the_risk(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    py = _boxed_python(tmp_path, monkeypatch)
     plain = py.assess({"code": "import csv\nrows = [1, 2]\nopen('out.csv', 'w').write('a,b')"})
     assert plain.risk == RiskLevel.MODERATE and not plain.warnings and not plain.egress
     net = py.assess({"code": "import requests\nrequests.get('https://x')"})
@@ -148,7 +177,9 @@ def test_python_reach_decides_the_risk(tmp_path: Path):
     assert home.risk == RiskLevel.SENSITIVE
 
 
-async def test_web_fetch_refuses_redirects_into_private_networks():
+async def test_web_fetch_refuses_redirects_into_private_networks(
+    monkeypatch: pytest.MonkeyPatch,
+):
     hops: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -159,6 +190,9 @@ async def test_web_fetch_refuses_redirects_into_private_networks():
             )
         return httpx.Response(200, text="should never be reached")
 
+    # the mock hosts do not resolve offline, and the guard fails closed — so the
+    # test names which hosts are private instead of doing real DNS
+    monkeypatch.setattr("unibot.tools.web._is_private_host", lambda host: host == "169.254.169.254")
     transport = httpx.MockTransport(handler)
     with pytest.raises(PermissionError, match="private/internal host '169.254.169.254'"):
         await fetch_public("http://public.example/start", timeout=5, transport=transport)
@@ -240,9 +274,11 @@ async def test_files_search_extra_root(tmp_path: Path):
     assert "local.md" in r3.output
 
 
-def test_code_reach_catches_import_aliasing_evasion(tmp_path: Path):
+def test_code_reach_catches_import_aliasing_evasion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     """Aliased/dynamic imports must not slip past reach detection (was: zero-prompt exfiltration)."""
-    py = PythonExecute(workspace=tmp_path)
+    py = _boxed_python(tmp_path, monkeypatch)
     for code in [
         '__import__("subprocess").run(["id"])',
         'import importlib\nimportlib.import_module("socket")',

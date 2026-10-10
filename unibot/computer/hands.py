@@ -20,6 +20,7 @@ the words under the cursor to the Sentinel first, exactly like the phone's ``pho
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -233,24 +234,29 @@ def _platform() -> str:
 
 
 def open_application(name: str) -> str:
-    """Start an application by the name a person uses for it. Returns what was started."""
+    """Start an application by the name a person uses for it. Returns what was started.
+
+    Only installed applications: a ``.desktop`` entry on Linux, ``open -a`` on
+    macOS, the Start-menu association on Windows. Never an arbitrary executable —
+    ``shutil.which("/path/to/x.sh")`` would happily return (and run) a script the
+    model just wrote into the workspace.
+    """
     name = name.strip()
     if not name:
         raise ValueError("an application name is required")
+    if re.search(r'[\\/&|<>^%"]', name):
+        raise ValueError("an application name may not contain path or shell characters")
     platform = _platform()
     if platform == "darwin":
         subprocess.run(["open", "-a", name], check=True, timeout=20, capture_output=True)
         return name
     if platform == "win32":
-        subprocess.Popen(["cmd", "/c", "start", "", name], shell=False)  # noqa: S603
+        # never through ``cmd /c start``: list2cmdline does not quote `calc&whoami`
+        # (no spaces) and cmd would re-parse the & — a command injection
+        os.startfile(name)
         return name
-    # Linux: a command on PATH, else a .desktop entry whose Name matches
-    exe = shutil.which(name) or shutil.which(name.lower())
-    if exe:
-        subprocess.Popen(
-            [exe], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        return exe
+    # Linux: a .desktop entry whose Name matches — no PATH lookup, so a malicious
+    # name cannot resolve to an executable planted in the workspace
     desktop = _desktop_entry(name)
     if desktop is None:
         raise ValueError(f"no application called {name!r} was found")
