@@ -279,7 +279,10 @@ def create_app(
 
     @app.delete("/v1/me/sessions/{prefix}", status_code=204)
     async def me_revoke_session(prefix: str, caller: Caller = Depends(caller_dep)) -> Response:
-        cloud.revoke_session(caller, prefix)
+        hashes = cloud.revoke_session(caller, prefix)
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.drop_keys(caller.account_id, set(hashes))
         return Response(status_code=204)
 
     @app.get("/v1/me/events")
@@ -289,13 +292,19 @@ def create_app(
     @app.post("/v1/auth/sign-out", status_code=204)
     async def sign_out(caller: Caller = Depends(caller_dep)) -> Response:
         cloud.sign_out(caller)
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.drop_keys(caller.account_id, {caller.key_hash})
         return Response(status_code=204)
 
     @app.post("/v1/auth/sign-out-all")
     async def sign_out_all(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
         """Every other device; {"all": true} takes this one too."""
-        body = await _json(request)
-        n = cloud.sign_out_all(caller, keep_current=not bool(body.get("all")))
+        keep_current = not bool((await _json(request)).get("all"))
+        n = cloud.sign_out_all(caller, keep_current=keep_current)
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.drop_keys(caller.account_id, None, exclude={caller.key_hash} if keep_current else frozenset())
         return {"signed_out": n}
 
     @app.post("/v1/auth/delete", status_code=204)

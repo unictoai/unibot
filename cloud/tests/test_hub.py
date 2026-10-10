@@ -14,7 +14,7 @@ from unibot_cloud.api import create_app
 from unibot_cloud.config import Settings
 from unibot_cloud.db import Database
 from unibot_cloud.senders import LogSender
-from unibot_cloud.service import Cloud
+from unibot_cloud.service import Cloud, _sha256
 
 
 @pytest.fixture
@@ -25,6 +25,7 @@ def client():
     app = create_app(settings, cloud)
     with TestClient(app) as c:
         c.sender = sender
+        c.cloud = cloud
         yield c
 
 
@@ -273,3 +274,74 @@ def test_the_profile_is_shared_and_announced(client):
         assert client.put("/v1/me/profile", headers=auth, json=body).status_code == 400, body
     assert client.delete("/v1/me/profile", headers=auth).status_code == 204
     assert client.get("/v1/me/profile", headers=auth).json()["rev"] == 0
+
+
+def _second_sign_in(client: TestClient, identifier: str, device: str) -> str:
+    assert client.post("/v1/auth/code", json={"identifier": identifier}).status_code == 204
+    _, code = client.sender.sent[-1]
+    r = client.post("/v1/auth/verify", json={"identifier": identifier, "code": code, "device": device})
+    assert r.status_code == 200, r.text
+    return r.json()["api_key"]
+
+
+def test_revoking_a_sign_in_drops_its_hub_socket(client):
+    """A revoked device must not keep a live line to the account's computers:
+    sign-out, sign-out-all and per-session revoke close the matching hub
+    sockets, and a call frame on a socket whose key died behind the hub's
+    back kills the socket (route() re-checks the key)."""
+    ident = "13800138011"
+    key1 = sign_up(client, ident)
+    key2 = _second_sign_in(client, ident, "test2")
+    key3 = _second_sign_in(client, ident, "test3")
+    auth = lambda k: {"Authorization": f"Bearer {k}"}  # noqa: E731
+    account_id = client.cloud.authenticate(key2).account_id
+
+    with connect(client, key1) as phone, connect(client, key2) as pc, connect(client, key3) as tablet:
+        for ws, kind, did, name in (
+            (phone, "phone", "phone-1", "Pixel"),
+            (pc, "computer", "pc-1", "desk"),
+            (tablet, "phone", "tab-1", "Tab"),
+        ):
+            ws.send_json(hello(kind, did, name))
+            ws.receive_json()  # welcome
+            ws.receive_json()  # devices broadcast for its own arrival
+        phone.receive_json()  # pc joined
+        phone.receive_json()  # tablet joined
+        pc.receive_json()  # tablet joined
+
+        # 1. Revoke key1's session from key2: the phone's socket dies, the rest live.
+        sessions = client.get("/v1/me/sessions", headers=auth(key2)).json()["sessions"]
+        prefix1 = next(s["prefix"] for s in sessions if not s["current"] and s["prefix"] == key1[:10])
+        assert client.delete(f"/v1/me/sessions/{prefix1}", headers=auth(key2)).status_code == 204
+        with pytest.raises(WebSocketDisconnect):
+            phone.receive_json()
+        pc.send_json({"type": "ping"})
+        assert pc.receive_json()["type"] == "pong"
+        tablet.send_json({"type": "ping"})
+        assert tablet.receive_json()["type"] == "pong"
+
+        # 2. "Sign out every other device" from key2: the tablet's socket dies,
+        #    key2's own socket survives.
+        r = client.post("/v1/auth/sign-out-all", json={}, headers=auth(key2))
+        assert r.status_code == 200 and r.json()["signed_out"] == 1
+        with pytest.raises(WebSocketDisconnect):
+            tablet.receive_json()
+        pc.send_json({"type": "ping"})
+        assert pc.receive_json()["type"] == "pong"
+
+        # 3. Signing out key2 itself drops its socket too.
+        assert client.post("/v1/auth/sign-out", headers=auth(key2)).status_code == 204
+        with pytest.raises(WebSocketDisconnect):
+            pc.receive_json()
+
+    # 4. Defence in depth: the key is revoked straight in the db, so no drop
+    #    ran — the next call frame on that socket must still kill it.
+    key4, _ = client.cloud._issue_key(account_id, "watch", via="test")
+    with connect(client, key4) as watch:
+        watch.send_json(hello("phone", "watch-1", "Watch"))
+        watch.receive_json()  # welcome
+        watch.receive_json()  # devices broadcast
+        client.cloud.db.revoke_key(_sha256(key4))  # revoked behind the hub's back
+        watch.send_json({"type": "call", "id": "c9", "to": "watch-1", "action": "info", "args": {}})
+        with pytest.raises(WebSocketDisconnect):
+            watch.receive_json()
