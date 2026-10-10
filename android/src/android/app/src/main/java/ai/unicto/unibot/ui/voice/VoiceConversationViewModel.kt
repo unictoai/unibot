@@ -12,6 +12,8 @@ import ai.unicto.unibot.speech.friendlyMessage
 import ai.unicto.unibot.speech.isUserFacingSttMessage
 import ai.unicto.unibot.ui.chat.ChatMessage
 import ai.unicto.unibot.ui.chat.ChatViewModel
+import ai.unicto.unibot.ui.chat.StreamingDelta
+import ai.unicto.unibot.ui.chat.ToolBlockStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
@@ -23,7 +25,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * [unibot-voice-conversation] State machine for the flagship voice
@@ -175,7 +178,12 @@ class VoiceConversationViewModel(
      * it, so a pump call or utterance callback from a dead turn no-ops
      * instead of speaking into the new turn (the enqueue→pump window is
      * small but real).
+     *
+     * Written on the main thread only, but READ from the TTS engine's
+     * completion callback on Dispatchers.Default — hence @Volatile, so the
+     * background pump always sees the latest generation.
      */
+    @Volatile
     private var ttsGen = 0
 
     /**
@@ -206,7 +214,16 @@ class VoiceConversationViewModel(
     private var sessionId: String = ""
     private var sendJob: Job? = null
     private var silenceJob: Job? = null
-    private var conversationActive = false
+    // Bug 4 (v1.5/voice): the single source of truth for "a start attempt is
+    // in flight or the loop is live" is [VoiceStartGate.active]. This shim
+    // keeps every existing reader/writer (stopConversation, interrupt,
+    // pumpTtsQueue, awaitReplyStreaming, …) compiling and behaving exactly
+    // as before; the start / deny / no-model transitions below talk to the
+    // gate directly so the permission-retry contract stays unit-testable.
+    private val startGate = VoiceStartGate()
+    private var conversationActive: Boolean
+        get() = startGate.active
+        set(value) { startGate.active = value }
 
     companion object {
         const val WHISPER_ENGINE_ID = "whisper-offline"
@@ -216,8 +233,11 @@ class VoiceConversationViewModel(
         private const val SILENCE_FALLBACK_MS = 1_500L
         /** Minimum capture length before the fallback may fire. */
         private const val MIN_LISTEN_MS = 2_500L
-        /** Level above which the mic counts as hearing speech. */
-        private const val QUIET_THRESHOLD = 0.12f
+        // [bug-6] The fixed QUIET_THRESHOLD = 0.12f lived here. It could not
+        // tell a quiet speaker in a quiet room from a loud room's noise floor,
+        // so it cut quiet speech mid-sentence and never cut in steady noise.
+        // The cut-off decision moved into [AdaptiveSilenceGate], which tracks
+        // the room's noise floor instead.
         /** Max wait for the assistant's reply before surfacing an error. */
         private const val REPLY_TIMEOUT_MS = 180_000L
         /**
@@ -248,17 +268,22 @@ class VoiceConversationViewModel(
 
     /**
      * Start the hands-free loop for [sessionId]: mic permission → engine
-     * selection → listening. Safe to call again after [stopConversation] or
-     * an [State.Error].
+     * selection → listening. Safe to call again after [stopConversation],
+     * an [State.Error], a [State.PermissionDenied] Allow retry, or the
+     * [State.NoSttModel] post-download kick-off — terminal failures park
+     * the start gate instead of leaving it tripped.
      */
     fun startConversation(sessionId: String) {
-        if (conversationActive && _state.value != State.Idle && _state.value !is State.Error) return
+        if (!startGate.canStart(_state.value)) return
         this.sessionId = sessionId
-        conversationActive = true
+        startGate.onAttemptStarted()
         viewModelScope.launch {
             if (!ensureMicPermission()) {
                 // [v1.1.2] Denied -> the graceful PermissionDenied card, not
-                // a dead-end error string.
+                // a dead-end error string. Bug 4 (v1.5/voice): the attempt is
+                // over — park the gate so the Allow retry starts a fresh
+                // attempt instead of tripping the entry guard above.
+                startGate.onAttemptFailedTerminally()
                 _state.value = State.PermissionDenied
                 return@launch
             }
@@ -277,6 +302,10 @@ class VoiceConversationViewModel(
             if (SpeechRecognitionManager.availableEngines().none { it.isAvailable }) {
                 // [v1.2] Dedicated state (not a bare Error string) so the UI
                 // can offer the real recovery: downloading the offline model.
+                // Bug 4 (v1.5/voice): park the gate — the download card's
+                // onDownloaded kick-off must start a fresh attempt, not trip
+                // the entry guard.
+                startGate.onAttemptFailedTerminally()
                 _state.value = State.NoSttModel
                 return@launch
             }
@@ -322,6 +351,7 @@ class VoiceConversationViewModel(
         sendJob = null
         silenceJob?.cancel()
         silenceJob = null
+        silenceGate = null
         // Voice theme item 27: drop queued sentences too — a stale pump
         // callback must never resume speech after the turn died.
         ttsQueue.clear()
@@ -349,7 +379,10 @@ class VoiceConversationViewModel(
 
     // [v1.1.2] Called when the system mic-permission dialog was denied
     // (including "don't ask again"). Shows the graceful denied card.
+    // Bug 4 (v1.5/voice): the attempt is over — park the gate so a later
+    // Allow retry starts fresh instead of tripping the entry guard.
     fun onPermissionDenied() {
+        startGate.onAttemptFailedTerminally()
         _state.value = State.PermissionDenied
     }
 
@@ -385,7 +418,9 @@ class VoiceConversationViewModel(
                 if (isFinal) onFinalTranscript(text)
                 else {
                     _partialTranscript.value = text
-                    lastSpeechAt = android.os.SystemClock.elapsedRealtime()
+                    // A partial transcript is speech activity too: refresh the
+                    // silence fallback's deadline through the gate.
+                    silenceGate?.onSpeechHeard(android.os.SystemClock.elapsedRealtime())
                 }
             },
             onError = { error: RecognitionError, message: String? ->
@@ -427,8 +462,14 @@ class VoiceConversationViewModel(
         armSilenceFallback()
     }
 
+    /**
+     * [bug-6] Adaptive cut-off for the silence fallback, owned by
+     * [armSilenceFallback]. The engine's partial-transcript callback also
+     * refreshes it (a partial is speech activity) — hence volatile, like the
+     * `lastSpeechAt` timestamp it replaces.
+     */
     @Volatile
-    private var lastSpeechAt: Long = 0L
+    private var silenceGate: AdaptiveSilenceGate? = null
 
         // [v1.2] Switch to the next available engine after the current one
     // failed spuriously, then restart listening. Returns false when there is
@@ -451,18 +492,26 @@ class VoiceConversationViewModel(
      * silence for 1.5 s we stop the capture for it, which delivers the final
      * transcript. No-op once the engine already finalized (the manager
      * guards `stopRecording` by state).
+     *
+     * [bug-6] The cut-off decision is adaptive now: [AdaptiveSilenceGate]
+     * tracks the room's noise floor instead of a fixed 0.12 level, so quiet
+     * speech in a quiet room no longer gets cut mid-sentence and steady
+     * background noise no longer holds the capture open indefinitely.
      */
     private fun armSilenceFallback() {
         silenceJob?.cancel()
-        lastSpeechAt = android.os.SystemClock.elapsedRealtime()
+        val gate = AdaptiveSilenceGate(
+            silenceFallbackMs = SILENCE_FALLBACK_MS,
+            minListenMs = MIN_LISTEN_MS,
+        )
+        gate.start(android.os.SystemClock.elapsedRealtime())
+        silenceGate = gate
         silenceJob = viewModelScope.launch {
-            val startedAt = android.os.SystemClock.elapsedRealtime()
             while (_state.value is State.Listening) {
                 delay(250)
                 val now = android.os.SystemClock.elapsedRealtime()
                 val level = SpeechRecognitionManager.audioLevels.value.maxOrNull() ?: 0f
-                if (level > QUIET_THRESHOLD) lastSpeechAt = now
-                if (now - startedAt > MIN_LISTEN_MS && now - lastSpeechAt > SILENCE_FALLBACK_MS) {
+                if (gate.onSample(level, now)) {
                     SpeechRecognitionManager.stopRecording()
                     break
                 }
@@ -578,19 +627,27 @@ class VoiceConversationViewModel(
      * Pump the TTS queue: speak the next queued sentence, chaining on the
      * utterance completion callback. No-op when the turn died (generation
      * bumped or queue cleared) or the conversation stopped — a stale callback
-     * can never resume speech. Runs on whatever thread the engine callback
-     * uses; StateFlow writes are thread-safe.
+     * can never resume speech. Also a no-op while an utterance is in-flight:
+     * [SherpaTtsEngine.speak] flushes (stop()s) the playing utterance, so
+     * pumping mid-speech cut the sentence off — the in-flight utterance's
+     * onDone chains the next pump instead. Runs on whatever thread the
+     * engine callback uses; the queue itself is synchronized and StateFlow
+     * writes are thread-safe.
      */
     private fun pumpTtsQueue(gen: Int) {
         if (gen != ttsGen || !conversationActive) {
             ttsQueue.clear()
             return
         }
+        // Never preempt a playing utterance ([takeNext] also refuses while
+        // in-flight — this is belt-and-braces so the intent reads here).
+        if (ttsQueue.hasInFlight) return
         val next = ttsQueue.takeNext() ?: return
         _state.value = State.Speaking
-        // SherpaTtsEngine.speak sanitizes (no spoken markdown/emoji) and
-        // flushes any in-flight utterance; we only ever call it from here,
-        // strictly after the previous onDone, so ordering is exact.
+        // SherpaTtsEngine.speak sanitizes (no spoken markdown/emoji). It is
+        // only ever called from here, strictly after the previous onDone, so
+        // ordering is exact — and with the in-flight guard above, speak() can
+        // no longer flush a sentence that is still playing.
         SherpaTtsEngine.speak(next) {
             ttsQueue.markSpoken()
             pumpTtsQueue(gen)
@@ -617,102 +674,133 @@ class VoiceConversationViewModel(
      * Wait for the assistant's reply, feeding [ttsQueue] sentence-by-sentence
      * from the live stream when [streamTts] is on.
      *
-     * The reply id is resolved from the streaming side-channel first
-     * (per-token text rides `streamingById`, keyed by message id — the
-     * canonical list stays static mid-turn), falling back to the canonical
-     * message list. Completion = the chat is quiet for 1 s (so tool loops
-     * that pause between chunks don't cut the reply short) AND the TTS queue
-     * drained.
+     * Every new assistant message of the turn is tracked (see
+     * [resolveVoiceTurnSnapshot]) — the reply id used to be locked to the
+     * first one, which dropped the rest of the reply from speech,
+     * `lastExchange`, and the returned text whenever the agent loop sealed
+     * its bubble mid-turn (in-loop compaction) and continued in a fresh one.
+     *
+     * The wait is bounded by ACTIVITY, not a fixed deadline: a long turn
+     * that keeps producing (streaming tokens, running tools) never fails at
+     * [REPLY_TIMEOUT_MS]; only a genuinely stalled turn — no agent
+     * activity, no new text, no speech progress for the whole window —
+     * throws. When the late reply lands it flows through the normal path
+     * and is spoken, never dropped.
+     *
+     * Completion = the chat is quiet for 1 s (so tool loops that pause
+     * between chunks don't cut the reply short) AND the TTS queue drained.
      *
      * @throws VoiceReplyException the moment an LLM error surfaces — on the
-     *   top-level error flow or on the fresh message — carrying its kind.
+     *   top-level error flow or on any tracked message — carrying its kind.
      */
-    private suspend fun awaitReplyStreaming(beforeIds: Set<String>, streamTts: Boolean, gen: Int): String =
-        withTimeout(REPLY_TIMEOUT_MS) {
-            val sentenceBuffer = StringBuilder()
-            var consumedUpTo = 0
-            var replyId: String? = null
-            var quietSince = 0L
+    private suspend fun awaitReplyStreaming(beforeIds: Set<String>, streamTts: Boolean, gen: Int): String {
+        val sentenceBuffer = StringBuilder()
+        var consumedUpTo = 0
+        val replyIds = mutableListOf<String>()
+        var quietSince = 0L
+        // Activity clock for the stall watchdog below: refreshed while the
+        // agent streams, runs tools, delivers text, or the TTS queue is still
+        // speaking. A fixed withTimeout(REPLY_TIMEOUT_MS) used to fail live
+        // turns here and drop their voice output.
+        var lastActivityAt = android.os.SystemClock.elapsedRealtime()
 
-            while (true) {
-                // Item 28: surface errors the moment they land — never sit on
-                // "thinking" after the chat already failed.
-                chatViewModel.error.value?.let { text ->
-                    throw VoiceReplyException(chatViewModel.lastErrorKind.value, text)
-                }
-                val canonical: ChatMessage? = chatViewModel.messages.value.firstOrNull {
-                    it.role == "assistant" && it.id !in beforeIds && !it.isInternalBridge
-                }
-                // An error frame on an otherwise empty message: the old code
-                // waited here until the 180 s timeout. Throw now, with kind.
-                canonical?.error?.let { text ->
-                    throw VoiceReplyException(canonical.errorKind, text)
-                }
-                if (replyId == null) {
-                    replyId = chatViewModel.streamingById.value.keys
-                        .firstOrNull { it !in beforeIds }
-                        ?: canonical?.id
-                }
-                val liveText: String = replyId?.let { id ->
-                    chatViewModel.streamingById.value[id]?.content
-                        ?: chatViewModel.messages.value.firstOrNull { it.id == id }?.content
-                }.orEmpty()
+        while (true) {
+            // Item 28: surface errors the moment they land — never sit on
+            // "thinking" after the chat already failed.
+            chatViewModel.error.value?.let { text ->
+                throw VoiceReplyException(chatViewModel.lastErrorKind.value, text)
+            }
+            val snapshot = resolveVoiceTurnSnapshot(
+                messages = chatViewModel.messages.value,
+                streamingById = chatViewModel.streamingById.value,
+                beforeIds = beforeIds,
+                isStreaming = chatViewModel.isStreaming.value,
+                trackedIds = replyIds,
+            )
+            // An error frame on an otherwise empty message: the old code
+            // waited here until the 180 s timeout. Throw now, with kind.
+            snapshot.error?.let { (kind, message) ->
+                throw VoiceReplyException(kind, message)
+            }
+            for (id in snapshot.replyIds) {
+                if (id !in replyIds) replyIds.add(id)
+            }
+            val liveText: String = snapshot.liveText
 
-                if (liveText.length > consumedUpTo) {
-                    val delta = liveText.substring(consumedUpTo)
-                    consumedUpTo = liveText.length
-                    if (streamTts) {
-                        sentenceBuffer.append(delta)
-                        val sentences =
-                            ai.unicto.unibot.speech.SpeechSentenceSplitter
-                                .extractCompleteSentences(sentenceBuffer, streaming = true)
-                        if (sentences.isNotEmpty()) {
-                            ttsQueue.enqueueSentences(sentences)
-                            pumpTtsQueue(gen)
-                        }
+            val grew = liveText.length > consumedUpTo
+            if (grew) {
+                val delta = liveText.substring(consumedUpTo)
+                consumedUpTo = liveText.length
+                if (streamTts) {
+                    sentenceBuffer.append(delta)
+                    val sentences =
+                        ai.unicto.unibot.speech.SpeechSentenceSplitter
+                            .extractCompleteSentences(sentenceBuffer, streaming = true)
+                    if (sentences.isNotEmpty()) {
+                        ttsQueue.enqueueSentences(sentences)
+                        pumpTtsQueue(gen)
                     }
                 }
+            }
 
-                // Completion: the agent loop is quiet AND (streaming path)
-                // every queued sentence finished speaking.
-                val now = android.os.SystemClock.elapsedRealtime()
-                if (!chatViewModel.isStreaming.value) {
-                    if (quietSince == 0L) quietSince = now
-                    if (now - quietSince > STREAM_QUIET_MS) {
-                        // Flush the tail (a fragment with no terminator).
-                        val tail = liveText.substring(consumedUpTo.coerceAtMost(liveText.length))
-                        if (streamTts && tail.isNotBlank()) {
-                            ttsQueue.enqueueSentences(listOf(tail))
-                            pumpTtsQueue(gen)
-                        }
-                        // Wait for the spoken queue to drain (bounded by the
-                        // outer timeout).
-                        while (streamTts && !ttsQueue.isDrained) {
-                            if (!conversationActive) throw VoiceReplyException(
-                                null, "Conversation stopped.",
-                            )
-                            delay(100)
-                        }
-                        break
+            val now = android.os.SystemClock.elapsedRealtime()
+            // Speaking the reply is progress too — a long reply must never
+            // look like a stalled turn.
+            if (snapshot.isAgentActive || grew || (streamTts && !ttsQueue.isDrained)) {
+                lastActivityAt = now
+            }
+            if (isVoiceReplyStalled(now, lastActivityAt, REPLY_TIMEOUT_MS)) {
+                throw VoiceReplyException(null, "The reply took too long. Tap to try again.")
+            }
+
+            // Completion: the agent loop is quiet AND (streaming path)
+            // every queued sentence finished speaking.
+            if (!chatViewModel.isStreaming.value) {
+                if (quietSince == 0L) quietSince = now
+                if (now - quietSince > STREAM_QUIET_MS) {
+                    // Flush the tail from the SENTENCE BUFFER. The old code
+                    // flushed liveText beyond consumedUpTo — always empty,
+                    // since consumedUpTo == liveText.length here — so a
+                    // final fragment with no trailing punctuation ("… Done")
+                    // was never spoken.
+                    val tail = ttsQueue.drainRemaining(sentenceBuffer)
+                    if (streamTts && tail.isNotEmpty()) {
+                        ttsQueue.enqueueSentences(tail)
+                        pumpTtsQueue(gen)
                     }
-                } else {
-                    quietSince = 0L
+                    // Wait for the spoken queue to drain. Speaking counts as
+                    // activity (clock refreshed below) so a long reply is
+                    // never mistaken for a stall; onDone is guaranteed by
+                    // the engine's finally block.
+                    while (streamTts && !ttsQueue.isDrained) {
+                        if (!conversationActive) throw VoiceReplyException(
+                            null, "Conversation stopped.",
+                        )
+                        lastActivityAt = android.os.SystemClock.elapsedRealtime()
+                        delay(100)
+                    }
+                    break
                 }
-                delay(POLL_MS)
+            } else {
+                quietSince = 0L
             }
-
-            val id = replyId
-            val full: String = id?.let { rid ->
-                chatViewModel.messages.value.firstOrNull { it.id == rid }?.content
-            }.orEmpty()
-            // A mid-stream error could have landed after the last poll: never
-            // hand an errored turn back as a successful reply.
-            chatViewModel.messages.value.firstOrNull { it.id == id }?.error?.let { text ->
-                val kind = chatViewModel.messages.value.firstOrNull { it.id == id }?.errorKind
-                throw VoiceReplyException(kind, text)
-            }
-            full
+            delay(POLL_MS)
         }
+
+        val final = resolveVoiceTurnSnapshot(
+            messages = chatViewModel.messages.value,
+            streamingById = chatViewModel.streamingById.value,
+            beforeIds = beforeIds,
+            isStreaming = chatViewModel.isStreaming.value,
+            trackedIds = replyIds,
+        )
+        // A mid-stream error could have landed after the last poll: never
+        // hand an errored turn back as a successful reply.
+        final.error?.let { (kind, message) ->
+            throw VoiceReplyException(kind, message)
+        }
+        return final.liveText
+    }
 
     private fun onSpeakDone() {
         if (!conversationActive) return
@@ -727,6 +815,7 @@ class VoiceConversationViewModel(
         ttsQueue.clear()
         sendJob?.cancel()
         silenceJob?.cancel()
+        silenceGate = null
         SpeechRecognitionManager.stopRecording()
         SherpaTtsEngine.stop()
     }
@@ -736,4 +825,246 @@ class VoiceConversationViewModel(
      * null) so the UI can gate Retry vs fix actions.
      */
     private class VoiceReplyException(val kind: String?, message: String) : Exception(message)
+}
+
+/**
+ * Pure turn-tracking snapshot for
+ * [VoiceConversationViewModel.awaitReplyStreaming].
+ *
+ * The agent loop normally folds every tool/text iteration into a single
+ * assistant bubble, but two mid-loop paths start a FRESH bubble: in-loop
+ * compaction (seals the finished bubble, continues below the divider) and
+ * queued-prompt injection. Locking onto the first new message id dropped the
+ * rest of the reply from speech, `lastExchange`, and the returned text — so
+ * every new assistant message of the turn is tracked, in chronological
+ * order, and the live text is their concatenation.
+ *
+ * Pure (no Android, no coroutines) so the tracking contract is unit-testable.
+ */
+internal data class VoiceTurnSnapshot(
+    /** Every new assistant message id of the turn, chronological. */
+    val replyIds: List<String>,
+    /** Concatenated live text of [replyIds] (streaming side-channel preferred). */
+    val liveText: String,
+    /** (kind, message) of an error frame on any tracked message, if present. */
+    val error: Pair<String?, String>?,
+    /** True while the agent loop runs or a tool block is still in flight. */
+    val isAgentActive: Boolean,
+)
+
+internal fun resolveVoiceTurnSnapshot(
+    messages: List<ChatMessage>,
+    streamingById: Map<String, StreamingDelta>,
+    beforeIds: Set<String>,
+    isStreaming: Boolean,
+    trackedIds: List<String>,
+): VoiceTurnSnapshot {
+    val byId = messages.associateBy { it.id }
+    val freshIds = messages
+        .asSequence()
+        .filter { it.role == "assistant" && it.id !in beforeIds && !it.isInternalBridge }
+        .map { it.id }
+        .toList()
+    // Stream-only ids (side-channel ahead of the canonical list — rare, but
+    // the old code resolved the first reply id from here).
+    val known = (trackedIds + freshIds).toSet()
+    val streamOnlyIds = streamingById.keys.filter { it !in beforeIds && it !in known }
+    // Chronological union: previously tracked ids keep their slots (a sealed
+    // bubble pruned from the list keeps resolving to empty text), newly
+    // appeared ids append in message-list order.
+    val replyIds = (trackedIds + freshIds + streamOnlyIds).distinct()
+    fun partText(id: String): String =
+        streamingById[id]?.content ?: byId[id]?.content.orEmpty()
+    val liveText = buildString {
+        for (id in replyIds) {
+            val part = partText(id)
+            if (part.isEmpty()) continue
+            if (isNotEmpty() && !last().isWhitespace()) append(' ')
+            append(part)
+        }
+    }
+    val error: Pair<String?, String>? = replyIds.firstNotNullOfOrNull { id ->
+        byId[id]?.let { m -> m.error?.let { e -> m.errorKind to e } }
+    }
+    val toolRunning = replyIds.any { id ->
+        val blocks = streamingById[id]?.toolBlocks ?: byId[id]?.toolBlocks.orEmpty()
+        blocks.any {
+            it.toolStatus == ToolBlockStatus.RUNNING ||
+                it.toolStatus == ToolBlockStatus.STREAMING ||
+                it.toolStatus == ToolBlockStatus.PENDING
+        }
+    }
+    return VoiceTurnSnapshot(
+        replyIds = replyIds,
+        liveText = liveText,
+        error = error,
+        isAgentActive = isStreaming || toolRunning,
+    )
+}
+
+/**
+ * The reply wait fails only after [timeoutMs] with NO agent activity — a
+ * fixed deadline from turn start killed long-but-live turns (big tool loops)
+ * and dropped their voice output. Callers refresh the activity clock while
+ * the agent streams, runs tools, delivers text, or the TTS queue is still
+ * speaking.
+ */
+internal fun isVoiceReplyStalled(nowMs: Long, lastActivityAtMs: Long, timeoutMs: Long): Boolean =
+    nowMs - lastActivityAtMs > timeoutMs
+
+/**
+ * [bug-6] Adaptive silence gate for the voice loop's silence fallback.
+ *
+ * Replaces the fixed `QUIET_THRESHOLD = 0.12f` cut-off. A fixed level cannot
+ * tell a quiet speaker in a quiet room apart from a loud room's noise floor,
+ * so it failed in both directions:
+ *
+ * - quiet-but-real speech sat under 0.12 → the capture was cut ~2.5 s into
+ *   the sentence;
+ * - steady background noise (fan, car) sat above 0.12 → the deadline kept
+ *   refreshing and the one-shot whisper engine (which only transcribes on
+ *   stop) recorded until its 120 s cap.
+ *
+ * Instead the gate tracks a running noise floor — seeded from the quietest of
+ * the opening samples (speech is bursty, noise is steady, so the minimum lands
+ * on ambient), then falling fast toward sudden quiet, rising slowly toward a
+ * noisier room, and never adapting while a sample reads as speech (the same
+ * asymmetric discipline as [ai.unicto.unibot.speech.VoiceActivityDetector]'s
+ * AGC, which refuses to let speech drag its floor up). A sample counts as
+ * speech only when it sits clearly above the floor. Steady noise converges
+ * into the floor and stops counting as speech, so the fallback fires; quiet
+ * speech stays clearly above a quiet floor, so the capture stays alive.
+ *
+ * Pure logic, no Android APIs: feed it (level, nowMs) samples from the poll
+ * loop and [onSample] returns true when the capture should be cut. Unit tests
+ * drive it directly ([AdaptiveSilenceGateTest]).
+ */
+internal class AdaptiveSilenceGate(
+    /** Cut the capture after this long with no above-floor speech. */
+    private val silenceFallbackMs: Long,
+    /** Never cut before the capture has run this long. */
+    private val minListenMs: Long,
+    /**
+     * A sample counts as speech when it exceeds the noise floor by this
+     * ratio. 2.0 ≈ +6 dB over ambient: comfortably above steady noise, still
+     * reachable by quiet speech in a quiet room.
+     */
+    private val speechRatio: Float = 2.0f,
+    /**
+     * Absolute floor for the speech bar: near digital silence the ratio alone
+     * would let mic idle noise count as speech. Anything under this is
+     * silence no matter what the tracked floor says.
+     */
+    private val speechFloorAbs: Float = 0.02f,
+    /** Per-sample rate at which the floor falls toward sudden quiet. */
+    private val adaptDown: Float = 0.35f,
+    /** Per-sample rate at which the floor rises toward a noisier room. */
+    private val adaptUp: Float = 0.03f,
+    /** Hard ceiling so a pathological room can't pin the speech bar at 1.0. */
+    private val floorCeiling: Float = 0.5f,
+    /** Opening samples over which the floor seeds from the minimum. */
+    private val seedSamples: Int = 4,
+) {
+    @Volatile private var armed = false
+    @Volatile private var noiseFloor = 0f
+    @Volatile private var samplesSeen = 0
+    @Volatile private var startedAtMs = 0L
+    @Volatile private var lastSpeechAtMs = 0L
+
+    /** Begin a new capture at [nowMs]; the floor seeds from the first samples. */
+    fun start(nowMs: Long) {
+        noiseFloor = 0f
+        samplesSeen = 0
+        startedAtMs = nowMs
+        lastSpeechAtMs = nowMs
+        armed = true
+    }
+
+    /**
+     * A non-level signal that speech happened (e.g. the engine emitted a
+     * partial transcript): refresh the silence deadline without touching the
+     * noise floor.
+     */
+    fun onSpeechHeard(nowMs: Long) {
+        lastSpeechAtMs = nowMs
+    }
+
+    /**
+     * Feed one normalized [level] sample (0f..1f). Returns true when the
+     * silence fallback should fire — the capture ran past [minListenMs] and
+     * nothing read as speech for [silenceFallbackMs]. Returns false until
+     * [start] has been called.
+     */
+    fun onSample(level: Float, nowMs: Long): Boolean {
+        if (!armed) return false
+        val sample = level.coerceIn(0f, 1f)
+        if (samplesSeen < seedSamples) {
+            // Seed phase: the room's noise floor is the quietest thing heard
+            // in the opening window. A loud first sample can never raise the
+            // seed — only a quieter one lowers it — so opening mid-utterance
+            // in a noisy room still lands on ambient within ~1 s.
+            noiseFloor = if (samplesSeen == 0) sample else min(noiseFloor, sample)
+            samplesSeen++
+            return false
+        }
+        val speechBar = max(speechFloorAbs, noiseFloor * speechRatio)
+        if (sample > speechBar) {
+            // Speech: refresh the deadline, but do NOT let it drag the floor
+            // up — cf. VoiceActivityDetector.applyAgc, which likewise refuses
+            // to adapt mid-segment.
+            lastSpeechAtMs = nowMs
+        } else {
+            // Not speech: track the ambient floor — fast toward quiet, slow
+            // toward louder, so a noisier room is learned but a loud burst
+            // can't yank the bar up with it.
+            val rate = if (sample < noiseFloor) adaptDown else adaptUp
+            noiseFloor = (noiseFloor + (sample - noiseFloor) * rate)
+                .coerceIn(0f, floorCeiling)
+        }
+        return nowMs - startedAtMs >= minListenMs &&
+            nowMs - lastSpeechAtMs >= silenceFallbackMs
+    }
+
+    /** Current tracked floor, for tests and diagnostics. */
+    fun currentFloor(): Float = noiseFloor
+}
+
+/**
+ * Pure start/retry bookkeeping for the voice loop, extracted from
+ * [VoiceConversationViewModel] so the permission-retry contract is
+ * unit-testable without Android (the ViewModel itself needs the framework).
+ *
+ * The rule (bug 4, v1.5/voice): a start attempt that dies terminally — mic
+ * permission denied, or no STT model on the phone — must not leave the loop
+ * marked active. Otherwise the [VoiceConversationViewModel.startConversation]
+ * entry guard mistakes the dead attempt for a live conversation, and the
+ * user's retry (Allow on the denied card, or the post-download kick-off)
+ * returns immediately without starting anything. Only a genuinely live loop
+ * ([VoiceConversationViewModel.State.Listening], Thinking, Speaking) blocks
+ * a new start; Idle and Error keep their existing retry behavior.
+ */
+internal class VoiceStartGate {
+    /** True while a start attempt is in flight or the loop is live. */
+    var active: Boolean = false
+
+    /**
+     * The [VoiceConversationViewModel.startConversation] entry guard:
+     * false only when a live conversation is already running.
+     */
+    fun canStart(state: VoiceConversationViewModel.State): Boolean =
+        !(active && state != VoiceConversationViewModel.State.Idle &&
+                state !is VoiceConversationViewModel.State.Error)
+
+    /** A start attempt was accepted; the loop is now in flight. */
+    fun onAttemptStarted() {
+        active = true
+    }
+
+    /**
+     * Terminal failure of a start attempt (permission denied / no STT
+     * model): the loop is no longer live, so a later retry may start again.
+     */
+    fun onAttemptFailedTerminally() {
+        active = false
+    }
 }
