@@ -2,6 +2,7 @@ package ai.unicto.unibot.data
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -160,10 +161,11 @@ object UpdateChecker {
                     if (r.optBoolean("draft", false)) continue
                     val tag = r.optString("tag_name")
                     if (tag.isEmpty()) continue
-                    val (apkUrl, apkSize) = findApkAsset(r.optJSONArray("assets"))
+                    val versionName = normalizeTag(tag)
+                    val (apkUrl, apkSize) = findApkAsset(r.optJSONArray("assets"), versionName)
                     candidates += ReleaseInfo(
                         tagName = tag,
-                        versionName = normalizeTag(tag),
+                        versionName = versionName,
                         releaseName = r.optString("name").ifEmpty { tag },
                         changelog = r.optString("body", ""),
                         isPrerelease = r.optBoolean("prerelease", false),
@@ -266,18 +268,26 @@ object UpdateChecker {
     /** Public so UI can deep-link users to manual download when GitHub is blocked. */
     const val RELEASES_URL: String = "https://github.com/unictoai/unibot/releases"
 
-    /** Returns (downloadUrl, sizeBytes) for the first .apk asset, or (null, 0). */
-    private fun findApkAsset(assets: JSONArray?): Pair<String?, Long> {
+    /** Returns (downloadUrl, sizeBytes) for the release's APK asset, or (null, 0). */
+    private fun findApkAsset(assets: JSONArray?, versionName: String): Pair<String?, Long> {
         if (assets == null) return null to 0L
+        // [Security] Prefer the exact release artifact name
+        // (unibot-<ver>-arm64.apk) over "first .apk wins" — a mis-tagged
+        // release, wrong-ABI asset, or debug asset must not reach the
+        // installer. Falls back to the first .apk for old releases that
+        // predate the naming scheme.
+        val expected = "unibot-$versionName-arm64.apk"
+        var fallback: Pair<String?, Long>? = null
         for (i in 0 until assets.length()) {
             val a = assets.optJSONObject(i) ?: continue
             val name = a.optString("name").lowercase()
-            if (name.endsWith(".apk")) {
-                val u = a.optString("browser_download_url").ifEmpty { null }
-                if (u != null) return u to a.optLong("size", 0)
-            }
+            if (!name.endsWith(".apk")) continue
+            val u = a.optString("browser_download_url").ifEmpty { null } ?: continue
+            val pair = u to a.optLong("size", 0)
+            if (name == expected) return pair
+            if (fallback == null) fallback = pair
         }
-        return null to 0L
+        return fallback ?: (null to 0L)
     }
 
     /**
@@ -352,6 +362,16 @@ object UpdateChecker {
                         }
                     }
                 }
+                // [Security] A truncated download must never reach the
+                // installer — fail here instead of prompting on a corrupt
+                // APK.
+                if (total > 0 && outFile.length() != total) {
+                    val got = outFile.length()
+                    outFile.delete()
+                    return@withContext DownloadResult.Error(
+                        "truncated download: $got of $total bytes",
+                    )
+                }
             }
             AppLogger.info(TAG, "Downloaded ${outFile.length()} bytes to ${outFile.absolutePath}")
             // Persist so a subsequent Activity recreate (e.g. after the user
@@ -415,6 +435,30 @@ object UpdateChecker {
      * the dialog with no visible feedback.
      */
     /**
+     * [Security] True when [apk]'s signing certificate matches the running
+     * app's. Fail-closed: any error means "don't install".
+     */
+    private fun isSameSigner(context: Context, apk: File): Boolean {
+        return try {
+            val pm = context.packageManager
+            @Suppress("DEPRECATION")
+            val archiveSigners = pm.getPackageArchiveInfo(
+                apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES,
+            )?.signingInfo?.apkContentsSigners
+            @Suppress("DEPRECATION")
+            val installedSigners = pm.getPackageInfo(
+                context.packageName, PackageManager.GET_SIGNING_CERTIFICATES,
+            ).signingInfo?.apkContentsSigners
+            if (archiveSigners.isNullOrEmpty() || installedSigners.isNullOrEmpty()) return false
+            val installed = installedSigners.map { it.toByteArray().toList() }.toSet()
+            archiveSigners.any { it.toByteArray().toList() in installed }
+        } catch (e: Exception) {
+            AppLogger.warning(TAG, "signer check failed: ${e.message}")
+            false
+        }
+    }
+
+    /**
      * If a pending APK from a previous download is still on disk and intact,
      * returns the [File]. The caller is responsible for checking
      * [canInstall] and firing [installApk]. Returns null when nothing pending
@@ -445,6 +489,14 @@ object UpdateChecker {
     }
 
     fun installApk(context: Context, apk: File): Boolean {
+        // [Security] The APK must be signed by the same key as the running
+        // app. Without this, a mis-tagged release, wrong-ABI asset, or a
+        // build signed with a different key (e.g. debug) would reach the
+        // installer prompt.
+        if (!isSameSigner(context, apk)) {
+            AppLogger.error(TAG, "APK signer mismatch — refusing install: ${apk.absolutePath}")
+            return false
+        }
         return try {
             val authority = "${context.packageName}.fileprovider"
             val uri = FileProvider.getUriForFile(context, authority, apk)

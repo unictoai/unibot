@@ -2,12 +2,21 @@ package ai.unicto.unibot.offload
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 
 /**
@@ -29,6 +38,8 @@ object OffloadPermissionManager {
         val toolTitle: String,
         val description: String,
         val sessionId: String,
+        /** Unique per prompt — the dialog queue keys continuations by this. */
+        val id: String = UUID.randomUUID().toString(),
     )
 
     enum class PermissionCategory(val displayName: String) {
@@ -105,7 +116,10 @@ object OffloadPermissionManager {
      *  hosting session ends (or process death — see
      *  OFFLOAD_GLOBAL_SESSION_ID for offload-CLI-backed tools, which
      *  share one process-lifetime slot). */
-    private val sessionGrants = mutableMapOf<String, MutableSet<String>>() // sessionId -> set of toolNames
+    // [Security] ConcurrentHashMap: checkPermission runs on
+    // native-offload-worker threads (via OffloadGate's runBlocking), so
+    // plain LinkedHashMaps could corrupt or throw here.
+    private val sessionGrants = ConcurrentHashMap<String, MutableSet<String>>() // sessionId -> set of toolNames
 
     /** T338: session-scoped denials. Populated by the "Deny in this
      *  session" dialog response. Once a tool is in here for a given
@@ -113,13 +127,26 @@ object OffloadPermissionManager {
      *  — prevents the agent from spamming the user with the same
      *  request after they already said no. Cleared with
      *  [clearSessionGrants]. */
-    private val sessionDenials = mutableMapOf<String, MutableSet<String>>() // sessionId -> set of toolNames
+    private val sessionDenials = ConcurrentHashMap<String, MutableSet<String>>() // sessionId -> set of toolNames
 
     /** Active permission request waiting for user response. */
     private val _pendingRequest = MutableStateFlow<PermissionRequest?>(null)
     val pendingRequest: StateFlow<PermissionRequest?> = _pendingRequest.asStateFlow()
 
-    private var pendingContinuation: kotlin.coroutines.Continuation<Response>? = null
+    /**
+     * [Security] Prompt queue behind a mutex. The old single-slot
+     * `pendingContinuation` was overwritten by a second concurrent ASK_ONCE
+     * call, hanging the first worker thread forever. Now every prompt
+     * enqueues with its own deferred; the queue head is what the dialog
+     * shows, and each wait has a timeout (a timeout counts as a deny) so
+     * no IPC thread can block indefinitely.
+     */
+    private val queueMutex = Mutex()
+    private val promptQueue = ArrayDeque<Pair<PermissionRequest, CompletableDeferred<Response>>>()
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** A prompt the user never answers counts as a deny after this long. */
+    private const val PERMISSION_DIALOG_TIMEOUT_MS = 180_000L
 
     // ── Android system runtime permission request (for location etc.) ──────────
 
@@ -362,37 +389,46 @@ object OffloadPermissionManager {
                 // T338: a prior "Deny in this session" short-circuits
                 // before any grants check or dialog so the agent can't
                 // spam the user.
-                val denials = sessionDenials.getOrPut(sessionId) { mutableSetOf() }
+                val denials = sessionDenials.getOrPut(sessionId) { ConcurrentHashMap.newKeySet() }
                 if (toolName in denials) return false
 
-                val grants = sessionGrants.getOrPut(sessionId) { mutableSetOf() }
+                val grants = sessionGrants.getOrPut(sessionId) { ConcurrentHashMap.newKeySet() }
                 if (toolName in grants) return true
 
-                // Show dialog and wait for response.
+                // Show dialog and wait for response. Every prompt gets its
+                // own queue slot + deferred (concurrent prompts no longer
+                // clobber each other), and the wait is bounded — a prompt
+                // the user never answers counts as a deny so the worker
+                // thread can't hang forever.
                 val info = toolRegistry.find { it.toolName == toolName }
-                val response = suspendCancellableCoroutine<Response> { cont ->
-                    pendingContinuation = cont
-                    _pendingRequest.value = PermissionRequest(
-                        toolName = toolName,
-                        toolTitle = toolTitle,
-                        description = "Allow ${info?.displayName ?: toolName} access?",
-                        sessionId = sessionId,
-                    )
-                    cont.invokeOnCancellation {
-                        _pendingRequest.value = null
-                        pendingContinuation = null
-                    }
+                val request = PermissionRequest(
+                    toolName = toolName,
+                    toolTitle = toolTitle,
+                    description = "Allow ${info?.displayName ?: toolName} access?",
+                    sessionId = sessionId,
+                )
+                val deferred = CompletableDeferred<Response>()
+                queueMutex.withLock {
+                    promptQueue.addLast(request to deferred)
+                    if (promptQueue.size == 1) _pendingRequest.value = request
                 }
-
-                when (response) {
-                    Response.ALLOW_SESSION -> {
-                        grants.add(toolName)
-                        true
+                try {
+                    val response = withTimeoutOrNull(PERMISSION_DIALOG_TIMEOUT_MS) { deferred.await() }
+                    when (response ?: Response.DENY_SESSION) {
+                        Response.ALLOW_SESSION -> {
+                            grants.add(toolName)
+                            true
+                        }
+                        Response.ALLOW_ONCE -> true  // no caching; next call re-prompts
+                        Response.DENY_SESSION -> {
+                            denials.add(toolName)
+                            false
+                        }
                     }
-                    Response.ALLOW_ONCE -> true  // no caching; next call re-prompts
-                    Response.DENY_SESSION -> {
-                        denials.add(toolName)
-                        false
+                } finally {
+                    queueMutex.withLock {
+                        promptQueue.removeAll { it.first.id == request.id }
+                        _pendingRequest.value = promptQueue.firstOrNull()?.first
                     }
                 }
             }
@@ -401,9 +437,13 @@ object OffloadPermissionManager {
 
     /** Called from UI when user responds to the permission dialog. */
     fun respondToRequest(response: Response) {
-        _pendingRequest.value = null
-        pendingContinuation?.resume(response)
-        pendingContinuation = null
+        managerScope.launch {
+            queueMutex.withLock {
+                val (_, deferred) = promptQueue.removeFirstOrNull() ?: return@withLock
+                _pendingRequest.value = promptQueue.firstOrNull()?.first
+                if (!deferred.isCompleted) deferred.complete(response)
+            }
+        }
     }
 
     /** Clear session grants AND denials (call when a session ends). */
