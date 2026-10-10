@@ -228,14 +228,26 @@ class SwarmEngineTest {
     }
 
     @Test
-    fun `provider failure fails the run with an error`() = runTest {
+    fun `provider failure parks the run at PAUSED with checkpoint kept instead of failing`() = runTest {
+        val store = InMemorySwarmCheckpointStore()
         val provider = FakeSwarmProvider({ _, _ -> throw IllegalStateException("boom") })
-        val engine = SwarmEngine(provider, InMemorySwarmCheckpointStore(), this)
+        val engine = SwarmEngine(provider, store, this)
 
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
-        val failed = engine.uiState.first { it.lifecycle == SwarmLifecycle.FAILED }
-        assertTrue(failed.error?.contains("boom") == true)
-        assertTrue(engine.dismissResult())
-        assertEquals(SwarmLifecycle.IDLE, engine.uiState.value.lifecycle)
+        // v1.5 Bug 2 — the run parks at PAUSED with the checkpoint KEPT (not
+        // wiped) and canResume=true, so Resume retries the failed step.
+        val parked = engine.uiState.first { it.lifecycle == SwarmLifecycle.PAUSED }
+        assertTrue(parked.error?.contains("boom") == true)
+        assertTrue(parked.canResume)
+        assertNotNull(store.load())
+        // Resume retries the failed step (the plan call) rather than failing.
+        val planCallsBefore = provider.callsStartingWith("MISSION DECOMPOSITION")
+        assertTrue(engine.resume())
+        val parked2 = engine.uiState.first {
+            it.lifecycle == SwarmLifecycle.PAUSED &&
+                provider.callsStartingWith("MISSION DECOMPOSITION") > planCallsBefore
+        }
+        assertTrue(parked2.canResume)
+        assertNotNull(store.load())
     }
 }

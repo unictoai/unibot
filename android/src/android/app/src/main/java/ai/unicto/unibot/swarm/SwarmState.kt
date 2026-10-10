@@ -20,6 +20,17 @@ enum class SwarmAgentStatus { QUEUED, WORKING, VERIFYING, DONE, FAILED }
  */
 const val BEST_EFFORT_NOTE_MARKER = "automated review flagged an issue"
 
+/**
+ * v1.5 Bug 5 — default per-run token budget for swarm runs. A run whose
+ * [SwarmUiState.totalTokens] reaches [SwarmUiState.tokenBudget] parks at
+ * PAUSED instead of spending further; the user raises the budget and
+ * resumes. `0` disables the guard (unlimited).
+ *
+ * Shared VERBATIM with the swarm UI worker (which owns the budget setting +
+ * indicator); the engine only enforces the field.
+ */
+const val DEFAULT_TOKEN_BUDGET = 150_000
+
 data class SwarmAgentState(
     val id: String,
     val role: String,
@@ -77,4 +88,11 @@ data class SwarmUiState(
     val steeringNotes: List<String> = emptyList(),
     /** Documents attached to the mission (v1.4.0 item 10). */
     val attachments: List<SwarmAttachment> = emptyList(),
+    /**
+     * v1.5 Bug 5 — per-run token budget, enforced by the engine in
+     * [SwarmEngine.callLlm] BEFORE each provider call. Persisted through the
+     * checkpoint so a restored run keeps the budget the user set. `0`
+     * disables the guard.
+     */
+    val tokenBudget: Int = DEFAULT_TOKEN_BUDGET,
 )
