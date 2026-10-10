@@ -575,14 +575,21 @@ class Database:
         with self.tx() as c:
             c.execute("UPDATE api_keys SET revoked_at=? WHERE key_hash=? AND revoked_at IS NULL", (now(), key_hash))
 
-    def revoke_key_by_prefix(self, account_id: str, prefix: str) -> bool:
-        """Sign one device out from another; the prefix is what the account page shows."""
+    def revoke_key_by_prefix(self, account_id: str, prefix: str) -> list[str]:
+        """Sign one device out from another; the prefix is what the account page shows.
+        Returns the revoked key hashes so the hub can drop their sockets too."""
         with self.tx() as c:
-            cur = c.execute(
-                "UPDATE api_keys SET revoked_at=? WHERE account_id=? AND prefix=? AND revoked_at IS NULL",
-                (now(), account_id, prefix),
-            )
-            return cur.rowcount > 0
+            rows = c.execute(
+                "SELECT key_hash FROM api_keys WHERE account_id=? AND prefix=? AND revoked_at IS NULL",
+                (account_id, prefix),
+            ).fetchall()
+            hashes = [r[0] for r in rows]
+            if hashes:
+                c.execute(
+                    "UPDATE api_keys SET revoked_at=? WHERE account_id=? AND prefix=? AND revoked_at IS NULL",
+                    (now(), account_id, prefix),
+                )
+            return hashes
 
     def revoke_all_keys(self, account_id: str, keep_hash: str | None = None) -> int:
         with self.tx() as c:
@@ -594,6 +601,15 @@ class Database:
             else:
                 cur = c.execute("UPDATE api_keys SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL", (now(), account_id))
             return cur.rowcount
+
+    def key_live(self, account_id: str, key_hash: str) -> bool:
+        """A sign-in that has not been revoked — the hub's re-check for call frames."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM api_keys WHERE account_id=? AND key_hash=? AND revoked_at IS NULL",
+                (account_id, key_hash),
+            ).fetchone()
+            return row is not None
 
     def keys_for(self, account_id: str, live_only: bool = False) -> list[sqlite3.Row]:
         with self._lock:

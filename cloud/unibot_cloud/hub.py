@@ -72,6 +72,7 @@ class Connection:
     connected_at: int = field(default_factory=now)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     closed: bool = False
+    key_ok_at: int = 0  # last time the sign-in behind this socket was re-checked
 
     def brief(self) -> dict:
         return {"id": self.device_id, "name": self.name, "kind": self.kind}
@@ -182,6 +183,37 @@ class Hub:
             except Exception as e:  # already gone
                 log.debug("close %s: %s", c.device_id, e)
 
+    async def drop_keys(self, account_id: str, hashes: set[str] | None, *, exclude: set[str] = frozenset()) -> int:
+        """A sign-in was revoked: close every socket of the account that used one of
+        the revoked keys (4001). Pass hashes=None to close every socket except the
+        excluded ones — what "sign out every other device" does after losing a phone.
+        The receive loops then remove themselves, so a revoked device cannot keep
+        sending call frames to the account's computers."""
+        dropped = 0
+        for c in list(self.online.get(account_id, {}).values()):
+            if c.key_hash in exclude:
+                continue
+            if hashes is not None and c.key_hash not in hashes:
+                continue
+            c.closed = True
+            try:
+                await c.ws.close(code=4001, reason="key_revoked")
+            except Exception as e:  # already gone
+                log.debug("close %s: %s", c.device_id, e)
+            dropped += 1
+        return dropped
+
+    def _key_live(self, conn: Connection) -> bool:
+        """The sign-in this socket introduced itself with, still valid. Checked at
+        most once every ~30 s per socket so a call-heavy peer does not hit the
+        database on every frame."""
+        if now() - conn.key_ok_at < 30:
+            return True
+        if self.db.key_live(conn.account_id, conn.key_hash):
+            conn.key_ok_at = now()
+            return True
+        return False
+
     # -- one socket ------------------------------------------------------------------
 
     async def serve(self, ws: WebSocket, caller: Caller | None) -> None:
@@ -226,6 +258,11 @@ class Hub:
                 try:
                     raw = await ws.receive_text()
                 except WebSocketDisconnect:
+                    break
+                except RuntimeError:
+                    # A socket we closed ourselves (drop_keys / drop_account /
+                    # replaced) can surface as a state error instead of a
+                    # disconnect on some servers and the test client.
                     break
                 if len(raw) > self.frame_limit:
                     await conn.send({"type": "error", "code": "too_large", "message": f"Frames are capped at {self.frame_limit} bytes"})
@@ -318,6 +355,16 @@ class Hub:
         elif kind == "devices":
             await conn.send({"type": "devices", "devices": self.devices(conn.account_id)})
         elif kind == "call":
+            if not self._key_live(conn):
+                # The sign-in behind this socket was revoked after hello (or the
+                # drop missed it): kill the socket so it cannot drive the
+                # account's devices any longer.
+                conn.closed = True
+                try:
+                    await conn.ws.close(code=4001, reason="key_revoked")
+                except Exception as e:  # already gone
+                    log.debug("close %s: %s", conn.device_id, e)
+                return
             await self._call(conn, frame)
         elif kind in ("result", "event"):
             await self._answer(conn, frame)

@@ -527,10 +527,13 @@ class Cloud:
         self.db.add_event(caller.account_id, "sign_out.all", str(n))
         return n
 
-    def revoke_session(self, caller: Caller, prefix: str) -> None:
-        if not self.db.revoke_key_by_prefix(caller.account_id, prefix[:10]):
+    def revoke_session(self, caller: Caller, prefix: str) -> list[str]:
+        """Returns the revoked key hashes so the caller can drop their hub sockets."""
+        hashes = self.db.revoke_key_by_prefix(caller.account_id, prefix[:10])
+        if not hashes:
             raise CloudError(404, "no_session", "No such sign-in")
         self.db.add_event(caller.account_id, "sign_out", prefix[:10])
+        return hashes
 
     def sessions(self, caller: Caller) -> list[dict]:
         """The live sign-ins of this account — one per device that has a key —
