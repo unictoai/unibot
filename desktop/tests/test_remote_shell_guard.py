@@ -43,6 +43,7 @@ def make_desktop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Deskt
 
 def remote_shell(desktop: Desktop, client: FakeClient, args: dict) -> dict:
     """A `shell` call arriving over the hub, answered through the real handler."""
+    client.sent.clear()
     call = IncomingCall(
         id="call-1",
         sender={"id": "phone-1", "name": "Pixel"},

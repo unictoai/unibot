@@ -337,10 +337,12 @@ class DocumentIndex:
         Only files whose mtime/size/hash changed are (re-)embedded, and at
         most MAX_CHUNKS_PER_ENSURE new chunks per call — the rest waits for
         the next call, so one query never re-embeds the world.
+
+        Text is always indexed (so keyword fallback works); vectors are only
+        computed when an embedder is available.
         """
-        if self.embedder is None or not self.embedder.usable:
-            return False
-        model = self.embedder.model
+        has_embedder = self.embedder is not None and self.embedder.usable
+        model = self.embedder.model if has_embedder else "__keyword__"
         async with self._lock:
             known = self.store.files()
             current: dict[str, tuple[float, int]] = {}
@@ -361,7 +363,7 @@ class DocumentIndex:
                 if k is None or k[0] != mtime or k[1] != size:
                     changed.append((rel, self.workspace / rel))
             if not changed:
-                return self.embedder.usable
+                return has_embedder
             # chunk everything that changed, then embed up to the cap
             pending: list[tuple[str, DocChunk]] = []  # (rel, chunk)
             fresh_meta: dict[str, tuple[float, int, str]] = {}
@@ -387,7 +389,22 @@ class DocumentIndex:
                 pending.extend((rel, c) for c in chunks)
                 fresh_meta[rel] = (st[0], st[1], digest)
             if not pending:
-                return self.embedder.usable
+                return has_embedder
+            if not has_embedder:
+                # Text-only index for keyword fallback (no vectors).
+                assert self.embedder is None or not self.embedder.usable
+                self.store.put_vectors(
+                    model,
+                    {
+                        f"{c.file}:{c.line_start}": (file_hash_text(c.text), c.file,
+                                                    c.line_start, c.line_end, c.text, [])
+                        for _, c in pending
+                    },
+                )
+                for rel, (mtime, size, digest) in fresh_meta.items():
+                    self.store.put_file(rel, mtime, size, digest)
+                return False
+            assert self.embedder is not None
             embedded = await self.embedder.embed([c.text for _, c in pending])
             if embedded is None:
                 return False
@@ -401,7 +418,7 @@ class DocumentIndex:
             )
             for rel, (mtime, size, digest) in fresh_meta.items():
                 self.store.put_file(rel, mtime, size, digest)
-            return self.embedder.usable
+            return has_embedder
 
     async def search(
         self, query: str, limit: int = 10, path: str | None = None

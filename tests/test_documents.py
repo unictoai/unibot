@@ -65,7 +65,7 @@ def test_chunk_file_tracks_lines_and_citations():
 
 def test_chunk_overlap_and_blank_line_breaks():
     paras = []
-    for p in range(10):
+    for p in range(25):
         paras.append("\n".join(f"para {p} line {i}" for i in range(8)))
     text = "\n\n".join(paras)
     chunks = list(chunk_file("doc.md", text))
