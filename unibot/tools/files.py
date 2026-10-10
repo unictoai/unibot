@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,26 @@ def pdf_text(path: Path, max_pages: int = 60) -> str:
     return text
 
 
+def _is_regular_file(target: Path) -> bool:
+    """Refuse anything that is not a plain file: a FIFO (which any python_execute
+    can create) would make ``read_text`` block forever, stalling the server."""
+    try:
+        return stat.S_ISREG(target.stat().st_mode)
+    except OSError:
+        return False
+
+
+def _read_capped_text(target: Path, limit: int = MAX_READ_CHARS) -> str:
+    """Read at most a few times what is shown: a multi-GB log is not loaded fully
+    before truncating."""
+    with target.open("rb") as fh:
+        data = fh.read(limit * 4 + 1)
+    text = data.decode("utf-8", errors="replace")
+    if len(text) > limit:
+        text = text[:limit] + f"\n... [truncated, showing the first {limit} chars]"
+    return text
+
+
 class Files(BaseTool):
     name: str = "files"
     description: str = (
@@ -85,6 +106,9 @@ class Files(BaseTool):
 
     workspace: Path
     extra_roots: list[Path] = []
+    # the app's data dir (vault, sessions, tokens): the vault key and vault are
+    # never readable through this tool, even when an extra root contains them
+    data_dir: Path | None = None
 
     # ------------------------------------------------------------------ helpers
     def _resolve(self, path: str | None, must_exist: bool = False) -> Path:
@@ -93,6 +117,13 @@ class Files(BaseTool):
         if not candidate.is_absolute():
             candidate = self.workspace / candidate
         resolved = candidate.resolve()
+        if self.data_dir is not None:
+            dd = self.data_dir.resolve()
+            if resolved == dd / "vault.key" or resolved == dd / "vault.enc":
+                raise PermissionError(
+                    "the vault key and the vault are never readable through files; "
+                    "secrets a command needs go in as {{vault:NAME}} instead"
+                )
         roots = [self.workspace.resolve(), *[r.resolve() for r in self.extra_roots]]
         if not any(resolved == r or r in resolved.parents for r in roots):
             raise PermissionError(
@@ -146,13 +177,13 @@ class Files(BaseTool):
                 target = self._resolve(path, must_exist=True)
                 if target.is_dir():
                     return await self.execute(action="list", path=path)
+                if not _is_regular_file(target):
+                    return ToolResult.fail(f"'{target.name}' is not a regular file")
                 text = (
                     pdf_text(target)
                     if target.suffix.lower() == ".pdf"
-                    else target.read_text("utf-8", errors="replace")
+                    else _read_capped_text(target)
                 )
-                if len(text) > MAX_READ_CHARS:
-                    text = text[:MAX_READ_CHARS] + f"\n... [truncated, {len(text)} chars total]"
                 return ToolResult(output=text or "(empty file)")
             if action in ("write", "append"):
                 if content is None:
@@ -180,15 +211,25 @@ class Files(BaseTool):
                     return ToolResult.fail("`pattern` is required")
                 root = self._resolve(path)
                 ws = self.workspace.resolve()
+                # fnmatch's ** needs at least one directory level, so the
+                # documented '**/*.md' never matched a top-level a.md — also try
+                # the pattern without the leading **/
+                patterns = {pattern, pattern.removeprefix("**/")}
                 matches = []
+                visited = 0
                 for p in root.rglob("*"):
-                    if p.is_file() and fnmatch.fnmatch(p.relative_to(root).as_posix(), pattern):
-                        try:
-                            matches.append(p.relative_to(ws).as_posix())
-                        except ValueError:
-                            # Match under an extra root: report the absolute path,
-                            # which _resolve() accepts back (verified against extra_roots).
-                            matches.append(str(p.resolve()))
+                    visited += 1
+                    if visited > 50_000:
+                        break  # a huge extra root (e.g. ~): stop looking, report
+                    if p.is_file():
+                        rel = p.relative_to(root).as_posix()
+                        if any(fnmatch.fnmatch(rel, pat) for pat in patterns):
+                            try:
+                                matches.append(p.relative_to(ws).as_posix())
+                            except ValueError:
+                                # Match under an extra root: report the absolute path,
+                                # which _resolve() accepts back (verified against extra_roots).
+                                matches.append(str(p.resolve()))
                     if len(matches) >= 200:
                         break
                 return ToolResult(output="\n".join(matches) or "(no matches)")
