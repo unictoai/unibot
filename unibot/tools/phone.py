@@ -177,6 +177,17 @@ class PhoneAct(BaseTool):
                 "this types and submits in one step — the text goes out (a message, a search, an "
                 "order) before anyone sees the screen"
             )
+        if action == "type" and not args.get("submit"):
+            # a newline in the text presses enter on the device, submitting whatever
+            # was typed — the same as submit=True
+            if "\n" in str(args.get("text") or "") or "\r" in str(args.get("text") or ""):
+                risk, egress = RiskLevel.SENSITIVE, True
+                warnings.append("the typed text contains a newline, which submits it")
+        if action == "enter":
+            # pressing enter submits whatever is on screen (a message, a payment, an
+            # order): the computer treats key ["enter"] as sensitive, and so does the
+            # phone — a model-supplied label alone must not decide this
+            risk, egress = RiskLevel.SENSITIVE, True
         if hit:
             risk, egress = RiskLevel.SENSITIVE, True
             warnings.append(
