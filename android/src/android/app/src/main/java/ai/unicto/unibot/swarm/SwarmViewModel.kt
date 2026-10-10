@@ -3,7 +3,6 @@ package ai.unicto.unibot.swarm
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import ai.unicto.unibot.provider.LLMProvider
 import kotlinx.coroutines.flow.StateFlow
 
@@ -11,9 +10,13 @@ import kotlinx.coroutines.flow.StateFlow
  * Backing ViewModel for the Swarm screen (v1.3.0).
  *
  * Thin lifecycle-aware wrapper around [SwarmEngine]: the engine owns the
- * deterministic lifecycle machine, the run coroutine, and checkpointing;
- * this class just binds it to [viewModelScope] so no coroutine leaks past
- * the screen (cancel() cancels the in-flight run job).
+ * deterministic lifecycle machine, the run coroutine, and checkpointing.
+ *
+ * v1.5 Bug 1 — runs execute on [SwarmAppScope]'s process-lifetime scope, NOT
+ * viewModelScope, so popping the screen no longer kills the run. [onCleared]
+ * calls [SwarmEngine.teardown], which parks an in-flight run at PAUSED with
+ * the checkpoint intact; a fresh ViewModel/engine (next screen open)
+ * restores from the checkpoint and offers resume.
  *
  * Construction: use [factory] — the caller supplies the current
  * [LLMProvider] (the same provider instance the chat session uses, so the
@@ -44,7 +47,7 @@ class SwarmViewModel(
                 resolvedContext
                     ?: error("SwarmViewModel needs a Context when no checkpointStore is supplied"),
             ),
-        scope = viewModelScope,
+        scope = SwarmAppScope.scope,
         repository = swarmRepository,
         onTerminal = onTerminal,
     )
@@ -105,6 +108,17 @@ class SwarmViewModel(
      * deliberately rejects PAUSED).
      */
     fun discardCheckpoint(): Boolean = engine.discardCheckpoint()
+
+    /**
+     * v1.5 Bug 1 — the screen is going away but the run must not die with
+     * it: park an in-flight run at PAUSED (checkpoint kept, canResume=true)
+     * BEFORE the ViewModel is torn down. teardown() is a no-op unless a run
+     * is active or parked, so a finished screen costs nothing.
+     */
+    override fun onCleared() {
+        engine.teardown()
+        super.onCleared()
+    }
 
     companion object {
         fun factory(

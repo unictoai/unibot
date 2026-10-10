@@ -2,11 +2,13 @@ package ai.unicto.unibot.swarm
 
 import ai.unicto.unibot.data.model.LLMMessage
 import ai.unicto.unibot.data.model.LLMStreamChunk
+import ai.unicto.unibot.data.model.LLMError
 import ai.unicto.unibot.provider.LLMProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +18,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
+import java.io.IOException
 
 /**
  * Swarm orchestrator (v1.3.0) — hierarchical crew, phone-safe by design.
@@ -64,6 +67,25 @@ class SwarmEngine(
     /** Set by pause(); the run loop stops between worker steps, never mid-step. */
     @Volatile
     private var pauseRequested = false
+
+    /**
+     * v1.5 Bug 1 — set by teardown() (screen popped). The runSwarm
+     * CancellationException handler parks the run at PAUSED and KEEPS the
+     * checkpoint when this is set, instead of landing CANCELLED and wiping
+     * it. Internal (not private) so the teardown integration tests can
+     * observe it.
+     */
+    @Volatile
+    internal var teardownInitiated = false
+
+    /**
+     * v1.5 Bug 1 — set by cancel(). Wins the race against teardown(): if the
+     * user explicitly cancelled and THEN the screen popped before the
+     * coroutine processed the cancellation, the run must still land
+     * CANCELLED, not PAUSED. Reset on every fresh launch/resume.
+     */
+    @Volatile
+    internal var userCancelRequested = false
 
     /** The manager's decomposed subtasks, one per crew role, in order. */
     @Volatile
@@ -133,6 +155,8 @@ class SwarmEngine(
             )
             if (!transitionTo(SwarmLifecycle.PLANNING)) return false
             pauseRequested = false
+            userCancelRequested = false
+            teardownInitiated = false
             subtasks = emptyList()
             checkpoint()
             runJob = scope.launch { runSwarm() }
@@ -167,6 +191,8 @@ class SwarmEngine(
             }
             if (!transitionTo(SwarmLifecycle.RUNNING)) return false
             pauseRequested = false
+            userCancelRequested = false
+            teardownInitiated = false
             _uiState.update { it.copy(canResume = false, error = null) }
             runJob = scope.launch { runSwarm() }
             return true
@@ -211,6 +237,8 @@ class SwarmEngine(
             checkpoint()
             if (!transitionTo(SwarmLifecycle.RUNNING)) return false
             pauseRequested = false
+            userCancelRequested = false
+            teardownInitiated = false
             runJob = scope.launch { runSwarm() }
             return true
         }
@@ -277,6 +305,11 @@ class SwarmEngine(
                 return false
             }
             pauseRequested = false
+            // v1.5 Bug 1 — record the explicit user intent BEFORE cancelling
+            // the job, so the CancellationException handler lands CANCELLED
+            // even if teardown() (screen pop) fires before the coroutine
+            // processes the cancellation.
+            userCancelRequested = true
             job = runJob
             if (job == null || job.isCompleted) {
                 // Nothing in flight (e.g. a restored PAUSED run): transition now.
@@ -288,6 +321,26 @@ class SwarmEngine(
         // Async: the run coroutine's CancellationException handler lands CANCELLED.
         if (job != null && !job.isCompleted) job.cancel()
         return true
+    }
+
+    /**
+     * v1.5 Bug 1 — the owning screen is going away (called from
+     * [SwarmViewModel.onCleared], BEFORE `super.onCleared()`). A run in
+     * flight must NOT die with the screen: flag the teardown and cancel the
+     * run job; runSwarm's CancellationException handler then parks the run
+     * at PAUSED with the checkpoint intact (and `canResume = true`), instead
+     * of landing CANCELLED and wiping the checkpoint like the old
+     * viewModelScope binding did. A fresh engine instance on the next screen
+     * open restores from the checkpoint via the unchanged resume flow.
+     * No-op unless a run is active or parked.
+     */
+    fun teardown() {
+        val lc = _uiState.value.lifecycle
+        if (lc != SwarmLifecycle.RUNNING && lc != SwarmLifecycle.PLANNING &&
+            lc != SwarmLifecycle.PAUSED
+        ) return
+        teardownInitiated = true
+        runJob?.cancel()
     }
 
     /** Dismiss the finished run and return to IDLE. Legal from DONE/CANCELLED/FAILED. */
@@ -348,13 +401,17 @@ class SwarmEngine(
                 plan
             } else {
                 updatePendingAgents { it.copy(currentStep = "Planning", detail = "Manager decomposing mission") }
-                val raw = callLlm(
-                    system = MANAGER_SYSTEM,
-                    user = planPrompt(st.mission, roleIds, attachmentsContext(st.attachments)),
-                    maxTokens = PLAN_MAX_OUTPUT_TOKENS,
-                    stepLabel = "plan",
-                )
-                parsePlan(raw.text, roleIds, st.mission).also {
+                // v1.5 Bug 2 — a failed step parks the run at PAUSED (checkpoint
+                // kept) instead of failing it and wiping progress.
+                val planCall = runStep("Plan") {
+                    callLlm(
+                        system = MANAGER_SYSTEM,
+                        user = planPrompt(st.mission, roleIds, attachmentsContext(st.attachments)),
+                        maxTokens = PLAN_MAX_OUTPUT_TOKENS,
+                        stepLabel = "plan",
+                    )
+                } ?: return
+                parsePlan(planCall.text, roleIds, st.mission).also {
                     subtasks = it
                     logPlan(it)
                 }
@@ -388,7 +445,12 @@ class SwarmEngine(
                     return
                 }
                 if (_uiState.value.agents.getOrNull(i)?.status != SwarmAgentStatus.DONE) {
-                    runWorkerStep(i, roleIds[i], finalPlan[i])
+                    // v1.5 Bug 2 — a failed step parks at PAUSED (checkpoint
+                    // kept); resume re-runs it because it isn't DONE.
+                    val stepOk = runStep("Worker ${roleIds[i]}") {
+                        runWorkerStep(i, roleIds[i], finalPlan[i])
+                    }
+                    if (stepOk == null) return
                 }
                 checkpoint()
             }
@@ -400,7 +462,9 @@ class SwarmEngine(
             }
             // DONE — one manager call stitches worker results into a document.
             if (_uiState.value.stitchedResult.isBlank()) {
-                val stitched = stitchResults()
+                // v1.5 Bug 2 — stitch is idempotent (guarded by the
+                // isBlank() check above), so parking + resume re-stitches.
+                val stitched = runStep("Stitch") { stitchResults() } ?: return
                 _uiState.update { it.copy(stitchedResult = stitched) }
                 checkpoint()
             }
@@ -409,11 +473,40 @@ class SwarmEngine(
             fireTerminal()
             checkpointStore.clear()
         } catch (e: CancellationException) {
-            // cancel(): land CANCELLED, keep partial results visible.
-            transitionTo(SwarmLifecycle.CANCELLED)
-            recordHistory(SwarmMissionRecord.OUTCOME_CANCELLED)
-            checkpointStore.clear()
+            // v1.5 Bug 1 — three intents, three landings:
+            // - userCancelRequested (explicit cancel()): CANCELLED + wipe,
+            //   exactly the old behavior.
+            // - teardownInitiated (screen popped): PAUSED, checkpoint KEPT,
+            //   canResume=true — a fresh engine restores and resumes.
+            // - defensive fallback: a bare job.cancel() with no recorded
+            //   intent behaves like an explicit cancel.
+            when {
+                userCancelRequested -> {
+                    transitionTo(SwarmLifecycle.CANCELLED)
+                    recordHistory(SwarmMissionRecord.OUTCOME_CANCELLED)
+                    checkpointStore.clear()
+                }
+                teardownInitiated -> {
+                    transitionTo(SwarmLifecycle.PAUSED)
+                    _uiState.update { it.copy(canResume = true, error = null) }
+                    // Deliberately NO checkpoint clear and NO history record:
+                    // the run is interrupted, not finished.
+                    checkpoint()
+                }
+                else -> {
+                    transitionTo(SwarmLifecycle.CANCELLED)
+                    recordHistory(SwarmMissionRecord.OUTCOME_CANCELLED)
+                    checkpointStore.clear()
+                }
+            }
             throw e
+        } catch (e: SwarmBudgetReachedException) {
+            // v1.5 Bug 5 — the token budget (not a failure): park at PAUSED
+            // with the checkpoint kept so the user can raise the budget and
+            // resume. Caught separately from the generic handler below so a
+            // budget stop can never be misreported as a run failure.
+            pauseWithError("Token budget reached (${e.used}/${e.budget} tokens). Resume to continue.")
+            checkpoint()
         } catch (e: Exception) {
             fail(e.message ?: "Swarm run failed")
         } finally {
@@ -431,6 +524,42 @@ class SwarmEngine(
         recordHistory(SwarmMissionRecord.OUTCOME_FAILED)
         fireTerminal()
         checkpointStore.clear()
+    }
+
+    /**
+     * v1.5 Bug 2 — park the run at PAUSED with the checkpoint kept and
+     * `canResume = true` (vs fail(), which lands FAILED and WIPES the
+     * checkpoint). Resume re-runs the failed step because it isn't DONE.
+     */
+    private fun pauseWithError(message: String) {
+        _uiState.update { it.copy(error = message, canResume = true) }
+        transitionTo(SwarmLifecycle.PAUSED)
+    }
+
+    /**
+     * v1.5 Bug 2 — run one step (plan call, worker step, stitch) with
+     * failure containment. A step that exhausts its retries (or fails
+     * non-transiently, e.g. a 4xx) parks the run via [pauseWithError] and
+     * returns null; the caller must `return` from runSwarm when that
+     * happens. Returns the block's result on success.
+     *
+     * CancellationException and SwarmBudgetReachedException are NEVER
+     * contained: the former drives cancel()/pause()/teardown(), the latter
+     * has its own dedicated handler in runSwarm with its own message.
+     */
+    private suspend fun <T> runStep(label: String, block: suspend () -> T): T? {
+        return try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SwarmBudgetReachedException) {
+            throw e
+        } catch (e: Exception) {
+            println("[swarm] $label step failed: ${e.message}")
+            pauseWithError("$label failed: ${e.message ?: "unknown error"}. Resume to retry from this step.")
+            checkpoint()
+            null
+        }
     }
 
     /**
@@ -516,33 +645,52 @@ class SwarmEngine(
         )
 
         var note = ""
-        if (!verdict.passed) {
-            // ONE bounded revision round — then the best output stands. The
-            // revision is not re-verified: that would be an unbounded loop.
-            updateAgent(index) {
-                it.copy(
-                    status = SwarmAgentStatus.WORKING,
-                    currentStep = "Revising",
-                    detail = "Applying review feedback (single revision)",
-                )
+        when {
+            verdict.passed -> { /* nothing to do */ }
+            verdict.unclear -> {
+                // v1.5 Bug 4 — the verifier's reply was unparseable even
+                // after one retry: there is no usable feedback to revise
+                // against, so the output stands as-is with an explicit note.
+                // Deliberately NOT the best-effort marker — nothing was
+                // flagged as wrong; the review itself was unreadable.
+                note = "\n\n_Note: verifier reply was unclear; output stands as-is._"
+                logAgent(index, "Verifier reply unclear after retry — no revision applied")
             }
-            logAgent(index, "Revision call started")
-            val revised = callLlm(
-                system = role.systemPrompt,
-                user = revisionPrompt(role, mission, subtask, prior, output.text, verdict.reason, steering, docs),
-                maxTokens = workerMaxOutputTokens,
-                stepLabel = "worker:${role.id}:revision",
-            )
-            addTokens(index, revised)
-            logAgent(
-                index,
-                "Revision call finished (${revised.promptTokens} prompt + ${revised.completionTokens} completion tokens)",
-            )
-            output = revised
-            // Shared BEST_EFFORT_NOTE_MARKER: the UI detects this exact
-            // substring to render the explicit "incomplete" terminal state.
-            note = "\n\n_Note: $BEST_EFFORT_NOTE_MARKER (${verdict.reason}); " +
-                "one revision was applied and this best-effort output stands._"
+            isWeakReason(verdict.reason) -> {
+                // v1.5 Bug 7 — a FAIL with a <3-word reason ("bad", "wrong
+                // output") is too thin to revise against; treated like an
+                // unclear verdict: no revision, output stands with a note.
+                logAgent(index, "Weak verifier reason flagged")
+                note = "\n\n_Note: verifier reply was unclear; output stands as-is._"
+            }
+            else -> {
+                // ONE bounded revision round — then the best output stands. The
+                // revision is not re-verified: that would be an unbounded loop.
+                updateAgent(index) {
+                    it.copy(
+                        status = SwarmAgentStatus.WORKING,
+                        currentStep = "Revising",
+                        detail = "Applying review feedback (single revision)",
+                    )
+                }
+                logAgent(index, "Revision call started")
+                val revised = callLlm(
+                    system = role.systemPrompt,
+                    user = revisionPrompt(role, mission, subtask, prior, output.text, verdict.reason, steering, docs),
+                    maxTokens = workerMaxOutputTokens,
+                    stepLabel = "worker:${role.id}:revision",
+                )
+                addTokens(index, revised)
+                logAgent(
+                    index,
+                    "Revision call finished (${revised.promptTokens} prompt + ${revised.completionTokens} completion tokens)",
+                )
+                output = revised
+                // Shared BEST_EFFORT_NOTE_MARKER: the UI detects this exact
+                // substring to render the explicit "incomplete" terminal state.
+                note = "\n\n_Note: $BEST_EFFORT_NOTE_MARKER (${verdict.reason}); " +
+                    "one revision was applied and this best-effort output stands._"
+            }
         }
         val finalText = output.text.trim().ifBlank { "(no output)" } + note
         updateAgent(index) {
@@ -561,13 +709,33 @@ class SwarmEngine(
         val useVerifierRole =
             workerRoleId != SwarmRoles.VERIFIER && crewRoles.contains(SwarmRoles.VERIFIER)
         val system = if (useVerifierRole) SwarmRoles.verifier.systemPrompt else MANAGER_VERIFY_SYSTEM
-        val call = callLlm(
+        val first = callLlm(
             system = system,
             user = verifyPrompt(mission, subtask, output),
             maxTokens = VERIFY_MAX_OUTPUT_TOKENS,
             stepLabel = "verify:$workerRoleId",
         )
-        return parseVerify(call.text) to call
+        val firstVerdict = parseVerify(first.text)
+        if (!firstVerdict.unclear) return firstVerdict to first
+        // v1.5 Bug 4 — the verifier's reply was unparseable ("Passage is
+        // missing a citation" parsed as PASS under the old startsWith
+        // check). Retry the verify call ONCE; if it's still unclear the
+        // verdict stands as unclear and runWorkerStep skips the revision
+        // round. Token counts from both calls are combined.
+        println("[swarm] unclear verifier reply; retrying verify call once")
+        val second = callLlm(
+            system = system,
+            user = verifyPrompt(mission, subtask, output),
+            maxTokens = VERIFY_MAX_OUTPUT_TOKENS,
+            stepLabel = "verify:$workerRoleId:retry",
+        )
+        val combined = LlmCallResult(
+            text = second.text,
+            promptTokens = first.promptTokens + second.promptTokens,
+            completionTokens = first.completionTokens + second.completionTokens,
+            attempts = first.attempts + second.attempts,
+        )
+        return parseVerify(second.text) to combined
     }
 
     private suspend fun stitchResults(): String {
@@ -600,9 +768,62 @@ class SwarmEngine(
         val cap = provider.effectiveMaxOutputTokens(provider.model)
             .coerceAtMost(maxTokens)
             .coerceAtLeast(256)
+        // v1.5 Bug 5 — token budget guard: refuse BEFORE any provider call so
+        // a run can't silently blow past the user's budget mid-step.
+        // tokenBudget == 0 disables the guard (unlimited).
+        val st0 = _uiState.value
+        if (st0.tokenBudget > 0 && st0.totalTokens >= st0.tokenBudget) {
+            throw SwarmBudgetReachedException(st0.totalTokens, st0.tokenBudget)
+        }
+        // v1.5 Bug 2 — bounded retry: one transient network / rate-limit /
+        // server failure must not kill the whole run. 3 attempts, 1s/2s/4s
+        // backoff. CancellationException is never swallowed (the
+        // pause/cancel/teardown machinery depends on it); 4xx auth errors
+        // are never retried.
+        var attempts = 0
+        var lastError: Exception? = null
+        while (attempts < MAX_LLM_ATTEMPTS) {
+            attempts++
+            try {
+                return@withContext streamSingleCall(system, user, cap, stepLabel, attempts)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: SwarmBudgetReachedException) {
+                throw e // unreachable (checked above); never retried
+            } catch (e: Exception) {
+                if (!isSwarmTransientError(e)) {
+                    println("[swarm] $stepLabel LLM call failed (not transient): ${e.message}")
+                    throw e
+                }
+                lastError = e
+                if (attempts < MAX_LLM_ATTEMPTS) {
+                    val backoffMs = RETRY_BASE_DELAY_MS shl (attempts - 1)
+                    println(
+                        "[swarm] $stepLabel transient failure (${e.message}); " +
+                            "retrying in ${backoffMs}ms (attempt $attempts/$MAX_LLM_ATTEMPTS)",
+                    )
+                    // Cancellable: a cancel/pause/teardown during backoff
+                    // throws CancellationException, which propagates.
+                    delay(backoffMs)
+                }
+            }
+        }
+        println("[swarm] $stepLabel LLM call failed after $attempts attempts: ${lastError?.message}")
+        throw lastError ?: IllegalStateException("swarm LLM retry loop exited without a result")
+    }
+
+    /** One un-retried streaming LLM call; the retry loop in [callLlm] drives this. */
+    private suspend fun streamSingleCall(
+        system: String,
+        user: String,
+        cap: Int,
+        stepLabel: String,
+        attempts: Int,
+    ): LlmCallResult {
         val sb = StringBuilder()
-        var promptTokens = 0
-        var completionTokens = 0
+        // v1.5 Bug 6 — MAX-per-field accumulation (see SwarmUsageAccumulator),
+        // not a sum over chunks.
+        val usage = SwarmUsageAccumulator()
         try {
             provider.streamMessage(
                 messages = listOf(LLMMessage(LLMMessage.Role.USER, user)),
@@ -613,8 +834,7 @@ class SwarmEngine(
                 when (chunk) {
                     is LLMStreamChunk.Text -> sb.append(chunk.text)
                     is LLMStreamChunk.Usage -> {
-                        promptTokens += chunk.usage.inputTokens
-                        completionTokens += chunk.usage.outputTokens
+                        usage.add(chunk.usage.inputTokens, chunk.usage.outputTokens)
                     }
                     else -> { /* thinking/tool/media chunks: not used by swarm */ }
                 }
@@ -625,11 +845,16 @@ class SwarmEngine(
             println("[swarm] $stepLabel LLM call failed: ${e.message}")
             throw e
         }
-        val total = promptTokens + completionTokens
+        val total = usage.total
         if (total > 0) {
             _uiState.update { it.copy(totalTokens = it.totalTokens + total) }
         }
-        LlmCallResult(text = sb.toString(), promptTokens = promptTokens, completionTokens = completionTokens)
+        return LlmCallResult(
+            text = sb.toString(),
+            promptTokens = usage.promptTokens,
+            completionTokens = usage.completionTokens,
+            attempts = attempts,
+        )
     }
 
     // ─── checkpointing ────────────────────────────────────────────────────
@@ -725,6 +950,12 @@ class SwarmEngine(
         private const val VERIFY_MAX_OUTPUT_TOKENS = 512
         private const val STITCH_MAX_OUTPUT_TOKENS = 8192
         private const val PRIOR_RESULT_CHAR_CAP = 1500
+
+        /** v1.5 Bug 2 — bounded retry: attempts per LLM call. */
+        private const val MAX_LLM_ATTEMPTS = 3
+
+        /** v1.5 Bug 2 — backoff base: 1s, 2s, 4s across the 3 attempts. */
+        private const val RETRY_BASE_DELAY_MS = 1000L
 
         /** v1.4.0 item 6 — cap on mid-run steering notes per mission. */
         private const val MAX_STEERING_NOTES = 10
@@ -879,10 +1110,103 @@ internal data class LlmCallResult(
     val text: String,
     val promptTokens: Int,
     val completionTokens: Int,
+    /** v1.5 Bug 2 — how many attempts the call took (1 when no retry fired). */
+    val attempts: Int = 1,
 )
 
-/** Verifier verdict: pass, or fail with a one-line reason. */
-internal data class VerifyVerdict(val passed: Boolean, val reason: String)
+/**
+ * Verifier verdict: pass, or fail with a one-line reason.
+ * v1.5 Bug 4 — [unclear] marks a reply the strict parser couldn't classify
+ * (neither exactly PASS nor exactly FAIL); it is never treated as a pass.
+ */
+internal data class VerifyVerdict(
+    val passed: Boolean,
+    val reason: String,
+    val unclear: Boolean = false,
+)
+
+/**
+ * v1.5 Bug 6 — usage accumulator with MAX-per-field (not SUM) semantics.
+ *
+ * Why: providers disagree on what a Usage chunk means —
+ *  1. Gemini sends CUMULATIVE totals on every chunk (100, 200, …, 500 for a
+ *     500-token call); summing them overcounts massively (1500 vs 500).
+ *  2. Anthropic sends a start-chunk carrying the input total and a later
+ *     delta-chunk carrying the output total ((1000,0) then (0,250));
+ *     summing is correct there, and max is too.
+ *  3. Most others send a single final chunk with the call total, where
+ *     max == sum.
+ * MAX-per-field is correct for all three patterns; SUM is correct only for
+ * patterns 2 and 3. Provider code is untouched — this is purely the
+ * consumer-side interpretation.
+ */
+internal class SwarmUsageAccumulator {
+    var promptTokens: Int = 0
+        private set
+    var completionTokens: Int = 0
+        private set
+
+    fun add(inputTokens: Int, outputTokens: Int) {
+        promptTokens = maxOf(promptTokens, inputTokens)
+        completionTokens = maxOf(completionTokens, outputTokens)
+    }
+
+    val total: Int get() = promptTokens + completionTokens
+}
+
+/**
+ * v1.5 Bug 5 — thrown by callLlm BEFORE the provider call when the run has
+ * already reached its token budget. Caught in runSwarm (not the generic
+ * Exception handler): the run parks at PAUSED with the checkpoint kept so
+ * the user can raise the budget and resume. tokenBudget == 0 disables the
+ * guard.
+ */
+internal class SwarmBudgetReachedException(val used: Int, val budget: Int) :
+    Exception("Token budget reached ($used/$budget tokens)")
+
+/**
+ * v1.5 Bug 2 — transient-error classifier for the swarm retry loop.
+ *
+ * Typed checks first: [LLMError] carries the numeric HTTP status end-to-end
+ * (v1.4.0 item 79), so 429 / 5xx / transport failures are recognized without
+ * string sniffing. Anything 4xx (InvalidApiKey, OAuthExpired, ProviderError
+ * with a 4xx status, …) is NEVER retried — a fresh attempt would fail the
+ * same way, and auth failures need the user, not a loop.
+ *
+ * Heuristic fallback: not every provider surfaces a typed LLMError — some
+ * throw raw IOExceptions or plain Exceptions whose message is the only
+ * signal. It matches conservatively (word-boundaried status codes, so e.g.
+ * "1500 tokens" never matches "500", plus a short list of phrases that
+ * overwhelmingly mean "try again"). A false positive costs at most two
+ * extra attempts with backoff before the run parks at PAUSED — the loop is
+ * bounded, so the heuristic can't spin.
+ */
+internal fun isSwarmTransientError(e: Throwable): Boolean {
+    if (e is LLMError) {
+        return e is LLMError.RateLimited || e.isServerError ||
+            e.isNetworkError || e is LLMError.TransientError
+    }
+    if (e is IOException) return true
+    val msg = e.message?.lowercase().orEmpty()
+    return TRANSIENT_HTTP_CODE_REGEX.containsMatchIn(msg) ||
+        TRANSIENT_MESSAGE_HINTS.any { it in msg }
+}
+
+private val TRANSIENT_HTTP_CODE_REGEX = Regex("""\b(429|500|502|503|504)\b""")
+private val TRANSIENT_MESSAGE_HINTS = listOf(
+    "rate limit", "rate_limit", "ratelimit", "too many requests",
+    "timeout", "timed out",
+    "connection",
+)
+
+/**
+ * v1.5 Bug 7 — a FAIL reason with fewer than 3 words ("bad", "wrong output")
+ * is too thin to revise against; the revision prompt would be guessing.
+ * runWorkerStep treats it like an unclear verdict: no revision, output
+ * stands with a note.
+ */
+internal fun isWeakReason(reason: String): Boolean =
+    reason.split(Regex("\\s+")).count { it.isNotEmpty() } < 3
 
 /**
  * Tolerant decomposition parser. Accepts `1.` / `1)` / `1:` / `-` / `*` / `•`
@@ -909,10 +1233,30 @@ internal fun parsePlan(raw: String, roleIds: List<String>, mission: String): Lis
     return List(roleIds.size) { i -> cleaned.getOrElse(i) { mission } }
 }
 
-/** Parses a one-line verifier verdict: `PASS` or `FAIL: <reason>`. */
+/**
+ * v1.5 Bug 4 — STRICT one-line verifier verdict parser. The old
+ * `startsWith("PASS", ignoreCase = true)` accepted "Passage is missing a
+ * citation" as a pass. Now: first non-blank line → first whitespace-delimited
+ * token → uppercase → must be EXACTLY "PASS" or "FAIL". A single trailing ':'
+ * glued to the token ("FAIL: reason") is a separator, not part of the word,
+ * so it is stripped before the exact comparison. Anything else ("PASSAGE …",
+ * prose, empty) is unclear — never a pass.
+ */
 internal fun parseVerify(raw: String): VerifyVerdict {
     val firstLine = raw.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
-    if (firstLine.startsWith("PASS", ignoreCase = true)) return VerifyVerdict(true, "")
-    val reason = firstLine.replaceFirst(Regex("""(?i)^FAIL\s*:?\s*"""), "").trim().take(300)
-    return VerifyVerdict(false, reason.ifBlank { "no reason given" })
+    val firstToken = firstLine.split(Regex("\\s+"), limit = 2).getOrNull(0).orEmpty()
+    val word = firstToken.trimEnd(':').uppercase()
+    return when (word) {
+        "PASS" -> VerifyVerdict(passed = true, reason = "")
+        "FAIL" -> {
+            val reason = firstLine
+                .removePrefix(firstToken)
+                .trimStart()
+                .removePrefix(":")
+                .trim()
+                .take(300)
+            VerifyVerdict(passed = false, reason = reason.ifBlank { "no reason given" })
+        }
+        else -> VerifyVerdict(passed = false, reason = "unparseable verifier reply", unclear = true)
+    }
 }

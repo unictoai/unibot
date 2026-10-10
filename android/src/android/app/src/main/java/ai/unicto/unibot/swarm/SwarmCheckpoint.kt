@@ -66,6 +66,12 @@ data class SwarmCheckpointData(
     val steeringNotes: List<String> = emptyList(),
     /** v1.4.0 item 10 — attached documents. */
     val attachments: List<SwarmAttachmentCheckpoint> = emptyList(),
+    /**
+     * v1.5 Bug 5 — the run's token budget. Defaulted so pre-v1.5 checkpoint
+     * blobs (which lack the field) still decode; [Json.ignoreUnknownKeys]
+     * already covers the reverse direction.
+     */
+    val tokenBudget: Int = DEFAULT_TOKEN_BUDGET,
 ) {
     companion object {
         const val CURRENT_VERSION = 2
@@ -122,6 +128,7 @@ object SwarmCheckpoint {
             attachments = state.attachments.map {
                 SwarmAttachmentCheckpoint(id = it.id, name = it.name, text = it.text)
             },
+            tokenBudget = state.tokenBudget,
         )
     }
 
@@ -196,6 +203,7 @@ object SwarmCheckpoint {
             attachments = data.attachments.map {
                 SwarmAttachment(id = it.id, name = it.name, text = it.text)
             },
+            tokenBudget = data.tokenBudget,
         )
     }
 }
