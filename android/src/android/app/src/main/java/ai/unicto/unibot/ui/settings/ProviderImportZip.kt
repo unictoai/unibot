@@ -6,6 +6,8 @@ import android.provider.OpenableColumns
 import android.util.Log
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.UUID
 import java.util.zip.ZipException
 import java.util.zip.ZipInputStream
@@ -26,6 +28,44 @@ internal object ProviderImportZip {
 
     private const val TAG = "ProviderImportZip"
     private val SUPPORTED_EXTS = setOf("json", "txt")
+
+    // Zip-bomb caps, mirroring SkillRepository's guard: a tiny archive can
+    // decompress to gigabytes and exhaust the cache partition.
+    internal const val MAX_ZIP_ENTRIES = 2_000
+    internal const val MAX_ZIP_ENTRY_BYTES = 10L * 1024 * 1024
+    internal const val MAX_ZIP_TOTAL_BYTES = 50L * 1024 * 1024
+
+    /**
+     * Stream [input] to [out], enforcing the zip-bomb caps. Returns the bytes
+     * copied. Throws [ZipException] (an [IOException], handled by the caller's
+     * existing catch blocks) when an entry or the archive exceeds the limits.
+     */
+    @Throws(IOException::class)
+    internal fun copyBounded(
+        input: InputStream,
+        out: OutputStream,
+        entryName: String,
+        totalSoFar: Long,
+    ): Long {
+        val buf = ByteArray(8192)
+        var entryBytes = 0L
+        while (true) {
+            val n = input.read(buf)
+            if (n <= 0) break
+            checkZipBudget(entryName, entryBytes + n, totalSoFar + entryBytes + n)
+            out.write(buf, 0, n)
+            entryBytes += n
+        }
+        return entryBytes
+    }
+
+    /** Throws [ZipException] when the entry or running total exceeds the caps. */
+    @Throws(ZipException::class)
+    internal fun checkZipBudget(entryName: String, entryBytes: Long, totalBytes: Long) {
+        if (entryBytes > MAX_ZIP_ENTRY_BYTES || totalBytes > MAX_ZIP_TOTAL_BYTES) {
+            throw ZipException("zip entry '$entryName' exceeds size limits")
+        }
+    }
 
     /**
      * Read the display name reported by the [Uri]'s content provider, if any.
@@ -81,10 +121,15 @@ internal object ProviderImportZip {
             }
             try {
                 ZipInputStream(input.buffered()).use { zin ->
+                    var entryCount = 0
+                    var totalBytes = 0L
                     while (true) {
                         val entry = zin.nextEntry ?: break
                         try {
                             if (entry.isDirectory) continue
+                            if (++entryCount > MAX_ZIP_ENTRIES) {
+                                throw ZipException("zip has too many entries (>$MAX_ZIP_ENTRIES)")
+                            }
                             val rawName = entry.name
                             if (shouldSkipEntry(rawName)) continue
 
@@ -96,7 +141,9 @@ internal object ProviderImportZip {
                                 continue
                             }
                             target.parentFile?.mkdirs()
-                            target.outputStream().use { out -> zin.copyTo(out) }
+                            target.outputStream().use { out ->
+                                totalBytes += copyBounded(zin, out, rawName, totalBytes)
+                            }
                         } finally {
                             zin.closeEntry()
                         }

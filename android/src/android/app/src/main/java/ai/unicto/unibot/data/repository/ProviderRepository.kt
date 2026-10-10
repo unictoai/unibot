@@ -809,34 +809,40 @@ class ProviderRepository(private val context: Context) {
         }
     }
 
-    fun removeInstance(instanceId: String): Unit = synchronized(configLock) {
-        ensureConfigLoaded()
-        invalidateModelCache(instanceId)
-        val config = workingCopy()
-        val removedEntryIds = config.modelEntries
-            .filter { it.providerInstanceId == instanceId }
-            .map { it.id }
-            .toSet()
-        config.instances.removeAll { it.id == instanceId }
-        config.modelEntries.removeAll { it.providerInstanceId == instanceId }
+    fun removeInstance(instanceId: String) {
+        synchronized(configLock) {
+            ensureConfigLoaded()
+            invalidateModelCache(instanceId)
+            val config = workingCopy()
+            val removedEntryIds = config.modelEntries
+                .filter { it.providerInstanceId == instanceId }
+                .map { it.id }
+                .toSet()
+            config.instances.removeAll { it.id == instanceId }
+            config.modelEntries.removeAll { it.providerInstanceId == instanceId }
 
-        if (removedEntryIds.isNotEmpty()) {
-            for (group in config.modelGroups) {
-                group.memberEntryIds.removeAll { it in removedEntryIds }
+            if (removedEntryIds.isNotEmpty()) {
+                for (group in config.modelGroups) {
+                    group.memberEntryIds.removeAll { it in removedEntryIds }
+                }
+                config.agentLoopModelEntryIds.removeAll { it in removedEntryIds }
             }
-            config.agentLoopModelEntryIds.removeAll { it in removedEntryIds }
-        }
-        val emptyGroupIds = config.modelGroups.filter { it.memberEntryIds.isEmpty() }.map { it.id }.toSet()
-        if (emptyGroupIds.isNotEmpty()) {
-            config.modelGroups.removeAll { it.id in emptyGroupIds }
-            if (config.defaultPrimaryGroupId in emptyGroupIds) config.defaultPrimaryGroupId = null
-            if (config.defaultSubGroupId in emptyGroupIds) config.defaultSubGroupId = null
-        }
+            val emptyGroupIds = config.modelGroups.filter { it.memberEntryIds.isEmpty() }.map { it.id }.toSet()
+            if (emptyGroupIds.isNotEmpty()) {
+                config.modelGroups.removeAll { it.id in emptyGroupIds }
+                if (config.defaultPrimaryGroupId in emptyGroupIds) config.defaultPrimaryGroupId = null
+                if (config.defaultSubGroupId in emptyGroupIds) config.defaultSubGroupId = null
+            }
 
-        saveConfig(config)
-        deleteApiKey(instanceId)
+            saveConfig(config)
+            deleteApiKey(instanceId)
+        }
         // [T-android-thinking-rules-phase2] The instance is gone — drop its custom
         // rules from Room and the resolver cache (they can never fire again).
+        // This MUST run outside configLock: runBlocking blocks the calling thread
+        // (these callers are UI handlers) on DB I/O, and holding a JVM monitor
+        // across the coroutine boundary risks deadlock if the DAO's dispatcher
+        // ever needs the same lock.
         runCatching {
             runBlocking { providerDao.deleteThinkingRulesForInstance(instanceId) }
             ThinkingRuleResolver.setCustomRules(instanceId, emptyList())
@@ -2989,13 +2995,15 @@ class ProviderRepository(private val context: Context) {
         )
         addInstance(instance)
 
-        // Decode API key (base64 or plain text)
+        // Decode API key: current exports are always base64; older exports (or
+        // hand-made files) may hold plaintext. Strict shape check first — a
+        // plaintext key made only of base64-alphabet chars would otherwise
+        // decode to garbage silently.
         val keyValue = dict.optString("apiKey", "").ifEmpty { null }
         if (keyValue != null) {
-            val apiKey = try {
-                String(Base64.decode(keyValue, Base64.NO_WRAP))
-            } catch (_: Exception) {
-                keyValue // plain text fallback
+            val (apiKey, wasBase64) = decodeImportSecret(keyValue)
+            if (!wasBase64) {
+                android.util.Log.i("ProviderRepo", "import: apiKey stored as plaintext (not base64)")
             }
             saveApiKey(instance.id, apiKey)
         }
@@ -3004,10 +3012,9 @@ class ProviderRepository(private val context: Context) {
         // base64-encoded UTF-8 string, with plain-text fallback for older exports.
         val manualTokenValue = dict.optString("manualOAuthToken", "").ifEmpty { null }
         if (manualTokenValue != null) {
-            val manualToken = try {
-                String(Base64.decode(manualTokenValue, Base64.NO_WRAP))
-            } catch (_: Exception) {
-                manualTokenValue
+            val (manualToken, wasBase64) = decodeImportSecret(manualTokenValue)
+            if (!wasBase64) {
+                android.util.Log.i("ProviderRepo", "import: manualOAuthToken stored as plaintext (not base64)")
             }
             val mgr = ai.unicto.unibot.auth.OAuthManager.forInstance(context, instance)
             mgr?.saveManualBearerToken(manualToken)
@@ -3268,4 +3275,30 @@ internal fun healEntryOutputLimit(
     val newLimit = enrich(entry.baseModel, servingHint).maxOutputTokens
     if (newLimit == null || newLimit == entry.baseModel.maxOutputTokens) return entry
     return entry.copy(baseModel = entry.baseModel.copy(maxOutputTokens = newLimit))
+}
+
+/**
+ * Decode an imported secret from [importInstanceJSON]: strict base64 when the
+ * value has base64 shape, otherwise the raw plaintext (older exports).
+ *
+ * Returns the decoded value and whether it was base64. A plaintext secret
+ * made only of base64-alphabet chars would decode to garbage silently, so the
+ * shape gate (length, alphabet, padding) comes before any decode attempt —
+ * and callers log the plaintext case so it is never silent.
+ */
+internal fun decodeImportSecret(value: String): Pair<String, Boolean> {
+    val shapeOk = value.isNotEmpty() &&
+        value.length % 4 == 0 &&
+        value.all { c ->
+            c in 'A'..'Z' || c in 'a'..'z' || c in '0'..'9' ||
+                c == '+' || c == '/' || c == '='
+        }
+    if (shapeOk) {
+        try {
+            return String(android.util.Base64.decode(value, android.util.Base64.NO_WRAP)) to true
+        } catch (_: Exception) {
+            // fall through to plaintext
+        }
+    }
+    return value to false
 }
