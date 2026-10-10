@@ -3,6 +3,7 @@ package ai.unicto.unibot.auth
 import android.util.Log
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.URI
 
@@ -10,6 +11,13 @@ class OAuthCallbackServer(
     private val port: Int,
     private val fallbackPorts: List<Int> = emptyList(),
     private val onError: ((error: String) -> Unit)? = null,
+    /**
+     * [Security] Optional gate: when set, a callback is only treated as
+     * the real one (and the server only stops) when this returns true.
+     * A bogus request (wrong/missing state) is ignored and the server
+     * keeps listening, so one forged hit can't kill the legitimate login.
+     */
+    private val isValidCallback: ((code: String, state: String?) -> Boolean)? = null,
     private val onCode: (code: String, state: String?) -> Unit,
 ) {
     companion object {
@@ -44,7 +52,10 @@ class OAuthCallbackServer(
         var bound = false
         for (p in portsToTry) {
             try {
-                serverSocket = ServerSocket(p)
+                // [Security] Loopback only — the OAuth redirect always
+                // targets 127.0.0.1, so there is no reason to be reachable
+                // from the LAN during login.
+                serverSocket = ServerSocket(p, 50, InetAddress.getByName("127.0.0.1"))
                 boundPort = p
                 bound = true
                 break
@@ -85,7 +96,11 @@ class OAuthCallbackServer(
                                 }
                             }
                             val trustedHosts = listOf("auth.x.ai", "accounts.x.ai")
-                            val allowOrigin = if (origin != null && trustedHosts.any { origin!!.contains(it) }) {
+                            // [Security] Exact host match — the old
+                            // `contains` check also accepted
+                            // https://auth.x.ai.evil.com.
+                            val originHost = origin?.let { runCatching { URI(it).host }.getOrNull() }
+                            val allowOrigin = if (originHost != null && trustedHosts.any { it.equals(originHost, ignoreCase = true) }) {
                                 origin
                             } else {
                                 "null"
@@ -125,9 +140,17 @@ class OAuthCallbackServer(
                             socket.close()
 
                             if (code != null) {
+                                val valid = isValidCallback?.invoke(code, state) ?: true
                                 onCode(code, state)
-                                stop()
-                                return@Thread
+                                if (valid) {
+                                    stop()
+                                    return@Thread
+                                }
+                                // [Security] Invalid callback (bad/missing
+                                // state): ignore it and keep listening — a
+                                // single forged request must not terminate
+                                // the legitimate login.
+                                Log.w(TAG, "Ignoring callback that failed validation; still listening")
                             }
                             if (error != null) {
                                 Log.w(TAG, "Authorization error: $error")

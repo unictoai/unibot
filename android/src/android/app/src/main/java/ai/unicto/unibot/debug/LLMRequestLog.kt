@@ -38,6 +38,20 @@ object LLMRequestLog {
 
     private val entries = mutableListOf<Entry>()
 
+    /**
+     * [Security] Header names whose VALUES must never be retained: the
+     * debug.llmRequests RPC serves these entries to any loopback caller.
+     */
+    private val sensitiveHeaders = setOf(
+        "authorization", "x-api-key", "api-key", "x-goog-api-key",
+        "cookie", "set-cookie", "x-unibot-token",
+    )
+
+    private fun sanitizeHeaders(headers: Map<String, String>): Map<String, String> =
+        headers.mapValues { (name, value) ->
+            if (name.lowercase() in sensitiveHeaders) "***" else value
+        }
+
     @Synchronized
     fun add(entry: Entry) {
         // T302: belt-and-suspenders. Release builds short-circuit the whole
@@ -48,12 +62,14 @@ object LLMRequestLog {
         // each entry truncated to MAX_BODY_CHARS so even a single retained
         // entry can't push a memory-tight device over the line.
         if (!BuildConfig.DEBUG) return
-        val safeEntry = if (entry.requestBody.length > MAX_BODY_CHARS) {
-            entry.copy(
-                requestBody = entry.requestBody.take(MAX_BODY_CHARS) +
-                    "\n…[truncated ${entry.requestBody.length - MAX_BODY_CHARS} chars]",
-            )
-        } else entry
+        val safeEntry = entry.copy(
+            // [Security] Redact credential headers before retaining.
+            requestHeaders = sanitizeHeaders(entry.requestHeaders),
+            requestBody = if (entry.requestBody.length > MAX_BODY_CHARS) {
+                entry.requestBody.take(MAX_BODY_CHARS) +
+                    "\n…[truncated ${entry.requestBody.length - MAX_BODY_CHARS} chars]"
+            } else entry.requestBody,
+        )
         entries.add(safeEntry)
         if (entries.size > MAX_ENTRIES) {
             entries.removeAt(0)

@@ -4,8 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -143,7 +144,10 @@ abstract class OAuthManager(
     /** Override to save state for later retrieval. */
     open fun generateAndSaveState(): String = generateState()
 
-    private var currentState: String? = null
+    /** Coroutine scope owned by this manager (replaces GlobalScope). */
+    protected val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile private var currentState: String? = null
     private var callbackServer: OAuthCallbackServer? = null
 
     open fun buildAuthorizationUrl(): String {
@@ -162,13 +166,14 @@ abstract class OAuthManager(
 
     suspend fun startLogin(onComplete: (Boolean) -> Unit) {
         callbackServer?.stop()
-        callbackServer = OAuthCallbackServer(callbackPort) { code, state ->
-            if (state != null && state != currentState) {
-                Log.w(TAG, "State mismatch")
-                onComplete(false)
-                return@OAuthCallbackServer
-            }
-            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+        callbackServer = OAuthCallbackServer(
+            callbackPort,
+            // [Security] Reject callbacks without a matching state (null
+            // included). The server ignores them and keeps listening, so a
+            // forged request can't kill the legitimate login.
+            isValidCallback = { _, state -> state == currentState },
+        ) { code, _ ->
+            scope.launch(Dispatchers.IO) {
                 val success = exchangeCode(code)
                 withContext(Dispatchers.Main) { onComplete(success) }
             }

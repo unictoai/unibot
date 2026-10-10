@@ -7,6 +7,7 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,10 +57,18 @@ class WebViewHolder(
         // sitting next to a sandbox HTML loads correctly. We accept the small
         // attack surface because all paths come from PRoot-resolved sandbox
         // outputs, never untrusted user content from the network.
+        //
+        // [Security] Hardened: script-initiated access from file:// pages is
+        // OFF. The agent downloads web content into the sandbox (curl,
+        // browser downloads) and prompt injection can make it write HTML;
+        // with universal/file-URL access on, such a page could XHR
+        // file:///data/data/.../shared_prefs/*.xml or databases/minis.db
+        // and POST them anywhere. Subresource loads (<script src>, <img>)
+        // still work — only script-driven file:// reads are blocked.
         @Suppress("DEPRECATION")
-        settings.allowFileAccessFromFileURLs = true
+        settings.allowFileAccessFromFileURLs = false
         @Suppress("DEPRECATION")
-        settings.allowUniversalAccessFromFileURLs = true
+        settings.allowUniversalAccessFromFileURLs = false
         // T-htmlpreview-2d5c4f3d: pages that use viewport units (`100vh` /
         // `height: 100%`) combined with `overflow: hidden` would render
         // blank inside the bottom-sheet preview, because the WebView starts
@@ -433,5 +442,12 @@ class WebViewHolder(
 @Composable
 fun rememberWebViewHolder(url: String): WebViewHolder {
     val context = androidx.compose.ui.platform.LocalContext.current
-    return remember(url) { WebViewHolder(context.applicationContext, url) }
+    val holder = remember(url) { WebViewHolder(context.applicationContext, url) }
+    // [Leak] The holder owns a WebView (renderer = tens of MB). Destroy it
+    // when the caller leaves composition or swaps the URL — previously
+    // holders accumulated across decks/sites/sheets.
+    DisposableEffect(holder) {
+        onDispose { holder.destroy() }
+    }
+    return holder
 }

@@ -35,6 +35,8 @@ class ShareReceiverActivity : ComponentActivity() {
     companion object {
         private const val TAG = "ShareReceiver"
         private const val INLINE_TEXT_LIMIT = 1000
+        /** [Security] Upper bound for a single staged share attachment. */
+        private const val MAX_STAGED_BYTES = 64L * 1024 * 1024
     }
 
     // T-n01-andmenu-l10n: pre-Tiramisu locale override (see MainActivity).
@@ -276,6 +278,28 @@ class ShareReceiverActivity : ComponentActivity() {
      *  the staged filename (relative to sharedFileDirectory) or null on
      *  failure. */
     private fun copyUriToStaging(uri: Uri, mimeType: String): String? {
+        // [Security] The share target is exported: a malicious sender can
+        // hand us URIs that resolve to OUR OWN private files. Our own
+        // ContentResolver would happily open them, staging e.g.
+        // shared_prefs/*.xml or the rootfs SSH key as a chat attachment.
+        if (uri.scheme == "file") {
+            val canonical = runCatching { File(uri.path ?: "").canonicalPath }.getOrNull()
+            val dataDir = applicationInfo.dataDir
+            if (canonical == null || canonical == dataDir || canonical.startsWith("$dataDir/")) {
+                AppLogger.warning(TAG, "rejecting file:// uri inside app data dir: $uri")
+                return null
+            }
+        }
+        if (uri.scheme == "content") {
+            val authority = uri.authority
+            val owner = authority?.let {
+                runCatching { packageManager.resolveContentProvider(it, 0)?.packageName }.getOrNull()
+            }
+            if (authority == null || owner == packageName) {
+                AppLogger.warning(TAG, "rejecting content:// uri from our own provider: $uri")
+                return null
+            }
+        }
         val ext = guessExtension(mimeType, uri)
         val prefix = when {
             mimeType.startsWith("image/") -> "shared-image"
@@ -285,12 +309,31 @@ class ShareReceiverActivity : ComponentActivity() {
         val name = "$prefix-${shortId()}${if (ext.isNotEmpty()) ".$ext" else ""}"
         val dest = File(SharedShareStore.sharedFileDirectory(this), name)
         return try {
-            contentResolver.openInputStream(uri)?.use { input ->
-                dest.outputStream().use { input.copyTo(it) }
+            val input = contentResolver.openInputStream(uri) ?: run {
+                AppLogger.warning(TAG, "copyUriToStaging($uri): resolver returned null")
+                return null
+            }
+            input.use {
+                dest.outputStream().use { out ->
+                    // [Security] Cap the staged copy — an unbounded copyTo
+                    // lets a sender fill the disk from the share sheet.
+                    val buf = ByteArray(8192)
+                    var total = 0L
+                    while (true) {
+                        val n = it.read(buf)
+                        if (n < 0) break
+                        total += n
+                        if (total > MAX_STAGED_BYTES) {
+                            throw java.io.IOException("shared file exceeds ${MAX_STAGED_BYTES / 1024 / 1024} MB cap")
+                        }
+                        out.write(buf, 0, n)
+                    }
+                }
             }
             name
         } catch (e: Exception) {
             AppLogger.warning(TAG, "copyUriToStaging($uri): ${e.message}")
+            runCatching { dest.delete() }
             null
         }
     }

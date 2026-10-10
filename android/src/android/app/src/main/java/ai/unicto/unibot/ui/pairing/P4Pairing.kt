@@ -44,6 +44,8 @@ const val ROUTE_PAIRING = "pairing"
 
 object P4PairingStore {
     private const val PREFS = "p4_pairing"
+    /** Encrypted store for the pairing token (excluded from backups). */
+    private const val SECRET_PREFS = "p4_pairing_secrets"
     private const val KEY_TOKEN = "pairing_token"
     private const val KEY_REMOTES = "remote_sessions"
 
@@ -57,18 +59,30 @@ object P4PairingStore {
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    private fun secretPrefs(context: Context) =
+        ai.unicto.unibot.util.EncryptedPrefsFactory.safeCreate(context.applicationContext, SECRET_PREFS)
+
     /** The pairing token, generated once and persisted. Never logged. */
     fun token(context: Context): String {
-        val p = prefs(context)
-        p.getString(KEY_TOKEN, null)?.let { return it }
+        val sp = secretPrefs(context)
+        sp.getString(KEY_TOKEN, null)?.let { return it }
+        // One-time migration: the token used to live in plaintext prefs.
+        // Move it into the encrypted store and scrub the old copy.
+        val legacy = prefs(context).getString(KEY_TOKEN, null)
+        if (!legacy.isNullOrEmpty()) {
+            sp.edit().putString(KEY_TOKEN, legacy).apply()
+            prefs(context).edit().remove(KEY_TOKEN).apply()
+            return legacy
+        }
         val bytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val token = Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-        p.edit().putString(KEY_TOKEN, token).apply()
+        sp.edit().putString(KEY_TOKEN, token).apply()
         return token
     }
 
     /** Rotates the token; previously paired desktops must scan again. */
     fun regenerateToken(context: Context): String {
+        secretPrefs(context).edit().remove(KEY_TOKEN).apply()
         prefs(context).edit().remove(KEY_TOKEN).apply()
         return token(context)
     }

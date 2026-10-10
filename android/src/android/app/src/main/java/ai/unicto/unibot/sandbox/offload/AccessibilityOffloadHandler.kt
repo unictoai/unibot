@@ -33,6 +33,17 @@ class AccessibilityOffloadHandler(private val context: Context) : NativeOffloadH
         private const val TAG = "A11yOffload"
         private const val TOOL = "android-a11y-cli"
 
+        /**
+         * [Security] dialog-dismiss never clicks inside these packages.
+         * The agent must not auto-confirm runtime-permission prompts or
+         * installer dialogs — that would let it grant itself permissions.
+         */
+        private val GUARDED_DIALOG_PACKAGES = setOf(
+            "com.android.permissioncontroller",
+            "com.google.android.packageinstaller",
+            "com.android.settings",
+        )
+
         private const val TOP_HELP = """android-a11y-cli — UI-layer automation via Android AccessibilityService.
 
 Usage:
@@ -997,7 +1008,12 @@ First-run: enable "unibot" under Settings → Accessibility, then `service ping`
         }
         for (label in candidates) {
             val matches = ArrayList<AccessibilityNodeInfo>()
-            for (root in svc.rootNodes()) findByTextOrDesc(root, label, contains = false, 30, 0, matches)
+            for (root in svc.rootNodes()) {
+                // [Security] Never auto-dismiss inside system permission /
+                // installer / settings surfaces (see GUARDED_DIALOG_PACKAGES).
+                if (root.packageName?.toString() in GUARDED_DIALOG_PACKAGES) continue
+                findByTextOrDesc(root, label, contains = false, 30, 0, matches)
+            }
             val btn = matches.firstOrNull { it.isClickable } ?: matches.firstOrNull()
             if (btn != null) {
                 val clicked = if (btn.isClickable) btn.performAction(AccessibilityNodeInfo.ACTION_CLICK) else {

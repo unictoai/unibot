@@ -62,12 +62,40 @@ class RiskApprovalNotifier(
             .setContentText(body.lines().first())
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(open)
-            .addAction(0, context.getString(R.string.ub_risk_allow_once), action(RiskDecision.ALLOW_ONCE, 1))
+            .apply {
+                // [Security] The notification's Allow button is reachable
+                // from the lock screen. Money requests (needsCredential)
+                // and warned requests must be decided on the phone itself —
+                // the Allow action is omitted for them entirely.
+                if (!request.needsCredential && request.assessment.warnings.isEmpty()) {
+                    val allow = NotificationCompat.Action.Builder(
+                        0,
+                        context.getString(R.string.ub_risk_allow_once),
+                        action(RiskDecision.ALLOW_ONCE, 1),
+                    )
+                    // API 31+: tapping Allow requires the device credential,
+                    // so a locked phone in the wrong hands can't approve.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        allow.setAuthenticationRequired(true)
+                    }
+                    addAction(allow.build())
+                }
+            }
             .addAction(0, context.getString(R.string.ub_risk_deny), action(RiskDecision.DENY, 2))
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            // [Security] Lock-screen visibility: the content (command
+            // preview, amounts) is private; show only a redacted stub.
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(
+                NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_stat_unibot)
+                    .setContentTitle(title)
+                    .setContentText(context.getString(R.string.ub_risk_public_text))
+                    .build(),
+            )
             .setTimeoutAfter(RiskGate.TIMEOUT_MS)
             .build()
         return try {
