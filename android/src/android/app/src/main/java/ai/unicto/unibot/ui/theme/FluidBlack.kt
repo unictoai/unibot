@@ -91,16 +91,23 @@ fun GlowingSendButton(
     size: Dp = 38.dp,
     fluidGlow: Boolean = LocalFluidBlack.current,
 ) {
-    val t = rememberInfiniteTransition(label = "send-glow")
-    val glow by t.animateFloat(
-        initialValue = 0.55f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            tween(1600, easing = FastOutSlowInEasing),
-            RepeatMode.Reverse,
-        ),
-        label = "glow",
-    )
+    // v1.5 accessibility: the breathing glow is decorative — when the user
+    // asked for reduced motion (or battery saver / low-RAM), hold a static
+    // glow instead of running the infinite loop.
+    val glow: Float = if (decorativeMotionEnabled()) {
+        val t = rememberInfiniteTransition(label = "send-glow")
+        t.animateFloat(
+            initialValue = 0.55f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                tween(1600, easing = FastOutSlowInEasing),
+                RepeatMode.Reverse,
+            ),
+            label = "glow",
+        ).value
+    } else {
+        1f
+    }
     // [v0.4.1-visible-premium] Springy press-down so taps feel physical.
     val pressSource = remember { MutableInteractionSource() }
     val pressed by pressSource.collectIsPressedAsState()
@@ -109,18 +116,32 @@ fun GlowingSendButton(
         animationSpec = tween(Motion.Instant, easing = Motion.FastOutSlowIn),
         label = "send_press",
     )
+    // v1.5 accessibility: 48dp tap target around the 38dp visual, mirroring
+    // the InputCircleButton / scroll-FAB treatment elsewhere in the app.
     Box(
         modifier = Modifier
-            .size(size)
-            .background(
-                if (canActivate && fluidGlow)
-                    activeColor.copy(alpha = 0.28f * glow)
-                else Color.Transparent,
-                CircleShape,
-            )
-            .scale(if (canActivate && fluidGlow) 1f + 0.06f * glow else 1f),
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(
+                enabled = canActivate,
+                interactionSource = pressSource,
+                indication = null,
+                onClick = onSend,
+            ),
         contentAlignment = Alignment.Center,
     ) {
+        // Glow halo behind the disc.
+        Box(
+            modifier = Modifier
+                .size(size)
+                .background(
+                    if (canActivate && fluidGlow)
+                        activeColor.copy(alpha = 0.28f * glow)
+                    else Color.Transparent,
+                    CircleShape,
+                )
+                .scale(if (canActivate && fluidGlow) 1f + 0.06f * glow else 1f),
+        )
         Box(
             modifier = Modifier
                 .size(size)
@@ -130,13 +151,7 @@ fun GlowingSendButton(
                     else activeColor.copy(alpha = 0.25f),
                     CircleShape,
                 )
-                .clip(CircleShape)
-                .clickable(
-                    enabled = canActivate,
-                    interactionSource = pressSource,
-                    indication = null,
-                    onClick = onSend,
-                ),
+                .clip(CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

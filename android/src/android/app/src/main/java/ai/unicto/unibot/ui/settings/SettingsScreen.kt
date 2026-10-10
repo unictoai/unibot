@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Route // P4: smart routing row (v0.2.0)
 import androidx.compose.material.icons.outlined.Refresh // v1.4.0-onboarding retired-model check row
+import androidx.compose.material.icons.outlined.Schedule // v1.5: scheduled tasks row
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -194,6 +195,9 @@ fun SettingsScreen(
     onSamplerClick: () -> Unit = {},
     onChatTemplatesClick: () -> Unit = {},
     onScheduledMessagesClick: () -> Unit = {},
+    // [v1.5-settings-reorg] Scheduled tasks (cron-like prompts). Previously
+    // reachable only from the session list's top bar; now also a Routines row.
+    onScheduledTasksClick: () -> Unit = {},
     onVoiceHistoryClick: () -> Unit = {},
     onStorageBreakdownClick: () -> Unit = {},
     onScheduledBackupClick: () -> Unit = {},
@@ -247,10 +251,11 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Spacer(Modifier.height(8.dp))
-
-            // -- The model (Muse: the plan card) --
+            // v1.5 settings reorg: sections are grouped by user job, each with a
+            // visible header above its card. Rows keep their existing components
+            // and behavior; only the grouping changed.
             // [v0.4.0-premium-feel] Cards stagger in on first composition.
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_models))
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(0)) {
                 Row(
                     modifier = Modifier
@@ -341,10 +346,33 @@ fun SettingsScreen(
                     icon = Icons.Outlined.BarChart,
                     onClick = onUsageClick,
                 )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // v1.5: P4 smart routing picks which model answers each turn.
+                run {
+                    var smart by remember { mutableStateOf(ai.unicto.unibot.ui.chat.agentic.P4ModeStore.isSmartRouting(context)) }
+                    ai.unicto.unibot.ui.muse.MuseRow(
+                        title = "Smart routing",
+                        icon = Icons.Outlined.Route,
+                        value = if (smart) "On" else "Off",
+                        chevron = false,
+                        trailing = {
+                            Switch(
+                                checked = smart,
+                                onCheckedChange = {
+                                    smart = it
+                                    ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setSmartRouting(context, it)
+                                },
+                            )
+                        },
+                        onClick = {
+                            smart = !smart
+                            ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setSmartRouting(context, smart)
+                        },
+                    )
+                }
             }
-            ai.unicto.unibot.ui.muse.MuseGap()
 
-            // -- The agent --
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_agent_memory))
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(1)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_soul), icon = Icons.Outlined.AutoAwesome, onClick = onSoulClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -360,29 +388,27 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_sysfiles_title), icon = Icons.Outlined.Description, onClick = onSystemFilesClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_skills), icon = Icons.Outlined.Extension, onClick = onSkillsClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [P2] Prompt Library: text presets + composer modes (Study Mode…).
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_prompt_library_title), icon = Icons.Outlined.LibraryBooks, onClick = onPromptLibraryClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // v1.4.0 power-user & automation: background agents, question
-                // cards, slash commands, portable profile.
+                // cards, slash commands.
                 ai.unicto.unibot.ui.muse.MuseRow(title = "Background agents", icon = Icons.Outlined.SmartToy, onClick = onBackgroundAgentsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = "Question cards", icon = Icons.Outlined.Quiz, onClick = onQuestionCardsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = "Slash commands", icon = Icons.Outlined.Terminal, onClick = onSlashCommandsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = "Portable profile", icon = Icons.Outlined.ImportExport, onClick = onPortableProfileClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [P2] Compare Models: same prompt, two models, side by side.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_compare_title), icon = Icons.Outlined.CompareArrows, onClick = onCompareClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [v1.2] Chat templates / prompt starters.
                 ai.unicto.unibot.ui.chat.ChatTemplatesRow(onClick = onChatTemplatesClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // [v1.2] Scheduled messages (send later).
-                ai.unicto.unibot.ui.chat.ScheduledMessagesRow(onClick = onScheduledMessagesClick)
+            }
+
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_tools))
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(2)) {
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_skills), icon = Icons.Outlined.Extension, onClick = onSkillsClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -430,8 +456,8 @@ fun SettingsScreen(
                 }
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_env_vars), icon = Icons.Outlined.Terminal, onClick = onEnvVarsClick)
-                // P4 (v0.2.0): phone-to-desktop pairing + smart routing.
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // P4 (v0.2.0): phone-to-desktop pairing.
                 run {
                     val paired = remember { ai.unicto.unibot.ui.pairing.P4PairingStore.remoteSessions(context).size }
                     ai.unicto.unibot.ui.muse.MuseRow(
@@ -441,64 +467,9 @@ fun SettingsScreen(
                         onClick = onPairingClick,
                     )
                 }
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                run {
-                    var smart by remember { mutableStateOf(ai.unicto.unibot.ui.chat.agentic.P4ModeStore.isSmartRouting(context)) }
-                    ai.unicto.unibot.ui.muse.MuseRow(
-                        title = "Smart routing",
-                        icon = Icons.Outlined.Route,
-                        value = if (smart) "On" else "Off",
-                        chevron = false,
-                        trailing = {
-                            Switch(
-                                checked = smart,
-                                onCheckedChange = {
-                                    smart = it
-                                    ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setSmartRouting(context, it)
-                                },
-                            )
-                        },
-                        onClick = {
-                            smart = !smart
-                            ai.unicto.unibot.ui.chat.agentic.P4ModeStore.setSmartRouting(context, smart)
-                        },
-                    )
-                }
             }
-            ai.unicto.unibot.ui.muse.MuseGap()
 
-            // -- The phone: what the agent may touch, where its files live --
-            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(2)) {
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_permissions), icon = Icons.Outlined.Shield, onClick = onPermissionsClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.bg_section_header), icon = Icons.Outlined.BatteryFull, onClick = onBackgroundClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_storage), icon = Icons.Outlined.Inventory2, onClick = onRootfsClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_shared_folders), icon = Icons.Outlined.Folder, onClick = onSharedFoldersClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mount_external_folders), icon = Icons.Outlined.FolderShared, onClick = onMountedFoldersClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_backup_restore), icon = Icons.Outlined.Backup, onClick = onBackupClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // [v1.2] Scheduled local backup (daily/weekly, on-device only).
-                ai.unicto.unibot.ui.settings.ScheduledBackupRow(onClick = onScheduledBackupClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // [v1.2] Storage breakdown by category.
-                ai.unicto.unibot.ui.settings.StorageBreakdownRow(onClick = onStorageBreakdownClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // [v1.2] Battery saver (reduces animations + background work).
-                ai.unicto.unibot.ui.settings.BatterySaverRow()
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // unibot P6: visual context — capture a photo and ask the chat about it.
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_visual_ask_title), icon = Icons.Outlined.CameraAlt, onClick = onVisualAskClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // unibot P6: autofill from the on-device profile — off by default, opt-in.
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_autofill_title), icon = Icons.Outlined.AutoFixHigh, onClick = onAutofillClick)
-            }
-            ai.unicto.unibot.ui.muse.MuseGap()
-
-            // -- Privacy (v1.0 wave 5): dashboard, traffic log, local-only, guards --
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_privacy))
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(3)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = "Privacy dashboard", icon = Icons.Outlined.Shield, onClick = onPrivacyDashboardClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -580,11 +551,62 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // [v1.2] Password-protect chat exports (AES-256).
                 ai.unicto.unibot.ui.privacy.V12ExportPasswordRow()
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [P1-app-lock] Biometric / device-credential gate on foreground.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_app_lock), icon = Icons.Outlined.Lock, onClick = onAppLockClick)
             }
-            ai.unicto.unibot.ui.muse.MuseGap()
 
-            // -- The app --
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_routines))
             ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(4)) {
+                // [v1.2] Scheduled messages (send later).
+                ai.unicto.unibot.ui.chat.ScheduledMessagesRow(onClick = onScheduledMessagesClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // v1.5: scheduled tasks (cron-like prompts) — also reachable
+                // from the session list's top bar.
+                ai.unicto.unibot.ui.muse.MuseRow(
+                    title = stringResource(R.string.sessionlist_scheduled_tasks),
+                    icon = Icons.Outlined.Schedule,
+                    onClick = onScheduledTasksClick,
+                )
+            }
+
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_data_files))
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(5)) {
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_storage), icon = Icons.Outlined.Inventory2, onClick = onRootfsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_shared_folders), icon = Icons.Outlined.Folder, onClick = onSharedFoldersClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_mount_external_folders), icon = Icons.Outlined.FolderShared, onClick = onMountedFoldersClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_backup_restore), icon = Icons.Outlined.Backup, onClick = onBackupClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Scheduled local backup (daily/weekly, on-device only).
+                ai.unicto.unibot.ui.settings.ScheduledBackupRow(onClick = onScheduledBackupClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Storage breakdown by category.
+                ai.unicto.unibot.ui.settings.StorageBreakdownRow(onClick = onStorageBreakdownClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = "Portable profile", icon = Icons.Outlined.ImportExport, onClick = onPortableProfileClick)
+            }
+
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_phone_devices))
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(6)) {
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_permissions), icon = Icons.Outlined.Shield, onClick = onPermissionsClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.bg_section_header), icon = Icons.Outlined.BatteryFull, onClick = onBackgroundClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // [v1.2] Battery saver (reduces animations + background work).
+                ai.unicto.unibot.ui.settings.BatterySaverRow()
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // unibot P6: visual context — capture a photo and ask the chat about it.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_visual_ask_title), icon = Icons.Outlined.CameraAlt, onClick = onVisualAskClick)
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                // unibot P6: autofill from the on-device profile — off by default, opt-in.
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_autofill_title), icon = Icons.Outlined.AutoFixHigh, onClick = onAutofillClick)
+            }
+
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_voice_appearance))
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(7)) {
                 // unibot P6: spoken replies — on-device TTS voices, engine status, speed.
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.ub_read_aloud_title), icon = Icons.Outlined.RecordVoiceOver, onClick = onReadAloudClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
@@ -595,16 +617,10 @@ fun SettingsScreen(
                 ai.unicto.unibot.ui.voice.VoiceHistoryRow(onOpenVoiceHistory = onVoiceHistoryClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_appearance), icon = Icons.Outlined.Palette, onClick = onAppearanceClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                // [P1-app-lock] Biometric / device-credential gate on foreground.
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_app_lock), icon = Icons.Outlined.Lock, onClick = onAppLockClick)
-                ai.unicto.unibot.ui.muse.MuseRowDivider()
-                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_logs), icon = Icons.Outlined.Description, onClick = onLogsClick)
             }
-            ai.unicto.unibot.ui.muse.MuseGap()
 
-            // -- About --
-            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(5)) {
+            ai.unicto.unibot.ui.muse.MuseSectionLabel(text = stringResource(R.string.settings_section_help_about))
+            ai.unicto.unibot.ui.muse.MuseCard(modifier = Modifier.staggeredEntrance(8)) {
                 ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_about_unibot), icon = Icons.Outlined.Info, onClick = onAboutClick)
                 ai.unicto.unibot.ui.muse.MuseRowDivider()
                 // v1.4.0-onboarding In-app help center: searchable offline FAQ and guides.
@@ -628,6 +644,8 @@ fun SettingsScreen(
                     // Telegram group, no mailbox), so skip the chooser sheet.
                     onClick = { openExternalUrl(context, buildBugReportUrl()) },
                 )
+                ai.unicto.unibot.ui.muse.MuseRowDivider()
+                ai.unicto.unibot.ui.muse.MuseRow(title = stringResource(R.string.settings_section_logs), icon = Icons.Outlined.Description, onClick = onLogsClick)
             }
             ai.unicto.unibot.ui.muse.MuseCaption(
                 text = stringResource(R.string.ub_settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),

@@ -1,5 +1,6 @@
 package ai.unicto.unibot.ui.chat
 import ai.unicto.unibot.ui.theme.UbColors
+import ai.unicto.unibot.ui.theme.decorativeMotionEnabled
 
 // [T-android-split-chat] Assistant-message + tool-pill + thinking rendering
 // extracted verbatim from ChatScreen.kt: AssistantHeader, AssistantMessageView,
@@ -829,7 +830,7 @@ internal fun ToolCallPill(
     // next to the iOS counterpart. The bottom FloatingToolStatusBar
     // still shows a CircularProgressIndicator (that is the running-tool
     // status surface, where a spinner reads correctly).
-    val shimmerTranslate = if (isRunning) {
+    val shimmerTranslate = if (isRunning && decorativeMotionEnabled()) {
         val transition = rememberInfiniteTransition(label = "toolPillShimmer")
         transition.animateFloat(
             initialValue = -1f,
@@ -935,6 +936,24 @@ internal fun ToolCallPill(
             // never compressed by the title. The HH:mm:ss start time is
             // surfaced inside the tool detail bottom sheet's bottom bar
             // instead of here — the inline pill list stays clean.
+            //
+            // Network-egress indicator: when the model runs on-device, a
+            // network tool is the moment data leaves the phone — surface it
+            // with a small globe. In cloud mode the model call itself leaves
+            // the phone, so the extra chrome would be noise.
+            val pillContext = LocalContext.current
+            val isLocalRoute = remember {
+                ai.unicto.unibot.local.LlamaModelManager.isLocalModeActive(pillContext)
+            }
+            if (toolUsesNetwork(block.toolName) && isLocalRoute) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.Language,
+                    contentDescription = "Uses network — data leaves this phone",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(12.dp),
+                )
+            }
             if (durationText != null) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

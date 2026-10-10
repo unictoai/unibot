@@ -313,21 +313,28 @@ internal fun ToolDetailSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Close button (iOS: xmark in circle)
+                // v1.5 accessibility: 48dp tap target around the 32dp disc.
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .background(ChatColors.secondaryBg, CircleShape)
-                        .border(0.5.dp, ChatColors.inputIconBorder, CircleShape)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .clickable { onDismiss() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = ChatColors.primaryText,
-                        modifier = Modifier.size(16.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(ChatColors.secondaryBg, CircleShape)
+                            .border(0.5.dp, ChatColors.inputIconBorder, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.common_close),
+                            tint = ChatColors.primaryText,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -617,12 +624,17 @@ internal fun ToolDetailSheet(
                         // T126-fix: ChatPalette.isDark follows the in-app theme
                         // override, isSystemInDarkTheme() doesn't.
                         val isDark = ChatColors.isDark
+                        // v1.5 accessibility: diff status colors from the
+                        // semantic UbColors roles (dark variants are the
+                        // elevated-contrast versions for dark backgrounds).
                         val cardBg = if (isDark) Color(0xFF1A1A1A) else Color(0xFFF0F0F0)
                         val cardBorder = if (isDark) Color(0xFF404040) else Color(0xFFD1D1D1)
-                        val redBg = if (isDark) Color(0xFF4D1414) else Color(0xFFFFE5E5)
-                        val redText = if (isDark) Color(0xFFFF6666) else Color(0xFFCC1A1A)
-                        val greenBg = if (isDark) Color(0xFF144D14) else Color(0xFFE5FFE5)
-                        val greenText = if (isDark) Color(0xFF66FF66) else Color(0xFF1A991A)
+                        val redBg = (if (isDark) UbColors.errorDark else UbColors.error)
+                            .copy(alpha = if (isDark) 0.22f else 0.08f)
+                        val redText = if (isDark) UbColors.errorDark else UbColors.error
+                        val greenBg = (if (isDark) UbColors.successDark else UbColors.success)
+                            .copy(alpha = if (isDark) 0.22f else 0.08f)
+                        val greenText = if (isDark) UbColors.successDark else UbColors.success
 
                         val bytes = (oldStr.toByteArray(Charsets.UTF_8).size +
                             newStr.toByteArray(Charsets.UTF_8).size)
@@ -693,7 +705,7 @@ internal fun ToolDetailSheet(
                                     Text(
                                         text = "($sizeLabel)",
                                         fontSize = 11.sp,
-                                        color = if (isLive) Color(0xCCFF9500) else ChatColors.tertiaryText,
+                                        color = if (isLive) UbColors.warning.copy(alpha = 0.8f) else ChatColors.tertiaryText,
                                     )
                                 }
                                 HorizontalDivider(thickness = 0.5.dp, color = cardBorder)
@@ -933,7 +945,7 @@ internal fun ToolDetailSheet(
                                     screenshotBitmap.height.coerceAtLeast(1)
                                 Image(
                                     bitmap = screenshotBitmap.asImageBitmap(),
-                                    contentDescription = "Browser screenshot",
+                                    contentDescription = stringResource(R.string.a11y_browser_screenshot),
                                     contentScale = ContentScale.Fit,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1251,14 +1263,15 @@ internal fun ToolDetailSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Back button (iOS: backward.end.fill)
+                    // v1.5 accessibility: no forced 32dp — the default
+                    // IconButton keeps the 48dp minimum touch target.
                     IconButton(
                         onClick = { if (currentIdx > 0) currentIdx-- },
                         enabled = currentIdx > 0,
-                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             Icons.Default.SkipPrevious,
-                            contentDescription = "Previous",
+                            contentDescription = stringResource(R.string.a11y_tool_pager_previous),
                             tint = if (currentIdx > 0) ChatColors.primaryText else ChatColors.disabledText,
                             modifier = Modifier.size(22.dp),
                         )
@@ -1297,14 +1310,15 @@ internal fun ToolDetailSheet(
                     Spacer(modifier = Modifier.weight(1f))
 
                     // Forward button (iOS: forward.end.fill)
+                    // v1.5 accessibility: no forced 32dp — the default
+                    // IconButton keeps the 48dp minimum touch target.
                     IconButton(
                         onClick = { if (currentIdx < toolBlocks.lastIndex) currentIdx++ },
                         enabled = currentIdx < toolBlocks.lastIndex,
-                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             Icons.Default.SkipNext,
-                            contentDescription = "Next",
+                            contentDescription = stringResource(R.string.a11y_tool_pager_next),
                             tint = if (currentIdx < toolBlocks.lastIndex) ChatColors.primaryText else ChatColors.disabledText,
                             modifier = Modifier.size(22.dp),
                         )

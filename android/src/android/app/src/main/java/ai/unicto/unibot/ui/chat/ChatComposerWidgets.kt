@@ -362,7 +362,7 @@ internal fun AttachmentChip(
         ) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "Remove",
+                contentDescription = stringResource(R.string.a11y_remove_attachment),
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.size(13.dp),
             )
@@ -564,7 +564,7 @@ private fun ToolPreviewThumbnail(
                                 text = "- $line",
                                 fontSize = 5.sp,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color(0xFFFF6B6B),
+                                color = UbColors.errorDark,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 lineHeight = 6.sp,
@@ -577,7 +577,7 @@ private fun ToolPreviewThumbnail(
                                 text = "+ $line",
                                 fontSize = 5.sp,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color(0xFF4ADE80),
+                                color = UbColors.successDark,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 lineHeight = 6.sp,
@@ -700,7 +700,7 @@ private fun ToolPreviewThumbnail(
                 if (bmp != null) {
                     Image(
                         bitmap = bmp.asImageBitmap(),
-                        contentDescription = "Read image",
+                        contentDescription = stringResource(R.string.a11y_read_image),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -744,7 +744,7 @@ private fun ToolPreviewThumbnail(
                 if (bitmap != null) {
                     Image(
                         bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Browser screenshot",
+                        contentDescription = stringResource(R.string.a11y_browser_screenshot),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -925,39 +925,51 @@ internal fun FloatingToolStatusBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    Icon(
-                        Icons.Default.ChevronLeft,
-                        contentDescription = "Previous",
-                        tint = if (currentIndex > 0) MaterialTheme.colorScheme.onSurface
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                    // v1.5 accessibility: 48dp tap target around the 18dp
+                    // glyph; label from strings.xml.
+                    Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(48.dp)
                             .clickable(
                                 enabled = currentIndex > 0,
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
                             ) { if (currentIndex > 0) currentIndex-- },
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.ChevronLeft,
+                            contentDescription = stringResource(R.string.a11y_tool_pager_previous),
+                            tint = if (currentIndex > 0) MaterialTheme.colorScheme.onSurface
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                     Text(
                         "${currentIndex + 1}/${toolBlocks.size}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = "Next",
-                        tint = if (currentIndex < toolBlocks.lastIndex) MaterialTheme.colorScheme.onSurface
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                    Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(48.dp)
                             .clickable(
                                 enabled = currentIndex < toolBlocks.lastIndex,
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
                             ) { if (currentIndex < toolBlocks.lastIndex) currentIndex++ },
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = stringResource(R.string.a11y_tool_pager_next),
+                            tint = if (currentIndex < toolBlocks.lastIndex) MaterialTheme.colorScheme.onSurface
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
             // T170: stop button removed from the floating bar — only the
