@@ -9,6 +9,7 @@ password-reset links before the model reads it (as Muse's email connector does).
 from __future__ import annotations
 
 import asyncio
+import base64
 import email
 import email.utils
 import imaplib
@@ -38,6 +39,40 @@ _SENSITIVE_LINK_RE = re.compile(
 def scrub_email_secrets(text: str) -> str:
     text = _OTP_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}[REDACTED-CODE]", text)
     return _SENSITIVE_LINK_RE.sub("[REDACTED-LINK]", text)
+
+
+def _check_imap_text(value: str, what: str) -> str:
+    """Reject control characters that would break out of an IMAP command.
+
+    imaplib joins command arguments with no CR/LF check, so a ``\\r\\n`` in the
+    folder or search text injects arbitrary IMAP commands (e.g. STORE +FLAGS
+    (\\Deleted) + EXPUNGE wipes the mailbox). Fail the call instead.
+    """
+    if any(c in value for c in "\r\n\x00"):
+        raise ValueError(f"{what} must not contain line breaks")
+    return value
+
+
+def _imap_mailbox(name: str) -> str:
+    """A folder name safe to hand to ``imap.select``: modified UTF-7 (the IMAP
+    encoding for non-ASCII mailbox names), quoted when it needs it."""
+    _check_imap_text(name, "folder")
+    if '"' in name:
+        raise ValueError('folder must not contain \'"\'')
+    out: list[str] = []
+    for ch in name:
+        o = ord(ch)
+        if 0x20 <= o <= 0x7E and ch != "&":
+            out.append(ch)
+        elif ch == "&":
+            out.append("&-")
+        else:
+            encoded = base64.b64encode(ch.encode("utf-16-be")).decode("ascii")
+            out.append("&" + encoded.rstrip("=").replace("/", ",") + "-")
+    text = "".join(out)
+    if any(c in text for c in " (){%*\"\\"):
+        text = f'"{text}"'
+    return text
 
 
 def _decode(value: str | None) -> str:
@@ -139,18 +174,25 @@ class ReadEmails(_EmailBase):
         limit = max(1, min(int(limit or 10), 30))
 
         def _fetch() -> list[str]:
-            with imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port) as imap:
+            with imaplib.IMAP4_SSL(
+                self.settings.imap_host, self.settings.imap_port, timeout=30
+            ) as imap:
                 imap.login(address, password)
-                status, _ = imap.select(folder or "INBOX", readonly=True)
+                status, _ = imap.select(_imap_mailbox(folder or "INBOX"), readonly=True)
                 if status != "OK":
                     raise RuntimeError(f"cannot open folder {folder}")
                 criteria: list[str] = []
                 if unread_only:
                     criteria.append("UNSEEN")
                 if search:
-                    safe = search.replace('"', "")
-                    criteria.extend(["TEXT", f'"{safe}"'])
-                status, data = imap.search(None, *(criteria or ["ALL"]))
+                    # the search goes as a literal with an explicit charset: non-ASCII
+                    # (日本語, 中文) works, and quotes/CRLF in it cannot break out of
+                    # the command
+                    _check_imap_text(search, "search")
+                    imap.literal = search.encode("utf-8")
+                    status, data = imap.search("UTF-8", "TEXT")
+                else:
+                    status, data = imap.search(None, *(criteria or ["ALL"]))
                 ids = data[0].split() if status == "OK" and data and data[0] else []
                 ids = ids[-limit:][::-1]
                 out: list[str] = []
@@ -160,20 +202,24 @@ class ReadEmails(_EmailBase):
                         continue
                     msg = email.message_from_bytes(parts[0][1])
                     body = _body_of(msg)
+                    subject = _decode(msg.get("Subject"))
                     if self.settings.scrub_secrets:
+                        # many services put the code in the subject
+                        # ("123456 is your verification code")
                         body = scrub_email_secrets(body)
+                        subject = scrub_email_secrets(subject)
                     if len(body) > 3000:
                         body = body[:3000] + "... [truncated]"
                     out.append(
                         f"--- #{mid.decode()} ---\n"
                         f"From: {_decode(msg.get('From'))}\nTo: {_decode(msg.get('To'))}\n"
-                        f"Date: {msg.get('Date', '')}\nSubject: {_decode(msg.get('Subject'))}\n\n{body}"
+                        f"Date: {msg.get('Date', '')}\nSubject: {subject}\n\n{body}"
                     )
                 return out
 
         try:
             messages = await asyncio.to_thread(_fetch)
-        except (imaplib.IMAP4.error, OSError, RuntimeError) as exc:
+        except (imaplib.IMAP4.error, OSError, RuntimeError, ValueError, UnicodeError) as exc:
             return ToolResult.fail(f"IMAP error: {exc}")
         if not messages:
             return ToolResult(output="No messages matched.")
