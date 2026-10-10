@@ -15,6 +15,17 @@ data class WhatsNewEntry(
 
 val WHATS_NEW: List<WhatsNewEntry> = listOf(
     WhatsNewEntry(
+        version = "v1.5.0",
+        date = "2026-10-10",
+        highlights = listOf(
+            "Ask my documents: semantically search your files, with answers citing the exact file and line.",
+            "Planner view: multi-step tasks as a live checklist — pause, edit a step, or skip ahead.",
+            "Voice conversation fixed: no more cut-off speech, full replies on multi-step turns, mic-permission retry works.",
+            "Swarm runs survive: leave the screen without losing progress, auto-retry on network blips, per-run token budget.",
+            "Routine failure alerts, run history, and 20+ security hardening fixes across app and server.",
+        ),
+    ),
+    WhatsNewEntry(
         version = "v1.4.0",
         date = "2026-10-06",
         highlights = listOf(
