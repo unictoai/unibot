@@ -86,7 +86,8 @@ internal fun toolIconFor(toolName: String) = when (toolName) {
     else -> Icons.Default.Build
 }
 
-// Helper: tool display name for "unibot is using X"internal fun toolDisplayName(toolName: String): String = when (toolName) {
+// Helper: tool display name for "unibot is using X"
+internal fun toolDisplayName(toolName: String): String = when (toolName) {
     "shell_execute" -> "terminal"
     "file_read" -> "file reader"
     "file_write" -> "file writer"
