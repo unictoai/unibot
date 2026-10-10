@@ -18,6 +18,7 @@ from unibot.goals import GoalStore
 from unibot.llm import BaseLLM, create_llm
 from unibot.logger import logger, setup_logging
 from unibot.memory import Embedder, MemoryIndex, MemoryStore
+from unibot.memory.documents import DocumentIndex, DocumentStore
 from unibot.phone import PhoneLink
 from unibot.phone.operator import COMPUTER, PhoneOperator
 from unibot.reminders import ReminderStore
@@ -31,6 +32,7 @@ from unibot.tools import (
     Browser,
     Calendar,
     Contacts,
+    DocumentsSearch,
     Files,
     Forget,
     Goals,
@@ -78,6 +80,9 @@ class UnibotApp:
 
         self.vault = CredentialVault(settings.vault_file, settings.vault_key_file)
         self.memory = MemoryStore(settings.memory_db) if settings.memory.enabled else None
+        # Ask-my-documents: chunked embedding index over the workspace's text files.
+        # SQLite next to memory.db; never leaves the device.
+        self.documents = DocumentStore(settings.data_dir / "documents.db")
         self.embedder: Embedder | None = None
         self.attach_embedder()
         self.goals = GoalStore(settings.goals_db)
@@ -153,6 +158,13 @@ class UnibotApp:
             self.memory.index = (
                 MemoryIndex(self.memory, self.embedder) if self.embedder is not None else None
             )
+        # The documents index shares the embedder; like memory, it is lazy —
+        # nothing is indexed until the first documents_search call.
+        self.documents.index = (
+            DocumentIndex(self.documents, self.embedder, self.settings.agent.workspace)
+            if self.embedder is not None
+            else None
+        )
         if old is not None:
             with contextlib.suppress(RuntimeError):
                 asyncio.get_running_loop().create_task(old.close())
@@ -240,6 +252,7 @@ class UnibotApp:
             tools.add(
                 Remember(store=self.memory), Recall(store=self.memory), Forget(store=self.memory)
             )
+        tools.add(DocumentsSearch(documents=self.documents, workspace=ws))
         if s.connectors.email.enabled:
             tools.add(
                 ReadEmails(settings=s.connectors.email, vault=self.vault),
