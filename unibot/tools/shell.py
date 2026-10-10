@@ -15,8 +15,10 @@ there, and there is no network unless the call was assessed as needing it.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import re
+import signal
 import sys
 import tempfile
 import uuid
@@ -96,7 +98,11 @@ _REACH: list[tuple[str, re.Pattern[str]]] = [
     (
         "processes",
         re.compile(
-            r"\b(import\s+(os|subprocess|pty|multiprocessing)"
+            # a bare `import os` is not flagged: it starts nothing by itself (only
+            # actual uses — os.system/popen/exec…/spawn…/fork — count). Flagging the
+            # import alone made nearly every script sensitive and trained users to
+            # click through the card.
+            r"\b(import\s+(subprocess|pty|multiprocessing)"
             r"|from\s+subprocess\b"
             r"|from\s+os\s+import\s+[^\n]*\b(system|popen|exec[lv]p?e?|spawn[lv]p?e?|fork|kill)\b"
             r"|os\.(system|popen|exec[lv]p?e?|spawn[lv]p?e?|fork|kill)|ctypes)\b"
@@ -175,6 +181,46 @@ def programs_of(command: str) -> str | None:
     return ",".join(sorted(names)) if names else None
 
 
+# Constructs that run programs ``programs_of`` cannot see: command and process
+# substitution, subshells/brace groups, and command constructors (eval, -exec,
+# xargs, nested shells). A standing grant is bound to the visible programs, so a
+# command containing any of these must never be covered by one — e.g. with an
+# "always allow git" grant, ``git status $(curl … | sh)`` would otherwise run the
+# hidden download with no approval.
+_GRANT_BLIND = re.compile(
+    r"`"  # `...` legacy command substitution
+    r"|\$\("  # $(...) / $((...))
+    r"|<\(|>\\("  # <(...) / >(...) process substitution
+    r"|\beval\b|\bexec\b|\bxargs\b"  # command constructors
+    r"|\b(sh|bash|dash|zsh)\s+-[a-z]*c\b"  # sh -c '...' / bash -c '...'
+    r"|\benv\s+-S\b"  # env -S splits its argument into a command line
+    r"|^\s*[({]"  # a leading subshell / brace group
+    r"|[;&|\n]\s*[({]"  # a subshell / brace group after a separator
+)
+
+
+def grants_blind(command: str) -> bool:
+    """Whether ``command`` may run programs ``programs_of`` does not list.
+
+    Standing approvals bind to the listed programs; when this is true the
+    assessment must not offer them (and must say why on the card).
+    """
+    return bool(_GRANT_BLIND.search(command))
+
+
+def _kill_tree(proc: "asyncio.subprocess.Process") -> None:
+    """SIGKILL the whole process group the command started (just the process on
+    Windows, which has no process groups)."""
+    try:
+        if sys.platform == "win32":
+            proc.kill()
+        else:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except (ProcessLookupError, PermissionError, OSError):
+        with contextlib.suppress(Exception):  # noqa: BLE001 - already gone is fine
+            proc.kill()
+
+
 async def _run(
     cmd: list[str] | str,
     cwd: Path,
@@ -204,6 +250,10 @@ async def _run(
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                # the command's children (background jobs, helpers it forks) belong
+                # to the run: on timeout or cancel the whole group is killed, so no
+                # orphan keeps the pipes open or survives the call
+                start_new_session=True,
             )
         else:
             proc = await asyncio.create_subprocess_exec(
@@ -212,13 +262,21 @@ async def _run(
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                start_new_session=True,
             )
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except TimeoutError:
-            proc.kill()
+            _kill_tree(proc)
             await proc.wait()
             return ToolResult.fail(f"timed out after {timeout:.0f}s")
+        except BaseException:
+            # the user pressed stop, or the run was cancelled: take the process
+            # group down too, then let the cancellation propagate
+            _kill_tree(proc)
+            with contextlib.suppress(Exception):  # noqa: BLE001 - never hide the cause
+                await proc.wait()
+            raise
     except FileNotFoundError as exc:
         return ToolResult.fail(str(exc))
     stdout = out.decode("utf-8", errors="replace")
@@ -291,14 +349,23 @@ class Shell(BaseTool):
         # cannot (see Sandbox.blocks_network), like no box, leaves every command able to
         boxed = self.sandbox is not None and self.sandbox.active and self.sandbox.blocks_network
         network = self._network(args)
+        blind = grants_blind(command)
+        card_warnings = [f"command looks dangerous: {w}" for w in warnings]
+        if blind:
+            # the listed programs do not describe the whole command (e.g. `git status
+            # $(curl … | sh)` lists only `git`): no standing approval may cover it
+            card_warnings.append(
+                "command uses substitution, a subshell or a command constructor the "
+                "approval cannot see through — standing approvals do not apply to it"
+            )
         return CallAssessment(
             risk=RiskLevel.SENSITIVE,
             egress=network if boxed else True,
             egress_target=None,
-            target=programs_of(command),
+            target=None if blind else programs_of(command),
             # in the box the card says when a command gets the network; unboxed, all do
             summary=f"shell{' (network)' if boxed and network else ''}: {command[:160]}",
-            warnings=[f"command looks dangerous: {w}" for w in warnings],
+            warnings=card_warnings,
         )
 
     async def execute(
@@ -350,10 +417,31 @@ class PythonExecute(BaseTool):
         """Plain computation and files in the workspace are moderate (auto-allowed in the
         default mode). Anything that reaches further — the network, other processes, the
         environment, paths outside the workspace, deletions — is sensitive and stops for
-        approval, with the reason on the card."""
+        approval, with the reason on the card.
+
+        The reach is a regex heuristic over the source: it misses
+        ``import json, urllib.request`` and relative traversals such as
+        ``open('../vault.key')``. So the heuristic only ever *raises* the risk, and only
+        inside a sandbox that can actually take the network away. Anywhere else the
+        script runs with the user's filesystem and network, and no pattern match can
+        prove it stays in the workspace — so it is always sensitive."""
         code = str(args.get("code", ""))
         first = code.strip().splitlines()[0][:100] if code.strip() else ""
         reach = code_reach(code, self.workspace)
+        boxed = (
+            self.sandbox is not None and self.sandbox.active and self.sandbox.blocks_network
+        )
+        if not boxed:
+            return CallAssessment(
+                risk=RiskLevel.SENSITIVE,
+                egress=True,
+                target=None,
+                summary=f"python_execute: {first} ({len(code)} chars)",
+                warnings=[
+                    "code runs without a network-blocking sandbox: it can reach the "
+                    "network and the filesystem, so it always stops for approval"
+                ],
+            )
         return CallAssessment(
             risk=RiskLevel.SENSITIVE if reach else RiskLevel.MODERATE,
             egress=bool(reach.get("network")) or bool(reach.get("processes")),
@@ -410,6 +498,7 @@ __all__ = [
     "Shell",
     "bridge_env",
     "code_reach",
+    "grants_blind",
     "needs_network",
     "programs_of",
     "scrubbed_env",

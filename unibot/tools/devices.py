@@ -30,7 +30,7 @@ from unibot.hub import actions
 from unibot.hub.client import HubError
 from unibot.schema import RiskLevel, ToolResult
 from unibot.tools.base import BaseTool, CallAssessment
-from unibot.tools.shell import _DANGEROUS, programs_of
+from unibot.tools.shell import _DANGEROUS, grants_blind, programs_of
 from unibot.ui import ApprovalRequest
 
 if TYPE_CHECKING:
@@ -141,13 +141,20 @@ class DeviceShell(_DeviceTool):
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         command = str(args.get("command") or "")
         warnings = [label for pattern, label in _DANGEROUS if pattern.search(command)]
+        blind = grants_blind(command)
+        card_warnings = [f"command looks dangerous: {w}" for w in warnings]
+        if blind:
+            card_warnings.append(
+                "command uses substitution, a subshell or a command constructor the "
+                "approval cannot see through — standing approvals do not apply to it"
+            )
         return CallAssessment(
             risk=RiskLevel.SENSITIVE,
             egress=True,
             egress_target=None,
-            target=programs_of(command),
+            target=None if blind else programs_of(command),
             summary=f"on {self._device_name(args)}: {command[:160]}",
-            warnings=[f"command looks dangerous: {w}" for w in warnings],
+            warnings=card_warnings,
         )
 
     async def _run(
