@@ -22,6 +22,7 @@ import ai.unicto.unibot.data.db.MessageEntity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.School
@@ -199,7 +200,10 @@ internal fun ChatViewModel.filteredSlashCommands(): List<SlashCommand> {
         .map { entry ->
             SlashCommand(
                 id = "custom:${entry.id}",
-                icon = Icons.Filled.Terminal,
+                // The built-in /docs ("Ask my documents") gets a book icon
+                // so it reads as official; user customs keep the terminal.
+                icon = if (entry.id == ai.unicto.unibot.slashcommands.DocsSlashCommand.BUILTIN_ID)
+                    Icons.Filled.Description else Icons.Filled.Terminal,
                 title = entry.trigger,
                 subtitle = entry.description.ifBlank { "Custom command" },
                 isCustom = true,

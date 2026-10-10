@@ -292,6 +292,12 @@ object Routes {
 /** Holder for file preview navigation state (not serializable via nav args). */
 internal object FilePreviewHolder {
     var currentItem: FileItem? = null
+    /**
+     * 1-based line the preview should scroll to on open (0 = top).
+     * Set by citation taps (ChatScreen); the FILE_PREVIEW dialog consumes
+     * it so a stale value never leaks into the next plain file open.
+     */
+    var currentInitialLine: Int = 0
     var fileBrowserViewModel: FileBrowserViewModel? = null
 }
 
@@ -1799,8 +1805,14 @@ fun AppNavigation(
             ),
         ) {
             val item = FilePreviewHolder.currentItem ?: return@dialog
+            // Consume the citation line (see FilePreviewHolder): plain file
+            // opens never set it, so without the reset a citation tap would
+            // scroll the NEXT preview too.
+            val initialLine = FilePreviewHolder.currentInitialLine
+                .also { FilePreviewHolder.currentInitialLine = 0 }
             FilePreviewScreen(
                 item = item,
+                initialLine = initialLine,
                 onBack = { navController.safePopBackStack() },
             )
         }
