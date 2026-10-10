@@ -364,6 +364,7 @@ private fun SwarmIdleView(
                         SwarmLaunchOptions(
                             requirePlanApproval = prefs.requirePlanApproval,
                             maxWorkers = prefs.maxWorkers,
+                            tokenBudget = prefs.tokenBudget,
                             attachments = attachments,
                         ),
                     )
@@ -436,6 +437,7 @@ private fun SwarmIdleView(
                             SwarmLaunchOptions(
                                 requirePlanApproval = prefs.requirePlanApproval,
                                 maxWorkers = prefs.maxWorkers,
+                                tokenBudget = prefs.tokenBudget,
                             ),
                         )
                     },
@@ -614,7 +616,8 @@ private fun SwarmActiveView(
             ) {
                 LifecyclePill(lifecycle = state.lifecycle)
                 Text(
-                    text = "${state.crew?.name ?: "Crew"} · ${formatTokens(state.totalTokens)} tokens",
+                    text = "${state.crew?.name ?: "Crew"} · " +
+                        formatBudgetIndicator(state.totalTokens, state.tokenBudget),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -628,10 +631,24 @@ private fun SwarmActiveView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // v1.5 bug 5 — a run that paused at its token budget lands at
+            // PAUSED with canResume and an error message. The active view
+            // previously swallowed state.error entirely; surface it here so
+            // the reason for the pause sits next to the Resume button below.
+            if (state.error != null && !state.awaitingApproval) {
+                ErrorCard(message = state.error!!)
+            }
             if (state.attachments.isNotEmpty()) {
+                // v1.5 bug 3: the parallel-worker label is hidden until a
+                // real batch executor exists — the engine is sequential.
+                val attachmentText = if (PARALLEL_WORKERS_ENABLED) {
+                    "${state.attachments.size} attached document(s) · " +
+                        "up to ${state.maxWorkers} parallel workers"
+                } else {
+                    "${state.attachments.size} attached document(s)"
+                }
                 Text(
-                    text = "${state.attachments.size} attached document(s) · " +
-                        "up to ${state.maxWorkers} parallel workers",
+                    text = attachmentText,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

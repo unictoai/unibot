@@ -130,7 +130,7 @@ object HelpArticles {
                 "provider charges for the tokens the crew uses — unibot adds " +
                 "nothing. Every step shows its token cost, and the mission totals " +
                 "it, so there are no surprises.\n\n" +
-                "Tip: cap parallel workers (1–8 per mission) to stay inside free-tier " +
+                "Tip: set a token budget per mission to stay inside free-tier " +
                 "rate limits.",
         ),
         HelpArticle(

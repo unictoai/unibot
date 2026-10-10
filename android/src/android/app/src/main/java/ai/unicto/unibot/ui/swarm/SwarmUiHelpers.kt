@@ -122,6 +122,15 @@ fun expectedOutput(role: String): String = when (role.lowercase()) {
     else -> "Agent output"
 }
 
+/**
+ * Parallel-worker UI kill-switch (v1.5 bug 3). The engine runs workers
+ * sequentially — [batchWorkerIndices] is never consumed — so the run
+ * settings and the run screen must not promise parallel workers.
+ * Hidden until a real batch executor exists — the engine is sequential.
+ * The `maxWorkers` field stays in state/prefs/options for future use.
+ */
+internal const val PARALLEL_WORKERS_ENABLED = false
+
 /** 850 -> "850", 1_250 -> "1.2k", 2_400_000 -> "2.4M". Locale-fixed: the
  * decimal separator is a literal '.', so a cost bill never changes with
  * the device locale. Truncates (never rounds up): 1_250 is "1.2k".
@@ -137,6 +146,18 @@ fun formatTokens(tokens: Int): String {
     if (m >= 10) return "${m}M"
     return "$m.${(tokens % 1_000_000) / 100_000}M"
 }
+
+/**
+ * Compact run-cost indicator (v1.5 bug 5): "12.4k / 150k tokens" against
+ * the run's budget, or just "12.4k tokens" when the budget is unlimited
+ * (0). Muted gray via the caller's color — plain text, no progress bar.
+ */
+fun formatBudgetIndicator(totalTokens: Int, tokenBudget: Int): String =
+    if (tokenBudget > 0) {
+        "${formatTokens(totalTokens)} / ${formatTokens(tokenBudget)} tokens"
+    } else {
+        "${formatTokens(totalTokens)} tokens"
+    }
 
 // ─── Agent codenames ─────────────────────────────────────────────────────────
 // Kimi-demo pattern: named agents ("Oven" the design agent, "Vince" the

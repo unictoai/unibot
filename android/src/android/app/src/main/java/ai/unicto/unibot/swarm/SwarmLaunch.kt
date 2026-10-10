@@ -26,6 +26,14 @@ data class SwarmLaunchOptions(
      * consume, so a mission's parallelism budget is explicit from day one.
      */
     val maxWorkers: Int = 1,
+    /**
+     * Token ceiling for the whole run (v1.5 bug 5). The engine pauses the
+     * mission for review when total tokens would pass this value; 0 =
+     * unlimited (never pauses on cost). Matches the [SwarmPrefs]
+     * default so a plain `SwarmLaunchOptions()` behaves like the stock
+     * composer.
+     */
+    val tokenBudget: Int = 150_000,
     /** Documents the workers should read as mission context (v1.4.0 item 10). */
     val attachments: List<SwarmAttachment> = emptyList(),
 )
