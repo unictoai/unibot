@@ -197,12 +197,14 @@ export function grantSubject(tool: string, target?: string | null): string {
   }
 }
 
-export function scopeLabel(scope: string, tool: string, target?: string | null): string {
+export function scopeLabel(scope: string, tool: string, target?: string | null, egressTarget?: string | null): string {
   switch (scope) {
     case "once":
       return t("Once");
     case "task":
-      return t("For this task");
+      // A "task" grant on a tool with no egress target (e.g. shell) widens to
+      // the whole tool for the rest of the run — the card must say so.
+      return egressTarget ? t("For this task") : t("For this task (entire tool)");
     case "session":
       return t("Until restart");
     case "24h":
@@ -326,7 +328,7 @@ export function ApprovalCard({
                         onClick={() => onDecide(true, scope)}
                         className="rounded-2xl bg-surface-2 px-3 py-2 text-left text-[13px] font-medium leading-snug"
                       >
-                        {scopeLabel(scope, event.tool, event.target)}
+                        {scopeLabel(scope, event.tool, event.target, event.egress_target)}
                       </button>
                     ))}
                   </div>
@@ -345,7 +347,7 @@ export function ApprovalCard({
           >
             {event.status === "approved" ? <Check size={15} /> : <X size={15} />}
             {event.status === "approved"
-              ? `${t("Approved")}${event.scope && event.scope !== "once" ? ` · ${scopeLabel(event.scope, event.tool, event.target).toLowerCase()}` : ""}`
+              ? `${t("Approved")}${event.scope && event.scope !== "once" ? ` · ${scopeLabel(event.scope, event.tool, event.target, event.egress_target).toLowerCase()}` : ""}`
               : event.status === "denied"
                 ? t("Denied")
                 : t("Expired without an answer")}

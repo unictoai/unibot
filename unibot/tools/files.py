@@ -179,10 +179,16 @@ class Files(BaseTool):
                 if not pattern:
                     return ToolResult.fail("`pattern` is required")
                 root = self._resolve(path)
+                ws = self.workspace.resolve()
                 matches = []
                 for p in root.rglob("*"):
                     if p.is_file() and fnmatch.fnmatch(p.relative_to(root).as_posix(), pattern):
-                        matches.append(p.relative_to(self.workspace.resolve()).as_posix())
+                        try:
+                            matches.append(p.relative_to(ws).as_posix())
+                        except ValueError:
+                            # Match under an extra root: report the absolute path,
+                            # which _resolve() accepts back (verified against extra_roots).
+                            matches.append(str(p.resolve()))
                     if len(matches) >= 200:
                         break
                 return ToolResult(output="\n".join(matches) or "(no matches)")

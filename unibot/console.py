@@ -115,9 +115,12 @@ class ConsoleUI:
             Panel(body, title="🛡  Sentinel approval required", border_style="yellow")
         )
         what = request.grant_key
+        # A "task" grant on a tool with no egress target (e.g. shell) widens to
+        # the whole tool for the rest of the run (see sentinel/gate.py) — say so.
+        task_note = "" if request.egress_target else " (entire tool)"
         labels = {
             "once": "[y]es, once",
-            "task": "this [t]ask",
+            "task": f"this [t]ask{task_note}",
             "session": "this [s]ession",
             "24h": "24 hours ([d])",
             "always": f"[a]lways for {what}",

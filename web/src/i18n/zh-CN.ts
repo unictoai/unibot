@@ -76,6 +76,7 @@ const zhCN: Record<string, string> = {
   "to {recipient}": "收件人：{recipient}",
   "Allow {subject} for longer…": "更长时间允许 {subject}…",
   "For this task": "本次任务",
+  "For this task (entire tool)": "本次任务（整个工具）",
   "Until restart": "直到重启",
   "For 24 hours": "24 小时内",
   "Always for {subject}": "始终允许 {subject}",

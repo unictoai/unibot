@@ -164,3 +164,15 @@ def test_phone_trace_commands(tmp_path, monkeypatch):
     assert runner.invoke(app, ["phone", "trace", "pt-1", "-o", str(page)]).exit_code == 0
     html = page.read_text(encoding="utf-8")
     assert "查明天的高铁" in html and "点击「上海」。" in html and "G1 06:30" in html
+
+
+def test_no_auth_refused_off_loopback():
+    from unibot.cli import _no_auth_host_error
+
+    assert _no_auth_host_error("0.0.0.0", "127.0.0.1") is not None
+    assert _no_auth_host_error("192.168.1.5", "127.0.0.1") is not None
+    assert _no_auth_host_error(None, "0.0.0.0") is not None  # configured host counts
+    assert _no_auth_host_error("127.0.0.1", "0.0.0.0") is None
+    assert _no_auth_host_error(None, "127.0.0.1") is None
+    assert _no_auth_host_error("localhost", "0.0.0.0") is None
+    assert "loopback" in (_no_auth_host_error("0.0.0.0", "127.0.0.1") or "")

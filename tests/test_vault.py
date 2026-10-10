@@ -47,3 +47,28 @@ def test_wrong_key_is_reported(tmp_path: Path):
     other = CredentialVault(tmp_path / "v.enc", tmp_path / "k2.key")
     with pytest.raises(VaultError):
         other.get("A")
+
+
+def test_redact_short_pin(tmp_path: Path):
+    """A 4-character PIN must not leak into tool output (was: skipped by the len>=6 cutoff)."""
+    vault = CredentialVault(tmp_path / "v.enc", tmp_path / "v.key")
+    vault.set("PIN", "1234")
+    assert vault.redact("your PIN is 1234, keep it safe") == "your PIN is [REDACTED:PIN], keep it safe"
+
+
+def test_redact_short_pin_preserves_innocent_substrings(tmp_path: Path):
+    """Word-boundary redaction must not mangle innocent text containing the PIN."""
+    vault = CredentialVault(tmp_path / "v.enc", tmp_path / "v.key")
+    vault.set("PIN", "1234")
+    assert vault.redact("order 12345 shipped") == "order 12345 shipped"
+    assert vault.redact("code 1234.") == "code [REDACTED:PIN]."
+
+
+def test_redact_longest_first(tmp_path: Path):
+    """Overlapping secrets apply longest-first so placeholders aren't corrupted."""
+    vault = CredentialVault(tmp_path / "v.enc", tmp_path / "v.key")
+    vault.set("SHORT", "1234")
+    vault.set("LONG", "123456")
+    out = vault.redact("codes 1234 and 123456")
+    assert out == "codes [REDACTED:SHORT] and [REDACTED:LONG]"
+    assert "1234" not in out.replace("[REDACTED:SHORT]", "").replace("[REDACTED:LONG]", "")

@@ -187,15 +187,23 @@ function createMainWindow(): BrowserWindow {
   win.on("resize", onBounds);
   win.on("move", onBounds);
   void win.loadURL(runtime.appUrl());
-  // links to elsewhere open in the system browser; the app stays on its own origin
+  // links to elsewhere open in the system browser; the app stays on its own origin.
+  // Only safe web schemes may leave the app — never file:, javascript:, data:, etc.
+  const openExternalSafe = (url: string) => {
+    try {
+      if (["http:", "https:", "mailto:"].includes(new URL(url).protocol)) void shell.openExternal(url);
+    } catch {
+      /* malformed URL: ignore */
+    }
+  };
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(runtime.base)) void shell.openExternal(url);
+    if (!url.startsWith(runtime.base)) openExternalSafe(url);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e, url) => {
     if (!url.startsWith(runtime.base)) {
       e.preventDefault();
-      void shell.openExternal(url);
+      openExternalSafe(url);
     }
   });
   win.on("close", (e) => {

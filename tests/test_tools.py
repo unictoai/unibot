@@ -217,3 +217,24 @@ async def test_cut_off_arguments_tell_the_model_what_happened(tmp_path: Path):
     long = await safe_execute(files, {"__raw__": '{"action": "write", "content": "' + "x" * 3000})
     assert "cut off in transit" in long.error and "append" in long.error
     assert len(long.error) < 600, "the broken payload itself is not echoed back in full"
+
+
+async def test_files_search_extra_root(tmp_path: Path):
+    """Search over an extra root must not crash (was: ValueError from relative_to(workspace))."""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    extra = tmp_path / "extra"
+    extra.mkdir()
+    (extra / "found.md").write_text("hello")
+    (ws / "local.md").write_text("world")
+    files = Files(workspace=ws, extra_roots=[extra])
+    r = await files.execute(action="search", path=str(extra), pattern="**/*.md")
+    assert r.ok, r.error
+    # extra-root matches come back as absolute paths, which _resolve() accepts back
+    assert str(extra / "found.md") in r.output
+    # and the agent can read them straight back
+    r2 = await files.execute(action="read", path=str(extra / "found.md"))
+    assert r2.ok and r2.output == "hello"
+    # workspace search keeps the old workspace-relative format
+    r3 = await files.execute(action="search", pattern="**/*.md")
+    assert "local.md" in r3.output

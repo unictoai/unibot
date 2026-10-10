@@ -91,6 +91,26 @@ AutoOpt = Annotated[
 ThinkOpt = Annotated[bool, typer.Option("--show-thinking", help="Show the model's reasoning")]
 
 
+_LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
+
+
+def _no_auth_host_error(host: str | None, configured_host: str) -> str | None:
+    """Refuse --no-auth on non-loopback interfaces.
+
+    An unauthenticated API also exposes process-spawning endpoints (e.g. MCP
+    server registration), so it must never be reachable off the machine.
+    Returns an error message, or None when the combination is safe.
+    """
+    effective = host or configured_host
+    if effective not in _LOOPBACK_HOSTS:
+        return (
+            "--no-auth is only allowed on loopback interfaces; refusing to expose "
+            f"an unauthenticated API on {effective!r} "
+            "(use --host 127.0.0.1 or drop --no-auth)."
+        )
+    return None
+
+
 def _settings(config: Path | None, auto: bool = False) -> Settings:
     try:
         settings = load_settings(config)
@@ -346,6 +366,10 @@ def serve(
     settings = _settings(config, auto=auto)
     if no_auth:
         settings.server.auth = False
+        err = _no_auth_host_error(host, settings.server.host)
+        if err:
+            console.print(f"[red]{err}[/red]")
+            raise typer.Exit(2)
     _banner(settings)
     try:
         from unibot.server import serve as _serve

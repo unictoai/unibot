@@ -132,12 +132,32 @@ class CredentialVault:
         return value
 
     def redact(self, text: str) -> str:
-        """Replace any stored secret value appearing in ``text``."""
+        """Replace any stored secret value appearing in ``text``.
+
+        Secrets are applied longest-first so a short secret can't corrupt a
+        longer one's placeholder. Values of 6+ characters are replaced
+        wherever they occur; 4–5 character values (PINs) only on word
+        boundaries, so an innocent "12345" isn't mangled by a "1234" PIN.
+        Shorter values are skipped — redacting 1–3 characters would destroy
+        ordinary text, so prefer a longer secret.
+        """
         if not text:
             return text
-        for name, secret in self._load().items():
-            if len(secret) >= 6 and secret in text:
-                text = text.replace(secret, f"[REDACTED:{name}]")
+        secrets = sorted(
+            ((name, s) for name, s in self._load().items() if s),
+            key=lambda kv: len(kv[1]),
+            reverse=True,
+        )
+        for name, secret in secrets:
+            if len(secret) >= 6:
+                if secret in text:
+                    text = text.replace(secret, f"[REDACTED:{name}]")
+            elif len(secret) >= 4:
+                text = re.sub(
+                    r"(?<!\w)" + re.escape(secret) + r"(?!\w)",
+                    f"[REDACTED:{name}]",
+                    text,
+                )
         return text
 
 

@@ -1538,7 +1538,14 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         headers = (
             {"Content-Disposition": f'attachment; filename="{target.name}"'} if download else {}
         )
-        if media.startswith("text/html") or media == "image/svg+xml":
+        if media.startswith("text/html") or media in (
+            "image/svg+xml",
+            # Python's mimetypes maps .xhtml/.xht/.xml to these non-HTML types;
+            # they execute script same-origin, so they need the sandbox too.
+            "application/xhtml+xml",
+            "application/xml",
+            "text/xml",
+        ):
             # Files the agent wrote never run with the app's origin: no token, no API.
             headers["Content-Security-Policy"] = "sandbox allow-scripts allow-popups"
         return FileResponse(target, media_type=media, headers=headers)
