@@ -1045,7 +1045,12 @@ class OpenAIProvider private constructor(
                     )
                     continue
                 }
-                android.util.Log.d("ToolChain[Provider]", "RAW SSE: $payload")
+                // [Security] Raw streamed events (conversation text, tool
+                // args that may carry secrets) must not hit logcat in
+                // release builds — readable via adb / OEM collectors.
+                if (ai.unicto.unibot.BuildConfig.DEBUG) {
+                    android.util.Log.d("ToolChain[Provider]", "RAW SSE: $payload")
+                }
                 sseEventCount++
 
                 // T321: per-event delta-field summary. Only counts/lengths,

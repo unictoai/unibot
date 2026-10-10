@@ -2668,6 +2668,15 @@ fun ChatScreen(
             htmlPreviewFullscreen = false
         }
     }
+    // [Leak] The HTML preview holder owns a WebView (renderer = tens of
+    // MB). It was only destroyed on sheet dismiss — if the chat left
+    // composition first, the renderer leaked. Tear it down here too.
+    DisposableEffect(Unit) {
+        onDispose {
+            htmlPreviewHolder?.destroy()
+            htmlPreviewHolder = null
+        }
+    }
     // Pinned-shortcut deep link: unibot://session/<id>/<resource-path>
     // consumes here on first composition iff this screen is showing the
     // matching session; opens fullscreen HTML preview backed by a fresh

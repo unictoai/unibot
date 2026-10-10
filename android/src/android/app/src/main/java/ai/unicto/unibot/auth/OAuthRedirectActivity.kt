@@ -24,7 +24,10 @@ class OAuthRedirectActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val uri = intent?.data
-        Log.i(TAG, "OAuth redirect received: $uri")
+        // [Security] Never log the full redirect URI — it carries the
+        // single-use auth code and state, which would land in logcat, the
+        // in-app log export and bug reports.
+        Log.i(TAG, "OAuth redirect received: path=${uri?.path}")
 
         if (uri != null) {
             val code = uri.getQueryParameter("code")
@@ -37,7 +40,7 @@ class OAuthRedirectActivity : Activity() {
                     try {
                         val port = uri.port.takeIf { it > 0 } ?: 54545
                         val localUrl = "http://127.0.0.1:$port${uri.path}?${uri.query}"
-                        Log.d(TAG, "Forwarding to local server: $localUrl")
+                        Log.d(TAG, "Forwarding to local server: port=$port path=${uri.path}")
                         val conn = java.net.URL(localUrl).openConnection() as java.net.HttpURLConnection
                         conn.connectTimeout = 5000
                         conn.readTimeout = 5000

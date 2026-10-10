@@ -1,12 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- unibot: what a device backup (Android 11 and earlier: full-backup-content) may copy.
-     Encrypted stores cannot be read on another device anyway (the master key stays in this
-     phone's keystore) and the Reach pairing tokens and API keys must not leave it at all. -->
+<!-- unibot: what a device backup may copy.
+     Secrets stay on this phone: every EncryptedSharedPreferences store
+     (encrypted stores are unreadable on another device anyway — the
+     master key stays in this phone's keystore — and restoring them is
+     what triggers the keystore-recovery cascade), the legacy
+     `*_plain_fallback` files, the MasterKey keyset, the P4 pairing token,
+     and the sandbox/session/update/log trees (SSH keys, shell history,
+     multi-hundred-MB rootfs that would also blow the 25 MB Auto Backup
+     quota). Chat databases (minis.db / provider.db) ARE backed up
+     deliberately: they hold no keystore-bound secrets and restore
+     cleanly. Generated from the EncryptedPrefsFactory call-site list;
+     keep in sync when adding a store. -->
 <full-backup-content>
-    <exclude domain="sharedpref" path="unibot_secure.xml" />
-    <exclude domain="sharedpref" path="env_var_values.xml" />
     <exclude domain="sharedpref" path="oauth_prefs.xml" />
+    <exclude domain="sharedpref" path="oauth_prefs_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="provider_secrets.xml" />
+    <exclude domain="sharedpref" path="provider_secrets_plain_fallback.xml" />
     <exclude domain="sharedpref" path="backup_rclone_secrets.xml" />
+    <exclude domain="sharedpref" path="backup_rclone_secrets_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="currency_connector.xml" />
+    <exclude domain="sharedpref" path="currency_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="dictionary_connector.xml" />
+    <exclude domain="sharedpref" path="dictionary_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="hn_connector.xml" />
+    <exclude domain="sharedpref" path="hn_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="homeassistant_connector.xml" />
+    <exclude domain="sharedpref" path="homeassistant_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="imap_smtp_connector.xml" />
+    <exclude domain="sharedpref" path="imap_smtp_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="jellyfin_connector.xml" />
+    <exclude domain="sharedpref" path="jellyfin_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="matrix_connector.xml" />
+    <exclude domain="sharedpref" path="matrix_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="nextcloud_connector.xml" />
+    <exclude domain="sharedpref" path="nextcloud_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="podcasts_connector.xml" />
+    <exclude domain="sharedpref" path="podcasts_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="qr_connector.xml" />
+    <exclude domain="sharedpref" path="qr_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="reddit_connector.xml" />
+    <exclude domain="sharedpref" path="reddit_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="rss_connector.xml" />
+    <exclude domain="sharedpref" path="rss_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="so_connector.xml" />
+    <exclude domain="sharedpref" path="so_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="steam_connector_extra.xml" />
+    <exclude domain="sharedpref" path="steam_connector_extra_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="translate_connector.xml" />
+    <exclude domain="sharedpref" path="translate_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="weather_connector.xml" />
+    <exclude domain="sharedpref" path="weather_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="whatsapp_connector.xml" />
+    <exclude domain="sharedpref" path="whatsapp_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="wiki_connector.xml" />
+    <exclude domain="sharedpref" path="wiki_connector_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="dropbox_connector_dropbox.xml" />
+    <exclude domain="sharedpref" path="dropbox_connector_dropbox_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="gmail_label_rules.xml" />
+    <exclude domain="sharedpref" path="gmail_label_rules_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="gmail_connector_secrets.xml" />
+    <exclude domain="sharedpref" path="gmail_connector_secrets_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="google_connector_calendar.xml" />
+    <exclude domain="sharedpref" path="google_connector_calendar_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="google_connector_drive.xml" />
+    <exclude domain="sharedpref" path="google_connector_drive_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="google_connector_gtasks.xml" />
+    <exclude domain="sharedpref" path="google_connector_gtasks_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="google_connector_photos.xml" />
+    <exclude domain="sharedpref" path="google_connector_photos_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="google_connector_youtube.xml" />
+    <exclude domain="sharedpref" path="google_connector_youtube_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="onedrive_connector_onedrive.xml" />
+    <exclude domain="sharedpref" path="onedrive_connector_onedrive_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="outlook_azure_config.xml" />
+    <exclude domain="sharedpref" path="outlook_azure_config_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="outlook_connector_outlook.xml" />
+    <exclude domain="sharedpref" path="outlook_connector_outlook_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="spotify_connector_spotify.xml" />
+    <exclude domain="sharedpref" path="spotify_connector_spotify_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_discord.xml" />
+    <exclude domain="sharedpref" path="token_connector_discord_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_github.xml" />
+    <exclude domain="sharedpref" path="token_connector_github_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_gitlab.xml" />
+    <exclude domain="sharedpref" path="token_connector_gitlab_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_gnews.xml" />
+    <exclude domain="sharedpref" path="token_connector_gnews_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_notion.xml" />
+    <exclude domain="sharedpref" path="token_connector_notion_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_slack.xml" />
+    <exclude domain="sharedpref" path="token_connector_slack_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_steam.xml" />
+    <exclude domain="sharedpref" path="token_connector_steam_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_telegram.xml" />
+    <exclude domain="sharedpref" path="token_connector_telegram_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_tmdb.xml" />
+    <exclude domain="sharedpref" path="token_connector_tmdb_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_todoist.xml" />
+    <exclude domain="sharedpref" path="token_connector_todoist_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="token_connector_trello.xml" />
+    <exclude domain="sharedpref" path="token_connector_trello_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="mcp_oauth_secrets.xml" />
+    <exclude domain="sharedpref" path="mcp_oauth_secrets_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="privacy_prefs.xml" />
+    <exclude domain="sharedpref" path="privacy_prefs_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="privacy_weekly.xml" />
+    <exclude domain="sharedpref" path="privacy_weekly_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="export_password_store.xml" />
+    <exclude domain="sharedpref" path="export_password_store_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="v12_export_password.xml" />
+    <exclude domain="sharedpref" path="v12_export_password_plain_fallback.xml" />
     <exclude domain="sharedpref" path="unibot_device_identity.xml" />
-    <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs__.xml" />
+    <exclude domain="sharedpref" path="unibot_device_identity_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="env_var_values.xml" />
+    <exclude domain="sharedpref" path="env_var_values_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="fact_memories.xml" />
+    <exclude domain="sharedpref" path="fact_memories_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="p4_pairing_secrets.xml" />
+    <exclude domain="sharedpref" path="p4_pairing_secrets_plain_fallback.xml" />
+    <exclude domain="sharedpref" path="_androidx_security_master_key_.xml" />
+    <exclude domain="sharedpref" path="p4_pairing.xml" />
+    <exclude domain="file" path="alpine-rootfs/" />
+    <exclude domain="file" path="minis-sessions/" />
+    <exclude domain="file" path="updates/" />
+    <exclude domain="file" path="logs/" />
 </full-backup-content>

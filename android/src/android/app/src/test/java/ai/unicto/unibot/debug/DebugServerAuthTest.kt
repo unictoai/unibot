@@ -5,18 +5,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [T-android-debugserver-auth] The auth gate contract: loopback (adb
- * forward) is exempt; any non-loopback client must present the exact
- * per-install token.
+ * [T-android-debugserver-auth] The auth gate contract: EVERY client —
+ * loopback included — must present the exact per-install token. The old
+ * loopback exemption was removed: any web page on the device could
+ * otherwise read provider API keys via debug.llmRequests.
  */
 class DebugServerAuthTest {
 
     private val token = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4"
 
     @Test
-    fun `loopback is exempt regardless of token`() {
-        assertTrue(DebugServer.isAuthorized(isLoopback = true, providedToken = null, expectedToken = token))
-        assertTrue(DebugServer.isAuthorized(isLoopback = true, providedToken = "wrong", expectedToken = token))
+    fun `loopback without token is rejected`() {
+        assertFalse(DebugServer.isAuthorized(isLoopback = true, providedToken = null, expectedToken = token))
+        assertFalse(DebugServer.isAuthorized(isLoopback = true, providedToken = "", expectedToken = token))
+    }
+
+    @Test
+    fun `loopback with wrong token is rejected`() {
+        assertFalse(DebugServer.isAuthorized(isLoopback = true, providedToken = "wrong", expectedToken = token))
+    }
+
+    @Test
+    fun `loopback with correct token is accepted`() {
+        assertTrue(DebugServer.isAuthorized(isLoopback = true, providedToken = token, expectedToken = token))
     }
 
     @Test
@@ -44,9 +55,10 @@ class DebugServerAuthTest {
     }
 
     @Test
-    fun `empty expected token never authorizes remote`() {
+    fun `empty expected token never authorizes`() {
         // Defensive: a failed token write must not silently open the gate.
         assertFalse(DebugServer.isAuthorized(isLoopback = false, providedToken = "", expectedToken = ""))
         assertFalse(DebugServer.isAuthorized(isLoopback = false, providedToken = "x", expectedToken = ""))
+        assertFalse(DebugServer.isAuthorized(isLoopback = true, providedToken = "x", expectedToken = ""))
     }
 }

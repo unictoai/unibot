@@ -150,6 +150,7 @@
     <string name="ub_risk_channel_name">Approvals</string>
     <string name="ub_risk_channel_description">When the agent needs your yes while the app is in the background.</string>
     <string name="ub_risk_allow_once">Allow once</string>
+    <string name="ub_risk_public_text">unibot needs your approval — open the app to review.</string>
     <string name="ub_risk_allow_session">Allow for this chat</string>
     <string name="ub_risk_allow_always">Always allow for %1$s</string>
     <string name="ub_risk_deny">Deny</string>

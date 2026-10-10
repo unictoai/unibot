@@ -82,11 +82,26 @@ class UnibotAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        // [Security] Only record while a watcher is registered (event /
+        // notify watch add a listener for the watch duration). Recording
+        // continuously captured OTPs, chat text and banking screens with
+        // nobody listening.
+        if (eventListeners.isEmpty()) return
+        // [Security] Never retain password-field text.
+        val isPassword = try {
+            event.source?.let { src ->
+                val p = src.isPassword
+                src.recycle()
+                p
+            } ?: false
+        } catch (_: Throwable) {
+            false
+        }
         val rec = RecordedEvent(
             type = AccessibilityEvent.eventTypeToString(event.eventType),
             packageName = event.packageName?.toString(),
             className = event.className?.toString(),
-            text = event.text?.joinToString(" ") { it?.toString() ?: "" }?.takeIf { it.isNotBlank() },
+            text = if (isPassword) null else event.text?.joinToString(" ") { it?.toString() ?: "" }?.takeIf { it.isNotBlank() },
             timestamp = System.currentTimeMillis(),
         )
         eventRing.offer(rec)
@@ -117,6 +132,9 @@ class UnibotAccessibilityService : AccessibilityService() {
 
     fun removeEventListener(listener: (RecordedEvent) -> Unit) {
         eventListeners.remove(listener)
+        // [Security] The watch is over — drop whatever was recorded so
+        // on-screen text doesn't linger in memory indefinitely.
+        if (eventListeners.isEmpty()) eventRing.clear()
     }
 
     fun rootNodes(): List<AccessibilityNodeInfo> {

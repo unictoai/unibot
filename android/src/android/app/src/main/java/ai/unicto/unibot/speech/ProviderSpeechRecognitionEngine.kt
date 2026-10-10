@@ -206,12 +206,29 @@ class ProviderSpeechRecognitionEngine(private val appContext: Context) : SpeechR
             val pcm = ByteArrayOutputStream()
             val buf = ByteArray(minBuf)
             val maxBytes = SAMPLE_RATE * 2 * MAX_RECORD_SECONDS
+            // Wall-clock cap: the byte cap below assumes read() actually
+            // returns audio; an erroring mic must not spin forever.
+            val deadlineMs = android.os.SystemClock.elapsedRealtime() + (MAX_RECORD_SECONDS + 5) * 1000L
             try {
                 recorder.startRecording()
                 listener.onReadyForSpeech()
-                while (recording.get() && pcm.size() < maxBytes) {
+                while (recording.get() && pcm.size() < maxBytes &&
+                    android.os.SystemClock.elapsedRealtime() < deadlineMs
+                ) {
                     val n = recorder.read(buf, 0, buf.size)
-                    if (n <= 0) continue
+                    if (n < 0) {
+                        // [Security] A dead/taken mic returns an error code
+                        // on EVERY read; the old `continue` spun one core at
+                        // 100% and kept "listening" forever. Stop and report.
+                        android.util.Log.w(TAG, "AudioRecord.read error $n; stopping capture")
+                        recording.set(false)
+                        listener.onError(RecognitionError.AUDIO_ERROR, "AudioRecord.read=$n")
+                        break
+                    }
+                    if (n == 0) {
+                        try { Thread.sleep(10) } catch (_: InterruptedException) { break }
+                        continue
+                    }
                     pcm.write(buf, 0, n)
                     listener.onRmsDb(rmsDb(buf, n))
                 }

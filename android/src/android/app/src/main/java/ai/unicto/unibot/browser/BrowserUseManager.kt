@@ -103,7 +103,7 @@ class BrowserUseManager(
                 useWideViewPort = true
                 builtInZoomControls = false
                 setSupportMultipleWindows(true)
-                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                 val ua = customUA ?: profile.userAgentString
                 if (ua != null) userAgentString = ua
             }
@@ -184,15 +184,43 @@ class BrowserUseManager(
     /** Deferred used by executeJS to receive results from async scripts via JS bridge. */
     private var asyncJsDeferred: CompletableDeferred<String>? = null
 
+    /**
+     * [Security] One-shot nonces authorizing `__unibot__` bridge calls from
+     * OUR injected scripts. The bridge is reachable from every page and
+     * frame (including third-party iframes/ads), so resolve/reject/
+     * saveBlobDownload ignore calls that don't present a nonce minted for
+     * the in-flight call. This stops a visited page from forging probe
+     * results or planting files via the bridge.
+     */
+    private val bridgeNonces = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    private fun mintBridgeNonce(): String {
+        val n = java.util.UUID.randomUUID().toString()
+        bridgeNonces.add(n)
+        return n
+    }
+
+    /** True iff [nonce] was minted by us; consumes it (one-shot). */
+    private fun consumeBridgeNonce(nonce: String?): Boolean =
+        nonce != null && bridgeNonces.remove(nonce)
+
     /** JavaScript interface for async script result callbacks. */
     private val jsBridge = object {
         @JavascriptInterface
-        fun resolve(result: String) {
+        fun resolve(nonce: String, result: String) {
+            if (!consumeBridgeNonce(nonce)) {
+                Log.w(TAG, "bridge: resolve with unknown nonce — ignored")
+                return
+            }
             asyncJsDeferred?.complete(result)
         }
 
         @JavascriptInterface
-        fun reject(error: String) {
+        fun reject(nonce: String, error: String) {
+            if (!consumeBridgeNonce(nonce)) {
+                Log.w(TAG, "bridge: reject with unknown nonce — ignored")
+                return
+            }
             asyncJsDeferred?.complete("{\"error\":${JSONObject.quote(error)}}")
         }
 
@@ -202,7 +230,11 @@ class BrowserUseManager(
          * I/O downstream is fine, but don't touch the WebView from here.
          */
         @JavascriptInterface
-        fun saveBlobDownload(dataUrl: String, filename: String) {
+        fun saveBlobDownload(nonce: String, dataUrl: String, filename: String) {
+            if (!consumeBridgeNonce(nonce)) {
+                Log.w(TAG, "bridge: saveBlobDownload with unknown nonce — ignored")
+                return
+            }
             val comma = dataUrl.indexOf(',')
             if (comma < 0 || !dataUrl.startsWith("data:")) {
                 Log.w(TAG, "blob download: malformed data URL (len=${dataUrl.length})")
@@ -249,7 +281,8 @@ class BrowserUseManager(
                 // (java.net.URL can't fetch them in the pool's downloader).
                 url.startsWith("data:") -> {
                     val name = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype)
-                    jsBridge.saveBlobDownload(url, name)
+                    // Direct Kotlin call (not from page JS) — mint the nonce it must present.
+                    jsBridge.saveBlobDownload(mintBridgeNonce(), url, name)
                 }
                 else -> onDownloadStart?.invoke(url, userAgent, contentDisposition, mimetype, contentLength)
             }
@@ -281,6 +314,9 @@ class BrowserUseManager(
      */
     private fun fetchBlobDownload(blobUrl: String, contentDisposition: String?, mimeType: String?) {
         val guessedName = android.webkit.URLUtil.guessFileName(blobUrl, contentDisposition, mimeType)
+        // [Security] One-shot bridge nonce so page JS can't plant files
+        // via saveBlobDownload (see bridgeNonces).
+        val nonceLit = JSONObject.quote(mintBridgeNonce())
         val js = """
             (function() {
                 fetch(${JSONObject.quote(blobUrl)})
@@ -288,7 +324,7 @@ class BrowserUseManager(
                     .then(function(blob) {
                         var reader = new FileReader();
                         reader.onloadend = function() {
-                            __unibot__.saveBlobDownload(reader.result, ${JSONObject.quote(guessedName)});
+                            __unibot__.saveBlobDownload($nonceLit, reader.result, ${JSONObject.quote(guessedName)});
                         };
                         reader.onerror = function() { __unibot__.blobDownloadError('FileReader error'); };
                         reader.readAsDataURL(blob);
@@ -1108,20 +1144,24 @@ class BrowserUseManager(
         return try {
             val deferred = CompletableDeferred<String>()
             asyncJsDeferred = deferred
+            // [Security] The bridge call carries a one-shot nonce so page
+            // JS can't forge this probe's result (see bridgeNonces).
+            val bridgeNonce = mintBridgeNonce()
+            val nonceLit = JSONObject.quote(bridgeNonce)
             val wrapped = """
                 (async function(){
                     try {
                         var __r__ = (async function(){ $script })();
                         var __v__ = await __r__;
                         if (__v__ === undefined || __v__ === null) {
-                            __unibot__.resolve(String(__v__));
+                            __unibot__.resolve($nonceLit, String(__v__));
                         } else if (typeof __v__ === 'object') {
-                            __unibot__.resolve(JSON.stringify(__v__));
+                            __unibot__.resolve($nonceLit, JSON.stringify(__v__));
                         } else {
-                            __unibot__.resolve(String(__v__));
+                            __unibot__.resolve($nonceLit, String(__v__));
                         }
                     } catch(e) {
-                        __unibot__.reject(e.message || String(e));
+                        __unibot__.reject($nonceLit, e.message || String(e));
                     }
                 })();
             """.trimIndent()
@@ -1131,6 +1171,7 @@ class BrowserUseManager(
             val raw = withTimeoutOrNull(30_000L) { deferred.await() }
                 ?: run {
                     asyncJsDeferred = null
+                    bridgeNonces.remove(bridgeNonce)
                     return BrowserActionResult.error("JavaScript execution timed out (30s)")
                 }
             asyncJsDeferred = null
@@ -1244,19 +1285,22 @@ class BrowserUseManager(
     private suspend fun awaitPromiseJs(js: String): String? {
         val deferred = CompletableDeferred<String>()
         asyncJsDeferred = deferred
+        // [Security] One-shot bridge nonce (see bridgeNonces).
+        val bridgeNonce = mintBridgeNonce()
+        val nonceLit = JSONObject.quote(bridgeNonce)
         val wrapped = """
             (async function(){
                 try {
                     var __v__ = await ($js);
                     if (__v__ === undefined || __v__ === null) {
-                        __unibot__.resolve('null');
+                        __unibot__.resolve($nonceLit, 'null');
                     } else if (typeof __v__ === 'object') {
-                        __unibot__.resolve(JSON.stringify(__v__));
+                        __unibot__.resolve($nonceLit, JSON.stringify(__v__));
                     } else {
-                        __unibot__.resolve(String(__v__));
+                        __unibot__.resolve($nonceLit, String(__v__));
                     }
                 } catch(e) {
-                    __unibot__.reject(e && e.message ? e.message : String(e));
+                    __unibot__.reject($nonceLit, e && e.message ? e.message : String(e));
                 }
             })();
         """.trimIndent()
@@ -1265,6 +1309,7 @@ class BrowserUseManager(
         }
         val raw = withTimeoutOrNull(60_000L) { deferred.await() }
         asyncJsDeferred = null
+        bridgeNonces.remove(bridgeNonce)
         return raw
     }
 

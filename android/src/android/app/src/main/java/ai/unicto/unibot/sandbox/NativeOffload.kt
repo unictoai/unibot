@@ -217,6 +217,17 @@ object NativeOffloadServer {
     }
 
     private fun handleClient(client: LocalSocket) {
+        // [Security] The abstract-namespace socket has no filesystem
+        // permissions, so any process on the device could connect. Only
+        // accept our own UID — the PRoot sandbox runs under it. (On
+        // Android 8.x SELinux app isolation is weaker, which is exactly
+        // why this check matters.)
+        val peerUid = runCatching { client.peerCredentials.uid }.getOrNull()
+        if (peerUid != android.os.Process.myUid()) {
+            Log.w(TAG, "rejecting offload client with uid=$peerUid")
+            return
+        }
+
         val input = DataInputStream(client.inputStream)
         val output = DataOutputStream(client.outputStream)
 

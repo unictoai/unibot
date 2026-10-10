@@ -24,6 +24,14 @@ class QuickReplyReceiver : BroadcastReceiver() {
             ?: intent.data?.pathSegments?.getOrNull(0)
             ?: return
 
+        // [Security] A reply is only meaningful for a session that has an
+        // outstanding notification. Never accept the synthetic `__new__*`
+        // draft ids — those would stash attacker text into a fresh chat.
+        if (sessionId.startsWith("__new__")) {
+            AppLogger.warning(TAG, "quick reply for synthetic session id rejected")
+            return
+        }
+
         val results = runCatching { RemoteInput.getResultsFromIntent(intent) }.getOrNull()
         val text = results?.getCharSequence(QuickReplyHandler.KEY_TEXT_REPLY)?.toString()?.trim().orEmpty()
 

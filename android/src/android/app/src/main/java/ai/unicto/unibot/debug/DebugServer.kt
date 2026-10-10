@@ -27,20 +27,21 @@ class DebugServer(
 
         /**
          * [T-android-debugserver-auth] Remote-connection auth decision, kept
-         * pure for unit testing. Loopback connections (adb forward — the
-         * developer's own machine over USB) stay token-free so the local
-         * tooling keeps working unchanged; any NON-loopback (LAN) connection
-         * must present the device token. Rationale: Android debug builds are
-         * never distributed (release channel ships assembleRelease without
-         * this server), but the dev workflow leaves the device reachable on
-         * the LAN for remote-worker e2e — an unauthenticated 0.0.0.0 RPC
-         * surface there can read logs/files and burn API quota. The iOS
+         * pure for unit testing. EVERY client — loopback included — must
+         * present the per-install token. (Loopback used to be exempt for
+         * adb-forward tooling, but any web page on the device could then
+         * read provider API keys via debug.llmRequests; the dev can read
+         * the token with `adb shell run-as ai.unicto.unibot cat
+         * files/debug_server_token` or from the startup logcat line, so
+         * nothing in the workflow actually needs the exemption.) The iOS
          * protocol-v1 encrypted envelope (358e3ded) is deliberately NOT
          * ported: with no distribution surface the token gate is the
          * proportionate hardening (evaluated in the A8 batch report).
          */
         fun isAuthorized(isLoopback: Boolean, providedToken: String?, expectedToken: String): Boolean {
-            if (isLoopback) return true
+            // [Security] isLoopback is intentionally ignored: the token is
+            // required on loopback too (see above). Parameter kept so
+            // callers/tests don't churn.
             if (expectedToken.isEmpty()) return false
             val provided = providedToken ?: return false
             if (provided.length != expectedToken.length) return false
@@ -343,9 +344,9 @@ class DebugServer(
         writer.print("Content-Type: $contentType\r\n")
         writer.print("Content-Length: ${bytes.size}\r\n")
         writer.print("Connection: close\r\n")
-        writer.print("Access-Control-Allow-Origin: *\r\n")
-        writer.print("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-        writer.print("Access-Control-Allow-Headers: Content-Type, X-Unibot-Token, Authorization\r\n")
+        // [Security] No Access-Control-Allow-Origin: a wildcard ACAO let
+        // any web page on the device read RPC responses (including
+        // debug.llmRequests with provider API keys) via fetch().
         writer.print("\r\n")
         writer.print(body)
         writer.flush()
@@ -383,11 +384,11 @@ class DebugServer(
     }
 
     private fun sendCorsPreflightResponse(writer: PrintWriter) {
+        // [Security] Deliberately no Access-Control-Allow-Origin here: a
+        // preflight that succeeds would let a web page read RPC responses
+        // cross-origin. Browser CORS fetches to the debug server are
+        // blocked; same-origin tooling (adb forward + curl) is unaffected.
         writer.print("HTTP/1.1 204 No Content\r\n")
-        writer.print("Access-Control-Allow-Origin: *\r\n")
-        writer.print("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
-        writer.print("Access-Control-Allow-Headers: Content-Type, X-Unibot-Token, Authorization\r\n")
-        writer.print("Access-Control-Max-Age: 86400\r\n")
         writer.print("Connection: close\r\n")
         writer.print("\r\n")
         writer.flush()

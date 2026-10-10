@@ -20,9 +20,13 @@ import ai.unicto.unibot.sandbox.PRootKernel
 import ai.unicto.unibot.sandbox.ShellExecutor
 import ai.unicto.unibot.service.AgentForegroundService
 import ai.unicto.unibot.guard.RiskDecision
+import ai.unicto.unibot.guard.RiskClass
 import ai.unicto.unibot.guard.RiskGate
+import ai.unicto.unibot.guard.RiskRequest
+import ai.unicto.unibot.guard.ShellGuard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -31,6 +35,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * What the other devices may ask of this phone, and how each is carried out here.
@@ -51,6 +56,13 @@ object HubActions {
     private const val TASK_TIMEOUT_MS = 10 * 60 * 1000L
     private const val CHANNEL = "unibot_hub"
     private const val PREFS = "unibot"
+
+    /**
+     * [Security] Approval ids this phone relayed to a remote device and
+     * that are still undecided. `approve` honours ONLY these — never an
+     * arbitrary RiskGate id.
+     */
+    private val hubRelayedApprovals = ConcurrentHashMap<String, RiskRequest>()
 
     fun handle(context: Context, call: IncomingCall) {
         if (call.action == "info") { call.result(info(context)); return }
@@ -98,6 +110,21 @@ object HubActions {
         val timeoutS = call.args.optInt("timeout", 120).coerceIn(1, 900)
         val cwd = call.args.optString("cwd").trim()
         val full = if (cwd.isNotEmpty()) "cd ${shellQuote(cwd)} && $command" else command
+        // [Security] The desktop's judgement ("already judged before
+        // sending") cannot be enforced from the phone — assess here with
+        // the phone's own ShellGuard. Anything that would raise an
+        // approval card is refused remotely; only SAFE commands run.
+        // (Interactive approvals stay on the `task` path, where the card
+        // appears on this phone and the decision is relayed back.)
+        val assessment = ShellGuard.assess(full)
+        if (assessment.needsApproval) {
+            call.fail(
+                "approval_required",
+                "the phone would ask before running this (${assessment.riskClass.name.lowercase()}: ${assessment.reason}); " +
+                    "send it as a `task` so the approval card appears on the phone",
+            )
+            return
+        }
         val r = runBlocking { ShellExecutor.execute(context, full, timeout = timeoutS * 1000L) }
         call.result(
             JSONObject()
@@ -273,9 +300,17 @@ object HubActions {
     private fun relayApprovals(context: Context, call: IncomingCall, sessionId: String): CoroutineScope {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val seen = HashSet<String>()
+        // When the relay ends (task finished/cancelled), ids relayed for
+        // it stop being remotely decidable.
+        scope.coroutineContext[Job]?.invokeOnCompletion {
+            for (id in seen) hubRelayedApprovals.remove(id)
+        }
         scope.launch {
             RiskGate.pending.collect { req ->
                 if (req != null && req.sessionId == sessionId && seen.add(req.id)) {
+                    // [Security] Remember exactly which approval ids were
+                    // relayed to this device — `approve` only honours these.
+                    hubRelayedApprovals[req.id] = req
                     call.event(
                         JSONObject().put("stage", "approval").put("approval_id", req.id).put("preview", req.preview)
                             .put("risk", req.assessment.riskClass.name.lowercase()).put("reason", req.assessment.reason)
@@ -289,6 +324,9 @@ object HubActions {
             RiskGate.recent.collect { recent ->
                 for ((req, decision) in recent) {
                     if (req.id in seen && reported.add(req.id)) {
+                        // Decided (here, remotely, or by timeout) — the id
+                        // must not be decidable again.
+                        hubRelayedApprovals.remove(req.id)
                         val status = when (decision) {
                             RiskDecision.DENY -> "denied"
                             RiskDecision.TIMEOUT -> "expired"
@@ -302,10 +340,27 @@ object HubActions {
         return scope
     }
 
-    /** `approve {approval_id, allow}` from the device that asked for the task: decides the card here. */
+    /**
+     * `approve {approval_id, allow}` from the device that asked for the task: decides the card here.
+     *
+     * [Security] Only ids that were actually relayed to a remote device
+     * (see [relayApprovals]) can be decided remotely — an arbitrary id is
+     * rejected, so a remote caller can't rubber-stamp unrelated cards.
+     * Money and warned requests can never be approved remotely: those
+     * stay on this phone's screen (and screen lock).
+     */
     private fun approve(call: IncomingCall) {
         val id = call.args.optString("approval_id")
         if (id.isBlank()) { call.fail("usage", "approval_id is required"); return }
+        val req = hubRelayedApprovals.remove(id)
+        if (req == null) { call.fail("unknown_approval", "no pending approval with that id was relayed here"); return }
+        if (req.assessment.riskClass == RiskClass.MONEY || req.assessment.warnings.isNotEmpty()) {
+            call.fail(
+                "not_allowed",
+                "this approval needs the phone itself (screen lock / warning review) and can't be decided remotely",
+            )
+            return
+        }
         val allow = call.args.optBoolean("allow", false)
         RiskGate.decide(id, if (allow) RiskDecision.ALLOW_ONCE else RiskDecision.DENY)
         call.result(JSONObject().put("ok", true).put("approval_id", id).put("status", if (allow) "approved" else "denied"))

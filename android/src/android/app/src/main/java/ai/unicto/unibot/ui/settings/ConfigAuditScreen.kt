@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,8 +49,6 @@ import ai.unicto.unibot.ui.components.UnibotTextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 
 /**
  * Logs → Config Changes tab. Lists every config write attempt
@@ -80,7 +79,9 @@ fun ConfigAuditScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+    // [Leak] The old remember { CoroutineScope(...) } was never cancelled.
+    // rememberCoroutineScope() is bound to this composition instead.
+    val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(

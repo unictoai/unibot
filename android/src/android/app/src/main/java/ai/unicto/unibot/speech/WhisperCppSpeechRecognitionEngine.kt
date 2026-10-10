@@ -165,12 +165,29 @@ class WhisperCppSpeechRecognitionEngine(private val appContext: Context) : Speec
         val pcm = mutableListOf<Short>()
         val buf = ShortArray(minBuf / 2)
         val maxSamples = SAMPLE_RATE * MAX_RECORD_SECONDS
+        // Wall-clock cap: the sample cap below assumes read() actually
+        // returns audio; an erroring mic must not spin forever.
+        val deadlineMs = android.os.SystemClock.elapsedRealtime() + (MAX_RECORD_SECONDS + 5) * 1000L
         try {
             recorder.startRecording()
             listener.onReadyForSpeech()
-            while (recording.get() && pcm.size < maxSamples) {
+            while (recording.get() && pcm.size < maxSamples &&
+                android.os.SystemClock.elapsedRealtime() < deadlineMs
+            ) {
                 val n = recorder.read(buf, 0, buf.size)
-                if (n <= 0) continue
+                if (n < 0) {
+                    // [Security] A dead/taken mic returns an error code on
+                    // EVERY read; the old `continue` spun one core at 100%
+                    // and kept "listening" forever. Stop and report.
+                    android.util.Log.w(TAG, "AudioRecord.read error $n; stopping capture")
+                    recording.set(false)
+                    listener.onError(RecognitionError.AUDIO_ERROR, "AudioRecord.read=$n")
+                    break
+                }
+                if (n == 0) {
+                    try { Thread.sleep(10) } catch (_: InterruptedException) { break }
+                    continue
+                }
                 for (i in 0 until n) pcm.add(buf[i])
                 listener.onRmsDb(rmsDb(buf, n))
             }
