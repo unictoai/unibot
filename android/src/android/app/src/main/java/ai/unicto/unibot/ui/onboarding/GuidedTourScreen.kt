@@ -158,7 +158,7 @@ fun GuidedTourScreen(
                     3 -> GuidedTourStop(
                         icon = Icons.Outlined.Hub,
                         title = "The swarm does deep work",
-                        body = "Give the crew a mission: a manager plans, workers research in parallel, and a verifier checks the result before you see it. Long missions keep running while you do other things.",
+                        body = "Give the crew a mission: a manager plans, workers research one by one, and a verifier checks the result before you see it. Long missions keep running while you do other things.",
                         primaryLabel = "Continue",
                         onPrimary = { step = 4; persist(4) },
                         actionLabel = "Open the swarm",
