@@ -190,7 +190,7 @@ def programs_of(command: str) -> str | None:
 _GRANT_BLIND = re.compile(
     r"`"  # `...` legacy command substitution
     r"|\$\("  # $(...) / $((...))
-    r"|<\(|>\\("  # <(...) / >(...) process substitution
+    r"|<\(|>\("  # <(...) / >(...) process substitution
     r"|\beval\b|\bexec\b|\bxargs\b"  # command constructors
     r"|\b(sh|bash|dash|zsh)\s+-[a-z]*c\b"  # sh -c '...' / bash -c '...'
     r"|\benv\s+-S\b"  # env -S splits its argument into a command line
