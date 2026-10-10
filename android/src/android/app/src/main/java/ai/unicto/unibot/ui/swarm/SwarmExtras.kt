@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,6 +32,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -347,36 +351,46 @@ internal fun SwarmRunSettingsSection(
     ) {
         SwarmSectionHeader(title = "Run settings")
         // Item 3 — worker-parallelism ceiling, 1..8.
-        Column(
-            modifier = Modifier.padding(vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Max parallel workers",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
+        // v1.5 bug 3: hidden until a real batch executor exists — the
+        // engine is sequential. The maxWorkers pref is kept for future use.
+        if (PARALLEL_WORKERS_ENABLED) {
+            Column(
+                modifier = Modifier.padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Max parallel workers",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = prefs.maxWorkers.toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Slider(
+                    value = prefs.maxWorkers.toFloat(),
+                    onValueChange = { onPrefsChange(prefs.withMaxWorkers(it.toInt())) },
+                    valueRange = 1f..8f,
+                    steps = 6,
                 )
                 Text(
-                    text = prefs.maxWorkers.toString(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = "Caps how many agents may work at once — phone RAM and " +
+                        "quota stay in budget. Workers run one at a time in this " +
+                        "version; the cap is each mission's parallelism budget.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Slider(
-                value = prefs.maxWorkers.toFloat(),
-                onValueChange = { onPrefsChange(prefs.withMaxWorkers(it.toInt())) },
-                valueRange = 1f..8f,
-                steps = 6,
-            )
-            Text(
-                text = "Caps how many agents may work at once — phone RAM and " +
-                    "quota stay in budget. Workers run one at a time in this " +
-                    "version; the cap is each mission's parallelism budget.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
+        // v1.5 bug 5 — per-mission token budget: the run pauses for review
+        // when total tokens would pass it. 0 = unlimited (never pauses).
+        TokenBudgetSettingRow(
+            tokenBudget = prefs.tokenBudget,
+            onBudgetChange = { onPrefsChange(prefs.withTokenBudget(it)) },
+        )
         // Item 2 — plan-approval gate default.
         SettingsSwitchRow(
             title = "Review plan before agents run",
@@ -400,6 +414,64 @@ internal fun SwarmRunSettingsSection(
         )
     }
 }
+
+/**
+ * Token-budget setting (v1.5 bug 5): fixed choices 50k / 150k / 500k /
+ * Unlimited. Every option is a live control (single-choice segmented
+ * row, 48dp targets). The run pauses for review when total tokens would
+ * pass the budget; Unlimited never pauses on cost.
+ */
+@Composable
+private fun TokenBudgetSettingRow(
+    tokenBudget: Int,
+    onBudgetChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val options = listOf(50_000, 150_000, 500_000, 0)
+    Column(
+        modifier = modifier.padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Token budget",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = tokenBudgetLabel(tokenBudget),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        ) {
+            options.forEachIndexed { index, value ->
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = options.size,
+                    ),
+                    onClick = { onBudgetChange(value) },
+                    selected = tokenBudget == value,
+                    label = { Text(tokenBudgetLabel(value)) },
+                )
+            }
+        }
+        Text(
+            text = "The run pauses for your review when total tokens would " +
+                "pass the budget. Unlimited never pauses on cost.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun tokenBudgetLabel(budget: Int): String =
+    if (budget <= 0) "Unlimited" else formatTokens(budget)
 
 @Composable
 private fun SettingsSwitchRow(
