@@ -22,6 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 from pydantic import PrivateAttr
 
@@ -299,8 +300,13 @@ class Browser(BaseTool):
             or args.get("profile")
             or ""
         )
+        risk = RiskLevel.MODERATE
+        if action == "fetch" and str(args.get("method") or "GET").upper() != "GET":
+            # the context shares its cookie jar: a signed-in non-GET request is
+            # state-changing, so it stops for approval bound to the host
+            risk = RiskLevel.SENSITIVE
         return CallAssessment(
-            risk=RiskLevel.MODERATE,
+            risk=risk,
             egress=action not in ("extract", "screenshot", "close", "scroll", "profile"),
             egress_target=target,
             summary=f"browser.{action} {str(detail)[:120]}".strip(),
@@ -367,6 +373,12 @@ class Browser(BaseTool):
                 return ToolResult.fail("`url` is required")
             if not url.lower().startswith(("http://", "https://")):
                 url = "https://" + url
+            # SSRF guard, same as web_fetch: the model must not reach the machine's
+            # own network (loopback, LAN, cloud metadata) on its say-so. Redirects
+            # and sub-resources are guarded again by the page route handler.
+            host = host_of(url)
+            if host is None or await asyncio.to_thread(_is_private_host, host):
+                return ToolResult.fail(f"refusing to open a private or local address: {url}")
             await backend.goto(url)
             await self._frame(backend, f"Opened {host_of(url) or url}")
             return await self._state(backend, brief=True)
@@ -434,11 +446,31 @@ class Browser(BaseTool):
         if not url.lower().startswith(("http://", "https://")):
             url = "https://" + url
         # the same guard as web_fetch: the browser's fetch must not reach the machine's own
-        # network (loopback, LAN, cloud metadata) on the model's say-so
-        host = host_of(url)
-        if host is None or await asyncio.to_thread(_is_private_host, host):
-            return ToolResult.fail(f"refusing to fetch a private or local address: {url}")
-        result = await backend.fetch(url, method=(method or "GET").upper(), body=body)
+        # network (loopback, LAN, cloud metadata) on the model's say-so. Playwright
+        # follows redirects on its own (up to 20 hops), so the hops are walked here
+        # with max_redirects=0 and every hop is guarded — a public URL redirecting to
+        # http://169.254.169.254/ is refused instead of followed.
+        hops = 0
+        while True:
+            host = host_of(url)
+            if host is None or await asyncio.to_thread(_is_private_host, host):
+                return ToolResult.fail(f"refusing to fetch a private or local address: {url}")
+            result = await backend.fetch(
+                url, method=(method or "GET").upper(), body=body, max_redirects=0
+            )
+            location = (result.get("headers") or {}).get("location")
+            if result.get("status") in (301, 302, 303, 307, 308) and location and hops < 5:
+                url = urljoin(url, location)
+                hops += 1
+                continue
+            break
+        # a backend that follows redirects on its own (the phone's): refuse a final
+        # URL that ended up private or local, whatever the first hop said
+        final_host = host_of(str(result.get("url") or url))
+        if final_host is None or await asyncio.to_thread(_is_private_host, final_host):
+            return ToolResult.fail(
+                f"refusing to fetch a private or local address: {result.get('url') or url}"
+            )
         text = str(result.get("body") or "")
         ctype = str((result.get("headers") or {}).get("content-type", ""))
         note = ""

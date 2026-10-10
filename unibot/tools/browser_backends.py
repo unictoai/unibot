@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from unibot.logger import logger
+from unibot.tools.web import _is_private_host, host_of
 
 if TYPE_CHECKING:
     from unibot.phone.link import PhoneLink
@@ -148,6 +149,7 @@ class BrowserBackend(ABC):
         method: str = "GET",
         headers: dict[str, str] | None = None,
         body: str | None = None,
+        max_redirects: int | None = None,
     ) -> dict[str, Any]:
         """A request with the page's cookies. ``{"status", "headers", "body", "url"}``."""
 
@@ -279,6 +281,21 @@ class PlaywrightBackend(BrowserBackend):
         self._page = pages[0] if pages else await self._context.new_page()
         self._page.set_default_timeout(self.timeout_ms)
         self._page.on("download", self._on_download)
+        # SSRF guard for everything the navigate check cannot see: redirects the
+        # page follows on its own, sub-resources, and scripts the page runs. Any
+        # request that resolves to a private or local address is aborted.
+        await self._page.route("**/*", self._guard_route)
+
+    async def _guard_route(self, route: Any) -> None:
+        try:
+            host = host_of(route.request.url)
+            private = host is not None and await asyncio.to_thread(_is_private_host, host)
+        except Exception:  # noqa: BLE001 - a broken guard must not hang the page
+            private = False
+        if private:
+            await route.abort()
+        else:
+            await route.continue_()
 
     def _on_download(self, download: Any) -> None:
         async def save() -> None:
@@ -337,11 +354,15 @@ class PlaywrightBackend(BrowserBackend):
         method: str = "GET",
         headers: dict[str, str] | None = None,
         body: str | None = None,
+        max_redirects: int | None = None,
     ) -> dict[str, Any]:
         await self.ensure()
         # the context's request API shares its cookie jar: a signed-in request
+        kwargs: dict[str, Any] = {}
+        if max_redirects is not None:
+            kwargs["max_redirects"] = max_redirects
         resp = await self._context.request.fetch(
-            url, method=method.upper(), headers=headers or None, data=body
+            url, method=method.upper(), headers=headers or None, data=body, **kwargs
         )
         text = await resp.text()
         return {"status": resp.status, "headers": dict(resp.headers), "body": text, "url": resp.url}
@@ -480,6 +501,7 @@ class DeviceBackend(BrowserBackend):
         method: str = "GET",
         headers: dict[str, str] | None = None,
         body: str | None = None,
+        max_redirects: int | None = None,  # noqa: ARG002 - redirect policy lives on the device
     ) -> dict[str, Any]:
         await self.ensure()
         result = await self._req(
