@@ -414,21 +414,21 @@ class DocumentIndex:
                 except (OSError, UnicodeDecodeError):
                     continue
                 digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
-                st = current[rel]
+                cur = current[rel]
                 old = known.get(rel)
                 if old is not None and old[2] == digest:
                     # mtime moved but content didn't (e.g. git checkout): no re-embed
-                    self.store.put_file(rel, st[0], st[1], digest)
+                    self.store.put_file(rel, cur[0], cur[1], digest)
                     continue
                 chunks = list(chunk_file(rel, text))
                 if not chunks:
-                    self.store.put_file(rel, st[0], st[1], digest)
+                    self.store.put_file(rel, cur[0], cur[1], digest)
                     continue
                 if len(pending) + len(chunks) > MAX_CHUNKS_PER_ENSURE:
                     break  # leave this file (and the rest) for the next call
                 self.store.drop_file(rel, model)
                 pending.extend((rel, c) for c in chunks)
-                fresh_meta[rel] = (st[0], st[1], digest)
+                fresh_meta[rel] = (cur[0], cur[1], digest)
             if not pending:
                 return has_embedder
             if not has_embedder:
