@@ -18,7 +18,7 @@ import org.junit.Test
  */
 class SwarmResumeIntegrationTest {
 
-    private fun scriptedProvider(): FakeSwarmProvider = FakeSwarmProvider { _, user ->
+    private fun scriptedProvider(): FakeSwarmProvider = FakeSwarmProvider(handler = { _, user ->
         when {
             user.startsWith("MISSION DECOMPOSITION") ->
                 FakeSwarmResponse("1. Subtask one\n2. Subtask two\n3. Subtask three")
@@ -26,7 +26,7 @@ class SwarmResumeIntegrationTest {
             user.startsWith("STITCH RESULTS") -> FakeSwarmResponse("Stitched document.")
             else -> FakeSwarmResponse("Worker output.")
         }
-    }
+    })
 
     @Test
     fun `teardown mid-worker keeps checkpoint and parks at PAUSED with canResume`() = runTest {
@@ -76,7 +76,7 @@ class SwarmResumeIntegrationTest {
     fun `transient 429 on a worker is retried and the run completes`() = runTest {
         val store = InMemorySwarmCheckpointStore()
         var attempts = 0
-        val provider = FakeSwarmProvider { _, user ->
+        val provider = FakeSwarmProvider(handler = { _, user ->
             when {
                 user.startsWith("MISSION DECOMPOSITION") ->
                     FakeSwarmResponse("1. Subtask one\n2. Subtask two\n3. Subtask three")
@@ -89,7 +89,7 @@ class SwarmResumeIntegrationTest {
                     FakeSwarmResponse("Worker output after retry.")
                 }
             }
-        }
+        })
         val engine = SwarmEngine(provider, store, this)
 
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
@@ -102,7 +102,7 @@ class SwarmResumeIntegrationTest {
     @Test
     fun `exhausted 429 retries park at PAUSED with checkpoint kept, not FAILED`() = runTest {
         val store = InMemorySwarmCheckpointStore()
-        val provider = FakeSwarmProvider { _, _ -> throw LLMError.RateLimited(429) }
+        val provider = FakeSwarmProvider(handler = { _, _ -> throw LLMError.RateLimited(429) })
         val engine = SwarmEngine(provider, store, this)
 
         assertTrue(engine.launch("Research scooters", SwarmRoles.research))
