@@ -16,6 +16,16 @@ object GeminiModelsApi {
     private val cache = ProviderModelsCache("gemini")
 
     /**
+     * Whether a failed models-list response means the API key itself was
+     * rejected (401/403 on key auth). Such a key must NOT be hidden behind
+     * the built-in catalog — the UI must reflect that it doesn't work.
+     * Transient failures (429, 5xx) and the OAuth scope case keep the
+     * fallback.
+     */
+    internal fun isRejectedKey(isOAuth: Boolean, code: Int): Boolean =
+        !isOAuth && (code == 401 || code == 403)
+
+    /**
      * Fetch the Gemini model catalog. Three auth modes matching iOS
      * `GeminiModelsAPI`:
      *   - API key via the `x-goog-api-key` header (never the URL query string)
@@ -68,6 +78,13 @@ object GeminiModelsApi {
             if (isOAuth && response.code == 403) return@withContext LLMModel.allGemini
             if (context != null && (response.code == 401 || response.code == 403)) {
                 cache.invalidate(context, cacheKey)
+            }
+            // A rejected API key must not be masked by the built-in list:
+            // return empty so the UI keeps the seeded catalog instead of
+            // implying this key works. Transient failures (429/5xx) and the
+            // OAuth scope case still fall back — the key itself may be fine.
+            if (isRejectedKey(isOAuth, response.code)) {
+                return@withContext emptyList()
             }
             return@withContext LLMModel.allGemini
         }

@@ -97,6 +97,11 @@ object KeyValidator {
             "Unexpected response (HTTP ${result.code}). The key may still work — save it and try a chat."
     }
 
+    /** A key containing whitespace (e.g. a pasted newline) can never be valid —
+     *  and OkHttp would throw building the header. Reject it with the
+     *  actionable message instead of an exception. */
+    internal fun isMalformedKey(apiKey: String): Boolean = apiKey.any { it.isWhitespace() }
+
     /**
      * Validates [apiKey] against [type]'s live models endpoint.
      * Network on IO; never throws — failures map to result values.
@@ -108,25 +113,31 @@ object KeyValidator {
     ): KeyValidationResult = withContext(Dispatchers.IO) {
         val endpoint = endpointFor(type, baseOverride)
             ?: return@withContext KeyValidationResult.Unexpected(-1)
-        val request = when (type) {
-            ProviderType.gemini -> Request.Builder()
-                .url(endpoint)
-                .header("x-goog-api-key", apiKey.trim())
-                .get()
-                .build()
-            ProviderType.anthropic -> Request.Builder()
-                .url(endpoint)
-                .header("x-api-key", apiKey.trim())
-                .header("anthropic-version", ANTHROPIC_VERSION)
-                .get()
-                .build()
-            else -> Request.Builder()
-                .url(endpoint)
-                .header("Authorization", "Bearer ${apiKey.trim()}")
-                .get()
-                .build()
+        // A key with interior whitespace (e.g. a pasted newline) can never be
+        // valid — reject it here with the actionable message instead of an
+        // exception from OkHttp.
+        if (isMalformedKey(apiKey)) {
+            return@withContext KeyValidationResult.InvalidKey
         }
         try {
+            val request = when (type) {
+                ProviderType.gemini -> Request.Builder()
+                    .url(endpoint)
+                    .header("x-goog-api-key", apiKey.trim())
+                    .get()
+                    .build()
+                ProviderType.anthropic -> Request.Builder()
+                    .url(endpoint)
+                    .header("x-api-key", apiKey.trim())
+                    .header("anthropic-version", ANTHROPIC_VERSION)
+                    .get()
+                    .build()
+                else -> Request.Builder()
+                    .url(endpoint)
+                    .header("Authorization", "Bearer ${apiKey.trim()}")
+                    .get()
+                    .build()
+            }
             client.newCall(request).execute().use { response ->
                 when (response.code) {
                     200 -> KeyValidationResult.Valid(countModels(response.body?.string()))

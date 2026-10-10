@@ -813,7 +813,10 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/llm/models", dependencies=dep)
     async def llm_models(body: LLMModelsBody) -> dict[str, Any]:
         """The models an endpoint offers (its /models, else the preset's catalogue); saves nothing."""
-        return await conn.llm_models(body.model_dump())
+        try:
+            return await conn.llm_models(body.model_dump())
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.put("/api/connections/embeddings", dependencies=dep)
     async def put_embeddings(body: EmbeddingsBody) -> dict[str, Any]:

@@ -234,6 +234,36 @@ def normalize_base_url(url: str) -> str:
     return url
 
 
+def validate_base_url(url: str) -> str:
+    """Normalize a provider base URL and reject anything unusable.
+
+    Returns the normalized URL ("" clears the setting). Raises ``ValueError``
+    for a non-http(s) scheme, an unparseable host, or an invalid port — before
+    the value is ever persisted, so a bad URL can neither 500 a route nor
+    poison the saved config and break the next startup.
+    """
+    try:
+        url = normalize_base_url(url)
+    except ValueError as exc:
+        raise ValueError(f"base_url is not a valid URL: {exc}") from exc
+    if not url:
+        return url
+    try:
+        parts = urlsplit(url)
+    except ValueError as exc:
+        raise ValueError(f"base_url is not a valid URL: {exc}") from exc
+    if parts.scheme not in ("http", "https"):
+        raise ValueError("base_url must start with http:// or https://")
+    host = parts.hostname or ""
+    if not host or re.search(r"\s", host):
+        raise ValueError("base_url has no usable host")
+    try:
+        parts.port
+    except ValueError as exc:
+        raise ValueError(f"base_url has an invalid port: {exc}") from exc
+    return url
+
+
 def _vault_name(feed_name: str, prefix: str = "CALENDAR_") -> str:
     return prefix + (re.sub(r"[^A-Z0-9]+", "_", feed_name.upper()).strip("_") or "FEED")
 
@@ -442,7 +472,9 @@ class Connections:
             if body.get(key) is not None:
                 llm[key] = str(body[key]).strip()
         if body.get("base_url") is not None:
-            llm["base_url"] = normalize_base_url(llm["base_url"])
+            # Validated before anything is persisted: a bad URL must 400 here,
+            # never poison the saved config and break the next startup.
+            llm["base_url"] = validate_base_url(llm["base_url"])
         if llm.get("provider") not in (None, "openai", "openai_responses"):
             raise ValueError("provider must be 'openai' or 'openai_responses'")
         if llm.get("tool_mode") not in (None, "", "auto", "native", "prompt"):
@@ -558,9 +590,9 @@ class Connections:
                 raise ValueError("provider must be one of " + ", ".join(SEARCH_PROVIDERS))
             web["provider"] = body["provider"]
         if body.get("base_url") is not None:
-            web["base_url"] = str(body["base_url"]).strip().rstrip("/")
-            if web["base_url"] and not re.match(r"^https?://", web["base_url"]):
-                raise ValueError("base_url must start with http:// or https://")
+            # Shared validator: scheme, host and port are checked, not just
+            # the http(s) prefix (which let http://[bad through).
+            web["base_url"] = validate_base_url(str(body["base_url"]))
         api_key = body.get("api_key")
         if api_key:
             self.vault.set(SEARCH_KEY, str(api_key).strip())
@@ -595,8 +627,10 @@ class Connections:
         for key in ("model", "base_url"):
             if body.get(key) is not None:
                 emb[key] = str(body[key]).strip()
-        if emb.get("base_url") and not re.match(r"^https?://", emb["base_url"]):
-            raise ValueError("base_url must start with http:// or https://")
+        if body.get("base_url") is not None:
+            # Shared validator: scheme, host and port are checked, not just
+            # the http(s) prefix (which let http://[bad through).
+            emb["base_url"] = validate_base_url(emb["base_url"])
         api_key = body.get("api_key")
         if api_key:
             self.vault.set(EMBEDDINGS_KEY, str(api_key).strip())
@@ -666,7 +700,7 @@ class Connections:
             video = [str(m["id"]) for m in hub.models if _modality(m) == "video"]
             return {"models": chat, "image_models": image, "video_models": video, "source": "live"}
         preset = PROVIDERS.get(preset_id) or {}
-        base_url = normalize_base_url(str(body.get("base_url") or preset.get("base_url") or ""))
+        base_url = validate_base_url(str(body.get("base_url") or preset.get("base_url") or ""))
         catalogue: list[str] = list(preset.get("models") or [])
         if not base_url:
             return {"models": catalogue, "source": "catalogue"}

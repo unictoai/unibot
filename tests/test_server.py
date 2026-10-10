@@ -1877,3 +1877,27 @@ def test_update_endpoint(server, monkeypatch):
     view = client.get("/api/update").json()
     assert view["enabled"] is False and view["newer"] is False and view["current"]
     assert TestClient(client.app).get("/api/update").status_code == 401
+
+
+def test_base_url_validation():
+    """Bad provider URLs must be rejected before they are persisted (was: 500s
+    and a poisoned config that broke the next startup)."""
+    from unibot.server.connections import validate_base_url
+
+    # valid URLs pass through (normalised)
+    assert validate_base_url("my-gateway.example.com") == "https://my-gateway.example.com/v1"
+    assert validate_base_url("http://127.0.0.1:8000/v1/") == "http://127.0.0.1:8000/v1"
+    assert validate_base_url("https://api.deepseek.com/") == "https://api.deepseek.com"
+    assert validate_base_url("") == ""
+    # everything hostile is a ValueError (routes map it to 400)
+    import pytest
+
+    for bad in [
+        "javascript:alert(1)",
+        "http://[bad",
+        "http://a b.com",
+        "http://x:99999/v1",
+        "ftp://files.example.com/v1",
+    ]:
+        with pytest.raises(ValueError):
+            validate_base_url(bad)
