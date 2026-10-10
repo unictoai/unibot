@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.ui.theme.Motion
-import ai.unicto.unibot.ui.theme.animationsEnabled
+import ai.unicto.unibot.ui.theme.decorativeMotionEnabled
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 
@@ -60,7 +60,10 @@ fun EmptyState(
 ) {
     val haptics = rememberHaptic()
     val violet = MaterialTheme.colorScheme.primary
-    val animated = animationsEnabled()
+    // The shimmer is an infinite loop — the most expensive motion kind.
+    // It needs full decorative motion (not just animationsEnabled), so
+    // low-RAM phones get the static glow instead.
+    val animated = decorativeMotionEnabled()
 
     Column(
         modifier = modifier

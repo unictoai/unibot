@@ -109,6 +109,24 @@ fun animationsEnabled(): Boolean {
 }
 
 /**
+ * True when decorative motion may play: full [animationsEnabled] plus a
+ * low-RAM gate. On entry-level phones (see
+ * [ai.unicto.unibot.local.LlamaModelManager.isLowRamDevice] — reused here,
+ * no second heuristic) staggered entrances and ambient shimmer loops are
+ * skipped and content simply appears; micro-feedback (press states,
+ * success pops) keeps working. Cheap one-shot animations are fine on 4GB
+ * phones — it's the repeating and list-wide ones that drop frames.
+ */
+@Composable
+fun decorativeMotionEnabled(): Boolean {
+    if (!animationsEnabled()) return false
+    val context = LocalContext.current
+    return remember(context) {
+        !ai.unicto.unibot.local.LlamaModelManager.isLowRamDevice(context)
+    }
+}
+
+/**
  * Brief scale-pop for success moments (model download complete, reminder
  * saved, connector connected, backup finished): snaps to 0.9 then springs
  * back to 1.0 on [Motion.SpringSpec] every time [trigger] changes to a
@@ -144,8 +162,10 @@ fun Modifier.successPop(trigger: Any?): Modifier {
  */
 @Composable
 fun Modifier.staggeredEntrance(index: Int): Modifier {
-    // Accessibility: when the user removed animations, content just appears.
-    if (!animationsEnabled()) return this
+    // Accessibility / low-RAM: when the user removed animations, or on
+    // entry-level phones where list-wide staggers drop frames, content
+    // just appears.
+    if (!decorativeMotionEnabled()) return this
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val spec = tween<Float>(

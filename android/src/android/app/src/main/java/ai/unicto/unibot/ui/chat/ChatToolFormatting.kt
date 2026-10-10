@@ -86,8 +86,7 @@ internal fun toolIconFor(toolName: String) = when (toolName) {
     else -> Icons.Default.Build
 }
 
-// Helper: tool display name for "unibot is using X"
-internal fun toolDisplayName(toolName: String): String = when (toolName) {
+// Helper: tool display name for "unibot is using X"internal fun toolDisplayName(toolName: String): String = when (toolName) {
     "shell_execute" -> "terminal"
     "file_read" -> "file reader"
     "file_write" -> "file writer"
@@ -150,4 +149,29 @@ internal fun formatToolDuration(ms: Long): String {
             "${m}m ${s}s"
         }
     }
+}
+
+/**
+ * Whether a tool call leaves the phone (network egress). Used for the
+ * privacy indicator on tool pills: when the model itself runs on-device,
+ * a network tool is the moment data leaves the phone, and the user should
+ * see it. Cloud tools (the model call already leaves the phone) don't need
+ * the extra chrome — the pill's own icon already says what the tool is.
+ *
+ * Connector tools are prefixed by service (gmail_, calendar_, drive_,
+ * youtube_, discord_, slack_, spotify_, notion_, reddit_, rss_).
+ */
+internal fun toolUsesNetwork(toolName: String): Boolean = when {
+    toolName == "web_search" || toolName == "browser_use" -> true
+    toolName.startsWith("gmail_") -> true
+    toolName.startsWith("calendar_") -> true
+    toolName.startsWith("drive_") -> true
+    toolName.startsWith("youtube_") -> true
+    toolName.startsWith("discord_") -> true
+    toolName.startsWith("slack_") -> true
+    toolName.startsWith("spotify_") -> true
+    toolName.startsWith("notion_") -> true
+    toolName.startsWith("reddit_") -> true
+    toolName.startsWith("rss_") -> true
+    else -> false
 }
