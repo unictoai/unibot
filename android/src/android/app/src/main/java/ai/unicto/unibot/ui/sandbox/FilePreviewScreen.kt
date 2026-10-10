@@ -71,6 +71,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -99,6 +100,11 @@ private const val MAX_TEXT_PREVIEW_BYTES = 512_000 // 500 KB
 fun FilePreviewScreen(
     item: FileItem,
     onBack: () -> Unit,
+    /**
+     * 1-based line to scroll to on open (0 = top). Used by "Ask my
+     * documents" citation taps; plain file opens leave the default.
+     */
+    initialLine: Int = 0,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -245,7 +251,7 @@ fun FilePreviewScreen(
                 item.isApkFile -> ApkPreview(item)
                 item.isArchiveFile -> ArchivePreview(item)
                 item.isOfficeFile -> OfficeOpenExternal(item)
-                item.isTextFile -> TextPreview(item)
+                item.isTextFile -> TextPreview(item, initialLine)
                 else -> FileInfoView(item)
             }
         }
@@ -335,7 +341,7 @@ private fun ImagePreview(item: FileItem) {
 // ==================== Text/Code Preview ====================
 
 @Composable
-private fun TextPreview(item: FileItem) {
+private fun TextPreview(item: FileItem, initialLine: Int = 0) {
     var content by remember { mutableStateOf<String?>(null) }
     var truncated by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -354,6 +360,19 @@ private fun TextPreview(item: FileItem) {
             } catch (e: Exception) {
                 error = e.message ?: "Failed to read file"
             }
+        }
+    }
+
+    // Citation taps ("Ask my documents") open scrolled to the cited line.
+    // The text uses a fixed 18.sp line height with softWrap off, so line N
+    // starts exactly at (N-1) * lineHeight below the 12.dp top padding.
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    LaunchedEffect(content, initialLine) {
+        if (content != null && initialLine > 1) {
+            val linePx = with(density) { 18.sp.toPx() }
+            val padPx = with(density) { 12.dp.toPx() }
+            scrollState.scrollTo((((initialLine - 1) * linePx) + padPx).toInt().coerceAtLeast(0))
         }
     }
 
@@ -384,7 +403,7 @@ private fun TextPreview(item: FileItem) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(scrollState),
                 ) {
                     Box(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),

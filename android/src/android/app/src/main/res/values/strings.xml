@@ -2057,6 +2057,8 @@
     <string name="ub_chat_menu_file_tray">File tray</string>
     <string name="ub_attach_scan">Scan</string>
     <string name="ub_scan_menu_label">Scan text</string>
+    <string name="ub_ask_docs_menu_label">Ask my documents</string>
+    <string name="ub_ask_docs_not_found">Couldn't find %1$s in this chat's files</string>
     <string name="selection_save_note">Save as note</string>
     <string name="ub_note_saved">Saved to knowledge base</string>
     <string name="ub_drawer_knowledge">Knowledge base</string>

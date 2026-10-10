@@ -23,6 +23,13 @@ sealed class ChatLinkAction {
     data class SandboxFile(val item: FileItem) : ChatLinkAction()
     data class ExternalApp(val url: String) : ChatLinkAction()
     data class Web(val url: String) : ChatLinkAction()
+    /**
+     * "Ask my documents" citation (`unibot-doc:/path?line=N`): open [item]
+     * scrolled to [startLine].
+     */
+    data class DocCitation(val item: FileItem, val startLine: Int, val endLine: Int) : ChatLinkAction()
+    /** Citation whose file could not be found under any document root. */
+    data class DocCitationMissing(val path: String) : ChatLinkAction()
 }
 
 object ChatLinkResolver {
@@ -33,6 +40,20 @@ object ChatLinkResolver {
 
         val uri = runCatching { trimmed.toUri() }.getOrNull()
         val scheme = uri?.scheme?.lowercase()
+
+        // Ask-my-documents citations: unibot-doc:/path?line=N[&end=M] — open
+        // the file in the preview scrolled to the cited line.
+        if (scheme == "unibot-doc") {
+            val citation = DocCitationLinkifier.parseCitationUrl(trimmed)
+                ?: return ChatLinkAction.Web(trimmed)
+            val file = resolveDocCitationFile(citation.path, sessionId, context)
+            val item = file?.let { FileItem.from(it) }
+            return if (item != null) {
+                ChatLinkAction.DocCitation(item, citation.startLine, citation.endLine)
+            } else {
+                ChatLinkAction.DocCitationMissing(citation.path)
+            }
+        }
 
         // 1. unibot:// deep links — only branch out when the URL maps to a known action,
         //    otherwise fall through to sandbox-path handling.
@@ -65,6 +86,46 @@ object ChatLinkResolver {
         }
 
         return ChatLinkAction.Web(trimmed)
+    }
+
+    /**
+     * Map an "Ask my documents" citation path to a host File. Absolute
+     * sandbox paths (`/var/minis/...`) resolve directly; relative paths are
+     * tried against the document roots in priority order — this chat's
+     * workspace, its attachments, the shared / memory / skills pools, then
+     * each user-mounted folder — first existing file wins. `..` segments are
+     * rejected so a citation can never escape the roots.
+     */
+    private fun resolveDocCitationFile(
+        path: String,
+        sessionId: String?,
+        context: Context?,
+    ): File? {
+        if (path.split('/').any { it == ".." }) return null
+        val linuxPaths: List<String> = if (path.startsWith("/")) {
+            listOf(path)
+        } else {
+            buildList {
+                add("/var/minis/workspace/$path")
+                add("/var/minis/attachments/$path")
+                add("/var/minis/shared/$path")
+                add("/var/minis/memory/$path")
+                add("/var/minis/skills/$path")
+                PRootKernel.bindMounts.keys
+                    .filter { it.startsWith("/var/minis/mounts/") }
+                    .sorted()
+                    .forEach { add("$it/$path") }
+            }
+        }
+        for (linuxPath in linuxPaths) {
+            val file = if (sessionId != null && context != null) {
+                PRootKernel.resolveSessionHostPath(sessionId, linuxPath, context)
+            } else {
+                PRootKernel.resolveHostPath(linuxPath)
+            }
+            if (file != null && file.isFile) return file
+        }
+        return null
     }
 
     /**

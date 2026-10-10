@@ -1400,8 +1400,13 @@ private fun findDisplayMathClose(lines: List<String>, from: Int): Int? {
 }
 
 private suspend fun parseMarkdownBlocks(content: String): List<MdBlock> {
+    // Ask-my-documents: turn `path/file.md:42[-48]` citations into tappable
+    // unibot-doc: links before block splitting — the splitter treats
+    // `[…](…)` as an atomic construct, so linkifying first keeps fragments
+    // balanced. Idempotent, so the nested recursion below is harmless.
+    val linked = DocCitationLinkifier.linkify(content)
     val blocks = mutableListOf<MdBlock>()
-    val lines = content.lines()
+    val lines = linked.lines()
     var i = 0
     // Counter so we don't query coroutineContext on EVERY line (small but
     // measurable allocation overhead at ~thousands of lines per pass).

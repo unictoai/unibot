@@ -131,6 +131,7 @@ import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Mic
@@ -2715,6 +2716,20 @@ fun ChatScreen(
             // the global bindMounts map would answer).
             when (val action = ChatLinkResolver.resolve(url, viewModel.currentSessionId, context)) {
                 is ChatLinkAction.DeepLink -> ChatLinkResolver.dispatchDeepLink(context, url)
+                is ChatLinkAction.DocCitation -> {
+                    // Ask-my-documents citation: open the file scrolled to
+                    // the cited line. The line rides FilePreviewHolder; the
+                    // FILE_PREVIEW dialog consumes it (AppNavigation).
+                    ai.unicto.unibot.ui.navigation.FilePreviewHolder.currentInitialLine =
+                        action.startLine
+                    onPreviewAttachment(action.item)
+                }
+                is ChatLinkAction.DocCitationMissing ->
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.ub_ask_docs_not_found, action.path),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
                 is ChatLinkAction.SandboxFile -> {
                     when {
                         action.item.isImageFile -> {
@@ -7376,6 +7391,18 @@ fun ChatScreen(
                                             // OpenMultipleDocuments takes a mime-
                                             // type array; "*/*" stays the wildcard.
                                             filePickerLauncher.launch(arrayOf("*/*"))
+                                        },
+                                    )
+                                    // v1.5 ask-docs — "Ask my documents": fill
+                                    // the composer with `/docs ` so the user
+                                    // types their question; the send path
+                                    // expands it via SlashCommandExpander.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.ub_ask_docs_menu_label)) },
+                                        leadingIcon = { Icon(Icons.Default.MenuBook, contentDescription = null) },
+                                        onClick = {
+                                            showAttachMenu = false
+                                            viewModel.setInputText("/docs ")
                                         },
                                     )
                                     // v1.4.0-knowledge item 50: scan text —

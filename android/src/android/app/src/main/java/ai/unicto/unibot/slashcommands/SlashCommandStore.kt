@@ -88,7 +88,25 @@ class SlashCommandStore(private val context: Context) {
     val commands: StateFlow<List<CustomSlashCommand>> = _commands.asStateFlow()
 
     init {
-        _commands.value = load()
+        val stored = load()
+        _commands.value = stored + seedDocsCommandIfNeeded(stored)
+    }
+
+    /**
+     * Seed the built-in `/docs` ("Ask my documents") command once. It becomes
+     * a regular stored row afterwards, so the `/` menu, the send-path
+     * expansion and the enable/disable UI all treat it like any other
+     * command. The [KEY_DOCS_SEEDED] flag keeps a user-deleted `/docs` from
+     * resurrecting on every launch; an existing user command already using
+     * the `docs` trigger is never overwritten.
+     */
+    private fun seedDocsCommandIfNeeded(stored: List<CustomSlashCommand>): List<CustomSlashCommand> {
+        if (stored.any { it.trigger == DocsSlashCommand.TRIGGER }) return emptyList()
+        if (prefs.getBoolean(KEY_DOCS_SEEDED, false)) return emptyList()
+        val seeded = DocsSlashCommand.defaultCommand()
+        persist(stored + seeded)
+        prefs.edit().putBoolean(KEY_DOCS_SEEDED, true).apply()
+        return listOf(seeded)
     }
 
     fun all(): List<CustomSlashCommand> = _commands.value
@@ -167,6 +185,7 @@ class SlashCommandStore(private val context: Context) {
         private const val TAG = "SlashCommandStore"
         private const val PREFS_NAME = "unibot_slash_commands_prefs"
         private const val KEY_COMMANDS = "commands_json"
+        private const val KEY_DOCS_SEEDED = "docs_builtin_seeded"
     }
 }
 
