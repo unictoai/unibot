@@ -41,6 +41,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Schedule
@@ -634,6 +635,7 @@ internal fun InlineErrorBanner(
                         HttpStatusFix.RETRY -> Icons.Default.Refresh
                         HttpStatusFix.CHANGE_MODEL -> Icons.Default.SwapHoriz
                         HttpStatusFix.PROVIDER_SETTINGS -> Icons.Default.Settings
+                        HttpStatusFix.FIND_FREE_MODEL -> Icons.Default.Search
                         HttpStatusFix.NONE -> Icons.Default.Info
                     }
                     ErrorPillButton(
