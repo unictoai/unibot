@@ -32,7 +32,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="preload" as="image" href="assets/og-image.png" fetchpriority="high">
+<link rel="preload" as="image" href="assets/screenshot-chat.jpg" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://unictoai.github.io/unibot/">
 <meta property="og:title" content="unibot — Private Open-Source AI Agent for Android">
@@ -46,7 +46,7 @@
 <meta property="og:image:alt" content="unibot — Your AI agent. Your phone. Your rules.">
 <meta name="twitter:image" content="https://unictoai.github.io/unibot/assets/og-image.png">
 <meta name="twitter:image:alt" content="unibot — Your AI agent. Your phone. Your rules.">
-<link rel="stylesheet" href="styles.css?v=20261004d">
+<link rel="stylesheet" href="styles.css?v=20261010a">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -65,26 +65,16 @@
 <div class="progress" id="progress" aria-hidden="true"></div>
 <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
 <a class="skip" href="#top">Skip to content</a>
-
-<!-- ══════════ WELCOME ══════════ -->
-<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-label="Welcome to unibot">
-  <div class="welcome-card">
-    <img src="assets/logo-hd.png" alt="unibot logo" class="welcome-logo">
-    <h2>Welcome to <span class="violet">unibot</span></h2>
-    <p class="welcome-note">🔈 Tap OK to enter with sound</p>
-    <div class="welcome-load" aria-hidden="true">
-      <span class="load-num" id="loadNum">00</span>
-      <div class="load-bar"><i id="loadBar"></i></div>
-    </div>
-    <button class="btn primary welcome-ok" id="welcomeOk">OK</button>
-  </div>
-</div>
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}.phone.shot .realshot{clip-path:none !important}.sl-word{transform:none !important}</style></noscript>
 
 <!-- ══════════ NAV ══════════ -->
 <nav class="nav" id="nav">
   <div class="nav-inner">
     <a href="#top" class="logo"><img src="assets/logo-hd.png" alt="unibot ninja logo" class="logo-img">unibot</a>
-    <div class="nav-links">
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="mobileMenu">
       <a href="#features">Features</a>
       <a href="#superpowers">Superpowers</a>
       <a href="#connectors">Connectors</a>
@@ -105,16 +95,16 @@
     <div class="hero-copy reveal">
       <div class="pill">v1.4.0 — the mega-drop: 99 new features</div>
       <h1>Your AI agent.<br>Your phone.<br><span class="violet">Your rules.</span></h1>
-      <p class="sub">unibot is the private, open-source AI agent for Android — 31 connectors, offline AI models, zero trackers. An AI agent with no account: bring your own key.</p>
+      <p class="sub">The private, open-source AI agent for Android. Bring your own key — no account, no trackers.</p>
       <div class="hero-btns">
         <a class="btn primary" href="https://github.com/unictoai/unibot/releases/download/v1.4.0/unibot-1.4.0-arm64.apk">Download APK</a>
         <a class="btn ghost" href="https://github.com/unictoai/unibot">GitHub</a>
       </div>
-      <p class="fine">Free forever · No account · Android 8.0+ · ≈43 MB</p>
+      <p class="fine">Free forever · No account · Android 8.0+ (arm64) · ≈43 MB</p>
     </div>
     <div class="hero-phone reveal">
-      <div class="phone shot" role="img" aria-label="unibot app: new chat screen with Think and Search pills, dragon avatar, violet aurora background">
-        <img class="realshot" src="assets/og-image.png" alt="unibot app new chat screen with Think and Search pills" fetchpriority="high">
+      <div class="phone shot" role="img" aria-label="unibot app: new chat screen with Think and Search pills">
+        <img class="realshot" src="assets/screenshot-chat.jpg" alt="unibot new chat screen with Think and Search pills" fetchpriority="high">
       </div>
     </div>
   </div>
@@ -124,10 +114,10 @@
 <!-- ══════════ STATS ══════════ -->
 <section class="stats">
   <div class="stats-inner">
-    <div class="stat reveal"><b><span class="count" data-count="31">0</span></b><span>connectors</span></div>
-    <div class="stat reveal"><b><span class="count" data-count="100">0</span>+</b><span>features</span></div>
-    <div class="stat reveal"><b><span class="count" data-count="0">0</span></b><span>trackers</span></div>
-    <div class="stat reveal"><b><span class="count" data-count="100">0</span>%</b><span>open source</span></div>
+    <div class="stat reveal"><b>31</b><span>connectors</span></div>
+    <div class="stat reveal"><b>100+</b><span>features, 99 new in v1.4.0</span></div>
+    <div class="stat reveal"><b>0</b><span>trackers</span></div>
+    <div class="stat reveal"><b>100%</b><span>open source</span></div>
   </div>
 </section>
 
@@ -228,37 +218,71 @@
   <h2 class="reveal"><span class="violet">31</span> connectors. One offline AI agent.</h2>
   <p class="lede reveal">Your Gmail, Spotify, GitHub, photos, tasks, calendar — unibot talks to all of them from a single conversation.</p>
   <div class="tiles">
-    <div class="tile c1 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/gmail/white" alt="Gmail logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gm</i>'"><span>Gmail</span></div>
-    <div class="tile c2 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/googledrive/white" alt="Drive logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Dr</i>'"><span>Drive</span></div>
-    <div class="tile c3 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/googlecalendar/white" alt="Calendar logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Ca</i>'"><span>Calendar</span></div>
-    <div class="tile c4 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/github/white" alt="GitHub logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gh</i>'"><span>GitHub</span></div>
-    <div class="tile c5 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/telegram/white" alt="Telegram logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Tg</i>'"><span>Telegram</span></div>
-    <div class="tile c6 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/youtube/white" alt="YouTube logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Yt</i>'"><span>YouTube</span></div>
-    <div class="tile c1 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/discord/white" alt="Discord logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Dc</i>'"><span>Discord</span></div>
+    <div class="tile c1 reveal"><img class="tlogo" src="assets/logos/gmail.svg" alt="Gmail logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gm</i>'"><span>Gmail</span></div>
+    <div class="tile c2 reveal"><img class="tlogo" src="assets/logos/googledrive.svg" alt="Drive logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Dr</i>'"><span>Drive</span></div>
+    <div class="tile c3 reveal"><img class="tlogo" src="assets/logos/googlecalendar.svg" alt="Calendar logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Ca</i>'"><span>Calendar</span></div>
+    <div class="tile c4 reveal"><img class="tlogo" src="assets/logos/github.svg" alt="GitHub logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gh</i>'"><span>GitHub</span></div>
+    <div class="tile c5 reveal"><img class="tlogo" src="assets/logos/telegram.svg" alt="Telegram logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Tg</i>'"><span>Telegram</span></div>
+    <div class="tile c6 reveal"><img class="tlogo" src="assets/logos/youtube.svg" alt="YouTube logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Yt</i>'"><span>YouTube</span></div>
+    <div class="tile c1 reveal"><img class="tlogo" src="assets/logos/discord.svg" alt="Discord logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Dc</i>'"><span>Discord</span></div>
     <div class="tile c2 reveal"><i>Sl</i><span>Slack</span></div>
-    <div class="tile c3 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/spotify/white" alt="Spotify logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Sp</i>'"><span>Spotify</span></div>
-    <div class="tile c4 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/notion/white" alt="Notion logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>No</i>'"><span>Notion</span></div>
-    <div class="tile c5 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/reddit/white" alt="Reddit logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Re</i>'"><span>Reddit</span></div>
-    <div class="tile c6 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/rss/white" alt="RSS logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Rs</i>'"><span>RSS</span></div>
-    <div class="tile c1 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/googlephotos/white" alt="Photos logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Ph</i>'"><span>Photos</span></div>
+    <div class="tile c3 reveal"><img class="tlogo" src="assets/logos/spotify.svg" alt="Spotify logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Sp</i>'"><span>Spotify</span></div>
+    <div class="tile c4 reveal"><img class="tlogo" src="assets/logos/notion.svg" alt="Notion logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>No</i>'"><span>Notion</span></div>
+    <div class="tile c5 reveal"><img class="tlogo" src="assets/logos/reddit.svg" alt="Reddit logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Re</i>'"><span>Reddit</span></div>
+    <div class="tile c6 reveal"><img class="tlogo" src="assets/logos/rss.svg" alt="RSS logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Rs</i>'"><span>RSS</span></div>
+    <div class="tile c1 reveal"><img class="tlogo" src="assets/logos/googlephotos.svg" alt="Photos logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Ph</i>'"><span>Photos</span></div>
     <div class="tile c2 reveal"><i>Ou</i><span>Outlook</span></div>
-    <div class="tile c3 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/whatsapp/white" alt="WhatsApp logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Wa</i>'"><span>WhatsApp</span></div>
-    <div class="tile c4 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/trello/white" alt="Trello logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Tr</i>'"><span>Trello</span></div>
-    <div class="tile c5 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/todoist/white" alt="Todoist logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Td</i>'"><span>Todoist</span></div>
-    <div class="tile c6 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/gitlab/white" alt="GitLab logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gl</i>'"><span>GitLab</span></div>
-    <div class="tile c1 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/dropbox/white" alt="Dropbox logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Db</i>'"><span>Dropbox</span></div>
+    <div class="tile c3 reveal"><img class="tlogo" src="assets/logos/whatsapp.svg" alt="WhatsApp logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Wa</i>'"><span>WhatsApp</span></div>
+    <div class="tile c4 reveal"><img class="tlogo" src="assets/logos/trello.svg" alt="Trello logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Tr</i>'"><span>Trello</span></div>
+    <div class="tile c5 reveal"><img class="tlogo" src="assets/logos/todoist.svg" alt="Todoist logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Td</i>'"><span>Todoist</span></div>
+    <div class="tile c6 reveal"><img class="tlogo" src="assets/logos/gitlab.svg" alt="GitLab logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gl</i>'"><span>GitLab</span></div>
+    <div class="tile c1 reveal"><img class="tlogo" src="assets/logos/dropbox.svg" alt="Dropbox logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Db</i>'"><span>Dropbox</span></div>
     <div class="tile c2 reveal"><i>Od</i><span>OneDrive</span></div>
-    <div class="tile c3 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/googletasks/white" alt="Google Tasks logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gt</i>'"><span>Google Tasks</span></div>
+    <div class="tile c3 reveal"><img class="tlogo" src="assets/logos/googletasks.svg" alt="Google Tasks logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Gt</i>'"><span>Google Tasks</span></div>
     <div class="tile c4 reveal"><i>We</i><span>Weather</span></div>
     <div class="tile c5 reveal"><i>Cu</i><span>Currency</span></div>
-    <div class="tile c6 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/wikipedia/white" alt="Wikipedia logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Wi</i>'"><span>Wikipedia</span></div>
-    <div class="tile c1 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/ycombinator/white" alt="Hacker News logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Hn</i>'"><span>Hacker News</span></div>
+    <div class="tile c6 reveal"><img class="tlogo" src="assets/logos/wikipedia.svg" alt="Wikipedia logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Wi</i>'"><span>Wikipedia</span></div>
+    <div class="tile c1 reveal"><img class="tlogo" src="assets/logos/ycombinator.svg" alt="Hacker News logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Hn</i>'"><span>Hacker News</span></div>
     <div class="tile c2 reveal"><i>Di</i><span>Dictionary</span></div>
-    <div class="tile c3 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/googletranslate/white" alt="Translate logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Tl</i>'"><span>Translate</span></div>
-    <div class="tile c4 reveal"><img class="tlogo" src="https://cdn.simpleicons.org/stackoverflow/white" alt="Stack Overflow logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>So</i>'"><span>Stack Overflow</span></div>
+    <div class="tile c3 reveal"><img class="tlogo" src="assets/logos/googletranslate.svg" alt="Translate logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>Tl</i>'"><span>Translate</span></div>
+    <div class="tile c4 reveal"><img class="tlogo" src="assets/logos/stackoverflow.svg" alt="Stack Overflow logo" loading="lazy" width="42" height="42" onerror="this.outerHTML='<i>So</i>'"><span>Stack Overflow</span></div>
     <div class="tile c5 reveal"><i>Tm</i><span>TMDB</span></div>
     <div class="tile c6 reveal"><i>Nw</i><span>News</span></div>
     <div class="tile c1 reveal"><i>Qr</i><span>QR</span></div>
+  </div>
+</section>
+
+<!-- ══════════ DEMO ══════════ -->
+<section class="section" id="demo">
+  <h2 class="reveal">Watch it <span class="violet">work.</span></h2>
+  <p class="lede reveal">A real session, recorded in the app — no mockups.</p>
+  <div class="demo-wrap reveal">
+    <img class="demo-gif" src="demo.gif" alt="Screen recording of unibot answering a question with web search" loading="lazy" width="360">
+    <p class="fine">Demo GIF · ≈1.5 MB · recorded on-device</p>
+  </div>
+</section>
+
+<!-- ══════════ SCREENSHOTS ══════════ -->
+<section class="section alt" id="screens">
+  <h2 class="reveal">The open-source AI agent <span class="violet">in action.</span></h2>
+  <p class="lede reveal">Fresh from the app — providers, connectors, the composer and the power menu.</p>
+  <div class="phones four">
+    <div class="phone shot reveal">
+      <img class="realshot" src="assets/screenshot-providers.jpg?v=2" alt="unibot Add Provider screen with OpenAI, Anthropic, Gemini, Grok, Kimi, OpenRouter and voice providers" loading="lazy">
+      <p class="cap">Any provider — bring your own key</p>
+    </div>
+    <div class="phone shot reveal">
+      <img class="realshot" src="assets/screenshot-connectors.jpg?v=2" alt="unibot connectors list with Gmail, Drive, Calendar, YouTube, Discord, Spotify and more" loading="lazy">
+      <p class="cap">31 connectors, one list</p>
+    </div>
+    <div class="phone shot reveal">
+      <img class="realshot" src="assets/screenshot-composer.jpg?v=2" alt="unibot chat composer with Think and Search pills and Camera, Photo and Document tiles" loading="lazy">
+      <p class="cap">Think & Search pills, media tiles</p>
+    </div>
+    <div class="phone shot reveal">
+      <img class="realshot" src="assets/screenshot-menu.jpg?v=2" alt="unibot chat menu with incognito chat, terminal, browser, skills, MCPs and memories" loading="lazy">
+      <p class="cap">Incognito, terminal, skills, MCPs</p>
+    </div>
   </div>
 </section>
 
@@ -289,30 +313,6 @@
   </div>
 </section>
 
-<!-- ══════════ SCREENSHOTS ══════════ -->
-<section class="section alt" id="screens">
-  <h2 class="reveal">The open-source AI agent <span class="violet">in action.</span></h2>
-  <p class="lede reveal">Fresh from the app — providers, connectors, the composer and the power menu.</p>
-  <div class="phones four">
-    <div class="phone shot reveal">
-      <img class="realshot" src="assets/screenshot-providers.jpg?v=2" alt="unibot Add Provider screen with OpenAI, Anthropic, Gemini, Grok, Kimi, OpenRouter and voice providers" loading="lazy">
-      <p class="cap">Any provider — bring your own key</p>
-    </div>
-    <div class="phone shot reveal">
-      <img class="realshot" src="assets/screenshot-connectors.jpg?v=2" alt="unibot connectors list with Gmail, Drive, Calendar, YouTube, Discord, Spotify and more" loading="lazy">
-      <p class="cap">31 connectors, one list</p>
-    </div>
-    <div class="phone shot reveal">
-      <img class="realshot" src="assets/screenshot-composer.jpg?v=2" alt="unibot chat composer with Think and Search pills and Camera, Photo and Document tiles" loading="lazy">
-      <p class="cap">Think & Search pills, media tiles</p>
-    </div>
-    <div class="phone shot reveal">
-      <img class="realshot" src="assets/screenshot-menu.jpg?v=2" alt="unibot chat menu with incognito chat, terminal, browser, skills, MCPs and memories" loading="lazy">
-      <p class="cap">Incognito, terminal, skills, MCPs</p>
-    </div>
-  </div>
-</section>
-
 <!-- ══════════ DOWNLOAD ══════════ -->
 <section class="section" id="download">
   <div class="dl-card reveal">
@@ -320,6 +320,10 @@
     <h2>Get unibot <span class="violet">v1.4.0</span></h2>
     <p>Free forever. No account. ≈43 MB. Installs over any previous version — your data stays.</p>
     <a class="btn primary big" href="https://github.com/unictoai/unibot/releases/download/v1.4.0/unibot-1.4.0-arm64.apk">Download for Android</a>
+    <div class="install-note">
+      <p><b>Needs:</b> Android 8.0+ on a 64-bit (arm64) phone — that's nearly every Android from the last 8 years.</p>
+      <p><b>Installing:</b> open the downloaded APK → tap <i>Settings</i> on the "unknown apps" prompt → allow it → <i>Install</i>. That's the only extra step — there's no Play Store listing.</p>
+    </div>
     <p class="fine"><a href="https://github.com/unictoai/unibot/releases">or grab any release on GitHub →</a></p>
   </div>
 </section>
@@ -365,6 +369,6 @@
 </footer>
 
 <button class="to-top" id="toTop" aria-label="Back to top">↑</button>
-<script src="script.js?v=20261004f"></script>
+<script src="script.js?v=20261010a"></script>
 </body>
 </html>
