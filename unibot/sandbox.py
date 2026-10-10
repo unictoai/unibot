@@ -320,6 +320,16 @@ class Sandbox:
         if masked:
             # the data dir (vault, sessions, tokens) inside a bound root: mask it
             args += ["--tmpfs", str(self.data_dir)]
+            # bwrap applies mounts in order, so the mask above covered the writable
+            # roots bound before it (the default workspace lives under the data
+            # dir) — bind them again underneath, like the read-only roots below
+            for root in roots:
+                if (
+                    self.data_dir
+                    and root != self.data_dir
+                    and root.is_relative_to(self.data_dir)
+                ):
+                    args += ["--bind-try", str(root), str(root)]
         for root in [*self.ro_roots, *self.shared_ro]:
             under_mask = bool(masked and self.data_dir and root.is_relative_to(self.data_dir))
             if root.is_dir() and (under_mask or not any(root.is_relative_to(r) for r in roots)):

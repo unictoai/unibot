@@ -64,8 +64,12 @@ class Triggers(BaseTool):
         action = str(args.get("action") or "?")
         if action == "create":
             detail = f"{args.get('kind') or '?'} “{args.get('match') or '*'}” — {str(args.get('text') or '')[:60]}"
+            # a trigger is a standing instruction that fires on its own later —
+            # like a skill, creating one always stops for approval
+            a.risk = RiskLevel.SENSITIVE
         elif action == "cancel":
             detail = str(args.get("trigger_id") or "")
+            a.risk = RiskLevel.MODERATE
         else:
             detail = ""
         a.summary = f"triggers {action}" + (f": {detail}" if detail else "")
@@ -107,9 +111,13 @@ class Triggers(BaseTool):
                 out = f"Trigger set.\n{item.render()}"
                 if item.kind == "hook":
                     url = f"{self.base_url}/api/hooks/{item.id}?key={item.secret}"
-                    out += (
-                        f"\nWebhook URL (POST, any body; keep the key private): {url}\n"
-                        "The user can copy it from the app under Upcoming."
+                    # the secret URL goes to the UI only (ToolResult.system), never
+                    # into the model context: anyone who can read it can fire
+                    # prompts into the agent from the outside
+                    return ToolResult(
+                        output=out
+                        + "\nThe user can copy the webhook URL from the app under Upcoming.",
+                        system=f"Webhook URL (POST, any body; keep the key private): {url}",
                     )
                 elif item.kind == "event":
                     out += (

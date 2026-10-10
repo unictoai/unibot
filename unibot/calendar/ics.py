@@ -17,6 +17,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dateutil.rrule import rruleset, rrulestr
 
 _LINE_RE = re.compile(r"^(?P<name>[A-Za-z0-9-]+)(?P<params>(?:;[^:]*)?):(?P<value>.*)$", re.S)
+# A per-second or per-minute recurrence unrolls into tens of thousands of
+# occurrences (FREQ=SECONDLY from 40 days back: 12 s for one day's window) —
+# pathological for a calendar, and a subscribed feed is attacker-controlled.
+_SUB_MINUTE_RE = re.compile(r"FREQ\s*=\s*(SECONDLY|MINUTELY)", re.IGNORECASE)
+# …and no event needs more than this many occurrences in one window.
+_MAX_OCCURRENCES = 1000
 _DURATION_RE = re.compile(
     r"^(?P<sign>[+-])?P(?:(?P<weeks>\d+)W)?(?:(?P<days>\d+)D)?"
     r"(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$"
@@ -304,8 +310,12 @@ def _starts(ev: Event, start: datetime, end: datetime) -> list[datetime]:
         return [ev.start]
     # Occurrences that begin before the window but run into it still count.
     lookback = max(ev.duration, timedelta(0))
+    rrule_text = _rrule_for(ev)
+    if _SUB_MINUTE_RE.search(rrule_text):
+        # pathological for a calendar: keep the first occurrence only
+        return [ev.start]
     try:
-        rule = rrulestr(_rrule_for(ev), dtstart=ev.start)
+        rule = rrulestr(rrule_text, dtstart=ev.start)
     except (ValueError, TypeError):
         return [ev.start]
     rules = rruleset()
@@ -313,7 +323,17 @@ def _starts(ev: Event, start: datetime, end: datetime) -> list[datetime]:
     for ex in ev.exdates:
         rules.exdate(ex if not ev.all_day else ex.replace(tzinfo=ev.start.tzinfo))
     try:
-        return list(rules.between(start - lookback, end, inc=True))
+        # iterated (not list(between(...))): generation stops at the window end
+        # and is capped, so a hostile rule cannot freeze the server
+        out: list[datetime] = []
+        for occ in rules:
+            if occ > end:
+                break
+            if occ >= start - lookback:
+                out.append(occ)
+                if len(out) >= _MAX_OCCURRENCES:
+                    break
+        return out
     except (ValueError, TypeError):
         return [ev.start]
 
