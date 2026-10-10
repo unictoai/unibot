@@ -151,6 +151,9 @@ class SwarmEngine(
                     maxWorkers = options.maxWorkers.coerceIn(1, 8),
                     requirePlanApproval = options.requirePlanApproval,
                     attachments = safeAttachments,
+                    // v1.5 bug 5 — token budget for this run; the engine
+                    // field lives on SwarmUiState (engine worker's side).
+                    tokenBudget = options.tokenBudget,
                 ),
             )
             if (!transitionTo(SwarmLifecycle.PLANNING)) return false

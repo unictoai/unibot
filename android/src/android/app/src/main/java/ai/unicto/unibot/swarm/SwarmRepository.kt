@@ -20,8 +20,16 @@ data class SwarmPrefs(
     val requirePlanApproval: Boolean = true,
     /** Post a notification when a mission finishes while backgrounded (item 11). */
     val completionNotificationsEnabled: Boolean = true,
+    /**
+     * Token budget for new missions (v1.5 bug 5): 50k / 150k (default) /
+     * 500k / 0 = unlimited. Kept on the field (not deleted with the UI)
+     * so missions launched while the setting was available restore sanely.
+     */
+    val tokenBudget: Int = 150_000,
 ) {
     fun withMaxWorkers(value: Int): SwarmPrefs = copy(maxWorkers = value.coerceIn(1, 8))
+    /** The setting exposes fixed choices only, so no coercion needed here. */
+    fun withTokenBudget(value: Int): SwarmPrefs = copy(tokenBudget = value)
 }
 
 /**
