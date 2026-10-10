@@ -29,6 +29,18 @@ import java.util.concurrent.ConcurrentHashMap
  * Manages up to 3 browser tabs for the agent, mirroring iOS BrowserTabPool.
  * All tabs share the same cookie store by default on Android.
  */
+
+/**
+ * Strip directory components from a page-controlled download filename.
+ * The `__unibot__` JS bridge hands us `filename` values that any page's
+ * JavaScript can set; without this, `../` escapes the session workspace
+ * into the app's private storage.
+ */
+internal fun sanitizeDownloadFileName(name: String): String {
+    val safe = java.io.File(name).name
+    return if (safe.isBlank() || safe == "." || safe == "..") "download" else safe
+}
+
 class BrowserTabPool(private val context: Context) {
 
     companion object {
@@ -429,10 +441,14 @@ class BrowserTabPool(private val context: Context) {
 
     /** name.ext → name-1.ext → name-2.ext … until unused. */
     private fun uniqueFile(dir: File, name: String): File {
-        var f = File(dir, name)
+        // Sanitize: `name` can be page-controlled (JS bridge filename). Strip any
+        // directory components so ../ can never escape `dir` into the app's
+        // private storage (e.g. filesDir/alpine-rootfs).
+        val safe = sanitizeDownloadFileName(name)
+        var f = File(dir, safe)
         if (!f.exists()) return f
-        val base = name.substringBeforeLast('.', name)
-        val ext = name.substringAfterLast('.', "")
+        val base = safe.substringBeforeLast('.', safe)
+        val ext = safe.substringAfterLast('.', "")
         var i = 1
         while (f.exists()) {
             f = File(dir, if (ext.isEmpty()) "$base-$i" else "$base-$i.$ext")

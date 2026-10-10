@@ -93,7 +93,7 @@ object VoiceProviderFactory {
                     null
                 }
 
-            // Native Gemini TTS (generateContent + AUDIO modality, ?key= auth).
+            // Native Gemini TTS (generateContent + AUDIO modality, x-goog-api-key header auth).
             ProviderType.gemini ->
                 GeminiVoiceProvider(
                     instance.id,

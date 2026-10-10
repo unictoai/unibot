@@ -71,9 +71,12 @@ class GeminiProvider(
         thinkingLevel: ThinkingLevel,
     ): LLMResponse = withContext(Dispatchers.IO) {
         val body = buildRequestBody(messages, systemPrompt, maxTokens, temperature, imageParts, tools, thinkingLevel)
-        val url = "$basePath/models/${model.id}:generateContent?key=$apiKey"
+        // API key travels in the x-goog-api-key header, never in the URL query
+        // string (URLs leak into logs, error text and proxy records).
+        val url = "$basePath/models/${model.id}:generateContent"
         val request = Request.Builder()
             .url(url)
+            .header("x-goog-api-key", apiKey)
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             // [T-android-default-ua] Brand the outbound UA so server logs
             // can trace the request back to the Unibot build. Gemini has no

@@ -184,8 +184,8 @@ class ProviderHealthProber(
                     "x-api-key" to key,
                     "anthropic-version" to "2023-06-01",
                 )
-                // Gemini's API takes the key as a query parameter.
-                ProviderType.gemini -> "$base/models?key=$key" to emptyMap()
+                // Gemini's key travels in the x-goog-api-key header, never the URL.
+                ProviderType.gemini -> "$base/models" to mapOf("x-goog-api-key" to key)
                 else -> "$base/models" to mapOf("Authorization" to "Bearer $key")
             }
             val builder = Request.Builder().url(url).get()

@@ -44,6 +44,14 @@ object OutlookOAuth {
 
     private const val TAG = "OutlookOAuth"
 
+    /**
+     * The OAuth `state` returned by the provider must be present AND equal to
+     * the one we generated. A missing state is rejected — accepting it would
+     * let a crafted callback complete a flow the app didn't start.
+     */
+    internal fun isValidState(returnedState: String?, expectedState: String): Boolean =
+        returnedState == expectedState
+
     val configStore = OutlookAzureConfigStore()
 
     private const val LOOPBACK_PORT = 53712
@@ -160,8 +168,9 @@ object OutlookOAuth {
             } ?: return Result.Cancelled
 
             val (code, state) = callback
-            if (state != null && state != pkce.state) {
-                AppLogger.warning(TAG, "[Authorize] state mismatch")
+            // state must be present AND match (see isValidState).
+            if (!isValidState(state, pkce.state)) {
+                AppLogger.warning(TAG, "[Authorize] state missing or mismatch")
                 return Result.Failed("State mismatch in the sign-in callback.")
             }
             return exchangeCode(
@@ -189,8 +198,9 @@ object OutlookOAuth {
         } ?: return Result.Cancelled
 
         val (code, state) = callback
-        if (state != null && state != pkce.state) {
-            AppLogger.warning(TAG, "[Authorize] state mismatch")
+        // state must be present AND match (see isValidState).
+        if (!isValidState(state, pkce.state)) {
+            AppLogger.warning(TAG, "[Authorize] state missing or mismatch")
             return Result.Failed("State mismatch in the sign-in callback.")
         }
         return exchangeCode(config, tenant, code, config.redirectUri, pkce.verifier)

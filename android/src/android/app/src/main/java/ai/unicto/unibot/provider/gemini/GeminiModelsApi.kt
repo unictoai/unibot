@@ -18,7 +18,7 @@ object GeminiModelsApi {
     /**
      * Fetch the Gemini model catalog. Three auth modes matching iOS
      * `GeminiModelsAPI`:
-     *   - API key via `?key=<k>` query param
+     *   - API key via the `x-goog-api-key` header (never the URL query string)
      *   - OAuth via `Authorization: Bearer <token>` (no key param)
      *   - Cloud Code Assist: no public list endpoint — caller passes
      *     `cloudCodeFallback=true` to short-circuit straight to the built-in
@@ -51,7 +51,9 @@ object GeminiModelsApi {
             builder.url("https://generativelanguage.googleapis.com/v1beta/models")
             builder.header("Authorization", "Bearer $apiKey")
         } else {
-            builder.url("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
+            // Key in the x-goog-api-key header, never in the URL query string.
+            builder.url("https://generativelanguage.googleapis.com/v1beta/models")
+            builder.header("x-goog-api-key", apiKey)
         }
 
         // [T-android-default-ua] brand outbound /v1beta/models request.

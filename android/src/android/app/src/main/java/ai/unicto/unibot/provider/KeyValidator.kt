@@ -110,7 +110,8 @@ object KeyValidator {
             ?: return@withContext KeyValidationResult.Unexpected(-1)
         val request = when (type) {
             ProviderType.gemini -> Request.Builder()
-                .url("$endpoint?key=${apiKey.trim()}")
+                .url(endpoint)
+                .header("x-goog-api-key", apiKey.trim())
                 .get()
                 .build()
             ProviderType.anthropic -> Request.Builder()
