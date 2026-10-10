@@ -78,6 +78,56 @@ def test_auth_required(server):
     assert state["settings"]["sentinel"]["mode"] == "ask"
 
 
+def test_http_auth_accepts_bearer_header(server):
+    """The app token also rides the ``Authorization: Bearer`` header on plain HTTP
+    routes (kept out of URLs, logs, and proxies); the ?token= form still works."""
+    client, _, _ = server
+    anon = TestClient(client.app)
+    assert anon.get("/api/state", headers={"Authorization": "Bearer secret-token"}).status_code == 200
+    assert anon.get("/api/state", headers={"Authorization": "Bearer wrong"}).status_code == 401
+
+
+def test_query_tokens_are_never_logged(server):
+    """Tokens arriving via the URL must not end up in the app's logs — valid or not."""
+    from unibot.logger import logger
+
+    client, _, _ = server
+    logged: list[str] = []
+    sink = logger.add(logged.append, level="DEBUG")
+    try:
+        anon = TestClient(client.app)
+        anon.get("/api/state?token=secret-token")
+        anon.get("/api/state?token=wrong-token")
+        anon.get("/api/health?token=secret-token")
+        with anon.websocket_connect("/ws?token=secret-token") as ws:
+            ws.receive_json()
+    finally:
+        logger.remove(sink)
+    logged_text = "\n".join(logged)
+    assert "secret-token" not in logged_text
+    assert "wrong-token" not in logged_text
+
+
+def test_health_is_minimal_without_token(server):
+    """Unauthenticated callers get a bare status probe — no version, no auth flag.
+    A wrong token answers identically (200), not with a 401 oracle."""
+    client, _, _ = server
+    anon = TestClient(client.app)
+    assert anon.get("/api/health").json() == {"status": "ok"}
+    assert anon.get("/api/health?token=wrong").status_code == 200
+    assert anon.get("/api/health?token=wrong").json() == {"status": "ok"}
+
+
+def test_health_shows_details_with_token(server):
+    """The app token (header or query) still unlocks version, auth flag, and the
+    startup-progress field the socket-open test relies on."""
+    client, _, _ = server
+    body = client.get("/api/health").json()  # fixture sets the Bearer header
+    assert body["ok"] is True and body["auth"] is True and "version" in body
+    anon = TestClient(client.app)
+    assert anon.get("/api/health?token=secret-token").json()["auth"] is True
+
+
 def test_the_socket_opens_after_the_grace_while_services_keep_starting(settings, monkeypatch):
     """A relay behind a broken proxy or an MCP server that never answers must not keep the
     app closed: past ``start_grace`` it answers, and /api/health names the step still running."""
@@ -393,6 +443,22 @@ def test_websocket_rejects_bad_token(server):
     from starlette.websockets import WebSocketDisconnect
 
     with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws?token=wrong") as ws:
+        ws.receive_json()
+
+
+def test_websocket_accepts_bearer_header(server):
+    """Programmatic clients can pass the token in the handshake headers instead of
+    the URL; the ?token= fallback stays for browsers, which cannot set headers."""
+    from starlette.websockets import WebSocketDisconnect
+
+    client, _, _ = server
+    anon = TestClient(client.app)
+    with anon.websocket_connect("/ws", headers={"Authorization": "Bearer secret-token"}) as ws:
+        hello = ws.receive_json()
+        assert hello["kind"] == "hello" and hello["state"]["profile"]["name"] == "unibot"
+    with pytest.raises(WebSocketDisconnect), anon.websocket_connect(
+        "/ws", headers={"Authorization": "Bearer wrong"}
+    ) as ws:
         ws.receive_json()
 
 
@@ -1901,3 +1967,33 @@ def test_base_url_validation():
     ]:
         with pytest.raises(ValueError):
             validate_base_url(bad)
+
+
+def test_hook_key_header_accepted_and_preferred(server):
+    """The webhook key can ride the ``x-hook-key`` header instead of the URL, and
+    the header wins when both are present (keys stay out of access logs)."""
+    client, service, _ = server
+    item = service.create_trigger("hook", text="say hi", match="deploy")
+    plain = TestClient(client.app)
+    url = f"/api/hooks/{item.id}"
+
+    def reset_cooldown() -> None:
+        service.app.triggers._conn.execute(
+            "UPDATE triggers SET last_fired_at='' WHERE id=?", (item.id,)
+        )
+
+    # the header alone authenticates — no ?key= in the URL at all
+    r = plain.post(url, content="x", headers={"x-hook-key": item.secret})
+    assert r.status_code == 200 and r.json() == {"ok": True, "trigger": item.id, "fired": 1}
+
+    reset_cooldown()
+    # a wrong header cannot be rescued by a right ?key=: the header wins
+    r = plain.post(
+        url + f"?key={item.secret}", content="x", headers={"x-hook-key": "nope"}
+    )
+    assert r.status_code == 404
+
+    reset_cooldown()
+    # a right header is not sunk by a wrong ?key=
+    r = plain.post(url + "?key=nope", content="x", headers={"x-hook-key": item.secret})
+    assert r.status_code == 200 and r.json()["fired"] == 2

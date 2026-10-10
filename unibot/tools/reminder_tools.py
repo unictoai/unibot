@@ -93,12 +93,12 @@ class Reminders(BaseTool):
                 )
                 self._changed()
                 verb = "Routine set" if item.repeating else "Reminder set"
-                return ToolResult(output=f"{verb}.\n{item.render()}")
+                return ToolResult(output=f"{verb}.\n{item.render(tz=self.store.tz)}")
             if action == "list":
                 items = self.store.list("active")
                 if not items:
                     return ToolResult(output="Nothing scheduled.")
-                return ToolResult(output="\n".join(i.render() for i in items))
+                return ToolResult(output="\n".join(i.render(tz=self.store.tz) for i in items))
             if action == "cancel":
                 if not reminder_id:
                     return ToolResult.fail("`reminder_id` is required")
@@ -106,7 +106,7 @@ class Reminders(BaseTool):
                 if cancelled is None:
                     return ToolResult.fail(f"no active reminder {reminder_id}")
                 self._changed()
-                return ToolResult(output=f"Cancelled.\n{cancelled.render()}")
+                return ToolResult(output=f"Cancelled.\n{cancelled.render(tz=self.store.tz)}")
             return ToolResult.fail(f"unknown action {action!r}")
         except ValueError as exc:
             return ToolResult.fail(str(exc))

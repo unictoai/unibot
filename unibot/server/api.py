@@ -59,6 +59,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
+from starlette.datastructures import Headers
 
 from unibot.avatar.studio import StudioError
 from unibot.bridge.server import BridgeError
@@ -383,10 +384,19 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         if not token or not secrets.compare_digest(token.encode(), svc.token.encode()):
             raise HTTPException(status_code=401, detail="invalid or missing token")
 
+    def _bearer_token(headers: Headers) -> str | None:
+        """The app token from an ``Authorization: Bearer`` header, if one is present.
+
+        The header wins wherever both channels are possible: a token in a URL ends
+        up in access logs, proxies, and browser history.
+        """
+        header = headers.get("authorization", "")
+        if header.lower().startswith("bearer "):
+            return header[7:].strip() or None
+        return None
+
     def auth(request: Request) -> None:
-        header = request.headers.get("authorization", "")
-        token = header[7:].strip() if header.lower().startswith("bearer ") else None
-        _check_token(token or request.query_params.get("token"))
+        _check_token(_bearer_token(request.headers) or request.query_params.get("token"))
 
     dep = [Depends(auth)]
 
@@ -408,7 +418,16 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         return svc.state()
 
     @app.get("/api/health")
-    async def health() -> dict[str, Any]:
+    async def health(request: Request) -> dict[str, Any]:
+        """Liveness probe. Callers without the app token — or with a wrong one — get
+        a bare ``{"status": "ok"}`` with a 200, so unauthenticated monitoring keeps
+        working; version, auth state, and startup progress stay behind the token.
+        Missing and wrong tokens answer identically (no 401 oracle for guessing)."""
+        token = _bearer_token(request.headers) or request.query_params.get("token")
+        try:
+            _check_token(token)
+        except HTTPException:
+            return {"status": "ok"}
         out = {"ok": True, "version": svc.settings_view()["version"], "auth": bool(svc.token)}
         if svc.starting:
             out["starting"] = svc.starting
@@ -703,7 +722,9 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         """A trigger's webhook. No app token: the key in the URL is the credential, and a
         wrong id or key is a 404 either way. The body (up to 64 KB, JSON or text) is what
         the agent gets as context."""
-        key = request.query_params.get("key") or request.headers.get("x-hook-key") or ""
+        # The header wins over the query string: a key in a URL ends up in access
+        # logs and proxies. The ?key= form stays for clients that cannot set headers.
+        key = request.headers.get("x-hook-key") or request.query_params.get("key") or ""
         raw = await request.body()
         if len(raw) > 64 * 1024:
             raise HTTPException(413, "body too large (64 KB max)")
@@ -1557,7 +1578,9 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.websocket("/ws")
     async def websocket(ws: WebSocket) -> None:
         try:
-            _check_token(ws.query_params.get("token"))
+            # Browsers cannot set headers on a WebSocket handshake, so the ?token=
+            # fallback must keep working; programmatic clients should use the header.
+            _check_token(_bearer_token(ws.headers) or ws.query_params.get("token"))
         except HTTPException:
             await ws.close(code=4401)
             return

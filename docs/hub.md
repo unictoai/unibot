@@ -72,9 +72,12 @@ Two kinds of request travel over the hub:
   answers with the finished run. Only a runtime that has the module announces
   these actions. [coding-agents.md](coding-agents.md).
 
-Each device decides what it lets others do. **Remote control** off (phone:
-*Settings → unibot Cloud → Devices*; desktop: `set remote_control off`) makes
-the device answer `info` and nothing else — it still sees and drives the others.
+Each device decides what it lets others do. **Remote control** is off by default —
+a compromised account or device must not get shell on a computer without the owner
+opting in. When it is on (phone: *Settings → unibot Cloud → Devices*; desktop:
+`set remote_control on`), the other devices may run shell, file, screen and coding
+actions here and hand this computer tasks. With it off, the device answers `info`
+and nothing else — it still sees and drives the others.
 
 ## Frames
 

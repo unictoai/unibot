@@ -36,7 +36,7 @@ from unibot.llm import BaseLLM
 from unibot.logger import logger
 from unibot.memory.consolidate import TidyReport, tidy
 from unibot.phone import PhoneLink
-from unibot.reminders import Reminder
+from unibot.reminders import Reminder, user_timezone
 from unibot.schema import Attachment, Message, Role
 from unibot.sentinel.grants import SCOPES
 from unibot.server.connections import Connections
@@ -1142,7 +1142,9 @@ class MuseService:
         if item.status != "active":
             raise ValueError(f"reminder is {item.status}")
         thread = item.thread if item.thread in self.threads else MAIN_THREAD
-        now = datetime.now().astimezone().strftime("%A, %Y-%m-%d %H:%M")
+        now = datetime.now(user_timezone(self.settings.agent.timezone)).strftime(
+            "%A, %Y-%m-%d %H:%M"
+        )
         template = prompts.REMINDER_PROMPT if item.kind == "remind" else prompts.ROUTINE_PROMPT
         label = ("Reminder: " if item.kind == "remind" else "Routine: ") + _short(item.text)
         self.send(

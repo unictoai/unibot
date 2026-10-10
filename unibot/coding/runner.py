@@ -23,6 +23,7 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from unibot.coding.agents import AGENTS, Session, read_session, which
@@ -103,17 +104,47 @@ class Run:
         return True
 
 
-def command_for(agent: str, session_id: str, workspace: str, text: str, resume: bool) -> list[str]:
+def validate_workspace(workspace: str, allowed_roots: list[Path] | None) -> str:
+    """Check a coding run's ``workspace`` against the allowed roots (the agent's
+    workspace plus ``agent.extra_roots``) — the same inside-a-root rule the files
+    tool's ``_resolve`` uses.
+
+    Returns the resolved path (``""`` when none was given); raises ``ValueError``
+    when it sits outside every root. Without this a peer over the hub could point
+    an agent CLI — and its working directory — at any folder on this computer.
+    ``allowed_roots=None`` skips the check (direct local callers with no settings).
+    """
+    if not workspace:
+        return ""
+    resolved = Path(os.path.expanduser(workspace)).resolve()
+    if allowed_roots is None:
+        return str(resolved)
+    roots = [r.resolve() for r in allowed_roots]
+    if not any(resolved == r or r in resolved.parents for r in roots):
+        raise ValueError(f"workspace '{workspace}' is outside the allowed roots")
+    return str(resolved)
+
+
+def command_for(
+    agent: str,
+    session_id: str,
+    workspace: str,
+    text: str,
+    resume: bool,
+    allowed_roots: list[Path] | None = None,
+) -> list[str]:
     cli = which(agent)
     if not cli:
         raise FileNotFoundError(f"{AGENTS[agent]['name']} is not installed on this computer")
+    workspace = validate_workspace(workspace, allowed_roots)
     if agent == "cursor":
         cmd = [cli, "-p", "--output-format", "stream-json", "--stream-partial-output", "--force"]
         if resume and session_id:
             cmd += ["--resume", session_id]
         if workspace:
             cmd += ["--workspace", workspace]
-        cmd.append(text)
+        # `--`: a leading `-` in the user's text must not be read as an option
+        cmd += ["--", text]
         return cmd
     if agent == "codex":
         cmd = [cli, "exec"]
@@ -123,7 +154,7 @@ def command_for(agent: str, session_id: str, workspace: str, text: str, resume: 
         cmd += ["--json", "--skip-git-repo-check", "-c", 'sandbox_mode="workspace-write"']
         if workspace and not (resume and session_id):
             cmd += ["-C", workspace]
-        cmd.append(text)
+        cmd += ["--", text]
         return cmd
     if agent == "claude":
         cmd = [
@@ -137,7 +168,7 @@ def command_for(agent: str, session_id: str, workspace: str, text: str, resume: 
         ]
         if resume and session_id:
             cmd += ["--resume", session_id]
-        cmd.append(text)
+        cmd += ["--", text]
         return cmd
     raise ValueError(f"unknown agent {agent!r}")
 
@@ -331,6 +362,7 @@ async def start_run(
     timeout_s: float = RUN_TIMEOUT_S,
     run_id: str = "",
     register: Callable[[Run], None] | None = None,
+    allowed_roots: list[Path] | None = None,
 ) -> Run:
     """Send ``text`` into ``session_id`` of ``agent`` (a new session when empty) and follow
     it to the end. Returns the finished ``Run``; ``on_event`` sees each step as it happens.
@@ -344,6 +376,7 @@ async def start_run(
     text = text.strip()
     if not text:
         raise ValueError("text is required")
+    workspace = validate_workspace(workspace, allowed_roots)
     run = Run(
         id=run_id or "run_" + uuid.uuid4().hex[:8],
         agent=agent,
@@ -379,7 +412,7 @@ async def start_run(
         )
     for attempt in (1, 2):
         try:
-            cmd = command_for(agent, session_id, run.workspace, attempt_text, resume)
+            cmd = command_for(agent, session_id, run.workspace, attempt_text, resume, allowed_roots)
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -528,4 +561,4 @@ def _looks_like_unknown_session(text: str) -> bool:
     )
 
 
-__all__ = ["RUN_TIMEOUT_S", "Run", "RunEvent", "command_for", "start_run"]
+__all__ = ["RUN_TIMEOUT_S", "Run", "RunEvent", "command_for", "start_run", "validate_workspace"]

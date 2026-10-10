@@ -24,6 +24,7 @@ import tomllib
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -87,12 +88,28 @@ class AgentSettings(BaseModel):
     extra_roots: list[Path] = Field(default_factory=list)
     # "auto" → answer in the user's language; or force e.g. "zh" / "en".
     language: str = "auto"
+    # IANA timezone name the user lives in, e.g. "Asia/Karachi". Naive reminder and
+    # routine times ("remind me at 9am") are resolved in this zone instead of the
+    # server host's — on a UTC Docker host a Karachi "9am" would otherwise fire five
+    # hours off. Empty: the system local timezone (today's behaviour).
+    timezone: str = ""
     max_context_messages: int = 80
     show_thinking: bool = False
     # Optional free-text profile injected into the system prompt.
     user_profile: str = ""
     # Extra instructions appended to the system prompt.
     instructions: str = ""
+
+    @field_validator("timezone")
+    @classmethod
+    def _validate_timezone(cls, v: str) -> str:
+        v = (v or "").strip()
+        if v:
+            try:
+                ZoneInfo(v)
+            except ZoneInfoNotFoundError:
+                raise ValueError(f"unknown timezone {v!r}; use an IANA name like 'Asia/Karachi'")
+        return v
 
 
 class SentinelRule(BaseModel):
@@ -394,13 +411,18 @@ class HubSettings(BaseModel):
     """The hub: this computer as one of the account's devices (see docs/hub.md).
 
     ``enabled`` joins the hub whenever the Cloud account is signed in. ``remote_control``
-    off answers other devices with ``info`` and nothing else. ``name`` is what the other
-    devices call this one (empty: the host name). ``device_id`` is per installation and
-    normally left to the app.
+    lets the other devices run shell, file, screen and coding actions on this computer
+    and hand it agent tasks. It is off by default: a compromised account or device must
+    not get shell on every computer without the owner opting in. Enable it explicitly
+    per computer (phone: Settings → unibot Cloud → Devices; desktop:
+    ``set remote_control on``). When off, this computer answers other devices with
+    ``info`` and nothing else, and still sees and drives the others. ``name`` is what
+    the other devices call this one (empty: the host name). ``device_id`` is per
+    installation and normally left to the app.
     """
 
     enabled: bool = True
-    remote_control: bool = True
+    remote_control: bool = False
     name: str = ""
     device_id: str = ""
 

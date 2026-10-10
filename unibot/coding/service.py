@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from unibot.coding import agents
-from unibot.coding.runner import Run, start_run
+from unibot.coding.runner import Run, start_run, validate_workspace
 from unibot.logger import logger
 
 if TYPE_CHECKING:
@@ -117,6 +117,12 @@ class CodingService:
             logger.warning("coding: could not write {}: {}", self._store, exc)
 
     # ------------------------------------------------------------------ local
+    def _workspace_roots(self) -> list[Path]:
+        """The directories a coding run may be pointed at: the agent's workspace
+        plus its extra roots — the same roots the files tool may touch."""
+        agent = self.svc.app.settings.agent
+        return [agent.workspace, *agent.extra_roots]
+
     def agents(self, fresh: bool = False) -> list[dict[str, Any]]:
         """Installed agents with versions (cached a minute; `running` is always live)."""
         if fresh or time.time() - self._detected_at > 60:
@@ -164,6 +170,10 @@ class CodingService:
             raise CodingError("unknown_agent", f"no coding agent called {agent!r}")
         if not text.strip():
             raise CodingError("usage", "text is required")
+        roots = self._workspace_roots()
+        # the workspace may come from a peer over the hub: outside the allowed
+        # roots it is rejected here, before anything is started
+        workspace = validate_workspace(workspace, roots)
         if not agents.which(agent):
             raise CodingError(
                 "not_installed", f"{agents.AGENTS[agent]['name']} is not installed on this computer"
@@ -210,6 +220,7 @@ class CodingService:
                 on_event=on_event,
                 run_id=run_id,
                 register=register,
+                allowed_roots=roots,
             )
         )
         self._tasks[run_id] = task

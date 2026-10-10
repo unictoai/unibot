@@ -107,3 +107,17 @@ def test_workspace_defaults_under_the_data_dir(tmp_path: Path, monkeypatch: pyte
         f'data_dir = "{(tmp_path / "data").as_posix()}"\n[agent]\nworkspace = "./mine"\n'
     )
     assert load_settings(cfg).agent.workspace == Path("./mine")
+
+
+def test_timezone_setting_defaults_empty_and_validates():
+    """``agent.timezone`` is an IANA name like "Asia/Karachi"; empty keeps the system
+    local zone (today's behaviour). Unknown zones fail loudly at config load."""
+    from pydantic import ValidationError
+
+    from unibot.config import Settings
+
+    assert Settings().agent.timezone == ""
+    s = Settings.model_validate({"agent": {"timezone": "Asia/Karachi"}})
+    assert s.agent.timezone == "Asia/Karachi"
+    with pytest.raises(ValidationError, match="unknown timezone"):
+        Settings.model_validate({"agent": {"timezone": "Mars/Olympus"}})
