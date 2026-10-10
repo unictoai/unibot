@@ -1,4 +1,4 @@
-// unibot site — reveals, count-ups, FAQ accordion. Respects reduced motion.
+// unibot site — reveals, FAQ accordion, mobile menu. Respects reduced motion.
 (function () {
   "use strict";
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -22,31 +22,6 @@
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
     revealEls.forEach(function (el) { io.observe(el); });
-  }
-
-  // ── Animated count-ups ──
-  var counters = document.querySelectorAll(".count");
-  function setFinal(el) { el.textContent = el.getAttribute("data-count"); }
-  if (reduced || !("IntersectionObserver" in window)) {
-    counters.forEach(setFinal);
-  } else {
-    var cio = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        cio.unobserve(e.target);
-        var el = e.target, target = parseInt(el.getAttribute("data-count"), 10);
-        var start = null, dur = 1400;
-        function tick(t) {
-          if (!start) start = t;
-          var p = Math.min((t - start) / dur, 1);
-          var eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
-          el.textContent = Math.round(target * eased);
-          if (p < 1) requestAnimationFrame(tick);
-        }
-        requestAnimationFrame(tick);
-      });
-    }, { threshold: 0.5 });
-    counters.forEach(function (el) { cio.observe(el); });
   }
 
   // ── FAQ accordion ──
@@ -74,75 +49,9 @@
   onScroll();
 })();
 
-(function () {
-"use strict";
-  // ── Welcome gate: OK tap plays the intro sound and enters the site ──
-  // Browsers only allow sound after a user gesture, so the welcome overlay's
-  // OK button doubles as that gesture: one tap → sound plays → overlay fades.
-  try {
-    var overlay = document.getElementById("welcome");
-    var okBtn = document.getElementById("welcomeOk");
-    if (!overlay || !okBtn) return;
-    var intro = new Audio("assets/intro-sound.mp3");
-    intro.preload = "auto";
-    try { intro.load(); } catch (e) {}
-    var done = false;
-    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    function heroRevealed() {
-      document.querySelectorAll(".hero .reveal").forEach(function (el) {
-        el.classList.add("in");
-      });
-    }
-    function endIntro() {
-      document.body.classList.remove("intro");
-      heroRevealed();
-    }
-    function enter() {
-      if (done) return;
-      done = true;
-      // Start the 9s choreography in sync with the sound.
-      if (!reduced) document.body.classList.add("intro");
-      setTimeout(function () {
-        if (window.__heroWordReveal) window.__heroWordReveal(false);
-      }, reduced ? 0 : 1300);
-      heroRevealed();
-      try {
-        var p = intro.play();
-        if (p && p.catch) p.catch(function () {});
-      } catch (e) {}
-      overlay.classList.add("leaving");
-      setTimeout(function () {
-        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      }, 900);
-      // Hand control back to the scroll-reveal system when the sound ends
-      // (or after 9.5s as a backstop).
-      intro.addEventListener("ended", function onEnd() {
-        intro.removeEventListener("ended", onEnd);
-        endIntro();
-      });
-      setTimeout(endIntro, 9500);
-    }
-    okBtn.addEventListener("click", enter);
-    // Keyboard users: Enter/Space on the focused button clicks it natively,
-    // but also allow Escape to dismiss quietly.
-    document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape") {
-        if (done) return;
-        done = true;
-        if (window.__heroWordReveal) window.__heroWordReveal(true);
-        overlay.classList.add("leaving");
-        setTimeout(function () {
-          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        }, 900);
-      }
-    });
-  } catch (e) { /* audio unsupported — site works fine without it */ }
-})();
-
 /* ── Interaction layer: tilt, progress, active nav, to-top, parallax, magnetic ──
    Mouse-driven effects run only on fine pointers and bail when the user
-   prefers reduced motion. The intro movie (body.intro) owns the hero until
-   it finishes, so tilt/parallax stay parked while it plays. */
+   prefers reduced motion. */
 (function () {
 "use strict";
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -297,17 +206,20 @@
     });
   }
 
-  // ── Hero headline: driven by the welcome-gate intro timeline ──
+  // ── Hero headline: masked word reveal on load ──
   var heroH1 = document.querySelector(".hero-copy h1");
   var heroWords = heroH1 ? splitWords(heroH1) : [];
   window.__heroWordReveal = function (instant) {
     revealWords(heroH1, heroWords, instant);
   };
-  // Safety nets: reduced motion, missing overlay, or gate that never fires
-  if (reduced || !document.getElementById("welcome")) {
+  // No entry gate: reveal the headline as soon as the page is ready
+  if (reduced) {
     window.__heroWordReveal(true);
+  } else if (document.readyState === "complete") {
+    window.__heroWordReveal(false);
   } else {
-    setTimeout(function () { window.__heroWordReveal(true); }, 6000);
+    window.addEventListener("load", function () { window.__heroWordReveal(false); });
+    setTimeout(function () { window.__heroWordReveal(true); }, 2500); // backstop
   }
 
   // ── Section headlines: masked word reveal on scroll ──
@@ -329,31 +241,6 @@
     }, { threshold: 0.4 });
     io.observe(h2);
   });
-
-  // ── Preloader counter (theater while assets load; OK is always clickable) ──
-  var loadNum = document.getElementById("loadNum");
-  var loadBar = document.getElementById("loadBar");
-  function paint(v) {
-    if (!loadNum) return;
-    loadNum.textContent = String(Math.floor(v)).padStart(2, "0");
-    if (loadBar) loadBar.style.width = v + "%";
-  }
-  if (loadNum && !reduced) {
-    var n = 0, finished = false;
-    var iv = setInterval(function () {
-      n = Math.min(n + 4 + Math.random() * 10, 94);
-      paint(n);
-      if (n >= 94) clearInterval(iv);
-    }, 90);
-    var finish = function () {
-      if (finished) return; finished = true;
-      clearInterval(iv); paint(100);
-    };
-    window.addEventListener("load", finish);
-    setTimeout(finish, 3000);
-  } else {
-    paint(100);
-  }
 
   if (reduced) return; // lerped pointer physics below are motion-only
 
@@ -397,10 +284,8 @@
       var sk = Math.max(-2.5, Math.min(2.5, vel * 0.05));
       navInner.style.transform = "skewY(" + (-sk).toFixed(2) + "deg)";
     }
-    // hero pointer physics — parked while the intro movie plays
-    var introOn = document.body.classList.contains("intro") ||
-      !!document.getElementById("welcome");
-    if (finePointer && hero && !introOn && (blobs.length || heroPhone)) {
+    // hero pointer physics
+    if (finePointer && hero && (blobs.length || heroPhone)) {
       var r = hero.getBoundingClientRect();
       if (r.bottom > 0 && r.top < window.innerHeight) {
         var nx = (px - (r.left + r.width / 2)) / r.width;
@@ -418,4 +303,28 @@
     }
     requestAnimationFrame(loop);
   })();
+})();
+
+/* ── Mobile menu ── */
+(function () {
+"use strict";
+  var btn = document.getElementById("menuBtn");
+  var menu = document.getElementById("mobileMenu");
+  if (!btn || !menu) return;
+  function close() {
+    menu.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-label", "Open menu");
+  }
+  btn.addEventListener("click", function () {
+    var open = menu.classList.toggle("open");
+    btn.setAttribute("aria-expanded", String(open));
+    btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  });
+  menu.querySelectorAll("a").forEach(function (a) {
+    a.addEventListener("click", close);
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") close();
+  });
 })();
