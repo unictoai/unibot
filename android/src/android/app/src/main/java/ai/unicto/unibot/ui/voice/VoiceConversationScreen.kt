@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -501,7 +502,9 @@ fun VoiceConversationScreen(
 
                     // Voice theme item 31: the explicit offline-route
                     // checklist. Shown when offline mode is on but not every
-                    // leg is ready — each missing leg names its recovery.
+                    // leg is ready — each missing leg names its recovery, and
+                    // the card offers one way forward (voice settings, where
+                    // the downloads live).
                     if (offlineMode && !offlineStatus.allReady && offlineStatus.legs.isNotEmpty()) {
                         MuseCard(inset = 0.dp) {
                             Column(
@@ -542,6 +545,18 @@ fun VoiceConversationScreen(
                                                 )
                                             }
                                         }
+                                    }
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                ) {
+                                    TextButton(
+                                        onClick = onOpenVoiceSettings,
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) {
+                                        Text(stringResource(R.string.ub_voice_settings_desc))
                                     }
                                 }
                             }
