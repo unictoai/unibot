@@ -73,7 +73,11 @@ class CodingAgents(BaseTool):
         agent = str(args.get("agent") or "")
         where = f" on {args['device']}" if args.get("device") else ""
         if action == "send":
-            a.risk = RiskLevel.MODERATE
+            # starting a coding agent is not a chat message: the child runs outside
+            # any sandbox with --force (auto-approved shell commands), so it always
+            # stops for approval, bound to the agent and workspace it was allowed for
+            a.risk = RiskLevel.SENSITIVE
+            a.target = f"{agent or '?'}:{str(args.get('workspace') or 'default')}"
             a.summary = (
                 f"tell {agent or 'the coding agent'}{where}: {str(args.get('text') or '')[:60]}"
             )
