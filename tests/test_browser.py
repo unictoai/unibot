@@ -114,6 +114,7 @@ class FakeBackend(BrowserBackend):
         method: str = "GET",
         headers: dict[str, str] | None = None,
         body: str | None = None,
+        max_redirects: int | None = None,
     ) -> dict[str, Any]:
         self.calls.append(("fetch", (url, method, body)))
         return {
@@ -142,9 +143,14 @@ def tool_with(backend: BrowserBackend, tmp_path: Path) -> tuple[Browser, list[Br
 
 
 # ----------------------------------------------------------------------------- the tool
-async def test_actions_produce_the_same_summary_and_frames_on_any_backend(tmp_path: Path):
+async def test_actions_produce_the_same_summary_and_frames_on_any_backend(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     backend = FakeBackend()
     tool, frames = tool_with(backend, tmp_path)
+    # example.com does not resolve in the test sandbox; the navigate guard fails
+    # closed, so the test names it public instead of doing real DNS
+    monkeypatch.setattr("unibot.tools.browser._is_private_host", lambda host: False)
 
     res = await tool.execute(action="navigate", url="example.com")
     assert res.ok
@@ -200,9 +206,12 @@ async def test_actions_produce_the_same_summary_and_frames_on_any_backend(tmp_pa
     assert not res.ok and "no longer on the page" in (res.error or "")
 
 
-async def test_fetch_and_profile_actions(tmp_path: Path):
+async def test_fetch_and_profile_actions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     backend = FakeBackend()
     tool, _ = tool_with(backend, tmp_path)
+    # shop.example does not resolve in the test sandbox; the guard fails closed, so
+    # the test names it public instead of doing real DNS
+    monkeypatch.setattr("unibot.tools.browser._is_private_host", lambda host: False)
     res = await tool.execute(action="fetch", url="https://shop.example/api/orders")
     assert res.ok
     assert res.output.startswith("HTTP 200 https://shop.example/api/orders (application/json)")

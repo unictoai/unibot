@@ -142,6 +142,11 @@ _REACH_LABELS = {
 _ABS_PATH = re.compile(r"['\"](/[^'\"\n]*)")
 _HOME = re.compile(r"['\"]~|Path\.home\(\)|expanduser\(")
 
+# `import os` (in any form: `import os`, `import os as o`, `from os import …`) plus a
+# dangerous call through any name: `o.system(…)`, `os.popen(…)` …
+_OS_IMPORTED = re.compile(r"\bimport\s+os\b|\bfrom\s+os\b")
+_OS_DANGEROUS_USE = re.compile(r"\.\s*(system|popen|exec[lv]p?e?|spawn[lv]p?e?|fork|kill)\s*\(")
+
 
 def code_reach(code: str, workspace: Path | None = None) -> dict[str, str]:
     """``{kind: human label}`` for everything a script reaches beyond the workspace.
@@ -150,6 +155,9 @@ def code_reach(code: str, workspace: Path | None = None) -> dict[str, str]:
     "outside" (a workspace under ``/tmp`` or ``/home`` would otherwise flag every write).
     """
     reach = {kind: _REACH_LABELS[kind] for kind, pattern in _REACH if pattern.search(code)}
+    if "processes" not in reach and _OS_IMPORTED.search(code) and _OS_DANGEROUS_USE.search(code):
+        # the dangerous call through an import alias (`import os as o` + `o.system(…)`)
+        reach["processes"] = _REACH_LABELS["processes"]
     if "outside the workspace" in reach and workspace is not None and not _HOME.search(code):
         root = workspace.resolve().as_posix().rstrip("/") + "/"
         paths = [m.group(1) for m in _ABS_PATH.finditer(code)]
@@ -208,7 +216,7 @@ def grants_blind(command: str) -> bool:
     return bool(_GRANT_BLIND.search(command))
 
 
-def _kill_tree(proc: "asyncio.subprocess.Process") -> None:
+def _kill_tree(proc: asyncio.subprocess.Process) -> None:
     """SIGKILL the whole process group the command started (just the process on
     Windows, which has no process groups)."""
     try:
@@ -428,9 +436,7 @@ class PythonExecute(BaseTool):
         code = str(args.get("code", ""))
         first = code.strip().splitlines()[0][:100] if code.strip() else ""
         reach = code_reach(code, self.workspace)
-        boxed = (
-            self.sandbox is not None and self.sandbox.active and self.sandbox.blocks_network
-        )
+        boxed = self.sandbox is not None and self.sandbox.active and self.sandbox.blocks_network
         if not boxed:
             return CallAssessment(
                 risk=RiskLevel.SENSITIVE,

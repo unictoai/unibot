@@ -157,7 +157,12 @@ class WebFetch(BaseTool):
     timeout: float = 30.0
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
-        url = str(args.get("url", ""))
+        url = str(args.get("url", "")).strip()
+        # normalised the same way execute() does: otherwise host_of() sees no host
+        # in a scheme-less URL, the taint check prompts needlessly and a grant binds
+        # to the whole tool instead of the host
+        if url and not url.lower().startswith(("http://", "https://")):
+            url = "https://" + url
         return CallAssessment(
             risk=RiskLevel.MODERATE,
             egress=True,

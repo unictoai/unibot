@@ -23,7 +23,6 @@ import json
 import re
 from collections.abc import Callable
 from contextlib import AsyncExitStack
-from datetime import timedelta
 from typing import Any
 
 from unibot.config import MCPServerSettings
@@ -65,11 +64,12 @@ class MCPTool(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         # Always send an object, even an empty one: servers built on zod (12306-mcp's
         # `get-current-date`, for one) reject a call with no `arguments` at all.
-        # A hung server must not block the agent turn forever.
+        # A hung server must not block the agent turn forever (mcp 1.x takes the
+        # timeout as seconds; mcp 2.x as a timedelta — float works for the former).
         result = await self.session.call_tool(
             self.original_name,
             dict(kwargs),
-            read_timeout_seconds=timedelta(seconds=self.timeout_s),
+            read_timeout_seconds=float(self.timeout_s),
         )
         parts: list[str] = []
         for item in getattr(result, "content", None) or []:

@@ -305,8 +305,10 @@ def test_masked_data_dir_rebinds_writable_roots_underneath(
     monkeypatch.setattr("unibot.sandbox.platform.system", lambda: "Linux")
     data = tmp_path / ".unibot"
     ws = data / "workspace"  # the real default layout: <data_dir>/workspace
-    extra = data / "extra"
-    box = Sandbox(SandboxSettings(), workspace=ws, extra_roots=[extra], data_dir=data, probe=False)
+    # tmp_path stands in for ~: an ancestor of the data dir, as extra_roots=["~"] is
+    box = Sandbox(
+        SandboxSettings(), workspace=ws, extra_roots=[tmp_path], data_dir=data, probe=False
+    )
     assert box.active
     argv = box.wrap(["/bin/sh", "-c", "echo hi"], network=False, cwd=ws)
     tmpfs_at = next(i for i, a in enumerate(argv) if a == "--tmpfs" and argv[i + 1] == str(data))
@@ -315,12 +317,7 @@ def test_masked_data_dir_rebinds_writable_roots_underneath(
         for i, a in enumerate(argv)
         if a == "--bind-try" and argv[i + 1] == str(ws) and i > tmpfs_at
     )
-    extra_rebind = next(
-        i
-        for i, a in enumerate(argv)
-        if a == "--bind-try" and argv[i + 1] == str(extra) and i > tmpfs_at
-    )
-    assert tmpfs_at < ws_rebind and tmpfs_at < extra_rebind
+    assert tmpfs_at < ws_rebind
     # …but the data dir itself is never re-bound writable: the mask must hold
     assert not any(
         a == "--bind-try" and argv[i + 1] == str(data) and i > tmpfs_at

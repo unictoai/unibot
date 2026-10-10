@@ -17,9 +17,9 @@ the form, the user signs in, the agent carries on with the page as the user left
 from __future__ import annotations
 
 import asyncio
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -335,7 +335,10 @@ class Browser(BaseTool):
         **_: Any,
     ) -> ToolResult:
         if action == "close":
-            await self.cleanup()
+            # under the lock: another action must not be mid-flight while the
+            # context is torn down
+            async with self.lock:
+                await self.cleanup()
             return ToolResult(output="Browser closed.")
         async with self.lock:
             try:
@@ -432,7 +435,8 @@ class Browser(BaseTool):
         if action == "screenshot":
             shots = self.workspace / "screenshots"
             shots.mkdir(parents=True, exist_ok=True)
-            path = shots / f"{time.strftime('%Y%m%d-%H%M%S')}.jpg"
+            # microseconds: two screenshots in the same second must not overwrite
+            path = shots / f"{datetime.now():%Y%m%d-%H%M%S-%f}.jpg"
             path.write_bytes(await backend.screenshot(85))
             await self._frame(backend, "Took a screenshot")
             return ToolResult(output=f"Screenshot saved to {path}", system=str(path))

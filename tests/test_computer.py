@@ -335,8 +335,11 @@ async def test_operator_runs_on_the_computer(settings: Settings, fake_screen) ->
     assert hands.calls[0] == ("open", "gedit")
     assert hands.calls[1] == ("click", 959.0, 539.5, "left", 1)  # 999-grid → 1920×1080
     assert ("type", "hello from unibot") in hands.calls and ("key", ("ctrl", "s")) in hands.calls
-    # the save went through the Sentinel as a sensitive step
-    assert [r.summary for r in ui.requests] == ["computer_act: press ctrl+s in Firefox (firefox)"]
+    # the open and the save went through the Sentinel as sensitive steps
+    assert [r.summary for r in ui.requests] == [
+        "computer_act: open gedit",
+        "computer_act: press ctrl+s in Firefox (firefox)",
+    ]
     report = outcome.report()
     assert report.startswith("The computer operator finished. (5 steps)")
     assert "- open gedit" in report and "- press ctrl+s in Firefox (firefox)" in report
