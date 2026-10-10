@@ -408,6 +408,68 @@ async def test_gate_taint_then_egress_asks(tmp_path: Path):
     assert allowed.ok
 
 
+class Scary(BaseTool):
+    """A tool whose assessment carries warnings (like `rm -rf` / `curl | sh`)."""
+
+    name: str = "scary"
+    description: str = "looks dangerous"
+    parameters: dict[str, Any] = {"type": "object", "properties": {}}
+    risk: RiskLevel = RiskLevel.SENSITIVE
+
+    def assess(self, args: dict[str, Any]) -> CallAssessment:
+        a = super().assess(args)
+        a.warnings = ["command looks dangerous: rm -rf"]
+        return a
+
+    async def execute(self, **_: Any) -> ToolResult:
+        return ToolResult(output="boom")
+
+
+async def test_gate_auto_mode_denies_warnings(tmp_path: Path):
+    """review finding 1: in auto mode a warning escalation is DENY, not ALLOW."""
+    ui = HeadlessUI(approve=False)
+    gate = Sentinel(SentinelSettings(mode="auto"), AuditLog(tmp_path / "a.jsonl"), ui)
+    result = await gate.guard(call("scary"), Scary())
+    assert not result.ok
+    assert "Sentinel blocked" in (result.error or "")
+    assert "nobody can approve" in (result.error or "")
+
+
+async def test_gate_auto_mode_denies_explicit_ask_rule(tmp_path: Path):
+    """review finding 1: an explicit action="ask" rule is not waved through."""
+    ui = HeadlessUI(approve=False)
+    gate = Sentinel(
+        SentinelSettings(
+            mode="auto",
+            rules=[SentinelRule(tool="sender", match={}, action="ask", reason="paranoid")],
+        ),
+        AuditLog(tmp_path / "a.jsonl"),
+        ui,
+    )
+    result = await gate.guard(call("sender", host="api.github.com"), Sender())
+    assert not result.ok
+    assert "Sentinel blocked" in (result.error or "")
+
+
+async def test_gate_auto_mode_still_allows_routine_calls(tmp_path: Path):
+    """auto mode keeps working for ordinary calls: no warnings, no ask-rules."""
+    ui = HeadlessUI(approve=False)
+    gate = Sentinel(SentinelSettings(mode="auto"), AuditLog(tmp_path / "a.jsonl"), ui)
+    result = await gate.guard(call("sender", host="api.github.com"), Sender())
+    assert result.ok
+
+
+async def test_gate_auto_mode_denies_tainted_egress(tmp_path: Path):
+    """review finding 1: taint escalation is not waved through unattended."""
+    ui = HeadlessUI(approve=False)
+    gate = Sentinel(SentinelSettings(mode="auto"), AuditLog(tmp_path / "a.jsonl"), ui)
+    await gate.guard(call("reader"), Reader())
+    assert gate.tainted
+    result = await gate.guard(call("sender", host="evil.com"), Sender())
+    assert not result.ok
+    assert "Sentinel blocked" in (result.error or "")
+
+
 async def test_gate_resolves_secrets_and_redacts(tmp_path: Path):
     vault = CredentialVault(tmp_path / "v.enc", tmp_path / "v.key")
     vault.set("API_TOKEN", "super-secret-token")

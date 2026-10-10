@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from unibot.fsutil import atomic_write_text, load_json
 from unibot.logger import logger
 
 VAPID_FILE = "push-vapid.json"
@@ -52,26 +53,26 @@ class PushService:
         self.private_key_pem: str = ""
         self.public_key: str = ""
         self.subscriptions: list[dict[str, Any]] = []
+        # background send tasks, kept referenced so they cannot be garbage-collected
+        self._bg_tasks: set[asyncio.Task[None]] = set()
         self._load()
 
     # ------------------------------------------------------------------ keys / storage
     def _load(self) -> None:
-        if self._vapid.is_file():
+        # corrupt files are quarantined aside (never silently reset: regenerating
+        # the key pair would orphan every push subscription)
+        vapid = load_json(self._vapid)
+        if isinstance(vapid, dict):
             try:
-                data = json.loads(self._vapid.read_text())
-                self.private_key_pem = data["private_key_pem"]
-                self.public_key = data["public_key"]
-            except (ValueError, KeyError):
-                logger.warning("push: unreadable {}; generating a new key pair", self._vapid)
+                self.private_key_pem = vapid["private_key_pem"]
+                self.public_key = vapid["public_key"]
+            except KeyError:
+                logger.warning("push: {} has no key pair; generating a new one", self._vapid)
         if not self.public_key and available():
             self._generate_keys()
-        if self._subs_file.is_file():
-            try:
-                self.subscriptions = [
-                    s for s in json.loads(self._subs_file.read_text()) if s.get("endpoint")
-                ]
-            except ValueError:
-                self.subscriptions = []
+        subs = load_json(self._subs_file)
+        if isinstance(subs, list):
+            self.subscriptions = [s for s in subs if s.get("endpoint")]
 
     def _generate_keys(self) -> None:
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -84,18 +85,16 @@ class PushService:
         self.public_key = _b64url(
             v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
         )
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self._vapid.write_text(
-            json.dumps({"private_key_pem": self.private_key_pem, "public_key": self.public_key})
+        # atomic + 0600 from the start: the private key is never briefly
+        # world-readable, and a crash cannot leave a half-written key file
+        atomic_write_text(
+            self._vapid,
+            json.dumps({"private_key_pem": self.private_key_pem, "public_key": self.public_key}),
+            mode=0o600,
         )
-        try:
-            self._vapid.chmod(0o600)
-        except OSError:
-            pass
 
     def _save_subscriptions(self) -> None:
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self._subs_file.write_text(json.dumps(self.subscriptions, indent=1))
+        atomic_write_text(self._subs_file, json.dumps(self.subscriptions, indent=1))
 
     # ------------------------------------------------------------------ subscriptions
     @property
@@ -172,7 +171,9 @@ class PushService:
         except RuntimeError:
             self._send_all(payload)
             return
-        loop.create_task(asyncio.to_thread(self._send_all, payload))
+        task = loop.create_task(asyncio.to_thread(self._send_all, payload))
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
 
     def _send_all(self, payload: dict[str, Any]) -> None:
         from pywebpush import WebPushException, webpush

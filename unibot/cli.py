@@ -266,7 +266,7 @@ async def _slash(cmd: str, muse) -> bool:  # noqa: ANN001
         for t in muse.tools:
             console.print(f"  [cyan]{t.name}[/cyan] [{t.risk.value}] {t.description[:90]}")
     elif name == "tainted":
-        console.print(f"session tainted: {muse.sentinel.tainted}")
+        console.print(f"session tainted: {muse.agent.tainted}")
     elif name == "permissions":
         grants = muse.sentinel.active_grants()
         if not grants:

@@ -444,6 +444,9 @@ def test_websocket_rejects_bad_token(server):
     client, _, _ = server
     from starlette.websockets import WebSocketDisconnect
 
+    # the fixture sets a default "Bearer <redacted>" header that would win over
+    # ?token=wrong: drop it, so the query-string token is actually evaluated
+    del client.headers["Authorization"]
     with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws?token=wrong") as ws:
         ws.receive_json()
 

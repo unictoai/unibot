@@ -12,6 +12,7 @@ from unibot import prompts
 from unibot.calendar import CalendarFeeds
 from unibot.config import Settings
 from unibot.contacts import ContactBook
+from unibot.fsutil import atomic_write_text
 from unibot.goals import GoalStore
 from unibot.llm.base import BaseLLM
 from unibot.logger import logger
@@ -66,6 +67,13 @@ class UnibotAgent:
         self.messages: list[Message] = []
         self.state = AgentState.IDLE
         self.turns = 0
+        # This conversation's taint flag, passed to the Sentinel on every guard()
+        # call: reading private data taints *this* thread only. Clearing another
+        # chat must not un-taint this one while it still holds private data.
+        self.tainted = False
+        # Set when the thread is deleted: the cancelled run's finally blocks must
+        # not write the transcript back to disk.
+        self.deleted = False
         # Optional queue of user messages that arrive *while* a run is in progress (the app
         # lets you interrupt or pile on requests). They are folded into the conversation
         # before the next model call instead of waiting for the current run to finish.
@@ -328,7 +336,15 @@ class UnibotAgent:
         # Never start in the middle of a tool exchange: advance to the next user message.
         while cutoff < len(msgs) and msgs[cutoff].role != Role.USER:
             cutoff += 1
-        return list(msgs[cutoff:]) if cutoff < len(msgs) else list(msgs[-limit:])
+        if cutoff < len(msgs):
+            return list(msgs[cutoff:])
+        # No user message past the cutoff (a long autonomous run): take the tail,
+        # but never start on a dangling tool result — OpenAI-compatible providers
+        # reject a `tool` message with no preceding `assistant.tool_calls` (HTTP 400).
+        start = len(msgs) - limit
+        while start < len(msgs) and msgs[start].role == Role.TOOL:
+            start += 1
+        return list(msgs[start:])
 
     # ------------------------------------------------------------------ stuck detection
     def _is_stuck(self) -> bool:
@@ -417,7 +433,10 @@ class UnibotAgent:
                     system_prompt = self.build_system_prompt(latest, await self.recall_for(latest))
                 context = [Message.system(system_prompt), *self.context_messages()]
                 response = await self.llm.ask(
-                    context, tools=tool_params, on_delta=self.ui.on_text_delta
+                    context,
+                    tools=tool_params,
+                    on_delta=self.ui.on_text_delta,
+                    on_stream_reset=getattr(self.ui, "on_stream_reset", None),
                 )
                 if (
                     response.finish_reason == "length"
@@ -432,6 +451,7 @@ class UnibotAgent:
                         tools=tool_params,
                         on_delta=self.ui.on_text_delta,
                         max_tokens=self.llm.roomier_max_tokens(),
+                        on_stream_reset=getattr(self.ui, "on_stream_reset", None),
                     )
                 model_id = getattr(getattr(self.llm, "settings", None), "model", None)
                 if model_id != self._vision_warned_model:
@@ -499,7 +519,7 @@ class UnibotAgent:
                             f"unknown tool '{call.name}'. Available tools: {', '.join(t.name for t in self.tools)}"
                         )
                     else:
-                        result = await self.sentinel.guard(call, tool)
+                        result = await self.sentinel.guard(call, tool, taint=self)
                     self.ui.on_tool_result(call, result)
                     self.messages.append(Message.tool(result.for_model(), call.id, call.name))
                     if result.images:
@@ -529,7 +549,12 @@ class UnibotAgent:
                 # Step budget exhausted: ask for a wrap-up without tools.
                 self.messages.append(Message.user(prompts.MAX_STEPS_PROMPT))
                 context = [Message.system(system_prompt), *self.context_messages()]
-                response = await self.llm.ask(context, tools=None, on_delta=self.ui.on_text_delta)
+                response = await self.llm.ask(
+                    context,
+                    tools=None,
+                    on_delta=self.ui.on_text_delta,
+                    on_stream_reset=getattr(self.ui, "on_stream_reset", None),
+                )
                 self.messages.append(response.to_message())
                 self.ui.on_assistant_message(response.content, response.reasoning)
                 final = response.content or "(step limit reached)"
@@ -545,20 +570,22 @@ class UnibotAgent:
     # ------------------------------------------------------------------ session persistence
     def reset(self) -> None:
         self.messages.clear()
-        self.sentinel.tainted = False
+        # only this conversation's taint is cleared; other threads keep theirs
+        self.tainted = False
         self.state = AgentState.IDLE
 
     def _save_session(self) -> None:
-        if not self.session_file:
+        if not self.session_file or self.deleted:
             return
         try:
-            self.session_file.parent.mkdir(parents=True, exist_ok=True)
             data: dict[str, Any] = {
                 "saved_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "turns": self.turns,
                 "messages": [m.model_dump(mode="json") for m in self.messages],
             }
-            self.session_file.write_text(json.dumps(data, ensure_ascii=False, indent=1), "utf-8")
+            atomic_write_text(
+                self.session_file, json.dumps(data, ensure_ascii=False, indent=1), mode=0o600
+            )
         except OSError as exc:  # pragma: no cover
             logger.warning("could not save session: {}", exc)
 

@@ -42,6 +42,11 @@ class ConsoleUI:
         self.console.print(text, end="", markup=False, highlight=False, soft_wrap=True)
         self._streamed_chars += len(text)
 
+    def on_stream_reset(self) -> None:
+        # a retried stream reprints from the start on the next delta; nothing to
+        # erase on a terminal
+        pass
+
     def _end_stream(self) -> None:
         if self._streaming:
             self.console.print()

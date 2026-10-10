@@ -10,6 +10,10 @@ from typing import Any
 from unibot.schema import LLMResponse, Message
 
 DeltaCallback = Callable[[str], None]
+# Called when a broken stream is about to be retried: the UI should drop the
+# partial bubble so the retry streams into a fresh one instead of duplicating
+# the text already shown.
+StreamResetCallback = Callable[[], None]
 
 _THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
@@ -55,6 +59,7 @@ class BaseLLM(ABC):
         tool_choice: str = "auto",
         on_delta: DeltaCallback | None = None,
         max_tokens: int | None = None,
+        on_stream_reset: StreamResetCallback | None = None,
     ) -> LLMResponse:
         """Send a conversation and get one assistant turn back.
 
@@ -62,6 +67,8 @@ class BaseLLM(ABC):
         (``{"type": "function", "function": {...}}``).
         ``on_delta`` receives visible text as it streams (never reasoning).
         ``max_tokens`` overrides the configured budget for this one call.
+        ``on_stream_reset`` is called before a retry that follows an already
+        started stream, so the UI can discard the partial bubble.
         """
 
     def roomier_max_tokens(self) -> int:
@@ -168,6 +175,7 @@ class ThinkStreamFilter:
 __all__ = [
     "BaseLLM",
     "DeltaCallback",
+    "StreamResetCallback",
     "ThinkStreamFilter",
     "ToolsUnsupported",
     "says_no_tools",

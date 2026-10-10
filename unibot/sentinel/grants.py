@@ -17,14 +17,13 @@ Scopes:
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 import time
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
+from unibot.fsutil import atomic_write_bytes as _atomic_write
 from unibot.logger import logger
 
 GrantScope = Literal["once", "task", "session", "24h", "always"]
@@ -65,35 +64,6 @@ def _iso(ts: float | None) -> str | None:
 
 def grant_key(tool: str, target: str | None) -> str:
     return f"{tool}:{target}" if target else tool
-
-
-def _atomic_write(target: Path, data: bytes, mode: int | None = None) -> None:
-    """Write ``data`` to ``target`` atomically.
-
-    The payload goes to a uniquely-named temp file in the *same* directory
-    (so the rename stays on one filesystem and is atomic), is fsynced to
-    disk, and is then moved into place with :func:`os.replace`. ``mode`` is
-    applied to the temp file *before* the rename, so the target never exists
-    with looser permissions; ``None`` keeps the default ``0o666 & ~umask``
-    behavior of a plain write. The temp file is removed if anything fails.
-    """
-    target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=target.name + ".", suffix=".tmp")
-    tmp = Path(tmp_name)
-    try:
-        if mode is None:
-            prev_umask = os.umask(0)
-            os.umask(prev_umask)
-            mode = 0o666 & ~prev_umask
-        os.fchmod(fd, mode)
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(data)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, target)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
 
 
 class GrantStore:

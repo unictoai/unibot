@@ -59,6 +59,10 @@ class Sentinel:
         self.audit = audit
         self.ui = ui
         self.vault = vault
+        # The fallback taint flag, shared by callers that don't pass their own
+        # holder to guard() (bridge, phone operator). Agents pass themselves so
+        # taint stays per conversation — clearing one chat must not un-taint
+        # another that still holds private data.
         self.tainted = False
         self.grants = GrantStore(persistent_approvals_file)
 
@@ -101,7 +105,15 @@ class Sentinel:
         return options
 
     # ------------------------------------------------------------------ main entry
-    async def guard(self, call: ToolCall, tool: BaseTool) -> ToolResult:
+    async def guard(
+        self,
+        call: ToolCall,
+        tool: BaseTool,
+        taint: Any | None = None,
+    ) -> ToolResult:
+        """Check one tool call. ``taint`` is the object whose ``tainted`` flag guards
+        this call — the calling agent passes itself so taint stays per conversation;
+        callers that don't (bridge, phone operator) share the Sentinel's own flag."""
         args = call.arguments
         if "__raw__" in args:
             # The arguments never parsed (cut off in transit): there is nothing to assess,
@@ -111,7 +123,10 @@ class Sentinel:
         target = assessment.target if assessment.target is not None else assessment.egress_target
         key = grant_key(tool.name, target)
         task = _current_task.get()
-        result_policy = self.policy.evaluate(tool.name, args, assessment, tainted=self.tainted)
+        taint_holder = taint if taint is not None else self
+        result_policy = self.policy.evaluate(
+            tool.name, args, assessment, tainted=bool(taint_holder.tainted)
+        )
         decision, reasons = result_policy.decision, list(result_policy.reasons)
         approved: bool | None = None
         scope: str | None = None
@@ -121,8 +136,17 @@ class Sentinel:
                 None if assessment.warnings else self.grants.match(key, task.id if task else None)
             )
             if self.settings.mode == "auto":
-                decision = Decision.ALLOW
-                reasons.append("auto mode: approval skipped")
+                if result_policy.hard_ask:
+                    # Unattended and nobody can answer: a warning escalation, an
+                    # explicit ask-rule or a tainted egress must not run — deny
+                    # rather than wave it through.
+                    decision = Decision.DENY
+                    reasons.append(
+                        "auto mode: nobody can approve this call, so it is denied"
+                    )
+                else:
+                    decision = Decision.ALLOW
+                    reasons.append("auto mode: approval skipped")
             elif grant is not None:
                 decision = Decision.ALLOW
                 scope = grant.scope
@@ -185,7 +209,7 @@ class Sentinel:
                 decision="deny",
                 approved=approved,
                 reasons=reasons,
-                tainted=self.tainted,
+                tainted=bool(taint_holder.tainted),
                 egress_target=assessment.egress_target,
                 grant_key=key,
                 purpose=task.purpose if task else "",
@@ -217,9 +241,9 @@ class Sentinel:
                 result.error = self.vault.redact(result.error)
 
         if assessment.reads_private_data and result.ok and self.settings.taint_tracking:
-            if not self.tainted:
+            if not taint_holder.tainted:
                 logger.debug("session is now tainted (read private data via {})", tool.name)
-            self.tainted = True
+            taint_holder.tainted = True
 
         self.audit.record(
             "tool_call",
@@ -232,7 +256,7 @@ class Sentinel:
             approved=approved,
             approval_scope=scope,
             reasons=reasons,
-            tainted=self.tainted,
+            tainted=bool(taint_holder.tainted),
             egress_target=assessment.egress_target,
             grant_key=key,
             purpose=task.purpose if task else "",

@@ -17,7 +17,7 @@ import json
 import re
 from typing import Any
 
-from unibot.llm.base import BaseLLM, DeltaCallback, ToolsUnsupported
+from unibot.llm.base import BaseLLM, DeltaCallback, StreamResetCallback, ToolsUnsupported
 from unibot.logger import logger
 from unibot.schema import Function, LLMResponse, Message, Role, ToolCall
 
@@ -238,14 +238,19 @@ class PromptToolAdapter(BaseLLM):
         tool_choice: str = "auto",
         on_delta: DeltaCallback | None = None,
         max_tokens: int | None = None,
+        on_stream_reset: StreamResetCallback | None = None,
     ) -> LLMResponse:
         if not tools:
-            return await self.inner.ask(messages, None, on_delta=on_delta, max_tokens=max_tokens)
+            return await self.inner.ask(
+                messages, None, on_delta=on_delta, max_tokens=max_tokens,
+                on_stream_reset=on_stream_reset,
+            )
         known = {t.get("function", t).get("name", "") for t in tools}
         if self.native:
             try:
                 resp = await self.inner.ask(
-                    messages, tools, tool_choice, on_delta=on_delta, max_tokens=max_tokens
+                    messages, tools, tool_choice, on_delta=on_delta, max_tokens=max_tokens,
+                    on_stream_reset=on_stream_reset,
                 )
             except ToolsUnsupported as e:
                 self.native = False
@@ -267,7 +272,8 @@ class PromptToolAdapter(BaseLLM):
         converted = convert_messages(messages, tools)
         stopper = _StopAtToolCall(on_delta)
         resp = await self.inner.ask(
-            converted, None, on_delta=stopper if on_delta else None, max_tokens=max_tokens
+            converted, None, on_delta=stopper if on_delta else None, max_tokens=max_tokens,
+            on_stream_reset=on_stream_reset,
         )
         stopper.flush()
         visible, calls = parse_tool_calls(resp.content, known)

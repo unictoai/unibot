@@ -109,9 +109,15 @@ class CloudClient:
             raise CloudError(0, "offline", f"Cannot reach {self.base_url}: {exc}") from None
         if response.status_code >= 400:
             try:
-                err = response.json().get("error", {})
+                body_err = response.json()
             except ValueError:
-                err = {}
+                body_err = None
+            # the error shape is not guaranteed: {"error": "bad key"} (a string)
+            # or a bare list both used to raise AttributeError here, escaping as
+            # a non-CloudError the callers don't catch
+            err = body_err.get("error") if isinstance(body_err, dict) else None
+            if not isinstance(err, dict):
+                err = {"message": str(err or "")}
             raise CloudError(
                 response.status_code,
                 str(err.get("code") or f"http_{response.status_code}"),
@@ -122,7 +128,13 @@ class CloudClient:
             )
         if not response.content.strip():
             return {}
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            # a 2xx HTML body (captive portal, proxy) is not JSON at all
+            raise CloudError(
+                response.status_code, "bad_response", f"expected JSON: {exc}"
+            ) from exc
         return data if isinstance(data, dict) else {"data": data}
 
     # ------------------------------------------------------------------ account

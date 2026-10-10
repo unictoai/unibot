@@ -342,6 +342,18 @@ class WebUI:
         self._stream_buf[thread] = self._stream_buf.get(thread, "") + text
         self.bus.publish({"kind": "delta", "thread": thread, "id": sid, "text": text})
 
+    def on_stream_reset(self) -> None:
+        """The LLM is retrying a broken stream: drop the partial bubble so the
+        retry streams into a fresh one instead of duplicating the text already
+        on screen."""
+        thread = self.thread()
+        sid = self._stream_ids.pop(thread, None)
+        self._stream_buf.pop(thread, None)
+        if sid is not None:
+            self.bus.publish(
+                {"kind": "stream_end", "thread": thread, "id": sid, "discard": True}
+            )
+
     def on_assistant_message(self, content: str | None, reasoning: str | None) -> None:
         thread = self.thread()
         sid = self._stream_ids.pop(thread, None)
