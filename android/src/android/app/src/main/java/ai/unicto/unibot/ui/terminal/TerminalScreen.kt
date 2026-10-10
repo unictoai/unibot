@@ -121,8 +121,13 @@ fun TerminalScreen(
         if (!terminalSession.isRunning) terminalSession.start(sessionId = sessionId)
         if (!initCommand.isNullOrBlank()) {
             // Pre-fill at the prompt without newline so the user can review.
-            kotlinx.coroutines.delay(500)
-            terminalSession.sendText(initCommand)
+            // [Security] Strip control chars — a deep link with %0A would
+            // otherwise execute as soon as it's sent (TTY treats \r as Enter).
+            val safeCommand = initCommand.filter { it >= ' ' && it != '\u007F' }
+            if (safeCommand.isNotBlank()) {
+                kotlinx.coroutines.delay(500)
+                terminalSession.sendText(safeCommand)
+            }
         }
     }
 

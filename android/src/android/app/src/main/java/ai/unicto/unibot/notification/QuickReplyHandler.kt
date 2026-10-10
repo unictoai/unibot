@@ -17,17 +17,17 @@ import ai.unicto.unibot.ui.chat.ChatViewModelStore
  *
  * How it routes (no new manifest entries — MainActivity is already
  * singleTask and owns the deep-link path):
- *
  * 1. [buildReplyAction] adds a RemoteInput "Reply" action to the
  *    notification posted by [BackgroundTaskNotifier]. The action's
- *    PendingIntent targets MainActivity with the SAME
- *    `unibot://session/<id>` data URI a normal tap uses, plus
- *    [ACTION_QUICK_REPLY] so MainActivity can tell the two apart.
- * 2. MainActivity.onNewIntent / onCreate calls [handleIntent] BEFORE the
- *    deep-link handling. It pulls the typed text out of the RemoteInput
- *    results, stashes it in [ChatViewModelStore] addressed to the session,
- *    and dismisses the notification. Navigation then proceeds through the
- *    untouched OpenSession path, so the chat opens exactly as if tapped.
+ *    PendingIntent targets [QuickReplyReceiver] (non-exported) with the
+ *    `unibot://session/<id>` data URI, plus [ACTION_QUICK_REPLY].
+ * 2. [QuickReplyReceiver] pulls the typed text from RemoteInput results,
+ *    stashes it in [ChatViewModelStore], and starts MainActivity via the
+ *    deep-link path so the chat opens.
+ *
+ * [Security] MainActivity is exported for the launcher and must NOT accept
+ * ACTION_QUICK_REPLY — any app could forge the intent and auto-send text
+ * to the agent. The non-exported QuickReplyReceiver is the only entry point.
  * 3. ChatScreen drains the stash on first composition and calls
  *    `ChatViewModel.sendMessage(text)` — the reply is SENT, not just
  *    prefilled (a notification reply the user still has to press send on
@@ -55,18 +55,20 @@ object QuickReplyHandler {
 
         // Same deep-link data as the content tap: the chat opens through the
         // existing path either way. The action + extra mark it as a reply so
-        // MainActivity stashes the text before navigating.
-        val replyIntent = Intent(context, MainActivity::class.java).apply {
+        // QuickReplyReceiver (non-exported) stashes the text before navigating.
+        // [Security] Use getBroadcast to a non-exported receiver — MainActivity
+        // is exported, so a forged intent there would auto-send attacker text.
+        // FLAG_MUTABLE is required for RemoteInput to work on Android 12+.
+        val replyIntent = Intent(context, QuickReplyReceiver::class.java).apply {
             action = ACTION_QUICK_REPLY
             data = Uri.parse("unibot://session/$sessionId")
             putExtra(EXTRA_SESSION_ID, sessionId)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-        val pendingIntent = PendingIntent.getActivity(
+        val pendingIntent = PendingIntent.getBroadcast(
             context,
             ("v12g-qr$sessionId").hashCode(),
             replyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
         return NotificationCompat.Action.Builder(
             /* icon = */ 0,
@@ -81,26 +83,6 @@ object QuickReplyHandler {
      * intent; the caller should still run the normal deep-link path so the
      * chat opens on the session.
      */
-    fun handleIntent(context: Context, intent: Intent?): Boolean {
-        if (intent?.action != ACTION_QUICK_REPLY) return false
-        val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
-            ?: intent.data?.pathSegments?.getOrNull(0)
-            ?: return false
-
-        val results = runCatching { RemoteInput.getResultsFromIntent(intent) }.getOrNull()
-        val text = results?.getCharSequence(KEY_TEXT_REPLY)?.toString()?.trim().orEmpty()
-        if (text.isNotEmpty()) {
-            ChatViewModelStore.stashPendingQuickReply(sessionId, text)
-            AppLogger.info(TAG, "quick reply stashed for session=$sessionId (${text.length}ch)")
-        } else {
-            // Tapped "Reply" but sent nothing — just open the chat.
-            AppLogger.info(TAG, "quick reply with empty text for session=$sessionId — opening chat")
-        }
-        // The reply is on its way into the chat; the notification has served
-        // its purpose. (BackgroundTaskNotifier posts with id session.hashCode().)
-        runCatching {
-            NotificationManagerCompat.from(context).cancel(sessionId.hashCode())
-        }
-        return true
-    }
+    // [Security] handleIntent was removed — MainActivity (exported) must not
+    // accept ACTION_QUICK_REPLY. See QuickReplyReceiver (non-exported).
 }

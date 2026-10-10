@@ -508,6 +508,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- [Security] Quick-reply receiver — NOT exported. Only the system
+             (via our PendingIntent) can deliver to it. MainActivity is exported
+             for the launcher, so it must not accept ACTION_QUICK_REPLY. -->
+        <receiver
+            android:name=".notification.QuickReplyReceiver"
+            android:exported="false" />
+
         <!-- Scheduled notification receiver — fires `android-notification schedule`
              alarms so the deferred notification posts at the requested time. -->
         <receiver
