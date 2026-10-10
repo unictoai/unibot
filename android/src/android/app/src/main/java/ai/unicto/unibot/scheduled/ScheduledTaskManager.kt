@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import ai.unicto.unibot.logging.AppLogger
+import ai.unicto.unibot.notification.RoutineFailureNotifier
 
 /**
  * [T-android-scheduled-tasks-design] Schedules / cancels AlarmManager
@@ -142,14 +143,21 @@ class ScheduledTaskManager(private val context: Context) {
         // sync for back-compat but are no longer surfaced in the list UI.
         val run = ScheduledRun(firedAt = now, sessionId = sessionId, preview = resultPreview, ok = ok)
         val history = (listOf(run) + t.runHistory).take(ScheduledTask.MAX_RUN_HISTORY)
-        store.upsert(
-            t.copy(
-                lastFiredAt = now,
-                lastResultPreview = resultPreview,
-                lastResultSessionId = sessionId,
-                runHistory = history,
-            ),
+        val updated = t.copy(
+            lastFiredAt = now,
+            lastResultPreview = resultPreview,
+            lastResultSessionId = sessionId,
+            runHistory = history,
         )
+        store.upsert(updated)
+        // v1.5: a failed routine run notifies the user — silent failures are
+        // how routines rot. Failures are rare and actionable, so this fires
+        // even when the app is in the foreground (see RoutineFailureNotifier).
+        if (!ok) {
+            runCatching {
+                RoutineFailureNotifier(context).notifyFailed(updated, resultPreview)
+            }.onFailure { AppLogger.warning(TAG, "routine failure notify failed: ${it.message}") }
+        }
     }
 
     private fun registerAlarm(task: ScheduledTask) {

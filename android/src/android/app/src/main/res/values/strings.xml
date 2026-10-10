@@ -1257,6 +1257,13 @@
     <string name="notif_swarm_completed_default_title">Swarm mission</string>
     <string name="notif_swarm_completed_body">%1$s — tap to view the mission report.</string>
 
+    <!-- v1.5 — scheduled routine failure notifications -->
+    <string name="notif_routine_failed_channel_name">Routine failures</string>
+    <string name="notif_routine_failed_channel_description">Notifies when a scheduled routine run fails.</string>
+    <string name="notif_routine_failed_title">Routine failed: %1$s</string>
+    <string name="notif_routine_failed_default_title">Scheduled routine</string>
+    <string name="notif_routine_failed_body_default">The routine run failed. Tap to see the run history.</string>
+
     <!-- T-selection-add-to-input — long-press text selection menu action -->
     <string name="selection_add_to_chat_input">Add to Chat Input</string>
     <!-- v1.4.0 item 12 — selection menu action: turn the selection into a swarm mission -->

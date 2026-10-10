@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import ai.unicto.unibot.planner.SwarmPlanBridge
 import ai.unicto.unibot.swarm.SwarmAgentState
 import ai.unicto.unibot.swarm.SwarmAgentStatus
 import ai.unicto.unibot.swarm.SwarmAttachment
@@ -88,6 +89,7 @@ import ai.unicto.unibot.swarm.SwarmPrefs
 import ai.unicto.unibot.swarm.SwarmRepository
 import ai.unicto.unibot.swarm.SwarmUiState
 import ai.unicto.unibot.swarm.SwarmViewModel
+import ai.unicto.unibot.ui.plan.PlanChecklistCard
 import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 
@@ -673,7 +675,7 @@ private fun SwarmActiveView(
             }
             // (a) The orchestrator's task list — visible FIRST, before agents.
             item {
-                PlanSection(state = state)
+                PlanSection(state = state, onPause = onPause, onResume = onResume)
             }
             // (b–e) Agent ID cards: codename + role + task + defined output,
             // per-agent progress, tool calls / sources inline.
@@ -733,10 +735,17 @@ private fun LifecyclePill(
  * v1.4.0 plan-approval gate enabled, the run parks here at PAUSED and the
  * PlanApprovalCard above owns approve/reject — this section stays the
  * read-only task list either way.
+ *
+ * v1.5: the checklist is the general live plan card — steps move
+ * pending → doing → done as agents work, with pause/resume wired to the
+ * engine. (Edit/skip/retry are not offered: the engine can't honor them
+ * mid-run, and dead controls are worse than absent ones.)
  */
 @Composable
 private fun PlanSection(
     state: SwarmUiState,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -762,13 +771,15 @@ private fun PlanSection(
                 )
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                state.agents.forEach { agent ->
-                    TaskChecklistRow(
-                        agent = agent,
-                        incompleteNote = extractIncompleteNote(agent.result, agent.detail),
-                    )
-                }
+            val plan = remember(state.agents, state.proposedPlan, state.lifecycle, state.mission) {
+                SwarmPlanBridge.toAgentPlan(state)
+            }
+            if (plan != null) {
+                PlanChecklistCard(
+                    plan = plan,
+                    onPause = onPause,
+                    onResume = onResume,
+                )
             }
         }
         if (state.lifecycle == SwarmLifecycle.PLANNING) {
@@ -780,43 +791,6 @@ private fun PlanSection(
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun TaskChecklistRow(
-    agent: SwarmAgentState,
-    incompleteNote: String?,
-    modifier: Modifier = Modifier,
-) {
-    val task = agent.displayName.ifBlank { roleDisplayName(agent.role) }
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            MiniStatusIndicator(status = agent.status, incompleteNote = incompleteNote)
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = agentCodename(agent.id),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = task,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }
