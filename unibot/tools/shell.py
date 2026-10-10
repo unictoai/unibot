@@ -40,6 +40,12 @@ def scrubbed_env(source: dict[str, str] | None = None) -> dict[str, str]:
     env: dict[str, str] = {}
     for name, value in (source if source is not None else os.environ).items():
         upper = name.upper()
+        if upper.startswith("GIT_CONFIG_"):
+            # Travels as a family (KEY_n names the setting, VALUE_n holds it);
+            # dropping only KEY_n (it contains "KEY") breaks git with
+            # "missing config key GIT_CONFIG_KEY_0".
+            env[name] = value
+            continue
         if (
             name in _ALWAYS_DROP
             or _SECRET_ENV.search(upper)
@@ -53,15 +59,24 @@ def scrubbed_env(source: dict[str, str] | None = None) -> dict[str, str]:
 
 _DANGEROUS = [
     (
-        re.compile(r"\brm\s+-[a-zA-Z]*r[a-zA-Z]*f|\brm\s+-[a-zA-Z]*f[a-zA-Z]*r"),
+        # Split flags (rm -r -f) and long options (--recursive --force) too —
+        # lookaheads so the flags may appear in any order, combined or split.
+        re.compile(r"\brm\b(?=[^|;&\n]*-[a-zA-Z-]*r)(?=[^|;&\n]*-[a-zA-Z-]*f)"),
         "recursive force delete",
     ),
     (re.compile(r"\bsudo\b"), "privilege escalation (sudo)"),
     (re.compile(r"\bmkfs\b|\bdd\s+if="), "disk-level operation"),
     (re.compile(r"curl[^|]*\|\s*(ba)?sh|wget[^|]*\|\s*(ba)?sh"), "pipes a download into a shell"),
+    (
+        re.compile(r"base64\s+[^|]*\|\s*(ba|da)?sh\b"),
+        "decodes a payload into a shell (base64 | sh)",
+    ),
+    (re.compile(r"<\(\s*(curl|wget)\b"), "process substitution downloads and runs code"),
+    (re.compile(r"\beval\b"), "evaluates a constructed command (eval)"),
+    (re.compile(r"\bfind\b[^|;&\n]*\s-delete\b"), "bulk delete (find -delete)"),
     (re.compile(r"\bchmod\s+-R\s+777\b"), "world-writable permissions"),
     (re.compile(r">\s*/dev/sd|\bshutdown\b|\breboot\b"), "system-level command"),
-    (re.compile(r"\bgit\s+push\b.*--force"), "force push"),
+    (re.compile(r"\bgit\s+push\b.*(\s--force\b|\s-f\b)"), "force push"),
 ]
 
 
@@ -81,16 +96,24 @@ _REACH: list[tuple[str, re.Pattern[str]]] = [
     (
         "processes",
         re.compile(
-            r"\b(import\s+(subprocess|pty|multiprocessing)|from\s+subprocess|os\.(system|popen|"
-            r"exec[lv]p?e?|spawn[lv]p?e?|fork|kill)|ctypes)\b"
+            r"\b(import\s+(os|subprocess|pty|multiprocessing)"
+            r"|from\s+subprocess\b"
+            r"|from\s+os\s+import\s+[^\n]*\b(system|popen|exec[lv]p?e?|spawn[lv]p?e?|fork|kill)\b"
+            r"|os\.(system|popen|exec[lv]p?e?|spawn[lv]p?e?|fork|kill)|ctypes)\b"
         ),
     ),
     ("environment", re.compile(r"\bos\.(environ|getenv|putenv)\b")),
     (
         "deletion",
         re.compile(
-            r"\b(shutil\.rmtree|os\.(remove|unlink|rmdir|removedirs)|Path\([^)]*\)\.unlink)\b"
+            r"\b(import\s+shutil|shutil\.rmtree|os\.(remove|unlink|rmdir|removedirs)|Path\([^)]*\)\.unlink)\b"
         ),
+    ),
+    (
+        # Dynamic code loading defeats every import-name heuristic above:
+        # __import__("subprocess"), importlib, exec/eval all hide the real reach.
+        "dynamic code",
+        re.compile(r"\b(__import__|importlib)\b|\b(exec|eval|compile)\s*\("),
     ),
     (
         "outside the workspace",
@@ -106,6 +129,7 @@ _REACH_LABELS = {
     "environment": "reads environment variables",
     "deletion": "deletes files",
     "outside the workspace": "touches paths outside the workspace",
+    "dynamic code": "loads code dynamically (hides its real reach)",
 }
 
 

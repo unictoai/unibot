@@ -54,6 +54,11 @@ class SkillRepository(private val context: Context) {
          *  before the next export sweeps it. 24h matches iOS — long enough that
          *  any Save-to-Files / AirDrop / upload consumer has finished. */
         private const val EXPORT_TTL_MS = 24L * 3600 * 1000
+
+        /** Zip-bomb guard: a tiny archive can decompress to gigabytes. */
+        private const val MAX_ZIP_ENTRIES = 2_000
+        private const val MAX_ZIP_ENTRY_BYTES = 10L * 1024 * 1024
+        private const val MAX_ZIP_TOTAL_BYTES = 50L * 1024 * 1024
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -494,9 +499,13 @@ class SkillRepository(private val context: Context) {
 
     private fun readZipEntries(input: InputStream): List<ZipEntryData> {
         val out = mutableListOf<ZipEntryData>()
+        var totalBytes = 0L
         ZipInputStream(input).use { zis ->
             while (true) {
                 val entry = zis.nextEntry ?: break
+                if (out.size >= MAX_ZIP_ENTRIES) {
+                    throw IllegalArgumentException("zip has too many entries (>${MAX_ZIP_ENTRIES})")
+                }
                 val name = entry.name
                 val isDir = entry.isDirectory
                 val data = if (isDir) ByteArray(0) else {
@@ -505,10 +514,15 @@ class SkillRepository(private val context: Context) {
                     while (true) {
                         val n = zis.read(chunk)
                         if (n <= 0) break
+                        // Zip-bomb guard: cap per-entry and total uncompressed size.
+                        if (buf.size() + n > MAX_ZIP_ENTRY_BYTES || totalBytes + buf.size() + n > MAX_ZIP_TOTAL_BYTES) {
+                            throw IllegalArgumentException("zip entry '$name' exceeds size limits")
+                        }
                         buf.write(chunk, 0, n)
                     }
                     buf.toByteArray()
                 }
+                totalBytes += data.size
                 out.add(ZipEntryData(name, isDir, data))
                 zis.closeEntry()
             }

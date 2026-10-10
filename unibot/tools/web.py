@@ -30,13 +30,18 @@ def host_of(url: str) -> str | None:
 
 
 def _is_private_host(host: str) -> bool:
-    """SSRF guard: refuse loopback / link-local / private ranges."""
+    """SSRF guard: refuse loopback / link-local / private ranges.
+
+    Fail closed: if the host cannot be resolved, it cannot be proven public,
+    so it is refused. (Failing open here let `127.0.0.1.`-style names pass the
+    guard while a resolver that tolerates the trailing dot still connected.)
+    """
     if host in ("localhost",) or host.endswith((".local", ".internal", ".localhost")):
         return True
     try:
         infos = socket.getaddrinfo(host, None)
     except socket.gaierror:
-        return False  # let httpx report the DNS error
+        return True
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if (
