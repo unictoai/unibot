@@ -90,11 +90,31 @@ class Desktop:
         if call.action in actions.ACTIONS:
             self.say(f"· {call.sender_name} → {call.action} {self._brief(call)}")
             try:
-                call.result(actions.run(call.action, call.args))
+                if call.action == "shell":
+                    call.result(self._guarded_shell(call.args))
+                else:
+                    call.result(actions.run(call.action, call.args))
             except actions.ActionError as e:
                 call.fail(e.code, e.message)
             return
         call.fail("unknown_action", f"this computer does not do '{call.action}'")
+
+    def _guarded_shell(self, args: dict) -> dict:
+        """A remote ``shell`` call, judged by the guard first: the agent's own path asks
+        the user through ``approve``, but a peer over the hub has no one to ask — so
+        anything the guard would ask about (destructive, outbound, system) and anything
+        it refuses outright (money) is refused here instead of running. Fail closed: a
+        guard that cannot judge refuses too."""
+        try:
+            risk = guard.assess(str(args.get("command") or ""))
+        except Exception as exc:  # noqa: BLE001
+            raise actions.ActionError("refused", f"the command could not be checked: {exc}") from exc
+        if risk.asks or risk.refused:
+            self.say(f"  ✗ guard refused a remote shell call: {guard.describe(risk)}")
+            raise actions.ActionError(
+                "refused", f"the guard refused this command ({guard.describe(risk)})"
+            )
+        return actions.run("shell", args)
 
     @staticmethod
     def _brief(call: IncomingCall) -> str:

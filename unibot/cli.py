@@ -815,10 +815,11 @@ def reminders_list(
     all: Annotated[bool, typer.Option("--all", help="Include recently finished ones")] = False,  # noqa: A002
 ) -> None:
     """List reminders and routines, soonest first."""
-    from unibot.reminders import ReminderStore
+    from unibot.reminders import ReminderStore, user_timezone
 
     s = _settings(config)
-    items = ReminderStore(s.reminders_db).list(None if all else "active")
+    tz = user_timezone(s.agent.timezone)
+    items = ReminderStore(s.reminders_db, tz=tz).list(None if all else "active")
     if not items:
         console.print("[dim]nothing scheduled[/dim]")
         return
@@ -830,7 +831,7 @@ def reminders_list(
     table.add_column("status")
     for r in items:
         when = r.repeat or (
-            datetime.fromisoformat(r.next_at).astimezone().strftime("%Y-%m-%d %H:%M")
+            datetime.fromisoformat(r.next_at).astimezone(tz).strftime("%Y-%m-%d %H:%M")
             if r.next_at
             else "-"
         )
@@ -853,13 +854,13 @@ def reminders_add(
 
     s = _settings(config)
     try:
-        item = ReminderStore(s.reminders_db).create(
+        item = ReminderStore(s.reminders_db, tz=s.agent.timezone).create(
             text, at=at, repeat=repeat, kind="task" if task else "remind"
         )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from None
-    console.print(item.render(), markup=False)
+    console.print(item.render(tz=s.agent.timezone), markup=False)
 
 
 @reminders_app.command("cancel")
@@ -868,11 +869,11 @@ def reminders_cancel(reminder_id: str, config: ConfigOpt = None) -> None:
     from unibot.reminders import ReminderStore
 
     s = _settings(config)
-    item = ReminderStore(s.reminders_db).cancel(reminder_id)
+    item = ReminderStore(s.reminders_db, tz=s.agent.timezone).cancel(reminder_id)
     if item is None:
         console.print(f"[red]no active reminder {reminder_id}[/red]")
         raise typer.Exit(1)
-    console.print(item.render(), markup=False)
+    console.print(item.render(tz=s.agent.timezone), markup=False)
 
 
 # ============================================================================ triggers

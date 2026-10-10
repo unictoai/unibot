@@ -106,6 +106,7 @@ name                 = "unibot"      # what the agent calls itself (the app's pr
 max_steps            = 30              # tool calls per turn before it must wrap up
 # workspace          = "./workspace"   # the only directory the files tool can touch; default ./workspace if present here, else <data_dir>/workspace
 language             = "auto"          # or a fixed language: "English", "中文", ...
+timezone             = ""              # IANA name, e.g. "Asia/Karachi": the zone naive reminder/routine times resolve in
 max_context_messages = 80
 show_thinking        = false
 user_profile         = ""              # free text injected into the system prompt
@@ -113,6 +114,8 @@ instructions         = ""              # extra rules appended to the system prom
 ```
 
 With `language = "auto"` the system prompt names the language of the latest user message (detected by script) and tells the model to answer in it. A generic "reply in the user's language" instruction turned out to be unreliable with some models; naming it works.
+
+With `timezone` empty, reminder and routine times ("remind me at 9am", `daily 09:00`) resolve in the system local zone — on a UTC server host that puts a Karachi 9am five hours off. Set it to your IANA zone and naive times resolve there instead; unknown names are rejected at config load.
 
 ## `[sentinel]`
 

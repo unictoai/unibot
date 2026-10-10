@@ -15,12 +15,44 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
 PLACEHOLDER_RE = re.compile(r"\{\{\s*vault:([A-Za-z0-9_.-]+)\s*\}\}")
+
+
+def _atomic_write(target: Path, data: bytes, mode: int | None = None) -> None:
+    """Write ``data`` to ``target`` atomically.
+
+    The payload goes to a uniquely-named temp file in the *same* directory
+    (so the rename stays on one filesystem and is atomic), is fsynced to
+    disk, and is then moved into place with :func:`os.replace`. ``mode`` is
+    applied to the temp file *before* the rename, so the target never exists
+    with looser permissions; ``None`` keeps the default ``0o666 & ~umask``
+    behavior of a plain write. The temp file is removed if anything fails.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=target.parent, prefix=target.name + ".", suffix=".tmp"
+    )
+    tmp = Path(tmp_name)
+    try:
+        if mode is None:
+            prev_umask = os.umask(0)
+            os.umask(prev_umask)
+            mode = 0o666 & ~prev_umask
+        os.fchmod(fd, mode)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, target)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 class VaultError(RuntimeError):
@@ -41,13 +73,10 @@ class CredentialVault:
             return env_key.encode()
         if self.key_path.exists():
             return self.key_path.read_bytes().strip()
-        self.key_path.parent.mkdir(parents=True, exist_ok=True)
         key = Fernet.generate_key()
-        self.key_path.write_bytes(key)
-        try:
-            os.chmod(self.key_path, 0o600)
-        except OSError:  # pragma: no cover - windows
-            pass
+        # atomic + 0o600 from the start: the key must never be readable by others,
+        # not even briefly between creation and chmod
+        _atomic_write(self.key_path, key, mode=0o600)
         return key
 
     @property
@@ -74,15 +103,8 @@ class CredentialVault:
         return self._cache
 
     def _save(self, data: dict[str, str]) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         token = self.fernet.encrypt(json.dumps(data, ensure_ascii=False).encode("utf-8"))
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_bytes(token)
-        try:
-            os.chmod(tmp, 0o600)
-        except OSError:  # pragma: no cover
-            pass
-        tmp.replace(self.path)
+        _atomic_write(self.path, token, mode=0o600)
         self._cache = dict(data)
 
     # ------------------------------------------------------------------ public API

@@ -445,6 +445,70 @@ def test_a_helper_left_behind_does_not_keep_the_run_open(
     assert time.monotonic() - t0 < 10
 
 
+# ----------------------------------------------------------------------------- workspace hardening
+def test_command_for_validates_workspace_and_separates_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The peer-supplied workspace must sit inside the allowed roots (the agent
+    workspace plus its extra roots — the files tool's `_resolve` rule); the user
+    text rides after `--` so a leading dash is never read as an option."""
+    monkeypatch.setattr(runner, "which", lambda agent: "/usr/bin/fake-agent")
+    roots = [tmp_path / "ws", tmp_path / "extra"]
+    for p in roots:
+        p.mkdir()
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    resolved = lambda p: str(Path(p).resolve())  # noqa: E731
+
+    for agent in ("cursor", "codex", "claude"):
+        # inside a root (or the root itself): fine; `--` guards a dashy text
+        cmd = runner.command_for(agent, "", str(roots[0] / "proj"), "--help", False, roots)
+        assert cmd[-2:] == ["--", "--help"], (agent, cmd)
+        # cursor and codex carry the resolved workspace into the command
+        if agent in ("cursor", "codex"):
+            assert resolved(roots[0] / "proj") in cmd, (agent, cmd)
+    cmd = runner.command_for("cursor", "", str(roots[1]), "do it", False, roots)
+    assert resolved(roots[1]) in cmd
+
+    # outside the roots, or a `..` escape back out, raises ValueError
+    for bad in (str(outside), str(roots[0] / ".." / "elsewhere")):
+        with pytest.raises(ValueError):
+            runner.command_for("cursor", "", bad, "do it", False, allowed_roots=roots)
+    with pytest.raises(ValueError):
+        asyncio.run(start_run("cursor", "do it", workspace=str(outside), allowed_roots=roots))
+    # without roots there is nothing to check against: local callers keep working
+    runner.command_for("cursor", "", str(outside), "do it", False)
+
+
+def test_send_rejects_workspace_outside_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The service path (hub peers included) rejects an outside workspace up front."""
+    from unibot.coding.service import CodingService
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+
+    class AgentCfg:
+        workspace = ws
+        extra_roots: list = []
+
+    class _Settings:
+        agent = AgentCfg()
+
+    class _App:
+        settings = _Settings()
+
+    class _Svc:
+        app = _App()
+
+    monkeypatch.setattr(agents, "which", lambda agent: None)
+    svc = CodingService(_Svc())  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        asyncio.run(svc.send("cursor", "hi", workspace=str(tmp_path / "nope")))
+    # inside the workspace is accepted (it then fails on the missing CLI, not the roots)
+    with pytest.raises(Exception, match="not installed"):
+        asyncio.run(svc.send("cursor", "hi", workspace=str(ws)))
+
+
 # ----------------------------------------------------------------------------- the runtime API
 @pytest.fixture()
 def server(

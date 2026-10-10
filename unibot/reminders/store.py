@@ -18,8 +18,9 @@ import builtins  # ``list`` is a method name below; the class body needs the typ
 import sqlite3
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from unibot.goals.store import next_check_in, parse_check_in
 
@@ -37,10 +38,34 @@ def _iso(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="seconds")
 
 
-def parse_when(value: str) -> datetime | None:
+def user_timezone(name: str | None) -> tzinfo:
+    """Resolve a configured timezone name to a ``tzinfo``.
+
+    Empty/``None`` → the system local timezone (today's behaviour). Raises
+    ``ValueError`` for names zoneinfo does not know.
+    """
+    name = (name or "").strip()
+    if not name:
+        return datetime.now().astimezone().tzinfo or UTC
+    try:
+        return ZoneInfo(name)
+    except ZoneInfoNotFoundError:
+        raise ValueError(f"unknown timezone {name!r}; use an IANA name like 'Asia/Karachi'")
+
+
+def _resolve_tz(tz: str | tzinfo | None) -> tzinfo:
+    """A configured zone name, an already-resolved ``tzinfo``, or the local zone."""
+    if isinstance(tz, str):
+        return user_timezone(tz)
+    return tz if tz is not None else user_timezone(None)
+
+
+def parse_when(value: str, tz: str | tzinfo | None = None) -> datetime | None:
     """A point in time as the model or the app writes it: ``2026-09-23 18:00``,
-    ``2026-09-23T18:00``, with or without seconds or an offset. Naive values are local
-    time. ``None`` when it does not parse."""
+    ``2026-09-23T18:00``, with or without seconds or an offset. Naive values are read
+    as wall time in ``tz`` (the user's configured timezone; the system local zone when
+    unset). ``None`` when it does not parse."""
+    zone = _resolve_tz(tz)
     text = (value or "").strip().replace("T", " ")
     if not text:
         return None
@@ -50,13 +75,13 @@ def parse_when(value: str) -> datetime | None:
         except ValueError:
             continue
         if parsed.tzinfo is None:
-            parsed = parsed.astimezone()  # local
+            parsed = parsed.replace(tzinfo=zone)
         return parsed
     try:
         parsed = datetime.fromisoformat(text)
     except ValueError:
         return None
-    return parsed if parsed.tzinfo else parsed.astimezone()
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=zone)
 
 
 @dataclass
@@ -90,22 +115,26 @@ class Reminder:
             "fired": self.fired,
         }
 
-    def render(self) -> str:
-        when = self.repeat or (self.next_at and _local(self.next_at)) or "—"
+    def render(self, tz: str | tzinfo | None = None) -> str:
+        when = self.repeat or (self.next_at and _local(self.next_at, _resolve_tz(tz))) or "—"
         what = "remind" if self.kind == "remind" else "do"
         return f"[{self.id}] {when} · {what}: {self.text} ({self.status})"
 
 
-def _local(iso: str) -> str:
+def _local(iso: str, tz: tzinfo | None = None) -> str:
     try:
-        return datetime.fromisoformat(iso).astimezone().strftime("%Y-%m-%d %H:%M")
+        return datetime.fromisoformat(iso).astimezone(tz).strftime("%Y-%m-%d %H:%M")
     except ValueError:
         return iso
 
 
 class ReminderStore:
-    def __init__(self, path: Path | str):
+    def __init__(self, path: Path | str, tz: str | tzinfo | None = None):
+        """``tz`` is the user's configured timezone (``settings.agent.timezone``): naive
+        reminder times are resolved as wall time in it, and times are rendered back in
+        it. Unset → the system local zone (today's behaviour)."""
         self.path = str(path)
+        self.tz = _resolve_tz(tz)
         self._conn = sqlite3.connect(self.path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(
@@ -151,16 +180,16 @@ class ReminderStore:
                     f"unknown cadence {repeat!r}; use 'daily 08:00', 'weekdays 07:30', "
                     "'weekly mon 09:00' or 'monthly 1 09:00'"
                 )
-            first = next_check_in(repeat)
+            first = next_check_in(repeat, _now().astimezone(self.tz))
             if first is None:  # pragma: no cover - the grammar always yields a next time
                 raise ValueError("could not compute the first occurrence")
         else:
-            parsed = parse_when(at)
+            parsed = parse_when(at, self.tz)
             if parsed is None:
                 raise ValueError(f"could not read the time {at!r}; use 'YYYY-MM-DD HH:MM'")
             if parsed <= _now() - timedelta(minutes=1):
                 # the model often works from a time quoted earlier in the conversation
-                now_local = _now().astimezone().strftime("%Y-%m-%d %H:%M")
+                now_local = _now().astimezone(self.tz).strftime("%Y-%m-%d %H:%M")
                 raise ValueError(f"{at} is in the past — it is now {now_local}")
             first = parsed
         rid = "r_" + uuid.uuid4().hex[:6]
@@ -192,7 +221,8 @@ class ReminderStore:
         if item is None or item.status != "active":
             return None
         now = now or _now()
-        nxt = next_check_in(item.repeat, now.astimezone()) if item.repeat else None
+        after = now.astimezone(self.tz) if now.tzinfo is not None else now.replace(tzinfo=self.tz)
+        nxt = next_check_in(item.repeat, after) if item.repeat else None
         self._conn.execute(
             "UPDATE reminders SET next_at = ?, status = ?, last_fired_at = ?, fired = fired + 1 "
             "WHERE id = ?",

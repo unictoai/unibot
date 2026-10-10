@@ -81,7 +81,7 @@ class UnibotApp:
         self.embedder: Embedder | None = None
         self.attach_embedder()
         self.goals = GoalStore(settings.goals_db)
-        self.reminders = ReminderStore(settings.reminders_db)
+        self.reminders = ReminderStore(settings.reminders_db, tz=settings.agent.timezone)
         self.triggers = TriggerStore(settings.triggers_db)
         self.calendar = CalendarFeeds(
             settings.connectors.calendar, vault=self.vault, cache_file=settings.calendar_cache

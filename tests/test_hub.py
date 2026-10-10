@@ -373,6 +373,8 @@ def hub_server(
     settings.server.token = "secret-token"
     settings.cloud.base_url = relay.base_url
     settings.hub.name = "Desk"
+    # the tests below exercise the remote-control path; the production default is off
+    settings.hub.remote_control = True
     llm = MockLLM([])
 
     async def fake_request_code(self: CloudClient, identifier: str) -> dict[str, Any]:
@@ -584,6 +586,20 @@ def test_task_approval_is_relayed_and_answered_by_the_device(hub_server) -> None
     seen = relay.skipped + relay.drain("event")
     stages = [f["body"]["stage"] for f in seen if f.get("type") == "event" and f["id"] == "t3"]
     assert "approval_result" in stages and "tool_result" in stages
+
+
+def test_remote_control_off_by_default(hub_server) -> None:
+    """Secure by default: a fresh install answers other devices with ``info`` and
+    nothing else until the owner opts in. The full toggle round-trip is covered by
+    ``test_remote_control_off_refuses_everything_but_info``."""
+    assert Settings().hub.remote_control is False
+    client, _service, _llm, relay = hub_server
+    sign_in(client)
+    wait_for(lambda: client.get("/api/hub").json()["state"] == "connected")
+    client.put("/api/hub", json={"remote_control": False})
+    relay.call_runtime("shell", {"command": "echo hi"}, "s1")
+    res = relay.next_frame("result")
+    assert res["ok"] is False and res["error"] == "not_allowed"
 
 
 def test_remote_control_off_refuses_everything_but_info(hub_server) -> None:

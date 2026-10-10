@@ -69,12 +69,17 @@ def parse_check_in(spec: str) -> tuple[str, int | None, int, int] | None:
 
 
 def next_check_in(spec: str, after: datetime | None = None) -> datetime | None:
-    """The first check-in strictly after ``after`` (local time; default now)."""
+    """The first check-in strictly after ``after``. An aware ``after`` keeps its
+    timezone (e.g. the user's configured zone); a naive ``after`` — or none at all —
+    resolves in the system local zone."""
     parsed = parse_check_in(spec)
     if parsed is None:
         return None
     cadence, anchor, hour, minute = parsed
-    now = (after or datetime.now()).astimezone()
+    if after is not None and after.tzinfo is not None:
+        now = after
+    else:
+        now = (after or datetime.now()).astimezone()
     if cadence == "weekly" and anchor is None:
         anchor = now.weekday()  # "weekly" alone: same weekday as today
     day = now.date()

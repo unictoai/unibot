@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+import os
+import time
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
-from unibot.reminders import ReminderStore, parse_when
+from unibot.goals.store import next_check_in
+from unibot.reminders import ReminderStore, parse_when, user_timezone
 from unibot.tools import Reminders
 
 
@@ -103,3 +107,71 @@ def test_reminders_tool(tmp_path: Path):
         f"reminders create: {soon}"
     )
     store.close()
+
+
+# ----------------------------------------------------------------- user timezone
+@pytest.fixture(
+    params=["UTC", "Pacific/Kiritimati", "America/New_York"],
+    ids=["host-utc", "host-plus14", "host-newyork"],
+)
+def host_tz(request, monkeypatch: pytest.MonkeyPatch):
+    """Run the test under several host timezones: resolution in the user's zone must
+    not move, e.g. a Karachi 9am must not fire five hours off on a UTC host."""
+    if not hasattr(time, "tzset"):  # POSIX only
+        pytest.skip("needs tzset")
+    old = os.environ.get("TZ")
+    monkeypatch.setenv("TZ", request.param)
+    time.tzset()
+    yield request.param
+    if old is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = old
+    time.tzset()
+
+
+def test_naive_reminder_resolves_in_user_timezone(tmp_path: Path, host_tz: str):
+    store = ReminderStore(tmp_path / "r.db", tz="Asia/Karachi")
+    khi = ZoneInfo("Asia/Karachi")
+    # 9am the day after tomorrow in Karachi, as the model would write it
+    target = (datetime.now(khi) + timedelta(days=2)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    )
+    item = store.create("call mum", at=target.strftime("%Y-%m-%d %H:%M"))
+    fired_utc = datetime.fromisoformat(item.next_at)
+    assert fired_utc == target.astimezone(UTC)
+    assert (fired_utc.hour, fired_utc.minute) == (4, 0)  # 09:00 at +05:00
+    assert "09:00" in item.render(tz="Asia/Karachi")
+    store.close()
+
+
+def test_routine_occurrences_stay_in_user_timezone(tmp_path: Path, host_tz: str):
+    store = ReminderStore(tmp_path / "r.db", tz="Asia/Karachi")
+    khi = ZoneInfo("Asia/Karachi")
+    routine = store.create("standup", repeat="daily 09:00", kind="task")
+    first = datetime.fromisoformat(routine.next_at)
+    assert (first.astimezone(khi).hour, first.astimezone(khi).minute) == (9, 0)
+    nxt = store.mark_fired(routine.id, first + timedelta(seconds=30))
+    second = datetime.fromisoformat(nxt.next_at)
+    assert second - first == timedelta(days=1)
+    assert (second.astimezone(khi).hour, second.astimezone(khi).minute) == (9, 0)
+    store.close()
+
+
+def test_next_check_in_keeps_an_aware_after_in_its_zone():
+    khi = ZoneInfo("Asia/Karachi")
+    after = datetime(2026, 10, 10, 10, 0, tzinfo=khi)  # a Saturday, after 9am
+    nxt = next_check_in("daily 09:00", after)
+    assert nxt is not None and nxt.tzinfo == khi
+    assert (nxt.hour, nxt.minute) == (9, 0) and nxt.date() == date(2026, 10, 11)
+
+
+def test_unknown_timezone_is_rejected(tmp_path: Path):
+    with pytest.raises(ValueError, match="unknown timezone"):
+        user_timezone("Mars/Olympus")
+    with pytest.raises(ValueError, match="unknown timezone"):
+        parse_when("2026-09-23 18:00", tz="Mars/Olympus")
+    with pytest.raises(ValueError, match="unknown timezone"):
+        ReminderStore(tmp_path / "r.db", tz="Mars/Olympus")
+    # empty stays valid: the system local zone (today's behaviour)
+    assert user_timezone("").utcoffset(None) == user_timezone(None).utcoffset(None)
