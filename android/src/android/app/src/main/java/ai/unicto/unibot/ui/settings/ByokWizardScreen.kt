@@ -220,9 +220,32 @@ private fun saveWizardProvider(
         customBaseURL = null,
         appendV1Suffix = type != ProviderType.gemini,
     )
-    providerRepository.addInstance(instance)
-    providerRepository.saveApiKey(instance.id, apiKey)
+    saveInstanceWithKey(
+        saveKey = { providerRepository.saveApiKey(instance.id, apiKey) },
+        addInstance = { providerRepository.addInstance(instance) },
+        deleteKey = { providerRepository.deleteApiKey(instance.id) },
+    )
     scope.launch { providerRepository.refreshModels(instance) }
+}
+
+/**
+ * Persist a provider instance and its API key atomically: the key is written
+ * first, then the instance; if the instance write fails, the orphaned key is
+ * deleted so neither a key-less instance nor an instance-less key can linger.
+ * Extracted for unit testing — the lambdas are the real repository calls.
+ */
+internal fun saveInstanceWithKey(
+    saveKey: () -> Unit,
+    addInstance: () -> Unit,
+    deleteKey: () -> Unit,
+) {
+    saveKey()
+    try {
+        addInstance()
+    } catch (e: Exception) {
+        runCatching { deleteKey() }
+        throw e
+    }
 }
 
 /** Three dots: pick → key → check. */
