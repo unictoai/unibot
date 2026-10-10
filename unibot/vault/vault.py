@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -24,33 +23,21 @@ from cryptography.fernet import Fernet, InvalidToken
 PLACEHOLDER_RE = re.compile(r"\{\{\s*vault:([A-Za-z0-9_.-]+)\s*\}\}")
 
 
-def _atomic_write(target: Path, data: bytes, mode: int | None = None) -> None:
-    """Write ``data`` to ``target`` atomically.
+from unibot.fsutil import atomic_write_bytes as _atomic_write
+from unibot.logger import logger
 
-    The payload goes to a uniquely-named temp file in the *same* directory
-    (so the rename stays on one filesystem and is atomic), is fsynced to
-    disk, and is then moved into place with :func:`os.replace`. ``mode`` is
-    applied to the temp file *before* the rename, so the target never exists
-    with looser permissions; ``None`` keeps the default ``0o666 & ~umask``
-    behavior of a plain write. The temp file is removed if anything fails.
-    """
-    target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=target.name + ".", suffix=".tmp")
-    tmp = Path(tmp_name)
+try:  # POSIX inter-process lock for the vault file
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None  # type: ignore[assignment]
+
+if fcntl is None:
     try:
-        if mode is None:
-            prev_umask = os.umask(0)
-            os.umask(prev_umask)
-            mode = 0o666 & ~prev_umask
-        os.fchmod(fd, mode)
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(data)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, target)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+        import msvcrt
+    except ImportError:  # pragma: no cover
+        msvcrt = None  # type: ignore[assignment]
+else:
+    msvcrt = None  # type: ignore[assignment]
 
 
 class VaultError(RuntimeError):
@@ -63,6 +50,11 @@ class CredentialVault:
         self.key_path = Path(key_path) if key_path else self.path.with_suffix(".key")
         self._fernet: Fernet | None = None
         self._cache: dict[str, str] | None = None
+        # (mtime_ns, size) of the vault file the cache was read from; the cache
+        # is only trusted while the file still looks the same. Another process
+        # (``unibot vault set`` while the server runs) replaces the file
+        # atomically, so a stat change is a reliable "someone else wrote" signal.
+        self._cache_stat: tuple[int, int] | None = None
 
     # ------------------------------------------------------------------ key handling
     def _key(self) -> bytes:
@@ -84,11 +76,24 @@ class CredentialVault:
         return self._fernet
 
     # ------------------------------------------------------------------ persistence
+    def _stat(self) -> tuple[int, int] | None:
+        try:
+            st = self.path.stat()
+        except OSError:
+            return None
+        return (st.st_mtime_ns, st.st_size)
+
     def _load(self) -> dict[str, str]:
-        if self._cache is not None:
+        # Never trust a stale cache: when another process rewrote the vault file
+        # (``unibot vault set`` while the server runs), the stat differs and the
+        # cache is dropped. Without this, a server-side set() would rewrite the
+        # file from the stale copy and silently delete the other process's secret.
+        if self._cache is not None and self._cache_stat == self._stat():
             return self._cache
+        self._cache = None
         if not self.path.exists():
             self._cache = {}
+            self._cache_stat = None
             return self._cache
         try:
             raw = self.fernet.decrypt(self.path.read_bytes())
@@ -98,29 +103,72 @@ class CredentialVault:
             ) from exc
         data = json.loads(raw.decode("utf-8"))
         self._cache = {str(k): str(v) for k, v in data.items()}
+        self._cache_stat = self._stat()
         return self._cache
 
     def _save(self, data: dict[str, str]) -> None:
         token = self.fernet.encrypt(json.dumps(data, ensure_ascii=False).encode("utf-8"))
         _atomic_write(self.path, token, mode=0o600)
         self._cache = dict(data)
+        self._cache_stat = self._stat()
+
+    @staticmethod
+    def _locked(path: Path):  # noqa: ANN202
+        """Best-effort inter-process exclusive lock, for read-modify-write.
+
+        The atomic rename in :meth:`_save` keeps every *read* consistent, but
+        two processes doing read-modify-write at the same instant can still
+        lose one update. Serializing set()/delete() on a lock file closes that
+        window. Same-process threads never block each other on it (POSIX
+        locks are per-process), they just serialize like everyone else.
+        """
+        import contextlib
+
+        @contextlib.contextmanager
+        def _lock():
+            lock_path = path.with_suffix(".lock")
+            try:
+                lock_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(lock_path, "w") as fh:
+                    if fcntl is not None:
+                        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+                    elif msvcrt is not None:  # pragma: no cover - Windows only
+                        msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)
+                    try:
+                        yield
+                    finally:
+                        if fcntl is not None:
+                            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+                        elif msvcrt is not None:  # pragma: no cover - Windows only
+                            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            except OSError as exc:
+                # a lock that cannot be taken must never break the write itself
+                logger.debug("vault lock unavailable, proceeding unlocked: {}", exc)
+                yield
+
+        return _lock()
 
     # ------------------------------------------------------------------ public API
     def set(self, name: str, value: str) -> None:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", name):
             raise VaultError("secret names may only contain letters, digits, '_', '.', '-'")
-        data = dict(self._load())
-        data[name] = value
-        self._save(data)
+        # read-modify-write under an inter-process lock: without it, a
+        # concurrent writer's secret (e.g. the CLI while the server runs)
+        # could be silently dropped by the atomic replace in _save().
+        with self._locked(self.path):
+            data = dict(self._load())
+            data[name] = value
+            self._save(data)
 
     def get(self, name: str) -> str | None:
         return self._load().get(name)
 
     def delete(self, name: str) -> bool:
-        data = dict(self._load())
-        existed = data.pop(name, None) is not None
-        if existed:
-            self._save(data)
+        with self._locked(self.path):
+            data = dict(self._load())
+            existed = data.pop(name, None) is not None
+            if existed:
+                self._save(data)
         return existed
 
     def names(self) -> list[str]:

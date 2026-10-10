@@ -54,9 +54,11 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from starlette.datastructures import Headers
@@ -68,7 +70,7 @@ from unibot.coding.service import CodingError
 from unibot.config import Settings
 from unibot.hub.client import HubError
 from unibot.logger import logger
-from unibot.server.events import MAIN_THREAD
+from unibot.server.events import BUS_OVERFLOW, MAIN_THREAD
 from unibot.server.service import MuseService, goal_to_dict
 from unibot.server.update import UpdateCheck
 
@@ -340,6 +342,19 @@ class AskDeviceBody(BaseModel):
 def create_app(settings: Settings, service: MuseService | None = None) -> FastAPI:
     svc = service or MuseService(settings)
 
+    if not settings.server.auth and settings.server.host not in (
+        "127.0.0.1",
+        "localhost",
+        "::1",
+    ):
+        # The drive-by WebSocket attack below is closed by the Origin check, but
+        # every REST route is still one DNS-rebinding away from any web page.
+        logger.warning(
+            "server.auth=false on a non-loopback interface ({}): anyone who can reach "
+            "this port has full API access. Never do this on a shared network.",
+            settings.server.host,
+        )
+
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # The services get a few seconds to come up before the socket opens; past that the
@@ -377,6 +392,24 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             allow_headers=["*"],
         )
 
+    if settings.server.host not in ("0.0.0.0", "::"):
+        # The server is bound to one interface: reject Host headers naming
+        # anything else, so DNS rebinding cannot reach the API through a
+        # hostile name. (On 0.0.0.0 the phone reaches us via a LAN IP we cannot
+        # enumerate, so the middleware stays off there.)
+        allowed_hosts = {"127.0.0.1", "localhost", "::1", settings.server.host}
+        # "testserver" is the Starlette TestClient's Host header — without it the
+        # test suite 400s on every request
+        allowed_hosts.add("testserver")
+        for origin in settings.server.cors_origins:
+            try:
+                host = urlsplit(origin).hostname
+            except ValueError:
+                continue
+            if host:
+                allowed_hosts.add(host.lower())
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(allowed_hosts))
+
     # ------------------------------------------------------------------ auth
     def _check_token(token: str | None) -> None:
         if not svc.token:
@@ -394,6 +427,46 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         if header.lower().startswith("bearer "):
             return header[7:].strip() or None
         return None
+
+    def _check_ws_origin(ws: WebSocket) -> None:
+        """Cross-site WebSocket hijacking guard.
+
+        WebSockets are not covered by CORS. With ``server.auth=false`` any web
+        page the user visits could otherwise open ``/ws`` and drive the agent
+        (send messages, read the event stream, answer approval cards). Browsers
+        always send ``Origin`` on a ws(s) handshake; require the page to have
+        been served from this server — its Origin names the same host the
+        socket connected to — or to be explicitly allowed via cors_origins.
+        Non-browser clients (apps, scripts) send no Origin and are unaffected.
+        """
+        origin = (ws.headers.get("origin") or "").strip()
+        if not origin:
+            return
+        try:
+            parts = urlsplit(origin)
+            ohost = (parts.hostname or "").lower().rstrip(".")
+        except ValueError:
+            raise HTTPException(400, "bad origin")
+        if parts.scheme not in ("http", "https", "ws", "wss") or not ohost:
+            raise HTTPException(400, "bad origin")
+        if ohost in ("localhost", "127.0.0.1", "::1"):
+            return
+        host_header = ws.headers.get("host", "")
+        if host_header.startswith("["):  # IPv6 literal, e.g. [::1]:8787
+            hhost = host_header.split("]", 1)[0][1:]
+        elif host_header.count(":") == 1:
+            hhost = host_header.rsplit(":", 1)[0]
+        else:
+            hhost = host_header
+        if hhost.strip().lower().rstrip(".") == ohost:
+            return
+        for allowed in settings.server.cors_origins:
+            try:
+                if urlsplit(allowed).hostname == ohost:
+                    return
+            except ValueError:
+                continue
+        raise HTTPException(403, "origin not allowed")
 
     def auth(request: Request) -> None:
         _check_token(_bearer_token(request.headers) or request.query_params.get("token"))
@@ -725,9 +798,24 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         # The header wins over the query string: a key in a URL ends up in access
         # logs and proxies. The ?key= form stays for clients that cannot set headers.
         key = request.headers.get("x-hook-key") or request.query_params.get("key") or ""
-        raw = await request.body()
-        if len(raw) > 64 * 1024:
+        # This route needs no app token: reject oversized bodies before buffering
+        # them, or an anonymous client could exhaust memory.
+        length = (request.headers.get("content-length") or "").strip()
+        if length.isdigit() and int(length) > 64 * 1024:
             raise HTTPException(413, "body too large (64 KB max)")
+        # The id and key are validated before the body is read at all.
+        hook = svc.app.triggers.get(trigger_id)
+        if (
+            hook is None
+            or hook.kind != "hook"
+            or not secrets.compare_digest(hook.secret.encode(), key.encode())
+        ):
+            raise HTTPException(404, "not found")
+        raw = b""
+        async for chunk in request.stream():
+            raw += chunk
+            if len(raw) > 64 * 1024:
+                raise HTTPException(413, "body too large (64 KB max)")
         body = raw.decode("utf-8", errors="replace")
         try:
             item = svc.deliver_hook(trigger_id, key, body, request.headers.get("content-type", ""))
@@ -1570,8 +1658,12 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             "application/xml",
             "text/xml",
         ):
-            # Files the agent wrote never run with the app's origin: no token, no API.
-            headers["Content-Security-Policy"] = "sandbox allow-scripts allow-popups"
+            # Files the agent wrote never run script: a sandboxed document can still
+            # read its own URL — which carries ?token= — and exfiltrate it, so
+            # scripts stay off entirely. no-referrer keeps the token out of
+            # subresource requests as well.
+            headers["Content-Security-Policy"] = "sandbox allow-popups"
+            headers["Referrer-Policy"] = "no-referrer"
         return FileResponse(target, media_type=media, headers=headers)
 
     # ------------------------------------------------------------------ websocket
@@ -1581,6 +1673,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             # Browsers cannot set headers on a WebSocket handshake, so the ?token=
             # fallback must keep working; programmatic clients should use the header.
             _check_token(_bearer_token(ws.headers) or ws.query_params.get("token"))
+            _check_ws_origin(ws)
         except HTTPException:
             await ws.close(code=4401)
             return
@@ -1598,6 +1691,12 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         async def pump() -> None:
             while True:
                 msg = await queue.get()
+                if msg.get("kind") == BUS_OVERFLOW:
+                    # We fell behind and the bus dropped us: the client missed
+                    # events, so close with 1013 and let it reconnect for a
+                    # fresh hello + state snapshot instead of going stale.
+                    await ws.close(code=1013)
+                    return
                 await send(msg)
 
         pump_task = asyncio.create_task(pump())

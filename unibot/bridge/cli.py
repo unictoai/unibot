@@ -48,8 +48,12 @@ class BridgeClient:
             method=method,
             headers={"Content-Type": "application/json", "X-Unibot-Bridge": self.token},
         )
+        # The bridge always talks to 127.0.0.1: never route it through an
+        # HTTP(S)_PROXY — a system proxy (Clash, corporate) would 404 the call
+        # and, worse, receive the X-Unibot-Bridge call token.
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310 — 127.0.0.1
+            with opener.open(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode() or "{}")
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode(errors="replace")

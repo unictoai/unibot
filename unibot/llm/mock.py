@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from unibot.llm.base import BaseLLM, DeltaCallback
+from unibot.llm.base import BaseLLM, DeltaCallback, StreamResetCallback
 from unibot.schema import LLMResponse, Message
 
 Script = LLMResponse | Callable[[list[Message]], LLMResponse]
@@ -25,6 +25,7 @@ class MockLLM(BaseLLM):
         tool_choice: str = "auto",
         on_delta: DeltaCallback | None = None,
         max_tokens: int | None = None,
+        on_stream_reset: StreamResetCallback | None = None,
     ) -> LLMResponse:
         self.calls.append({"messages": list(messages), "tools": tools, "max_tokens": max_tokens})
         if not self.script:

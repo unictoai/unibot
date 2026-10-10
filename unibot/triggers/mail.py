@@ -69,7 +69,10 @@ class MailWatcher:
         settings = self.settings
 
         def _look() -> tuple[list[NewMail], int]:
-            with imaplib.IMAP4_SSL(settings.imap_host, settings.imap_port) as imap:
+            # timeout: the default socket timeout is None — a half-open connection
+            # or a silent server would block this worker (and with it the whole
+            # scheduler loop) forever
+            with imaplib.IMAP4_SSL(settings.imap_host, settings.imap_port, timeout=30) as imap:
                 imap.login(address, password)
                 status, _ = imap.select("INBOX", readonly=True)
                 if status != "OK":

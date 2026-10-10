@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import sqlite3
+import time
 from array import array
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -220,10 +221,21 @@ class DocumentStore:
             """CREATE TABLE IF NOT EXISTS doc_files (
                 path TEXT PRIMARY KEY,
                 mtime REAL NOT NULL,
+                mtime_ns INTEGER NOT NULL DEFAULT 0,
+                ino INTEGER NOT NULL DEFAULT 0,
                 size INTEGER NOT NULL,
                 hash TEXT NOT NULL
             )"""
         )
+        # databases created before the ns-precision changeover gain the columns
+        for ddl in (
+            "ALTER TABLE doc_files ADD COLUMN mtime_ns INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE doc_files ADD COLUMN ino INTEGER NOT NULL DEFAULT 0",
+        ):
+            try:
+                self._conn.execute(ddl)
+            except sqlite3.OperationalError:
+                pass  # already there (fresh table) — nothing to migrate
         self._conn.execute(
             """CREATE TABLE IF NOT EXISTS doc_vectors (
                 chunk_id TEXT NOT NULL,
@@ -247,21 +259,40 @@ class DocumentStore:
         self._conn.close()
 
     # ------------------------------------------------------------ file tracking
-    def files(self) -> dict[str, tuple[float, int, str]]:
-        """path → (mtime, size, hash) for everything indexed."""
+    def files(self) -> dict[str, tuple[int, int, int, str]]:
+        """path → (mtime_ns, ino, size, hash) for everything indexed.
+
+        Nanosecond mtime plus inode: a same-size edit landing in the same
+        coarse mtime tick is still caught (a float ``mtime`` column loses the
+        nanoseconds and misses it).
+        """
         return {
-            row["path"]: (row["mtime"], row["size"], row["hash"])
-            for row in self._conn.execute("SELECT path, mtime, size, hash FROM doc_files")
+            row["path"]: (row["mtime_ns"], row["ino"], row["size"], row["hash"])
+            for row in self._conn.execute("SELECT path, mtime_ns, ino, size, hash FROM doc_files")
         }
 
-    def put_file(self, path: str, mtime: float, size: int, hash: str) -> None:
+    def put_file(self, path: str, mtime_ns: int, ino: int, size: int, hash: str) -> None:
         self._conn.execute(
-            "INSERT INTO doc_files (path, mtime, size, hash) VALUES (?,?,?,?) "
-            "ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, size=excluded.size, "
+            "INSERT INTO doc_files (path, mtime, mtime_ns, ino, size, hash) VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, "
+            "mtime_ns=excluded.mtime_ns, ino=excluded.ino, size=excluded.size, "
             "hash=excluded.hash",
-            (path, mtime, size, hash),
+            (path, mtime_ns / 1e9, mtime_ns, ino, size, hash),
         )
         self._conn.commit()
+
+    def has_chunks(self, path: str, model: str) -> bool:
+        """Whether ``path`` has any chunks stored for ``model``.
+
+        Change detection is per file, but vectors are per (file, model): after
+        a model switch (or an outage that indexed text-only under
+        ``__keyword__``) the file looks unchanged yet has no vectors for the
+        current model — it must be (re-)indexed.
+        """
+        row = self._conn.execute(
+            "SELECT 1 FROM doc_vectors WHERE file = ? AND model = ? LIMIT 1", (path, model)
+        ).fetchone()
+        return row is not None
 
     def drop_file(self, path: str, model: str | None = None) -> None:
         self._conn.execute("DELETE FROM doc_files WHERE path = ?", (path,))
@@ -386,28 +417,40 @@ class DocumentIndex:
         model = self.embedder.model if has_embedder else "__keyword__"
         async with self._lock:
             known = self.store.files()
-            current: dict[str, tuple[float, int]] = {}
+            current: dict[str, tuple[int, int, int]] = {}
             for path in iter_text_files(self.workspace):
                 try:
                     st = path.stat()
                 except OSError:
                     continue
                 rel = path.relative_to(self.workspace).as_posix()
-                current[rel] = (st.st_mtime, st.st_size)
+                current[rel] = (st.st_mtime_ns, st.st_ino, st.st_size)
             # deleted files: drop their chunks and tracking rows
             for rel in known.keys() - current.keys():
                 self.store.drop_file(rel, model)
-            # new or touched files
+            # new or touched files — plus files with no vectors for the current
+            # model (a model switch, or an outage that indexed text-only)
+            now_ns = time.time_ns()
             changed: list[tuple[str, Path]] = []
-            for rel, (mtime, size) in current.items():
+            for rel, (mtime_ns, ino, size) in current.items():
                 k = known.get(rel)
-                if k is None or k[0] != mtime or k[1] != size:
+                if (
+                    k is None
+                    or k[0] != mtime_ns
+                    or k[1] != ino
+                    or k[2] != size
+                    or not self.store.has_chunks(rel, model)
+                    # a same-tick edit may not have moved the ns stamp either:
+                    # re-hash anything touched in the last 2 s; the digest
+                    # check below decides without re-embedding when unchanged
+                    or mtime_ns > now_ns - 2_000_000_000
+                ):
                     changed.append((rel, self.workspace / rel))
             if not changed:
                 return has_embedder
             # chunk everything that changed, then embed up to the cap
             pending: list[tuple[str, DocChunk]] = []  # (rel, chunk)
-            fresh_meta: dict[str, tuple[float, int, str]] = {}
+            fresh_meta: dict[str, tuple[int, int, int, str]] = {}
             for rel, path in sorted(changed):
                 try:
                     text = path.read_text(encoding="utf-8", errors="strict")
@@ -416,19 +459,21 @@ class DocumentIndex:
                 digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
                 cur = current[rel]
                 old = known.get(rel)
-                if old is not None and old[2] == digest:
+                if old is not None and old[3] == digest:
                     # mtime moved but content didn't (e.g. git checkout): no re-embed
-                    self.store.put_file(rel, cur[0], cur[1], digest)
+                    self.store.put_file(rel, cur[0], cur[1], cur[2], digest)
                     continue
                 chunks = list(chunk_file(rel, text))
                 if not chunks:
-                    self.store.put_file(rel, cur[0], cur[1], digest)
+                    self.store.put_file(rel, cur[0], cur[1], cur[2], digest)
                     continue
                 if len(pending) + len(chunks) > MAX_CHUNKS_PER_ENSURE:
                     break  # leave this file (and the rest) for the next call
-                self.store.drop_file(rel, model)
+                # a changed file invalidates every model's vectors, not just the
+                # current one's — otherwise a model switch would serve stale text
+                self.store.drop_file(rel)
                 pending.extend((rel, c) for c in chunks)
-                fresh_meta[rel] = (cur[0], cur[1], digest)
+                fresh_meta[rel] = (cur[0], cur[1], cur[2], digest)
             if not pending:
                 return has_embedder
             if not has_embedder:
@@ -448,8 +493,8 @@ class DocumentIndex:
                         for _, c in pending
                     },
                 )
-                for rel, (mtime, size, digest) in fresh_meta.items():
-                    self.store.put_file(rel, mtime, size, digest)
+                for rel, (mtime_ns, ino, size, digest) in fresh_meta.items():
+                    self.store.put_file(rel, mtime_ns, ino, size, digest)
                 return False
             assert self.embedder is not None
             embedded = await self.embedder.embed([c.text for _, c in pending])
@@ -469,8 +514,8 @@ class DocumentIndex:
                     for (_, c), vec in zip(pending, embedded, strict=True)
                 },
             )
-            for rel, (mtime, size, digest) in fresh_meta.items():
-                self.store.put_file(rel, mtime, size, digest)
+            for rel, (mtime_ns, ino, size, digest) in fresh_meta.items():
+                self.store.put_file(rel, mtime_ns, ino, size, digest)
             return has_embedder
 
     async def search(self, query: str, limit: int = 10, path: str | None = None) -> list[DocChunk]:
@@ -486,6 +531,10 @@ class DocumentIndex:
         if not query_vec:
             return self.store.keyword_search(query, limit=limit, path_prefix=path_prefix)
         vectors = self.store.vectors(self.embedder.model, path_prefix)
+        if not vectors:
+            # nothing for this model (e.g. indexed while it was unavailable):
+            # keyword search still answers from the indexed text
+            return self.store.keyword_search(query, limit=limit, path_prefix=path_prefix)
         scored = [
             (cosine(query_vec[0], vec), DocChunk(file=f, line_start=ls, line_end=le, text=t))
             for _, (_h, f, ls, le, t, vec) in vectors.items()

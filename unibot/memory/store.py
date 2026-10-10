@@ -203,10 +203,28 @@ class MemoryStore:
         self._conn.commit()
         return cur.rowcount > 0
 
-    def forget_matching(self, query: str) -> int:
-        cur = self._conn.execute("DELETE FROM memories WHERE content LIKE ?", (f"%{query}%",))
-        self._conn.commit()
-        return cur.rowcount
+    def forget_matching(self, query: str, reason: str = "") -> int:
+        """Forget every memory whose content contains ``query`` (literal substring).
+
+        ``%``, ``_`` and ``\\`` are matched literally, never as LIKE wildcards —
+        a query of ``"%"`` or ``"_"`` must not wipe the whole store. Every deleted
+        memory is logged to ``memory_log`` under the ``forget_matching`` action,
+        so ``/api/memory/changes/{id}/restore`` can bring it back like any other
+        change (``replace`` and ``drop`` already log; a silent bulk delete is a
+        prompt-injection away from erasing the user's memory).
+        """
+        pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        rows = self._conn.execute(
+            "SELECT * FROM memories WHERE content LIKE ? ESCAPE '\\'", (pattern,)
+        ).fetchall()
+        items = [self._row(r) for r in rows]
+        if items:
+            self._conn.execute(
+                "DELETE FROM memories WHERE content LIKE ? ESCAPE '\\'", (pattern,)
+            )
+            self._log("forget_matching", items, None, reason)
+            self._conn.commit()
+        return len(items)
 
     def clear(self) -> int:
         cur = self._conn.execute("DELETE FROM memories")

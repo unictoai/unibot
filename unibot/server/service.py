@@ -30,6 +30,7 @@ from unibot.bridge.server import Bridge
 from unibot.cloud import model_url
 from unibot.coding.service import CodingService
 from unibot.config import Settings
+from unibot.fsutil import atomic_write_text, load_json
 from unibot.goals import Goal
 from unibot.hub.service import HubService
 from unibot.llm import BaseLLM
@@ -272,6 +273,8 @@ class Thread:
     device_name: str = ""
     # a chat another device opened here with a `task` over the hub: who asked
     remote_from: dict[str, Any] | None = None
+    # set by delete_thread(): the transcript is gone and must not be written back
+    deleted: bool = False
 
     def meta(self) -> dict[str, Any]:
         meta: dict[str, Any] = {
@@ -302,6 +305,12 @@ def _parse_when(value: str | None) -> datetime | None:
     return when.astimezone()  # a naive stamp is local time
 
 
+# Thread ids are derived into filesystem paths (<id>.json, <id>.session.json):
+# only this shape is ever accepted, so a hostile id (``../../x``) can neither
+# traverse out of the threads dir nor create files elsewhere.
+_THREAD_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+
 class MuseService:
     def __init__(self, settings: Settings, llm: BaseLLM | None = None):
         self.settings = settings
@@ -311,6 +320,8 @@ class MuseService:
         self.threads_dir.mkdir(parents=True, exist_ok=True)
         self.bus = EventBus()
         self.threads: dict[str, Thread] = {}
+        # ids the user deleted this run: timeline()/send() must not resurrect them
+        self._deleted_threads: set[str] = set()
         self._base_instructions = settings.agent.instructions
         self.profile = self._load_profile()
         self._apply_profile()
@@ -446,25 +457,25 @@ class MuseService:
             if tok:
                 return tok
         tok = secrets.token_urlsafe(18)
-        path.write_text(tok, "utf-8")
-        try:
-            path.chmod(0o600)
-        except OSError:  # pragma: no cover
-            pass
+        # atomic + 0600 from the start: the token is never briefly world-readable
+        atomic_write_text(path, tok, mode=0o600)
         return tok
 
     def _load_profile(self) -> Profile:
         path = self.data_dir / "profile.json"
-        if path.exists():
+        data = load_json(path)
+        if isinstance(data, dict):
             try:
-                return Profile.from_dict(json.loads(path.read_text("utf-8")))
-            except (OSError, json.JSONDecodeError, ValueError):
+                return Profile.from_dict(data)
+            except (ValueError, TypeError, KeyError):
                 pass
         return Profile(name=self.settings.agent.name)
 
     def _save_profile(self) -> None:
-        (self.data_dir / "profile.json").write_text(
-            json.dumps(self.profile.to_dict(), ensure_ascii=False, indent=1), "utf-8"
+        atomic_write_text(
+            self.data_dir / "profile.json",
+            json.dumps(self.profile.to_dict(), ensure_ascii=False, indent=1),
+            mode=0o600,
         )
 
     def _apply_profile(self) -> None:
@@ -535,18 +546,23 @@ class MuseService:
     # ------------------------------------------------------------------ threads
     def _load_threads(self) -> None:
         index = self.threads_dir / "index.json"
-        metas: list[dict[str, Any]] = []
-        if index.exists():
-            try:
-                metas = json.loads(index.read_text("utf-8"))
-            except (OSError, json.JSONDecodeError):
-                metas = []
+        # A corrupt index is quarantined aside (never silently reset to empty —
+        # the next save would cement the loss of every thread).
+        metas = load_json(index, [])
+        if not isinstance(metas, list):
+            metas = []
         if not any(m.get("id") == MAIN_THREAD for m in metas):
             metas.insert(0, {"id": MAIN_THREAD, "title": "Main chat", "created_at": now_iso()})
         for m in metas:
-            thread = self._make_thread(
-                m["id"], m.get("title", m["id"]), m.get("created_at"), m.get("updated_at")
-            )
+            try:
+                thread = self._make_thread(
+                    m["id"], m.get("title", m["id"]), m.get("created_at"), m.get("updated_at")
+                )
+            except (ValueError, KeyError) as exc:
+                # a hostile id smuggled into the index before the validation
+                # existed: skip it instead of crashing startup
+                logger.warning("skipping thread with invalid id in index.json: {}", exc)
+                continue
             if m.get("device"):
                 thread.device = str(m["device"])
                 thread.device_name = str(m.get("device_name") or m["device"])
@@ -569,9 +585,25 @@ class MuseService:
             if t.remote_from:
                 m["remote_from"] = t.remote_from
             metas.append(m)
-        (self.threads_dir / "index.json").write_text(
-            json.dumps(metas, ensure_ascii=False, indent=1), "utf-8"
+        atomic_write_text(
+            self.threads_dir / "index.json",
+            json.dumps(metas, ensure_ascii=False, indent=1),
+            mode=0o600,
         )
+
+    def _thread_path(self, thread_id: str, suffix: str) -> Path:
+        """The threads-dir file for ``thread_id``.
+
+        The id is validated against ``_THREAD_ID_RE`` and the resolved path is
+        checked for containment: ids are never turned into paths unchecked, so
+        ``../../x`` can neither traverse out nor land outside the threads dir.
+        """
+        if not _THREAD_ID_RE.fullmatch(thread_id):
+            raise ValueError(f"invalid thread id: {thread_id!r}")
+        path = (self.threads_dir / f"{thread_id}{suffix}").resolve()
+        if self.threads_dir.resolve() not in path.parents:
+            raise ValueError(f"thread id escapes the threads dir: {thread_id!r}")
+        return path
 
     def _make_thread(
         self,
@@ -580,7 +612,9 @@ class MuseService:
         created_at: str | None = None,
         updated_at: str | None = None,
     ) -> Thread:
-        timeline = Timeline(thread_id, self.threads_dir / f"{thread_id}.json")
+        if thread_id in self._deleted_threads:
+            raise KeyError(thread_id)
+        timeline = Timeline(thread_id, self._thread_path(thread_id, ".json"))
         # Cards that were waiting for an answer when the server stopped can't be answered
         # any more: the agent run behind them is gone.
         stale = [
@@ -600,7 +634,7 @@ class MuseService:
         for ev in timeline.events:
             if ev.get("type") in ("browser", "hands") and ev.get("status") == "live":
                 timeline.update(ev["id"], status="done")
-        session_file = self.threads_dir / f"{thread_id}.session.json"
+        session_file = self._thread_path(thread_id, ".session.json")
         agent = UnibotAgent(
             settings=self.settings,
             llm=self.app.llm,
@@ -634,6 +668,13 @@ class MuseService:
     def timeline(self, thread_id: str) -> Timeline:
         thread = self.threads.get(thread_id)
         if thread is None:
+            if thread_id in self._deleted_threads:
+                # The user deleted this chat: hand out a dead timeline that never
+                # writes, so a cancelled run's late cleanup events can neither
+                # resurrect the transcript on disk nor crash on a missing thread.
+                dead = Timeline(thread_id, self._thread_path(thread_id, ".json"))
+                dead.deleted = True
+                return dead
             thread = self._make_thread(thread_id, thread_id)
             self._save_index()
         return thread.timeline
@@ -661,6 +702,14 @@ class MuseService:
         thread = self.threads.pop(thread_id, None)
         if thread is None:
             return False
+        # Mark everything dead *before* unlinking: cancel() only schedules the
+        # worker's cancellation, so its finally blocks (agent._save_session, the
+        # timeline's coalesced flush) still run — the flags make those no-ops
+        # instead of writing the deleted transcript back to disk.
+        thread.deleted = True
+        thread.agent.deleted = True
+        thread.timeline.discard()
+        self._deleted_threads.add(thread_id)
         if thread.worker:
             thread.worker.cancel()
         for p in (thread.timeline.path, thread.agent.session_file):
@@ -728,6 +777,10 @@ class MuseService:
 
         ``files`` are workspace paths of attachments (uploaded first with ``save_upload``);
         a message may be attachments alone."""
+        # The WebSocket path takes the id straight from the client: validate it
+        # before any thread (and its <id>.json files) is created for it.
+        if not _THREAD_ID_RE.fullmatch(thread_id) or thread_id in self._deleted_threads:
+            raise ValueError(f"invalid thread id: {thread_id!r}")
         text = text.strip()
         attachments = [self.attachment(path) for path in files or []]
         if not text and not attachments:
@@ -1233,8 +1286,11 @@ class MuseService:
         block = f"{_fence(context)}\n{context}\n{_fence(context)}\n\n" if context else ""
         if item.kind != "hook":
             # the mail or the event is the user's private data: from here on, sending
-            # anything to a host that is not allowlisted is an approval
-            self.app.sentinel.tainted = True
+            # anything to a host that is not allowlisted is an approval — taint the
+            # thread that will discuss it, not every conversation at once
+            agent = self.threads[thread].agent if thread in self.threads else None
+            if agent is not None:
+                agent.tainted = True
         self.send(
             thread,
             prompts.TRIGGER_PROMPT.format(
@@ -1250,7 +1306,14 @@ class MuseService:
         """A request to a trigger's webhook URL. Wrong id or key → KeyError (the caller
         answers 404 for both, so the URL cannot be probed); too soon → RuntimeError."""
         item = self.app.triggers.get(trigger_id)
-        if item is None or item.kind != "hook" or not secrets.compare_digest(item.secret, key):
+        # bytes on both sides: compare_digest(str, str) raises TypeError on
+        # non-ASCII input, which would 500 here (and leak id existence — an
+        # unknown id 404s while a real id with a non-ASCII key 500s).
+        if (
+            item is None
+            or item.kind != "hook"
+            or not secrets.compare_digest(item.secret.encode(), key.encode())
+        ):
             raise KeyError(trigger_id)
         if item.status != "active":
             raise ValueError(f"trigger is {item.status}")
@@ -1298,8 +1361,11 @@ class MuseService:
         mark = self._mail_mark()
         last = int(store.get_meta(mark, "0") or 0)
         try:
-            fresh, newest = await watcher.look(last)
-        except (RuntimeError, OSError) as exc:
+            # Belt and braces with the socket timeout inside MailWatcher: a hung
+            # IMAP server must never stall the scheduler loop (and with it
+            # reminders, event triggers and calendar refreshes) without an error.
+            fresh, newest = await asyncio.wait_for(watcher.look(last), timeout=120)
+        except (RuntimeError, OSError, TimeoutError) as exc:
             self.mail_watch_error = str(exc)[:200]
             logger.warning("mail triggers: {}", exc)
             return
@@ -1566,12 +1632,9 @@ class MuseService:
         return self.data_dir / "ideas.json"
 
     def cached_ideas(self) -> dict[str, Any]:
-        path = self._ideas_file()
-        if path.exists():
-            try:
-                return json.loads(path.read_text("utf-8"))
-            except (OSError, json.JSONDecodeError):
-                pass
+        data = load_json(self._ideas_file())
+        if isinstance(data, dict):
+            return data
         return {"generated_at": None, "source": "starter", "ideas": STARTER_IDEAS}
 
     async def refresh_ideas(self, n: int = 5) -> dict[str, Any]:
@@ -1597,7 +1660,7 @@ class MuseService:
             context_lines.insert(0, f"- profile: {self.settings.agent.user_profile.strip()[:500]}")
         if not context_lines:
             data = {"generated_at": now_iso(), "source": "starter", "ideas": STARTER_IDEAS}
-            self._ideas_file().write_text(json.dumps(data, ensure_ascii=False), "utf-8")
+            atomic_write_text(self._ideas_file(), json.dumps(data, ensure_ascii=False))
             return data
         language = self.settings.agent.language
         prompt = IDEAS_PROMPT.format(
@@ -1615,7 +1678,7 @@ class MuseService:
             "source": "model" if ideas else "starter",
             "ideas": ideas or STARTER_IDEAS,
         }
-        self._ideas_file().write_text(json.dumps(data, ensure_ascii=False), "utf-8")
+        atomic_write_text(self._ideas_file(), json.dumps(data, ensure_ascii=False))
         self.bus.publish({"kind": "ideas", "ideas": data})
         return data
 
@@ -1625,22 +1688,17 @@ class MuseService:
 
     def feed_posts(self) -> dict[str, Any]:
         """The posts written for the user so far, newest first, and their feed instructions."""
-        path = self._feed_file()
-        if path.exists():
-            try:
-                data = json.loads(path.read_text("utf-8"))
-                if isinstance(data, dict):
-                    data.setdefault("instructions", "")
-                    data.setdefault("generated_at", None)
-                    data.setdefault("posts", [])
-                    return data
-            except (OSError, json.JSONDecodeError):
-                pass
+        data = load_json(self._feed_file())
+        if isinstance(data, dict):
+            data.setdefault("instructions", "")
+            data.setdefault("generated_at", None)
+            data.setdefault("posts", [])
+            return data
         return {"instructions": "", "generated_at": None, "posts": []}
 
     def _save_feed(self, data: dict[str, Any]) -> None:
         data["posts"] = data["posts"][:FEED_KEEP]
-        self._feed_file().write_text(json.dumps(data, ensure_ascii=False), "utf-8")
+        atomic_write_text(self._feed_file(), json.dumps(data, ensure_ascii=False))
 
     def set_feed_instructions(self, text: str) -> dict[str, Any]:
         data = self.feed_posts()
@@ -1931,7 +1989,8 @@ class MuseService:
         return {
             "audit": self.app.audit.tail(n),
             "grants": [g.to_dict() for g in s.active_grants()],
-            "tainted": s.tainted,
+            "tainted": s.tainted
+            or any(t.agent.tainted for t in self.threads.values()),
         }
 
     def settings_view(self) -> dict[str, Any]:

@@ -28,6 +28,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from unibot.fsutil import atomic_write_text, load_json
 from unibot.schema import RiskLevel
 
 DEFAULT_DATA_DIR = Path.home() / ".unibot"
@@ -125,7 +126,9 @@ class SentinelRule(BaseModel):
 class SentinelSettings(BaseModel):
     # ask    : safe/moderate run freely, sensitive actions need approval (default)
     # strict : moderate *and* sensitive actions need approval
-    # auto   : approve everything except explicit deny rules (unattended runs / CI)
+    # auto   : unattended runs / CI — routine calls are approved, but anything that
+    #          needs a human (warnings, explicit ask-rules, tainted egress) is
+    #          denied rather than waved through
     mode: Literal["ask", "strict", "auto"] = "ask"
     always_ask_tools: list[str] = Field(default_factory=lambda: ["send_email", "shell"])
     always_allow_tools: list[str] = Field(default_factory=list)
@@ -664,23 +667,17 @@ def load_app_settings(data_dir: Path) -> dict[str, Any]:
     stores them in the vault and this file only holds ``{{vault:NAME}}`` references.
     """
     path = data_dir / APP_SETTINGS_FILE
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text("utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    # A corrupt file is quarantined aside (never silently reset to empty — the
+    # next save would cement the loss of every app-managed setting).
+    data = load_json(path, {})
     return data if isinstance(data, dict) else {}
 
 
 def save_app_settings(data_dir: Path, data: dict[str, Any]) -> None:
-    data_dir.mkdir(parents=True, exist_ok=True)
     path = data_dir / APP_SETTINGS_FILE
-    path.write_text(json.dumps({"version": 1, **data}, ensure_ascii=False, indent=1), "utf-8")
-    try:
-        path.chmod(0o600)
-    except OSError:  # pragma: no cover
-        pass
+    atomic_write_text(
+        path, json.dumps({"version": 1, **data}, ensure_ascii=False, indent=1), mode=0o600
+    )
 
 
 def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:

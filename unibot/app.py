@@ -70,6 +70,8 @@ class UnibotApp:
     ):
         self.settings = settings
         self.ui = ui
+        # retired embedder clients waiting out their grace period (kept referenced)
+        self._retiring: set[asyncio.Task[None]] = set()
         # The phone, when a server is around to hold its socket (the CLI has none).
         self.phone = phone
         setup_logging(settings.log_level, settings.data_dir / "logs")
@@ -166,8 +168,27 @@ class UnibotApp:
             else None
         )
         if old is not None:
-            with contextlib.suppress(RuntimeError):
-                asyncio.get_running_loop().create_task(old.close())
+            self._retire_embedder(old)
+
+    def _retire_embedder(self, old: Any) -> None:
+        """Close a replaced embedder once in-flight embedding calls are done.
+
+        The app cannot see thread busyness from here, so the old client gets a
+        grace period instead of being closed under running requests.
+        """
+
+        async def _close_later() -> None:
+            await asyncio.sleep(60)
+            with contextlib.suppress(Exception):
+                await old.close()
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        task = loop.create_task(_close_later())
+        self._retiring.add(task)
+        task.add_done_callback(self._retiring.discard)
 
     def _embedding_key(self) -> str:
         """The key for the embeddings endpoint, resolved from the vault when it refers

@@ -32,6 +32,12 @@ class Decision(str, Enum):
 class PolicyResult:
     decision: Decision
     reasons: list[str] = field(default_factory=list)
+    # True when the ASK must survive ``auto`` mode: the gate may not wave it
+    # through without a human. Set for warning escalations (a dangerous-looking
+    # call is never waved through by mode), explicit ``action="ask"`` rules,
+    # ``always_ask_tools`` entries, and taint escalations. A plain risk-level
+    # ASK in auto mode stays waivable — that is what auto mode is for.
+    hard_ask: bool = False
 
 
 def _match_any(name: str, patterns: list[str]) -> bool:
@@ -85,6 +91,7 @@ class Policy:
 
         decision: Decision | None = None
         from_rule = False
+        hard_ask = False
 
         # 2. explicit rules
         for rule in s.rules:
@@ -94,6 +101,9 @@ class Policy:
                     return PolicyResult(Decision.DENY, [reason])
                 decision = Decision(rule.action)
                 from_rule = True
+                # an explicit "ask" rule is the user demanding a human decision:
+                # auto mode must not wave it through
+                hard_ask = decision == Decision.ASK
                 reasons.append(reason)
                 break
 
@@ -102,7 +112,9 @@ class Policy:
             if _match_any(tool, s.always_allow_tools):
                 decision, reasons = Decision.ALLOW, [f"'{tool}' is in always_allow_tools"]
             elif _match_any(tool, s.always_ask_tools):
-                decision, reasons = Decision.ASK, [f"'{tool}' is in always_ask_tools"]
+                decision = Decision.ASK
+                reasons = [f"'{tool}' is in always_ask_tools"]
+                hard_ask = True
 
         # 4. risk × mode
         if decision is None:
@@ -127,6 +139,9 @@ class Policy:
         ):
             target = assessment.egress_target or "an unknown destination"
             decision = Decision.ASK
+            # private data leaving to an unlisted host: never waved through
+            # unattended
+            hard_ask = True
             reasons.append(
                 f"private data was read earlier in this session and '{tool}' can send data to "
                 f"{target}, which is not on sentinel.egress_allowlist"
@@ -139,8 +154,10 @@ class Policy:
         if assessment.warnings:
             if decision == Decision.ALLOW and not from_rule:
                 decision = Decision.ASK
+            if decision == Decision.ASK:
+                hard_ask = True
             reasons.extend(assessment.warnings)
-        return PolicyResult(decision, reasons)
+        return PolicyResult(decision, reasons, hard_ask=hard_ask)
 
 
 __all__ = ["Decision", "Policy", "PolicyResult", "host_allowed"]

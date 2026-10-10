@@ -32,7 +32,7 @@ from unibot.hub import actions
 from unibot.hub.client import HubClient, HubError, IncomingCall
 from unibot.hub.profile import ProfileSync
 from unibot.logger import logger
-from unibot.server.events import now_iso
+from unibot.server.events import BUS_OVERFLOW, now_iso
 
 if TYPE_CHECKING:
     from unibot.server.service import MuseService, Thread
@@ -57,6 +57,10 @@ class HubService:
         self.models: list[dict[str, Any]] = []
         # approval cards raised by *other* devices' runs, shown here: card id → (device id, approval id)
         self.remote_approvals: dict[str, tuple[str, str]] = {}
+        # approval cards *this* device forwarded to a remote caller: local approval
+        # id → the caller device id. A hub "approve" is only honoured for these —
+        # never for approvals raised by local chats — and only from that sender.
+        self.forwarded_approvals: dict[str, str] = {}
         # runs other devices asked for, by call id → the thread they run in
         self._incoming: dict[str, str] = {}
         self._tasks: set[asyncio.Task[Any]] = set()
@@ -570,9 +574,19 @@ class HubService:
     # ------------------------------------------------------------------ calls in
     async def on_call(self, call: IncomingCall) -> None:
         if call.action == "approve":
-            ok = self.svc.decide(
-                str(call.args.get("approval_id") or ""), bool(call.args.get("allow")), "once"
-            )
+            approval_id = str(call.args.get("approval_id") or "")
+            # Bound to the caller: only an approval card this device forwarded to
+            # *this* sender may be answered over the hub, and only while remote
+            # control is on. Anything else (a local chat's card, a guessed id,
+            # remote control off) is refused.
+            if (
+                self.settings.hub.remote_control
+                and self.forwarded_approvals.get(approval_id) == call.sender_id
+            ):
+                self.forwarded_approvals.pop(approval_id, None)
+                ok = self.svc.decide(approval_id, bool(call.args.get("allow")), "once")
+            else:
+                ok = False
             await call.result({"ok": ok})
             return
         if not self.settings.hub.remote_control and call.action != "info":
@@ -639,6 +653,20 @@ class HubService:
                     final: dict[str, Any] = started
                     while True:
                         msg = await asyncio.wait_for(queue.get(), timeout=1800)
+                        if msg.get("kind") == BUS_OVERFLOW:
+                            # lost the event stream: poll the run itself until it
+                            # ends instead of hanging on the dead queue
+                            deadline = asyncio.get_running_loop().time() + 1800
+                            run = coding.runs.get(run_id)
+                            while (
+                                run is not None
+                                and run.status == "running"
+                                and asyncio.get_running_loop().time() < deadline
+                            ):
+                                await asyncio.sleep(2.0)
+                                run = coding.runs.get(run_id)
+                            final = run.to_dict() if run is not None else started
+                            break
                         if msg.get("kind") != "coding":
                             continue
                         run = msg.get("run") or {}
@@ -741,6 +769,13 @@ class HubService:
         final = ""
         while True:
             msg = await queue.get()
+            if msg.get("kind") == BUS_OVERFLOW:
+                # the event stream was dropped (slow consumer): fall back to
+                # polling the thread until it idles instead of hanging here
+                # until TASK_TIMEOUT_S kills a run that had already finished
+                while thread.busy:
+                    await asyncio.sleep(1.0)
+                break
             kind = msg.get("kind")
             if kind in ("event", "update"):
                 # "event": a new card; "update": one that changed (a tool finishing, an
@@ -790,6 +825,8 @@ class HubService:
                 )
         elif etype == "approval":
             if status == "pending" and fresh:
+                # record which caller may answer this card over the hub
+                self.forwarded_approvals[str(ev.get("id"))] = call.sender_id
                 await call.event(
                     {
                         "stage": "approval",
@@ -803,6 +840,7 @@ class HubService:
                 )
             elif status in ("approved", "denied", "expired") and not fresh:
                 # answered here (or timed out): the caller's card closes too
+                self.forwarded_approvals.pop(str(ev.get("id")), None)
                 await call.event(
                     {"stage": "approval_result", "approval_id": ev.get("id"), "status": status}
                 )

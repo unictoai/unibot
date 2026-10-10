@@ -10,6 +10,7 @@ broadcast live to every connected WebSocket client.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import uuid
 from datetime import UTC, datetime
@@ -19,6 +20,10 @@ from typing import Any
 from unibot.logger import logger
 
 MAIN_THREAD = "main"
+
+# Published into a subscriber's queue when it overflowed (see EventBus.publish).
+# The consumer missed events; it must resync rather than hang on the dead queue.
+BUS_OVERFLOW = "bus_overflow"
 
 
 def now_iso() -> str:
@@ -50,6 +55,9 @@ class Timeline:
         self._flush_handle: asyncio.TimerHandle | None = None
         self._writing: asyncio.Future[Any] | None = None
         self._dirty = False
+        # Set by discard(): the thread was deleted — pending writes are dropped and
+        # no future write may recreate the file (a privacy guarantee).
+        self.deleted = False
         self._load()
 
     def _load(self) -> None:
@@ -72,6 +80,8 @@ class Timeline:
         )
 
     def _write(self, payload: str) -> None:
+        if self.deleted:
+            return
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
@@ -80,8 +90,20 @@ class Timeline:
         except OSError as exc:  # pragma: no cover
             logger.warning("could not save timeline {}: {}", self.path, exc)
 
+    def discard(self) -> None:
+        """The thread was deleted: drop the coalesced write still waiting on the
+        loop and never write again, so a cancelled run's finally blocks cannot
+        resurrect the transcript on disk."""
+        self.deleted = True
+        self._dirty = False
+        if self._flush_handle is not None:
+            self._flush_handle.cancel()
+            self._flush_handle = None
+
     def save(self) -> None:
         """Persist soon (on a loop) or now (off one)."""
+        if self.deleted:
+            return
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -104,6 +126,11 @@ class Timeline:
 
     def flush(self) -> None:
         """Write now, e.g. at shutdown; a scheduled write is dropped in its favour."""
+        if self.deleted:
+            if self._flush_handle is not None:
+                self._flush_handle.cancel()
+                self._flush_handle = None
+            return
         if self._flush_handle is not None:
             self._flush_handle.cancel()
             self._flush_handle = None
@@ -178,8 +205,16 @@ class EventBus:
         for q in list(self._subscribers):
             try:
                 q.put_nowait(message)
-            except asyncio.QueueFull:  # slow client: drop it
+            except asyncio.QueueFull:
+                # Slow client: make room for one marker, then drop the queue. The
+                # consumer sees the marker and resyncs; without it, the WebSocket
+                # pump (or a hub relay) would hang on await queue.get() forever
+                # while the UI goes stale.
+                with contextlib.suppress(asyncio.QueueEmpty):
+                    q.get_nowait()
+                with contextlib.suppress(asyncio.QueueFull):
+                    q.put_nowait({"kind": BUS_OVERFLOW})
                 self._subscribers.discard(q)
 
 
-__all__ = ["MAIN_THREAD", "EventBus", "Timeline", "new_id", "now_iso"]
+__all__ = ["MAIN_THREAD", "BUS_OVERFLOW", "EventBus", "Timeline", "new_id", "now_iso"]

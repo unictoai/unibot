@@ -10,6 +10,7 @@ to the model — it only gets the tools that result.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import imaplib
 import re
 import smtplib
@@ -28,6 +29,7 @@ from unibot.config import (
     save_app_settings,
 )
 from unibot.contacts import OWN
+from unibot.fsutil import atomic_write_text
 from unibot.logger import logger
 from unibot.schema import Message
 from unibot.search import WebSearchProvider
@@ -246,6 +248,26 @@ def validate_base_url(url: str) -> str:
         url = normalize_base_url(url)
     except ValueError as exc:
         raise ValueError(f"base_url is not a valid URL: {exc}") from exc
+    return _check_url(url)
+
+
+def validate_plain_url(url: str) -> str:
+    """Validate a base URL *without* the OpenAI ``/v1`` normalization.
+
+    For endpoints that are not OpenAI-compatible (SearXNG appends ``/search``
+    itself): ``http://127.0.0.1:8080/`` must stay ``http://127.0.0.1:8080`` —
+    the ``/v1`` rule would 404 it.
+    """
+    url = url.strip().rstrip("/")
+    if not url:
+        return ""
+    if "://" not in url:
+        url = "https://" + url
+    return _check_url(url)
+
+
+def _check_url(url: str) -> str:
+    """Scheme/host/port checks shared by the URL validators."""
     if not url:
         return url
     try:
@@ -292,6 +314,9 @@ class Connections:
         self._toml_sources = [
             c for c in svc.settings.connectors.contacts.sources if c.name not in app_sources
         ]
+        # retired LLM clients waiting for in-flight requests to finish, kept
+        # referenced so the event loop cannot garbage-collect them first
+        self._retiring_llms: set[asyncio.Task[None]] = set()
 
     # ------------------------------------------------------------------ helpers
     @property
@@ -502,13 +527,33 @@ class Connections:
         self.svc.app.llm = new
         for t in self.svc.threads.values():
             t.agent.llm = new
-        asyncio.get_event_loop().create_task(old.close())
+        # A run in the middle of `await self.llm.ask(...)` still holds the old
+        # client: closing it now fails those in-flight requests (and tenacity
+        # would retry on the closed client). Retire it once no thread is busy.
+        self._retire_llm(old)
         logger.info(
             "model switched to {} @ {}", self.settings.llm.model, self.settings.llm.base_url
         )
         # embeddings that ride on the model's endpoint follow it
         if not self.settings.memory.embedding_base_url:
             self.svc.app.attach_embedder()
+
+    def _retire_llm(self, old: Any) -> None:
+        """Close a replaced LLM client once nothing can be using it any more."""
+
+        async def _close_when_idle() -> None:
+            while any(t.busy for t in self.svc.threads.values()):
+                await asyncio.sleep(1.0)
+            with contextlib.suppress(Exception):
+                await old.close()
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return  # no running loop: nothing async can be holding the client
+        task = loop.create_task(_close_when_idle())
+        self._retiring_llms.add(task)
+        task.add_done_callback(self._retiring_llms.discard)
 
     # ------------------------------------------------------------------ embeddings
     def _embeddings_view(self) -> dict[str, Any]:
@@ -591,8 +636,9 @@ class Connections:
             web["provider"] = body["provider"]
         if body.get("base_url") is not None:
             # Shared validator: scheme, host and port are checked, not just
-            # the http(s) prefix (which let http://[bad through).
-            web["base_url"] = validate_base_url(str(body["base_url"]))
+            # the http(s) prefix (which let http://[bad through) — but without
+            # the OpenAI /v1 normalization, which 404s SearXNG.
+            web["base_url"] = validate_plain_url(str(body["base_url"]))
         api_key = body.get("api_key")
         if api_key:
             self.vault.set(SEARCH_KEY, str(api_key).strip())
@@ -1027,8 +1073,7 @@ class Connections:
         folder.mkdir(parents=True, exist_ok=True)
         stem = re.sub(r"[^A-Za-z0-9\u3400-\u9fff_-]+", "-", name).strip("-") or "contacts"
         path = folder / f"{stem}.vcf"
-        path.write_text(text, encoding="utf-8")
-        path.chmod(0o600)
+        atomic_write_text(path, text, mode=0o600)
         return await self.add_contacts_source({"name": name, "url": str(path)})
 
     def remove_contacts_source(self, name: str) -> bool:
