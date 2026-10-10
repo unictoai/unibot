@@ -159,6 +159,30 @@ fun MountedFoldersScreen(
         pendingDefaultName = defaultMountName(uri)
     }
 
+    // [v1.5-empty-states] The add-mount flow shared by the top-bar + button
+    // and the empty-state CTA.
+    val onAddMount: () -> Unit = {
+        // On Android 10, a folder can readdir but still EACCES on
+        // write unless WRITE_EXTERNAL_STORAGE is granted at runtime
+        // (the ROM's single storage toggle often only grants READ).
+        // Request it up front so the mount probes as writable and
+        // the "Allow writes" toggle isn't stuck disabled.
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
+            context.checkSelfPermission(
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            legacyStorageLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                ),
+            )
+        } else {
+            showPickerIntro = true
+        }
+    }
+
     Scaffold(
         topBar = {
             ai.unicto.unibot.ui.muse.MuseTopAppBar( // unibot: Muse's bar (drop-in for TopAppBar)
@@ -170,27 +194,7 @@ fun MountedFoldersScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = {
-                            // On Android 10, a folder can readdir but still EACCES on
-                            // write unless WRITE_EXTERNAL_STORAGE is granted at runtime
-                            // (the ROM's single storage toggle often only grants READ).
-                            // Request it up front so the mount probes as writable and
-                            // the "Allow writes" toggle isn't stuck disabled.
-                            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
-                                context.checkSelfPermission(
-                                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                            ) {
-                                legacyStorageLauncher.launch(
-                                    arrayOf(
-                                        android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                    ),
-                                )
-                            } else {
-                                showPickerIntro = true
-                            }
-                        },
+                        onClick = onAddMount,
                         enabled = !isAtCapacity,
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = null)
@@ -243,7 +247,16 @@ fun MountedFoldersScreen(
             }
 
             if (entries.isEmpty()) {
-                EmptyState()
+                // [v1.5-empty-states] Shared branded empty state; the CTA
+                // fires the same add-mount flow as the top-bar + button.
+                ai.unicto.unibot.ui.components.EmptyState(
+                    icon = Icons.Outlined.FolderShared,
+                    title = stringResource(R.string.mount_folders_empty_title),
+                    hint = stringResource(R.string.mount_folders_empty_subtitle),
+                    modifier = Modifier.padding(32.dp),
+                    ctaLabel = stringResource(R.string.mount_folders_empty_cta),
+                    onCta = onAddMount,
+                )
             } else {
                 ListHeader(count = entries.size, atCapacity = isAtCapacity)
                 LazyColumn(
@@ -459,35 +472,6 @@ private fun checkAllFilesAccess(context: android.content.Context): Boolean {
             context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
         else -> true
-    }
-}
-
-@Composable
-private fun EmptyState() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.FolderShared,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(48.dp),
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(R.string.mount_folders_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = stringResource(R.string.mount_folders_empty_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

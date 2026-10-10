@@ -179,7 +179,6 @@
     <string name="mcp_section_servers">Servers</string>
     <string name="mcp_section_footer">MCP servers let the Agent call external tools via unibot-mcp-cli. Configs are stored in /var/minis/mcp-servers/servers.json (Claude Desktop compatible).</string>
     <string name="mcp_empty_title">No MCP servers</string>
-    <string name="mcp_empty_action">Add a server with the + button.</string>
     <string name="mcp_transport_http">HTTP</string>
     <string name="mcp_transport_sse">SSE</string>
     <string name="mcp_transport_stdio">STDIO</string>
@@ -2053,5 +2052,45 @@
     <string name="selection_save_note">Save as note</string>
     <string name="ub_note_saved">Saved to knowledge base</string>
     <string name="ub_drawer_knowledge">Knowledge base</string>
+
+    <!-- v1.5 settings reorg -->
+    <string name="settings_section_models">Models</string>
+    <string name="settings_section_agent_memory">Agent &amp; memory</string>
+    <string name="settings_section_tools">Tools I\'ve allowed</string>
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="settings_section_routines">Routines</string>
+    <string name="settings_section_data_files">Data &amp; files</string>
+    <string name="settings_section_phone_devices">Phone &amp; devices</string>
+    <string name="settings_section_voice_appearance">Voice &amp; appearance</string>
+    <string name="settings_section_help_about">Help &amp; about</string>
+
+    <!-- v1.5 empty states -->
+    <string name="chat_empty_greeting">How can I help?</string>
+    <string name="chat_empty_suggestion_1">Summarize my day</string>
+    <string name="chat_empty_suggestion_2">Help me draft a message</string>
+    <string name="chat_empty_suggestion_3">Explain a tricky concept</string>
+    <string name="chat_empty_suggestion_4">Plan my week</string>
+    <string name="model_group_detail_empty_models">No models in this group.</string>
+    <string name="model_group_detail_empty_models_hint">Add models to use this group for fallback or load balancing.</string>
+    <string name="mcp_empty_hint">Add a server to extend the agent with new tools.</string>
+    <string name="goals_empty_tracking_title">No goals yet</string>
+    <string name="goals_empty_tracking_cta">Create a goal</string>
+    <string name="goals_empty_routines_title">No routines yet</string>
+    <string name="goals_empty_routines_cta">Add a routine</string>
+    <string name="memory_empty_cta">Open global memory</string>
+    <string name="mount_folders_empty_cta">Mount a folder</string>
+
+    <!-- v1.5 accessibility -->
+    <string name="a11y_more">More</string>
+    <string name="a11y_attach">Attach</string>
+    <string name="a11y_stop">Stop</string>
+    <string name="a11y_scroll_to_previous_message">Scroll to previous message</string>
+    <string name="a11y_scroll_to_bottom">Scroll to bottom</string>
+    <string name="a11y_tool_pager_previous">Previous tool</string>
+    <string name="a11y_tool_pager_next">Next tool</string>
+    <string name="a11y_remove_attachment">Remove attachment</string>
+    <string name="a11y_read_image">Read image</string>
+    <string name="a11y_browser_screenshot">Browser screenshot</string>
+    <string name="a11y_move_to">Move to…</string>
 
 </resources>

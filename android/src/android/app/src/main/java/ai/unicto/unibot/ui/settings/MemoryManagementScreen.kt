@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -100,21 +101,18 @@ fun MemoryManagementScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (files.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(stringResource(R.string.memory_empty_title), style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.memory_empty_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // [v1.5-empty-states] Shared branded empty state. The CTA opens
+            // the global memory editor — the same destination as tapping the
+            // GLOBAL.md row (which listAllFiles always includes, so this
+            // branch is effectively unreachable, but kept for safety).
+            ai.unicto.unibot.ui.components.EmptyState(
+                icon = Icons.Outlined.Description,
+                title = stringResource(R.string.memory_empty_title),
+                hint = stringResource(R.string.memory_empty_description),
+                modifier = Modifier.padding(32.dp),
+                ctaLabel = stringResource(R.string.memory_empty_cta),
+                onCta = { onFileClick("GLOBAL.md", true) },
+            )
         } else {
             SettingsSection(
                 header = stringResource(R.string.memory_section_files),
@@ -251,7 +249,9 @@ private fun MemoryFileRow(
         // Android-convention equivalent; GLOBAL.md passes onDelete = null
         // and keeps its chevron-only layout.
         if (onDelete != null) {
-            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+            // v1.5 accessibility: no forced 32dp — the default IconButton
+            // keeps the 48dp minimum touch target.
+            IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.common_delete),

@@ -1021,6 +1021,8 @@ fun AppNavigation(
                 onSamplerClick = { navController.safeNavigate(Routes.SAMPLER_SETTINGS) },
                 onChatTemplatesClick = { navController.safeNavigate(Routes.CHAT_TEMPLATES) },
                 onScheduledMessagesClick = { navController.safeNavigate(Routes.SCHEDULED_MESSAGES) },
+                // [v1.5-settings-reorg] Scheduled tasks now reachable from Settings → Routines.
+                onScheduledTasksClick = { navController.safeNavigate(Routes.SCHEDULED_TASKS) },
                 onVoiceHistoryClick = { navController.safeNavigate(Routes.VOICE_HISTORY) },
                 onStorageBreakdownClick = { navController.safeNavigate(Routes.STORAGE_BREAKDOWN) },
                 onScheduledBackupClick = { navController.safeNavigate(Routes.SCHEDULED_BACKUP) },

@@ -188,31 +188,16 @@ fun ModelGroupsScreen(
 
             if (groups.isEmpty()) {
                 item("empty_state") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(
-                            Icons.Default.Layers,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = stringResource(R.string.model_groups_no_model_groups),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.model_groups_groups_let_you_combine_models_for_fallba),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    // [v1.5-empty-states] Shared branded empty state; the CTA
+                    // opens the same new-group dialog as the top-bar + button.
+                    ai.unicto.unibot.ui.components.EmptyState(
+                        icon = Icons.Default.Layers,
+                        title = stringResource(R.string.model_groups_no_model_groups),
+                        hint = stringResource(R.string.model_groups_groups_let_you_combine_models_for_fallba),
+                        modifier = Modifier.padding(vertical = 32.dp),
+                        ctaLabel = stringResource(R.string.model_groups_new_group),
+                        onCta = { showNewGroupDialog = true },
+                    )
                 }
             } else {
                 // T313 — Section 1 (Groups).

@@ -247,32 +247,16 @@ fun SkillsManagementScreen(
             footer = stringResource(R.string.skill_section_footer),
         ) {
             if (skills.isEmpty()) {
-                // Centred empty-state inside the section card so the empty
-                // state is visually owned by the card.
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Description,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                    )
-                    Text(
-                        stringResource(R.string.skill_empty_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        stringResource(R.string.skill_empty_action),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // [v1.5-empty-states] Shared branded empty state; the CTA
+                // opens the same add sheet as the top-bar + button.
+                ai.unicto.unibot.ui.components.EmptyState(
+                    icon = Icons.Outlined.Description,
+                    title = stringResource(R.string.skill_empty_title),
+                    hint = stringResource(R.string.skill_empty_action),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                    ctaLabel = stringResource(R.string.skill_add),
+                    onCta = { showAddMenu = true },
+                )
             } else if (filteredSkills.isEmpty()) {
                 Text(
                     text = stringResource(R.string.skills_search_no_match, searchQuery),

@@ -133,34 +133,16 @@ fun ProviderListScreen(
         },
     ) {
         if (instances.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 20.dp)
-                    .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    .padding(vertical = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.VpnKey,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                )
-                Text(
-                    text = stringResource(R.string.provider_list_no_providers_configured),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.provider_list_add_a_provider_to_get_started),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                )
-            }
+            // [v1.5-empty-states] Shared branded empty state; the CTA fires the
+            // same add sheet the top-bar + button opens.
+            ai.unicto.unibot.ui.components.EmptyState(
+                icon = Icons.Outlined.VpnKey,
+                title = stringResource(R.string.provider_list_no_providers_configured),
+                hint = stringResource(R.string.provider_list_add_a_provider_to_get_started),
+                modifier = Modifier.padding(top = 20.dp),
+                ctaLabel = stringResource(R.string.provider_list_add_provider),
+                onCta = { showMenu = true },
+            )
         } else {
             groupedInstances.forEach { (providerType, typeInstances) ->
                 SettingsSection(header = providerType.displayName) {

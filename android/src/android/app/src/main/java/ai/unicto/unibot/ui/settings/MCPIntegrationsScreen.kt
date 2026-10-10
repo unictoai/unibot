@@ -102,30 +102,16 @@ fun MCPIntegrationsScreen(
             footer = stringResource(R.string.mcp_section_footer),
         ) {
             if (servers.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Extension,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                    )
-                    Text(
-                        stringResource(R.string.mcp_empty_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        stringResource(R.string.mcp_empty_action),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // [v1.5-empty-states] Shared branded empty state; the CTA
+                // opens the same add sheet as the top-bar + button.
+                ai.unicto.unibot.ui.components.EmptyState(
+                    icon = Icons.Outlined.Extension,
+                    title = stringResource(R.string.mcp_empty_title),
+                    hint = stringResource(R.string.mcp_empty_hint),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                    ctaLabel = stringResource(R.string.mcp_add),
+                    onCta = { showAddSheet = true },
+                )
             } else {
                 servers.forEachIndexed { index, server ->
                     val transportIcon = if (server.isStdio) Icons.Outlined.Terminal else Icons.Outlined.Language

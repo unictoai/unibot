@@ -135,11 +135,15 @@ fun GoalsTab(
         }
         if (activeGoals.isEmpty()) {
             item(key = "tracking-empty") {
-                Text(
-                    stringResource(R.string.ub_goals_tracking_empty),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+                // [v1.5-empty-states] Shared branded empty state; the CTA
+                // scrolls to "Create a goal", exactly like the section "+".
+                ai.unicto.unibot.ui.components.EmptyState(
+                    icon = Icons.Outlined.CheckBox,
+                    title = stringResource(R.string.goals_empty_tracking_title),
+                    hint = stringResource(R.string.ub_goals_tracking_empty),
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    ctaLabel = stringResource(R.string.goals_empty_tracking_cta),
+                    onCta = { scope.launch { listState.animateScrollToItem(createIndex) } },
                 )
             }
         } else {
@@ -161,12 +165,15 @@ fun GoalsTab(
         }
         if (visibleRoutines.isEmpty()) {
             item(key = "routines-empty") {
-                Text(
-                    stringResource(R.string.ub_goals_routines_empty),
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+                // [v1.5-empty-states] Shared branded empty state; the CTA
+                // opens the routine editor, exactly like the section "+".
+                ai.unicto.unibot.ui.components.EmptyState(
+                    icon = Icons.Outlined.Bolt,
+                    title = stringResource(R.string.goals_empty_routines_title),
+                    hint = stringResource(R.string.ub_goals_routines_empty),
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    ctaLabel = stringResource(R.string.goals_empty_routines_cta),
+                    onCta = { onEditRoutine(null) },
                 )
             }
         } else {

@@ -260,18 +260,16 @@ fun ModelGroupDetailScreen(
 
             if (memberIds.isEmpty()) {
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                    ) {
-                        Text(
-                            "No models in this group.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 12.dp),
-                        )
-                    }
+                    // [v1.5-empty-states] Shared branded empty state; the CTA
+                    // fires the same onAddModels the "Add Models" button uses.
+                    ai.unicto.unibot.ui.components.EmptyState(
+                        icon = Icons.Default.Memory,
+                        title = stringResource(R.string.model_group_detail_empty_models),
+                        hint = stringResource(R.string.model_group_detail_empty_models_hint),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                        ctaLabel = stringResource(R.string.model_group_detail_add_models),
+                        onCta = onAddModels,
+                    )
                 }
             } else {
                 itemsIndexed(memberIds, key = { _, id -> id }) { _, entryId ->

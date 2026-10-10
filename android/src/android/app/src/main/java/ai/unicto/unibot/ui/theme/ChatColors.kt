@@ -68,7 +68,8 @@ val LightChatPalette = ChatPalette(
     inputBorder = Color(0x4D3C3C43),
     primaryText = Color(0xFF000000),
     secondaryText = Color(0x993C3C43),
-    tertiaryText = Color(0x4D3C3C43),
+    // v1.5 accessibility: was 0x4D (30%) — 1.7:1 on white. 0xB3 (70%) = 4.5:1.
+    tertiaryText = Color(0xB33C3C43),
     disabledText = Color(0x2E3C3C43),
     userBubble = Color(0xFFF0E6FF),
     toolBg = Color(0xFFF2F2F7),
@@ -114,7 +115,8 @@ val DarkChatPalette = ChatPalette(
     inputBorder = Color(0x40545458),
     primaryText = Color(0xFFFFFFFF),
     secondaryText = Color(0x99EBEBF5),
-    tertiaryText = Color(0x4DEBEBF5),
+    // v1.5 accessibility: was 0x4D (30%) — 2.3:1 on black. 0x80 (50%) = 4.6:1.
+    tertiaryText = Color(0x80EBEBF5),
     disabledText = Color(0x2EEBEBF5),
     // [T-android-user-bubble-dark-contrast] The old 0x247676D7 was a 14%-alpha
     // translucent blue-grey that washed out to near-invisible on the #000 chat

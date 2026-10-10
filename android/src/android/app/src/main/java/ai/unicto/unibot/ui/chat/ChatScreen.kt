@@ -318,7 +318,7 @@ import ai.unicto.unibot.ui.components.UnibotTextButton
 // iOS ChatColors equivalent
 internal val ToolCheckColor = UbColors.success // iOS .green
 internal val ToolErrorColor = UbColors.error // iOS .red
-internal val ToolCancelColor = Color(0xFFFFCC00) // iOS .yellow
+internal val ToolCancelColor = UbColors.warning // iOS .yellow → semantic warning role
 // Memory tool accent — matches iOS `.pink` on SF Symbols.
 internal val ToolMemoryAccent = Color(0xFFFF2D55)
 // Sparkle gradient colors (iOS uses linear gradient)
@@ -2881,7 +2881,7 @@ fun ChatScreen(
                         } else if (!isTwoPane) {
                             ai.unicto.unibot.ui.home.MuseRoundButton(
                                 icon = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.common_back),
                                 onClick = onBack,
                                 modifier = Modifier.padding(start = 4.dp),
                             )
@@ -3232,10 +3232,13 @@ fun ChatScreen(
                                                             ) {
                                                                 Text(
                                                                     text = "on-device",
-                                                                    fontSize = 9.sp,
-                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    // v1.5 accessibility: semantic type role
+                                                                    // instead of hardcoded 9sp; no-font-padding
+                                                                    // kept via merge.
+                                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                                        fontWeight = FontWeight.SemiBold,
+                                                                    ).merge(noFontPad),
                                                                     color = MaterialTheme.colorScheme.primary,
-                                                                    style = noFontPad,
                                                                 )
                                                             }
                                                         }
@@ -3296,7 +3299,7 @@ fun ChatScreen(
                                 } else
                                 ai.unicto.unibot.ui.home.MuseRoundButton(
                                     icon = Icons.Default.MoreVert,
-                                    contentDescription = "More",
+                                    contentDescription = stringResource(R.string.a11y_more),
                                     onClick = { showChatMenu = true },
                                 )
                             }
@@ -4674,6 +4677,70 @@ fun ChatScreen(
                             })
                         }
                     }
+                    // [v1.5-empty-states] Empty conversation: centered greeting
+                    // + suggestion chips above the visible composer. A chip tap
+                    // inserts the suggestion into the composer (the composer
+                    // itself is untouched here — a sibling worker owns it).
+                    // Static by design: no entrance or press animation.
+                    if (flatItems.isEmpty() && !isStreaming && compactProgress == null &&
+                        !canResume && error == null && ubContinueAsk == null
+                    ) {
+                        item(key = "__empty_conversation__", contentType = "empty_conversation") {
+                            val haptics = ai.unicto.unibot.ui.util.rememberHaptic()
+                            val suggestions = listOf(
+                                stringResource(R.string.chat_empty_suggestion_1),
+                                stringResource(R.string.chat_empty_suggestion_2),
+                                stringResource(R.string.chat_empty_suggestion_3),
+                                stringResource(R.string.chat_empty_suggestion_4),
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillParentMaxHeight()
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.chat_empty_greeting),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.height(20.dp))
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    suggestions.forEach { suggestion ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                .border(
+                                                    1.dp,
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                                    RoundedCornerShape(20.dp),
+                                                )
+                                                .clickable {
+                                                    haptics.tap()
+                                                    viewModel.setInputText(suggestion)
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                text = suggestion,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     items(
                         items = flatItems.asReversed(),
                         key = { it.key },
@@ -5668,7 +5735,7 @@ fun ChatScreen(
                                 // anchor" for the turn-walk, and keeps this button visually
                                 // distinct from the down button's plain chevron.
                                 imageVector = Icons.Default.VerticalAlignTop,
-                                contentDescription = "Scroll to previous message",
+                                contentDescription = stringResource(R.string.a11y_scroll_to_previous_message),
                                 tint = ChatColors.primaryText,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -5728,7 +5795,7 @@ fun ChatScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "Scroll to bottom",
+                                contentDescription = stringResource(R.string.a11y_scroll_to_bottom),
                                 tint = ChatColors.primaryText,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -6446,6 +6513,15 @@ fun ChatScreen(
                                 dismissOnClickOutside = false,
                             ),
                         ) {
+                            // v1.5 accessibility: 48dp tap target around the pill;
+                            // the pill itself keeps its size.
+                            Box(
+                                modifier = Modifier
+                                    .heightIn(min = 48.dp)
+                                    .clip(CircleShape)
+                                    .clickable { showMoveSheet = true },
+                                contentAlignment = Alignment.Center,
+                            ) {
                             androidx.compose.material3.Surface(
                                 shape = androidx.compose.foundation.shape.CircleShape,
                                 // Mirrors iOS .ultraThinMaterial — solid-
@@ -6461,7 +6537,6 @@ fun ChatScreen(
                                     0.5.dp,
                                     ChatColors.thumbnailBorder,
                                 ),
-                                modifier = Modifier.clickable { showMoveSheet = true },
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -6488,12 +6563,12 @@ fun ChatScreen(
                                     }
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        "Move to…",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        stringResource(R.string.a11y_move_to),
+                                        style = MaterialTheme.typography.labelSmall,
                                         color = ChatColors.secondaryText,
                                     )
                                 }
+                            }
                             }
                         }
                     }
@@ -7156,7 +7231,10 @@ fun ChatScreen(
                                                 else if (ubPill) stringResource(R.string.ub_composer_placeholder)
                                                 else composerPlaceholderText(idx, soulName.name),
                                                 color = if (ubPill) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                                                // v1.5 accessibility: was 0.25f (1.7:1 light /
+                                                // 2.0:1 dark). 0.62f passes 4.5:1 on light,
+                                                // dark and Fluid Black input backgrounds.
+                                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
                                                 fontSize = 16.5.sp * chatInputFontScale,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -7316,7 +7394,7 @@ fun ChatScreen(
                             ) {
                                 Icon(
                                     if (showAttachTiles) Icons.Default.Close else Icons.Default.Add,
-                                    contentDescription = "Attach",
+                                    contentDescription = stringResource(R.string.a11y_attach),
                                     tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(24.dp),
                                 )
@@ -7330,7 +7408,7 @@ fun ChatScreen(
                                 ) {
                                     Icon(
                                         Icons.Default.Add,
-                                        contentDescription = "Attach",
+                                        contentDescription = stringResource(R.string.a11y_attach),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(20.dp),
                                     )
@@ -7913,20 +7991,28 @@ fun ChatScreen(
                         val hasContent = hasText || attachments.isNotEmpty() || voiceNoteDraft != null
                         val showStop = isStreaming && !hasContent
                         if (showStop) {
+                            // v1.5 accessibility: 48dp tap target around the
+                            // 38dp visual disc.
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
-                                    .background(UbColors.error, CircleShape)
+                                    .size(48.dp)
                                     .clip(CircleShape)
                                     .clickable { viewModel.cancelStream() },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    Icons.Default.Stop,
-                                    contentDescription = "Stop",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp),
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(UbColors.error, CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Stop,
+                                        contentDescription = stringResource(R.string.a11y_stop),
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                             }
                         } else {
                             // Streaming with content → Send-into-queue; Idle with content → Send.
@@ -7944,7 +8030,7 @@ fun ChatScreen(
                                     performSendOrEnqueue(inputText)
                                 },
                                 icon = Icons.Default.ArrowUpward,
-                                contentDescription = "Send",
+                                contentDescription = stringResource(R.string.send),
                                 activeColor = ChatColors.sendButton,
                                 onActiveColor = ChatColors.background,
                             )
@@ -8589,33 +8675,40 @@ private fun ThinkingLevelBadge(
     val context = LocalContext.current
     // Secondary grey for icon + label (iOS secondaryText parity) — no accent.
     val badgeColor = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    // v1.5 accessibility: 48dp tap target around the small badge; the badge
+    // itself keeps its size. The badge opens the thinking-level sheet, so it
+    // is a real button for TalkBack.
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(50))
-            // Faint translucent-grey capsule (iOS Color.secondary.opacity(0.10)).
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-            // Own clickable → consumes the tap, opens the thinking sheet.
-            .clickable(onClick = onClick)
-            .padding(horizontal = 5.dp, vertical = 1.dp),
+            .clickable(onClick = onClick, role = Role.Button),
     ) {
-        Icon(
-            imageVector = Icons.Default.Lightbulb,
-            contentDescription = null,
-            // Dimmed in the Off state (sheet Off-row convention) so "Off" reads
-            // as "thinking disabled" at a glance.
-            tint = if (level.isEnabled) badgeColor else badgeColor.copy(alpha = 0.4f),
-            modifier = Modifier.size(9.dp),
-        )
-        Text(
-            text = level.localizedName(context),
-            fontSize = 9.sp,
-            lineHeight = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = badgeColor,
-            maxLines = 1,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                // Faint translucent-grey capsule (iOS Color.secondary.opacity(0.10)).
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                .padding(horizontal = 5.dp, vertical = 1.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lightbulb,
+                contentDescription = null,
+                // Dimmed in the Off state (sheet Off-row convention) so "Off" reads
+                // as "thinking disabled" at a glance.
+                tint = if (level.isEnabled) badgeColor else badgeColor.copy(alpha = 0.4f),
+                modifier = Modifier.size(9.dp),
+            )
+            Text(
+                text = level.localizedName(context),
+                style = MaterialTheme.typography.labelSmall,
+                color = badgeColor,
+                maxLines = 1,
+            )
+        }
     }
 }
 
