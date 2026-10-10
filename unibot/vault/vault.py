@@ -35,9 +35,7 @@ def _atomic_write(target: Path, data: bytes, mode: int | None = None) -> None:
     behavior of a plain write. The temp file is removed if anything fails.
     """
     target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(
-        dir=target.parent, prefix=target.name + ".", suffix=".tmp"
-    )
+    fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=target.name + ".", suffix=".tmp")
     tmp = Path(tmp_name)
     try:
         if mode is None:

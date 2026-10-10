@@ -353,7 +353,11 @@ def test_without_an_image_model_the_chat_says_so(settings: Settings) -> None:
     ("base", "host", "cloud"),
     [
         ("https://relay.example/v1", "https://relay.example", True),
-        ("https://dashscope.aliyuncs.com/compatible-mode/v1", "https://dashscope.aliyuncs.com", False),
+        (
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "https://dashscope.aliyuncs.com",
+            False,
+        ),
         ("https://dashscope.aliyuncs.com/api/v1", "https://dashscope.aliyuncs.com", False),
     ],
 )

@@ -480,7 +480,9 @@ def test_command_for_validates_workspace_and_separates_text(
     runner.command_for("cursor", "", str(outside), "do it", False)
 
 
-def test_send_rejects_workspace_outside_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_send_rejects_workspace_outside_roots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The service path (hub peers included) rejects an outside workspace up front."""
     from unibot.coding.service import CodingService
 

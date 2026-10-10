@@ -258,7 +258,7 @@ def validate_base_url(url: str) -> str:
     if not host or re.search(r"\s", host):
         raise ValueError("base_url has no usable host")
     try:
-        parts.port
+        _ = parts.port  # access raises ValueError on an invalid port
     except ValueError as exc:
         raise ValueError(f"base_url has an invalid port: {exc}") from exc
     return url

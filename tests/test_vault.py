@@ -53,7 +53,9 @@ def test_redact_short_pin(tmp_path: Path):
     """A 4-character PIN must not leak into tool output (was: skipped by the len>=6 cutoff)."""
     vault = CredentialVault(tmp_path / "v.enc", tmp_path / "v.key")
     vault.set("PIN", "1234")
-    assert vault.redact("your PIN is 1234, keep it safe") == "your PIN is [REDACTED:PIN], keep it safe"
+    assert (
+        vault.redact("your PIN is 1234, keep it safe") == "your PIN is [REDACTED:PIN], keep it safe"
+    )
 
 
 def test_redact_short_pin_preserves_innocent_substrings(tmp_path: Path):

@@ -23,9 +23,10 @@ import asyncio
 import hashlib
 import sqlite3
 from array import array
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from unibot.memory.embeddings import Embedder, cosine
 
@@ -33,19 +34,61 @@ from unibot.memory.embeddings import Embedder, cosine
 # probe, so an unusual-but-textual extension still gets a chance.
 TEXT_EXTENSIONS = frozenset(
     {
-        ".md", ".markdown", ".txt", ".rst", ".text",
-        ".py", ".pyi", ".js", ".ts", ".tsx", ".jsx", ".json", ".jsonl",
-        ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
-        ".csv", ".tsv", ".log", ".html", ".htm", ".xml", ".css", ".scss",
-        ".sh", ".bash", ".zsh", ".sql", ".tex", ".org", ".adoc",
+        ".md",
+        ".markdown",
+        ".txt",
+        ".rst",
+        ".text",
+        ".py",
+        ".pyi",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".json",
+        ".jsonl",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".csv",
+        ".tsv",
+        ".log",
+        ".html",
+        ".htm",
+        ".xml",
+        ".css",
+        ".scss",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".sql",
+        ".tex",
+        ".org",
+        ".adoc",
     }
 )
 # Directories never descended into: VCS, caches, dependencies, build output.
 SKIP_DIRS = frozenset(
     {
-        ".git", ".hg", ".svn", ".tox", ".mypy_cache", ".pytest_cache",
-        "__pycache__", "node_modules", ".venv", "venv", ".env",
-        "dist", "build", ".next", ".nuxt", "target",
+        ".git",
+        ".hg",
+        ".svn",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        "venv",
+        ".env",
+        "dist",
+        "build",
+        ".next",
+        ".nuxt",
+        "target",
     }
 )
 MAX_FILE_BYTES = 512 * 1024  # larger files are skipped, not truncated
@@ -322,9 +365,7 @@ class DocumentStore:
 class DocumentIndex:
     """Incremental embedding index over the workspace's text files."""
 
-    def __init__(
-        self, store: DocumentStore, embedder: Embedder | None, workspace: Path
-    ):
+    def __init__(self, store: DocumentStore, embedder: Embedder | None, workspace: Path):
         self.store = store
         self.embedder = embedder
         self.workspace = workspace.resolve()
@@ -396,8 +437,14 @@ class DocumentIndex:
                 self.store.put_vectors(
                     model,
                     {
-                        f"{c.file}:{c.line_start}": (file_hash_text(c.text), c.file,
-                                                    c.line_start, c.line_end, c.text, [])
+                        f"{c.file}:{c.line_start}": (
+                            file_hash_text(c.text),
+                            c.file,
+                            c.line_start,
+                            c.line_end,
+                            c.text,
+                            [],
+                        )
                         for _, c in pending
                     },
                 )
@@ -411,8 +458,14 @@ class DocumentIndex:
             self.store.put_vectors(
                 model,
                 {
-                    f"{c.file}:{c.line_start}": (file_hash_text(c.text), c.file,
-                                                c.line_start, c.line_end, c.text, vec)
+                    f"{c.file}:{c.line_start}": (
+                        file_hash_text(c.text),
+                        c.file,
+                        c.line_start,
+                        c.line_end,
+                        c.text,
+                        vec,
+                    )
                     for (_, c), vec in zip(pending, embedded, strict=True)
                 },
             )
@@ -420,9 +473,7 @@ class DocumentIndex:
                 self.store.put_file(rel, mtime, size, digest)
             return has_embedder
 
-    async def search(
-        self, query: str, limit: int = 10, path: str | None = None
-    ) -> list[DocChunk]:
+    async def search(self, query: str, limit: int = 10, path: str | None = None) -> list[DocChunk]:
         """Top chunks by meaning; keyword fallback when embeddings are down."""
         query = query.strip()
         if not query:

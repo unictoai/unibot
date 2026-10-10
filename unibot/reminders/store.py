@@ -49,8 +49,10 @@ def user_timezone(name: str | None) -> tzinfo:
         return datetime.now().astimezone().tzinfo or UTC
     try:
         return ZoneInfo(name)
-    except ZoneInfoNotFoundError:
-        raise ValueError(f"unknown timezone {name!r}; use an IANA name like 'Asia/Karachi'")
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(
+            f"unknown timezone {name!r}; use an IANA name like 'Asia/Karachi'"
+        ) from exc
 
 
 def _resolve_tz(tz: str | tzinfo | None) -> tzinfo:

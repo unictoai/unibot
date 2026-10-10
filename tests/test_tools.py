@@ -254,7 +254,9 @@ def test_code_reach_catches_import_aliasing_evasion(tmp_path: Path):
         a = py.assess({"code": code})
         assert a.risk == RiskLevel.SENSITIVE, code
     # ... while benign imports stay quiet
-    assert py.assess({"code": 'from os import path\nprint(path.join("a"))'}).risk == RiskLevel.MODERATE
+    assert (
+        py.assess({"code": 'from os import path\nprint(path.join("a"))'}).risk == RiskLevel.MODERATE
+    )
 
 
 def test_scrubbed_env_keeps_git_config_family():

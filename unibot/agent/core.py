@@ -10,13 +10,13 @@ from typing import Any
 
 from unibot import prompts
 from unibot.calendar import CalendarFeeds
-from unibot.reminders import user_timezone
 from unibot.config import Settings
 from unibot.contacts import ContactBook
 from unibot.goals import GoalStore
 from unibot.llm.base import BaseLLM
 from unibot.logger import logger
 from unibot.memory import MemoryItem, MemoryStore
+from unibot.reminders import user_timezone
 from unibot.runtime import device
 from unibot.schema import AgentState, Attachment, Message, Role, ToolResult
 from unibot.sentinel import AuditLog, Sentinel
@@ -300,9 +300,7 @@ class UnibotAgent:
             language_rule=language_rule,
             # the "now" the model reasons from is in the user's timezone, so relative
             # times it writes ("tomorrow 09:00") land on the right wall clock
-            now=datetime.now(user_timezone(a.timezone)).strftime(
-                "%Y-%m-%d %H:%M (%A, UTC%z)"
-            ),
+            now=datetime.now(user_timezone(a.timezone)).strftime("%Y-%m-%d %H:%M (%A, UTC%z)"),
             workspace=str(a.workspace.resolve()),
             sentinel_mode=self.settings.sentinel.mode,
             sandbox=self.sandbox_note(),

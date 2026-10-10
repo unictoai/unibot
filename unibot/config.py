@@ -107,8 +107,10 @@ class AgentSettings(BaseModel):
         if v:
             try:
                 ZoneInfo(v)
-            except ZoneInfoNotFoundError:
-                raise ValueError(f"unknown timezone {v!r}; use an IANA name like 'Asia/Karachi'")
+            except ZoneInfoNotFoundError as exc:
+                raise ValueError(
+                    f"unknown timezone {v!r}; use an IANA name like 'Asia/Karachi'"
+                ) from exc
         return v
 
 

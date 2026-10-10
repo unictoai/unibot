@@ -83,7 +83,9 @@ def test_http_auth_accepts_bearer_header(server):
     routes (kept out of URLs, logs, and proxies); the ?token= form still works."""
     client, _, _ = server
     anon = TestClient(client.app)
-    assert anon.get("/api/state", headers={"Authorization": "Bearer secret-token"}).status_code == 200
+    assert (
+        anon.get("/api/state", headers={"Authorization": "Bearer secret-token"}).status_code == 200
+    )
     assert anon.get("/api/state", headers={"Authorization": "Bearer wrong"}).status_code == 401
 
 
@@ -456,9 +458,10 @@ def test_websocket_accepts_bearer_header(server):
     with anon.websocket_connect("/ws", headers={"Authorization": "Bearer secret-token"}) as ws:
         hello = ws.receive_json()
         assert hello["kind"] == "hello" and hello["state"]["profile"]["name"] == "unibot"
-    with pytest.raises(WebSocketDisconnect), anon.websocket_connect(
-        "/ws", headers={"Authorization": "Bearer wrong"}
-    ) as ws:
+    with (
+        pytest.raises(WebSocketDisconnect),
+        anon.websocket_connect("/ws", headers={"Authorization": "Bearer wrong"}) as ws,
+    ):
         ws.receive_json()
 
 
@@ -1988,9 +1991,7 @@ def test_hook_key_header_accepted_and_preferred(server):
 
     reset_cooldown()
     # a wrong header cannot be rescued by a right ?key=: the header wins
-    r = plain.post(
-        url + f"?key={item.secret}", content="x", headers={"x-hook-key": "nope"}
-    )
+    r = plain.post(url + f"?key={item.secret}", content="x", headers={"x-hook-key": "nope"})
     assert r.status_code == 404
 
     reset_cooldown()

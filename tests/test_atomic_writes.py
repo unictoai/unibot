@@ -119,9 +119,7 @@ def test_grant_store_save_is_atomic(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert _mode(tmp_path / "grants.json") == _default_file_mode()
 
 
-def test_grant_store_failed_write_keeps_original(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_grant_store_failed_write_keeps_original(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     store = GrantStore(tmp_path / "grants.json")
     store.add("web_fetch", "example.com", "always")
     before = (tmp_path / "grants.json").read_bytes()
