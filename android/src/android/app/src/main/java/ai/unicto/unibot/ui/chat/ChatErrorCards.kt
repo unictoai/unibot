@@ -41,6 +41,8 @@ enum class HttpStatusFix {
     CHANGE_MODEL,
     /** The account needs attention — open the provider's settings page. */
     PROVIDER_SETTINGS,
+    /** Payment/quota issue — open the model picker filtered to free models. */
+    FIND_FREE_MODEL,
     /** Nothing actionable — explanation only, no fix pill. */
     NONE,
 }
@@ -79,9 +81,9 @@ fun httpStatusCard(code: Int, modelName: String, providerName: String): HttpStat
             code = code,
             headline = "Payment required",
             body = "$provider needs billing enabled or more quota before " +
-                "$model can reply.",
-            fix = HttpStatusFix.PROVIDER_SETTINGS,
-            fixLabel = "Provider settings",
+                "$model can reply. Pick a free model below to keep chatting.",
+            fix = HttpStatusFix.FIND_FREE_MODEL,
+            fixLabel = "Find a free model",
             allowRetry = false,
         )
         408 -> HttpStatusCard(
@@ -180,9 +182,11 @@ fun httpFixActionForKind(
     onRetryLast: () -> Unit,
     onChangeModel: () -> Unit,
     onOpenProvider: () -> Unit,
+    onFindFreeModel: () -> Unit = onChangeModel,
 ): (() -> Unit)? = when (httpFixForKind(kind)) {
     HttpStatusFix.RETRY -> onRetryLast
     HttpStatusFix.CHANGE_MODEL -> onChangeModel
     HttpStatusFix.PROVIDER_SETTINGS -> onOpenProvider
+    HttpStatusFix.FIND_FREE_MODEL -> onFindFreeModel
     HttpStatusFix.NONE, null -> null
 }

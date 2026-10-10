@@ -310,6 +310,9 @@ internal fun ModelPickerSheet(
      *  section header — dismisses the sheet and navigates to the Model Groups
      *  management screen. Null hides the button (callers without a route). */
     onEditGroups: (() -> Unit)? = null,
+    /** Pre-fill the search box — used by the 402 "Find a free model" flow
+     *  to surface `:free` models immediately. */
+    initialSearchQuery: String = "",
 ) {
     val openTime = remember { System.nanoTime() }
 
@@ -324,7 +327,7 @@ internal fun ModelPickerSheet(
         }
     }
 
-    var searchText by remember { mutableStateOf("") }
+    var searchText by remember(initialSearchQuery) { mutableStateOf(initialSearchQuery) }
     var expandedGroupIds by remember { mutableStateOf(setOf<String>()) }
     // Note: the non-text-output "may not work as an Agent" confirmation lives
     // in ChatScreen's callback wrappers (ee828dba), NOT here — the sheet stays

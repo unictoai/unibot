@@ -961,6 +961,9 @@ fun ChatScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showModelPicker by remember { mutableStateOf(false) }
+    // [v1.5.1] Pre-fill for the model picker — "free" when opened from the
+    // 402 payment-required error, so free models surface immediately.
+    var modelPickerInitialQuery by remember { mutableStateOf("") }
     // v1.4.0 item 16 — per-message token sheet, opened from the token count
     // under an assistant message.
     var tokenSheetMessageId by remember { mutableStateOf<String?>(null) }
@@ -3084,7 +3087,10 @@ fun ChatScreen(
                                                     .clickable(
                                                         interactionSource = modelPickerInteraction,
                                                         indication = ripple(),
-                                                    ) { showModelPicker = true }
+                                                    ) {
+                                                        modelPickerInitialQuery = ""
+                                                        showModelPicker = true
+                                                    }
                                                     .padding(horizontal = 4.dp, vertical = 1.dp),
                                             ) {
                                                 // Line 1: green dot + group name + dropdown arrow (iOS: "● Default ⌄")
@@ -3494,6 +3500,7 @@ fun ChatScreen(
                                             text = { Text(stringResource(R.string.ub_chat_menu_model)) },
                                             onClick = {
                                                 showChatMenu = false
+                                                modelPickerInitialQuery = ""
                                                 showModelPicker = true
                                             },
                                             leadingIcon = {
@@ -3862,13 +3869,6 @@ fun ChatScreen(
                 },
                 navigationIcon = {},
                 actions = {
-                    // [v1.3.0-swarm] Distinct pill entry to the swarm space —
-                    // shaped nothing like the chat chrome so it reads as
-                    // entering a separate place, not one more chat action.
-                    ai.unicto.unibot.ui.swarm.SwarmEntryButton(
-                        onClick = onSwarmClick,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
                 },
                 windowInsets = WindowInsets.statusBars,
                 colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
@@ -5313,7 +5313,10 @@ fun ChatScreen(
                                 isInvalidKey = item.errorKind == ERROR_KIND_INVALID_KEY,
                                 isOAuthExpired = item.errorKind == ERROR_KIND_OAUTH_EXPIRED,
                                 onNewChat = { onNewChat() },
-                                onChangeModel = { showModelPicker = true },
+                                onChangeModel = {
+                                    modelPickerInitialQuery = ""
+                                    showModelPicker = true
+                                },
                                 onRefreshModels = { safeMutate { viewModel.refreshCurrentProviderModels() } },
                                 onUpdateKey = viewModel.providerInstanceIdForLastError()?.let { id ->
                                     { onOpenProvider(id) }
@@ -5329,11 +5332,19 @@ fun ChatScreen(
                                         coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                         safeMutate { viewModel.retryLast() }
                                     },
-                                    onChangeModel = { showModelPicker = true },
+                                    onChangeModel = {
+                                        modelPickerInitialQuery = ""
+                                        showModelPicker = true
+                                    },
                                     onOpenProvider = {
                                         viewModel.providerInstanceIdForLastError()?.let { id ->
                                             onOpenProvider(id)
                                         }
+                                    },
+                                    onFindFreeModel = {
+                                        // 402: surface free models immediately.
+                                        modelPickerInitialQuery = "free"
+                                        showModelPicker = true
                                     },
                                 ),
                             )
@@ -8459,6 +8470,7 @@ fun ChatScreen(
             defaultPrimaryGroupId = config.defaultPrimaryGroupId,
             config = config,
             providerRepository = providerRepository,
+            initialSearchQuery = modelPickerInitialQuery,
             onSelectGroup = { groupId ->
                 val group = availableGroups.firstOrNull { it.id == groupId }
                 val firstEntry = group?.memberEntryIds?.firstNotNullOfOrNull(::entryById)
@@ -8503,7 +8515,10 @@ fun ChatScreen(
                     showModelPicker = false
                 }
             },
-            onDismiss = { showModelPicker = false },
+            onDismiss = {
+                showModelPicker = false
+                modelPickerInitialQuery = ""
+            },
             // [T-android-modelpicker-group-edit] Close the picker first, then
             // navigate — pushing the management screen on top of an open bottom
             // sheet leaves the sheet lingering behind it on back.
