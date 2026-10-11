@@ -456,7 +456,9 @@ internal fun UserMessageBubble(
                                 Text(
                                     text = message.content,
                                     color = textColor,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.5.sp),
+                                    // [v1.5-ui-redesign] semantic role, not a
+                                    // fractional inline size (16.5sp).
+                                    style = MaterialTheme.typography.bodyLarge,
                                     modifier = bubbleModifier
                                         .background(bubbleBg, shape)
                                         .clip(shape)

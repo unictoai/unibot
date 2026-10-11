@@ -320,8 +320,6 @@ import ai.unicto.unibot.ui.components.UnibotTextButton
 internal val ToolCheckColor = UbColors.success // iOS .green
 internal val ToolErrorColor = UbColors.error // iOS .red
 internal val ToolCancelColor = UbColors.warning // iOS .yellow → semantic warning role
-// Memory tool accent — matches iOS `.pink` on SF Symbols.
-internal val ToolMemoryAccent = Color(0xFFFF2D55)
 // Sparkle gradient colors (iOS uses linear gradient)
 internal val SparkleColor1 = Color(0xFFB8B096) // rgb(0.72, 0.69, 0.59)
 internal val SparkleColor2 = Color(0xFF99998C) // rgb(0.6, 0.6, 0.55)
@@ -4741,9 +4739,14 @@ fun ChatScreen(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(20.dp))
                                                 .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                // [v1.5-ui-redesign] neutral
+                                                // hairline + full-contrast
+                                                // text: the violet accent is
+                                                // reserved for the send
+                                                // button, not every chip.
                                                 .border(
                                                     1.dp,
-                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                                    ChatColors.toolBorder,
                                                     RoundedCornerShape(20.dp),
                                                 )
                                                 .clickable {
@@ -4756,7 +4759,7 @@ fun ChatScreen(
                                             Text(
                                                 text = suggestion,
                                                 style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.primary,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Center,
                                             )
                                         }
@@ -5080,35 +5083,15 @@ fun ChatScreen(
                             // in the header says who is talking); a small gap keeps the
                             // turns apart.
                             is FlatChatItem.AssistantHeader -> {
-                                // [v0.4.1-visible-premium] New assistant turns
-                                // glide in (fade + 12dp rise). Remembered per
-                                // messageId so scroll-back never replays it;
-                                // history items simply settle once on open.
-                                var entered by remember(item.messageId) { mutableStateOf(false) }
-                                LaunchedEffect(item.messageId) { entered = true }
-                                // [v1.3.5-ui] Transform-only entrance (see the
-                                // user-bubble site above): one graphicsLayer,
-                                // no layout pass per frame.
-                                val density = LocalDensity.current
-                                val risePx = remember(density) { with(density) { 12.dp.toPx() } }
-                                val enterAlpha by animateFloatAsState(
-                                    targetValue = if (entered) 1f else 0f,
-                                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
-                                    label = "asst_enter_alpha",
-                                )
-                                val enterRisePx by animateFloatAsState(
-                                    targetValue = if (entered) 0f else risePx,
-                                    animationSpec = tween(Motion.Standard, easing = Motion.FastOutSlowIn),
-                                    label = "asst_enter_rise",
-                                )
-                                Box(
-                                    modifier = Modifier.graphicsLayer {
-                                        alpha = enterAlpha
-                                        translationY = enterRisePx
-                                    },
-                                ) {
-                                    if (ubHome != null) Spacer(Modifier.height(6.dp)) else AssistantHeader()
-                                }
+                                // [v1.5-ui-redesign] professional bar: no
+                                // repeated speaker label or per-message avatar
+                                // — alignment already says who's speaking (the
+                                // soul name lives in the top bar). The item
+                                // survives as a plain 12dp rhythm spacer so
+                                // the user→assistant boundary keeps its ~16dp
+                                // cadence and every existing key/grayed/dedupe
+                                // path keeps working untouched.
+                                Spacer(Modifier.height(12.dp))
                             }
                             is FlatChatItem.AssistantText -> BoundsTrackedBlock(
                                 messageId = item.messageId,
@@ -6011,9 +5994,9 @@ fun ChatScreen(
                                     },
                                 )
                                 .padding(horizontal = 12.dp)
-                                // T240: keep a thin visible border instead of the
-                                // diffuse 8dp halo that bled out past the panel edge.
-                                .shadow(elevation = 3.dp, shape = RoundedCornerShape(10.dp))
+                                // [v1.5-ui-redesign] tonal separation (inputBg
+                                // + hairline border), no drop shadow — the
+                                // panel is fixed chrome, not a list item.
                                 .background(ChatColors.inputBg, RoundedCornerShape(10.dp))
                                 .border(0.5.dp, ChatColors.toolBorder, RoundedCornerShape(10.dp)),
                         ) {
@@ -6205,7 +6188,8 @@ fun ChatScreen(
                                     },
                                 )
                                 .padding(horizontal = 12.dp)
-                                .shadow(elevation = 8.dp, shape = RoundedCornerShape(10.dp))
+                                // [v1.5-ui-redesign] tonal separation, no drop
+                                // shadow (same treatment as the mention panel).
                                 .background(ChatColors.inputBg, RoundedCornerShape(10.dp))
                                 .border(0.5.dp, ChatColors.toolBorder, RoundedCornerShape(10.dp)),
                         ) {

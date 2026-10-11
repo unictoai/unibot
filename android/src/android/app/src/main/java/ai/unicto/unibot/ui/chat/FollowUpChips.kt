@@ -1,14 +1,11 @@
 package ai.unicto.unibot.ui.chat
 
-import ai.unicto.unibot.ui.theme.Motion
 import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -18,14 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 /**
  * [v0.5.0-agentic-core] Follow-up suggestion chips.
@@ -118,30 +111,22 @@ internal fun FollowUpChipsRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         chips.forEachIndexed { index, chip ->
-            // Springy press feedback (same pattern as GlowingSendButton).
-            val interactionSource = remember { MutableInteractionSource() }
-            val pressed by interactionSource.collectIsPressedAsState()
-            val scale by androidx.compose.animation.core.animateFloatAsState(
-                targetValue = if (pressed) 0.94f else 1f,
-                animationSpec = Motion.SpringSpec,
-                label = "chip_press_$index",
-            )
-            // Hand-rolled chip (the BOM's AssistChip API shifted) — pill
-            // with violet border, staggered entrance, springy press.
+            // [v1.5-ui-redesign] hand-rolled chip (the BOM's AssistChip API
+            // shifted): neutral hairline + full-contrast text, standard M3
+            // ripple press. No springy scale, no violet — the accent is
+            // reserved for the send button. Staggered entrance kept: 3
+            // chips, first entrance only, 40ms steps (within the bar).
             Box(
                 modifier = Modifier
                     .staggeredEntrance(index)
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
                     .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
                     .border(
                         1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        MaterialTheme.colorScheme.outlineVariant,
                         RoundedCornerShape(18.dp),
                     )
                     .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
                         onClick = {
                             haptics.tap()
                             onChipClick(chip)
@@ -152,8 +137,8 @@ internal fun FollowUpChipsRow(
             ) {
                 Text(
                     text = chip,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }

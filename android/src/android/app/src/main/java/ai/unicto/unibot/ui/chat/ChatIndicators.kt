@@ -1,7 +1,6 @@
 package ai.unicto.unibot.ui.chat
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
@@ -13,15 +12,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.clickable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
@@ -30,15 +29,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.theme.ChatColors
 
@@ -48,12 +43,15 @@ import ai.unicto.unibot.ui.theme.ChatColors
 
 @Composable
 internal fun BouncingDots(color: Color) {
+    // [v1.5-ui-redesign] transform-only pulse: the old version animated
+    // padding-top, a layout property that re-measures on every frame.
+    // alpha + translationY via graphicsLayer costs no layout passes.
     val infiniteTransition = rememberInfiniteTransition(label = "bounce")
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         repeat(3) { i ->
-            val offset by infiniteTransition.animateFloat(
+            val pulse by infiniteTransition.animateFloat(
                 initialValue = 0f,
-                targetValue = -2f,
+                targetValue = 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(350, delayMillis = i * 120),
                     repeatMode = RepeatMode.Reverse,
@@ -63,22 +61,27 @@ internal fun BouncingDots(color: Color) {
             Box(
                 modifier = Modifier
                     .size(4.dp)
-                    .padding(top = (-offset).dp.coerceAtLeast(0.dp))
+                    .graphicsLayer {
+                        translationY = -2f * pulse
+                        alpha = 0.4f + 0.6f * pulse
+                    }
                     .background(color, CircleShape),
             )
         }
     }
 }
 
-// iOS-style streaming "..." after tool title — 3 dots bouncing inline with text
+// iOS-style streaming "..." after tool title — 3 dots pulsing inline with text.
+// [v1.5-ui-redesign] alpha pulse only: the old version animated offset-y, a
+// layout property. Dots sit on the text baseline tier, muted.
 @Composable
 internal fun StreamingDotsText() {
     val infiniteTransition = rememberInfiniteTransition(label = "streamDots")
     Row {
         repeat(3) { i ->
-            val offset by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = -3f,
+            val pulse by infiniteTransition.animateFloat(
+                initialValue = 0.3f,
+                targetValue = 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(350, delayMillis = i * 120, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse,
@@ -87,10 +90,10 @@ internal fun StreamingDotsText() {
             )
             Text(
                 text = ".",
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.offset(y = offset.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.graphicsLayer { alpha = pulse },
             )
         }
     }
@@ -141,19 +144,18 @@ internal fun CompactProgressIndicator(
             } else {
                 stringResource(R.string.compact_progress, elapsedSec)
             },
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             color = ChatColors.tertiaryText,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            text = stringResource(R.string.cancel),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .clickable(onClick = onCancel)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        )
+        // [v1.5-ui-redesign] a real TextButton: proper ripple, touch target
+        // and accessibility role instead of a bare clickable Text.
+        TextButton(
+            onClick = onCancel,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            Text(text = stringResource(R.string.cancel))
+        }
     }
 }
 
@@ -212,7 +214,7 @@ internal fun TypingIndicator(stage: ThinkingState) {
     TypingIndicatorRow(label = stage.label)
 }
 
-/** Shared shimmer-label + pulsing-dots row behind both [TypingIndicator] overloads. */
+/** Shared muted-label + pulsing-dots row behind both [TypingIndicator] overloads. */
 @Composable
 private fun TypingIndicatorRow(label: String) {
     val violet = ChatColors.thinking
@@ -226,43 +228,29 @@ private fun TypingIndicatorRow(label: String) {
         label = "typing_enter",
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "typing")
-    // Shimmer sweep across the label, left → right, looping.
-    val sweep by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "typing_sweep",
-    )
-
     Row(
         modifier = Modifier
             .padding(top = 2.dp, bottom = 8.dp)
             .graphicsLayer { alpha = enterAlpha },
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // [v1.5-ui-redesign] plain muted label — the looping gradient-text
+        // shimmer is gone (MOTION_INTENSITY 2: a perpetual loop must
+        // communicate a state, and "still working" is already said by the
+        // dots). Label drops to tertiary tier; answer text keeps full
+        // contrast elsewhere.
         Text(
             text = label,
-            fontSize = 15.sp,
-            style = TextStyle(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        violet.copy(alpha = 0.45f),
-                        violet,
-                        violet.copy(alpha = 0.45f),
-                    ),
-                    start = Offset(sweep * 600f - 300f, 0f),
-                    end = Offset(sweep * 600f + 300f, 0f),
-                ),
-            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = ChatColors.tertiaryText,
         )
         Spacer(Modifier.width(8.dp))
+        // Subtle 3-dot pulse: alpha only — no scale, no layout-affecting
+        // props, no gradient. This is the thinking state's one motion.
+        val infiniteTransition = rememberInfiniteTransition(label = "typing")
         repeat(3) { index ->
             val pulse by infiniteTransition.animateFloat(
-                initialValue = 0f,
+                initialValue = 0.35f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(900, delayMillis = index * 200, easing = FastOutSlowInEasing),
@@ -274,13 +262,8 @@ private fun TypingIndicatorRow(label: String) {
                 modifier = Modifier
                     .padding(end = 5.dp)
                     .size(7.dp)
-                    .graphicsLayer {
-                        val s = 0.65f + 0.35f * pulse
-                        scaleX = s
-                        scaleY = s
-                        alpha = 0.35f + 0.65f * pulse
-                    }
-                    .background(violet, CircleShape),
+                    .graphicsLayer { alpha = pulse }
+                    .background(violet.copy(alpha = 0.8f), CircleShape),
             )
         }
     }

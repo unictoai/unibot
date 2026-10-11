@@ -3,15 +3,12 @@ package ai.unicto.unibot.ui.theme
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -20,12 +17,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import ai.unicto.unibot.ui.theme.Motion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -77,8 +71,13 @@ fun FluidAuroraBackground(modifier: Modifier = Modifier) {
 }
 
 /**
- * Send button with a breathing violet glow while it can send.
- * Drop-in replacement for the static circle: same size, same tap target.
+ * Send button: a static violet disc when it can send.
+ *
+ * [v1.5-ui-redesign] The breathing-glow infinite loop and the 0.88
+ * press-scale are gone — MOTION_INTENSITY 2: the send button is tapped
+ * dozens of times a day, and neither loop communicated a state. Press
+ * feedback is the standard M3 ripple now; the Fluid Black theme keeps a
+ * static halo (no loop). Same 48dp tap target, same 38dp visual.
  */
 @Composable
 fun GlowingSendButton(
@@ -91,31 +90,6 @@ fun GlowingSendButton(
     size: Dp = 38.dp,
     fluidGlow: Boolean = LocalFluidBlack.current,
 ) {
-    // v1.5 accessibility: the breathing glow is decorative — when the user
-    // asked for reduced motion (or battery saver / low-RAM), hold a static
-    // glow instead of running the infinite loop.
-    val glow: Float = if (decorativeMotionEnabled()) {
-        val t = rememberInfiniteTransition(label = "send-glow")
-        t.animateFloat(
-            initialValue = 0.55f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                tween(1600, easing = FastOutSlowInEasing),
-                RepeatMode.Reverse,
-            ),
-            label = "glow",
-        ).value
-    } else {
-        1f
-    }
-    // [v0.4.1-visible-premium] Springy press-down so taps feel physical.
-    val pressSource = remember { MutableInteractionSource() }
-    val pressed by pressSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.88f else 1f,
-        animationSpec = tween(Motion.Instant, easing = Motion.FastOutSlowIn),
-        label = "send_press",
-    )
     // v1.5 accessibility: 48dp tap target around the 38dp visual, mirroring
     // the InputCircleButton / scroll-FAB treatment elsewhere in the app.
     Box(
@@ -124,28 +98,21 @@ fun GlowingSendButton(
             .clip(CircleShape)
             .clickable(
                 enabled = canActivate,
-                interactionSource = pressSource,
-                indication = null,
                 onClick = onSend,
             ),
         contentAlignment = Alignment.Center,
     ) {
-        // Glow halo behind the disc.
+        // Static halo behind the disc (Fluid Black theme only).
+        if (canActivate && fluidGlow) {
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .background(activeColor.copy(alpha = 0.22f), CircleShape),
+            )
+        }
         Box(
             modifier = Modifier
                 .size(size)
-                .background(
-                    if (canActivate && fluidGlow)
-                        activeColor.copy(alpha = 0.28f * glow)
-                    else Color.Transparent,
-                    CircleShape,
-                )
-                .scale(if (canActivate && fluidGlow) 1f + 0.06f * glow else 1f),
-        )
-        Box(
-            modifier = Modifier
-                .size(size)
-                .scale(pressScale)
                 .background(
                     if (canActivate) activeColor
                     else activeColor.copy(alpha = 0.25f),

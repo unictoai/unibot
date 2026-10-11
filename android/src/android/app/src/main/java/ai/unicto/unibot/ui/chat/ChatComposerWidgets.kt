@@ -663,7 +663,7 @@ private fun ToolPreviewThumbnail(
                         lineHeight = 8.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        color = ToolMemoryAccent.copy(alpha = 0.75f),
+                        color = ChatColors.thinking.copy(alpha = 0.75f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -870,7 +870,8 @@ internal fun FloatingToolStatusBar(
                 .fillMaxWidth()
                 .height(barHeight)
                 .align(Alignment.BottomCenter)
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(10.dp), ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.12f))
+                // [v1.5-ui-redesign] tonal separation (inputBg + hairline),
+                // no drop shadow — fixed chrome over the composer.
                 .background(ChatColors.inputBg, RoundedCornerShape(10.dp))
                 .border(0.5.dp, ChatColors.toolBorder, RoundedCornerShape(10.dp))
                 .padding(start = barStartPadding, end = 12.dp),

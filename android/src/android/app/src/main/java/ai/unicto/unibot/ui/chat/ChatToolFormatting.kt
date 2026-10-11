@@ -51,24 +51,14 @@ internal fun formatStepDuration(seconds: Long, stillRunning: Boolean): String {
     return if (stillRunning) "$base…" else base
 }
 
-// Helper: tool accent color
-internal fun toolAccentColor(toolName: String, isDark: Boolean): Color {
-    val violet = UbColors.brandViolet(isDark)
-    return when (toolName) {
-        "shell_execute" -> UbColors.success
-        "file_read" -> Color(0xFF32ADE6)
-        "file_write" -> violet
-        "file_edit" -> UbColors.warning
-        "browser_use" -> violet
-        "read_image" -> Color(0xFFAF52DE)
-        "photos_search", "photos_list_recent" -> Color(0xFFAF52DE)
-        "memory_write", "memory_get" -> Color(0xFFFF2D55)
-        "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
-    // [v1.0-wave6] Reminders — warm amber.
-    "remind_me", "list_reminders", "cancel_reminder" -> UbColors.warningDark
-        else -> UbColors.systemGray
-    }
-}
+// Helper: tool accent color.
+// [v1.5-ui-redesign] Single-accent bar: the accent is the brand violet for
+// every tool. Terminal states (done / failed / cancelled) already get
+// semantic colors at the call sites (ToolCheckColor / ToolErrorColor /
+// ToolCancelColor); the accent only ever tints the *running* state, so one
+// color is enough. The old per-tool rainbow (cyan, purple, pink) is gone.
+internal fun toolAccentColor(toolName: String, isDark: Boolean): Color =
+    UbColors.brandViolet(isDark)
 
 // Helper: tool icon (iOS: distinct SF Symbols per tool type)
 internal fun toolIconFor(toolName: String) = when (toolName) {

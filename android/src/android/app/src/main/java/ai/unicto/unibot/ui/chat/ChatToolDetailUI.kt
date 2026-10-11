@@ -1042,11 +1042,11 @@ internal fun ToolDetailSheet(
                         EditorCard(
                             title = block.toolName,
                             icon = Icons.Default.Psychology,
-                            iconTint = ToolMemoryAccent.copy(alpha = 0.6f),
-                            titleColor = ToolMemoryAccent,
-                            sizeColor = ToolMemoryAccent.copy(alpha = 0.5f),
+                            iconTint = ChatColors.thinking.copy(alpha = 0.6f),
+                            titleColor = ChatColors.thinking,
+                            sizeColor = ChatColors.thinking.copy(alpha = 0.5f),
                             bodyText = prefix + memContent,
-                            bodyColor = ToolMemoryAccent.copy(alpha = 0.85f),
+                            bodyColor = ChatColors.thinking.copy(alpha = 0.85f),
                             isStreaming = isLive,
                             scrollState = outputScrollState,
                         )

@@ -323,7 +323,7 @@ internal fun AssistantHeader() {
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = displayName,
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -519,14 +519,16 @@ internal fun InlineErrorBanner(
     val collapsedLines = if (isRequestTooLarge) 5 else 3
     // Hairline border gives the card structure on the tinted fill (tonal
     // depth, not a shadow) — keeps it quiet next to full-contrast chat text.
+    // [v1.5-ui-redesign] softer wash + border: the red lives on the icon
+    // and action pills, the message itself reads at full contrast.
     val cardShape = RoundedCornerShape(12.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 4.dp)
-            .border(1.dp, UbColors.error.copy(alpha = 0.35f), cardShape)
+            .border(1.dp, UbColors.error.copy(alpha = 0.25f), cardShape)
             .clip(cardShape)
-            .background(UbColors.error.copy(alpha = 0.12f))
+            .background(UbColors.error.copy(alpha = 0.08f))
             .combinedClickable(
                 onClick = { if (canExpand) expanded = !expanded },
                 onLongClick = {
@@ -555,8 +557,8 @@ internal fun InlineErrorBanner(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = error,
-                color = UbColors.error,
-                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { canExpand = canExpand || it.hasVisualOverflow },
@@ -833,24 +835,23 @@ internal fun ToolCallPill(
         else String.format("%.0fs", seconds)
     } else null
 
-    // T125: drop the spinner that used to replace the tool icon while
-    // running. iOS only animates a left→right shimmer sweep across the
-    // pill background and keeps the typed icon visible — the spinner
-    // both fought the icon for attention and looked stylistically off
-    // next to the iOS counterpart. The bottom FloatingToolStatusBar
-    // still shows a CircularProgressIndicator (that is the running-tool
-    // status surface, where a spinner reads correctly).
-    val shimmerTranslate = if (isRunning && decorativeMotionEnabled()) {
-        val transition = rememberInfiniteTransition(label = "toolPillShimmer")
+    // [v1.5-ui-redesign] The 2.8s gradient sweep across the pill is gone —
+    // perpetual motion must communicate a state, and the sweep only
+    // decorated it (and redrew a gradient on every frame). While running,
+    // the tool icon breathes via alpha — transform-only, cheap — so
+    // "in flight" stays legible without the GPU cost.
+    val runPulse = if (isRunning && decorativeMotionEnabled()) {
+        val transition = rememberInfiniteTransition(label = "toolPillPulse")
         transition.animateFloat(
-            initialValue = -1f,
-            targetValue = 2f,
+            initialValue = 0.55f,
+            targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 2800, easing = LinearEasing),
+                animation = tween(durationMillis = 1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
             ),
-            label = "toolPillShimmerTranslate",
-        )
-    } else null
+            label = "toolPillPulseAlpha",
+        ).value
+    } else 1f
 
     // [T-android-tool-bubble-longpress-menu] Long-press menu state, scoped
     // to this pill. The DropdownMenu is anchored to the pill via the Box
@@ -870,27 +871,6 @@ internal fun ToolCallPill(
                 )
                 .border(0.5.dp, ChatColors.toolBorder, CircleShape)
                 .clip(CircleShape)
-                .then(
-                    if (shimmerTranslate != null) {
-                        Modifier.drawWithContent {
-                            drawContent()
-                            val w = size.width
-                            val band = w * 0.6f
-                            val x = shimmerTranslate.value * w
-                            drawRect(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0f),
-                                        Color.White.copy(alpha = 0.18f),
-                                        Color.White.copy(alpha = 0f),
-                                    ),
-                                    start = Offset(x, 0f),
-                                    end = Offset(x + band, 0f),
-                                ),
-                            )
-                        }
-                    } else Modifier,
-                )
                 .combinedClickable(
                     onClick = { onOpenDetail(block.id) },
                     onLongClick = if (onRerunFromHere != null || onCopyDetails != null) {
@@ -909,7 +889,9 @@ internal fun ToolCallPill(
                 displayIcon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier
+                    .size(14.dp)
+                    .graphicsLayer { alpha = runPulse },
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -929,7 +911,7 @@ internal fun ToolCallPill(
             ) {
                 Text(
                     text = block.toolTitle.ifEmpty { block.toolName },
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -968,7 +950,7 @@ internal fun ToolCallPill(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = durationText,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     softWrap = false,
@@ -1125,7 +1107,7 @@ internal fun ThinkingBlock(block: AssistantBlock, isStreaming: Boolean, isLast: 
             }
             Text(
                 text = "Deep Thinking",
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = thinkingBlue,
             )
@@ -1133,7 +1115,7 @@ internal fun ThinkingBlock(block: AssistantBlock, isStreaming: Boolean, isLast: 
             if (charCount > 0) {
                 Text(
                     text = charLabel,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.Monospace,
                     color = thinkingBlue.copy(alpha = 0.6f),
@@ -1146,7 +1128,7 @@ internal fun ThinkingBlock(block: AssistantBlock, isStreaming: Boolean, isLast: 
                 // Offer the native full-content viewer instead.
                 Text(
                     text = stringResource(R.string.thinking_view_full),
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     color = thinkingBlue,
                 )
@@ -1238,16 +1220,15 @@ internal fun ThinkingBlock(block: AssistantBlock, isStreaming: Boolean, isLast: 
                             displayContent.length / 1000,
                             charCount / 1000,
                         ),
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     )
                 }
                 Text(
                     text = displayContent,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-                    lineHeight = 19.sp,
                 )
             }
         }
@@ -1287,7 +1268,7 @@ private fun ThinkingFullContentDialog(content: String, onDismiss: () -> Unit) {
                 ) {
                     Text(
                         text = "Deep Thinking",
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = ChatColors.thinking,
                     )
