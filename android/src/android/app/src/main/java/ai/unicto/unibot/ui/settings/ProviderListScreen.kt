@@ -425,7 +425,7 @@ private fun ProviderInstanceRow(
                     // say so instead of the alarming "No API key".
                     text = if (!apiKey.isNullOrBlank()) maskKey(apiKey)
                         else if (instance.allowsEmptyAPIKey) stringResource(R.string.provider_no_key_required)
-                        else "No API key",
+                        else stringResource(R.string.provider_list_no_api_key),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

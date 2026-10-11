@@ -236,7 +236,9 @@ fun ProviderDetailScreen(
         if (signupUrl != null && !isOAuthProvider) {
             val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
             SettingsSection(
-                header = stringResource(R.string.provider_detail_get_free_key),
+                // [ui-redesign] No header: it repeated the button's own label
+                // verbatim. The quota note stays as the footer.
+                header = null,
                 footer = stringResource(R.string.provider_detail_free_quota_note),
             ) {
                 SettingsCardBlock {
@@ -257,7 +259,7 @@ fun ProviderDetailScreen(
             SettingsSection(
                 header = stringResource(R.string.provider_detail_manual_bearer_token),
                 footer = stringResource(R.string.provider_detail_use_a_static_bearer_token_instead_of_the) +
-                    "Useful with custom proxy endpoints.",
+                    stringResource(R.string.provider_detail_proxy_endpoints_note),
             ) {
                 SettingsCardBlock {
                     ManualBearerTokenSection(
@@ -560,7 +562,8 @@ fun ProviderDetailScreen(
             // Refresh action sits as the first row, mirroring the iOS
             // tap-to-refresh affordance in the section header area.
             SettingsRow(
-                title = if (isRefreshing) "Refreshing…" else "Refresh model list",
+                title = if (isRefreshing) stringResource(R.string.provider_detail_refreshing)
+                else stringResource(R.string.provider_detail_refresh_models),
                 onClick = if (isRefreshing) {
                     null
                 } else {
@@ -868,7 +871,9 @@ private fun OAuthCredentialBlock(
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 "Not connected",
-                color = MaterialTheme.colorScheme.error,
+                // [ui-redesign] Error red is reserved for destructive/error
+                // states — a disconnected-but-expected state reads neutral.
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
         }

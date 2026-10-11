@@ -612,6 +612,15 @@ internal fun ModelPickerSheet(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        // [ui-redesign-picker] The selected group
+                                        // reads as a quiet tinted row, not just
+                                        // an icon swap — same recipe as the
+                                        // model rows below.
+                                        .background(
+                                            if (isSelected) ChatColors.thinking.copy(alpha = 0.08f)
+                                            else Color.Transparent,
+                                            groupShape,
+                                        )
                                         .clip(groupShape)
                                         .clickable { haptics.tap(); onSelectGroup(group.id) }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -620,7 +629,12 @@ internal fun ModelPickerSheet(
                                     Icon(
                                         if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                                         contentDescription = null,
-                                        tint = if (isSelected) UbColors.success
+                                        // [ui-redesign-picker] One selection
+                                        // color per sheet: the accent
+                                        // (thinking), matching the model rows.
+                                        // The green stays semantic —
+                                        // "Active"/configured only.
+                                        tint = if (isSelected) ChatColors.thinking
                                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                                         modifier = Modifier.size(22.dp),
                                     )
@@ -633,10 +647,16 @@ internal fun ModelPickerSheet(
                                     // when scrolling — and the two mean very
                                     // different things (a group can fail over
                                     // or load-balance; a model cannot).
+                                    //
+                                    // [ui-redesign-picker] Accent tint only on
+                                    // the SELECTED row — everywhere else a
+                                    // neutral glyph, so the card doesn't read
+                                    // as a wall of blue.
                                     Icon(
                                         Icons.Default.Layers,
                                         contentDescription = null,
-                                        tint = ChatColors.thinking,
+                                        tint = if (isSelected) ChatColors.thinking
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                         modifier = Modifier.size(18.dp),
                                     )
                                     Spacer(Modifier.width(10.dp))
@@ -652,8 +672,15 @@ internal fun ModelPickerSheet(
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier
+                                                    // [ui-redesign-picker] The
+                                                    // chips sit ON the
+                                                    // surfaceContainerHigh card,
+                                                    // where a container-toned
+                                                    // fill was invisible — same
+                                                    // onSurface@8% capsule
+                                                    // recipe as ModalityBadge.
                                                     .background(
-                                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                                                         RoundedCornerShape(8.dp),
                                                     )
                                                     .padding(horizontal = 5.dp, vertical = 1.dp),
@@ -711,18 +738,9 @@ internal fun ModelPickerSheet(
                                     // does not re-add the font's ascent/descent
                                     // slack on top of the 1.dp padding.
                                     if (isDefault) {
-                                        Text(
-                                            stringResource(R.string.model_picker_default_badge),
-                                            fontSize = 9.sp,
-                                            lineHeight = 11.sp,
-                                            fontWeight = FontWeight.Medium,
+                                        PickerBadge(
+                                            text = stringResource(R.string.model_picker_default_badge),
                                             color = ChatColors.thinking,
-                                            modifier = Modifier
-                                                .background(
-                                                    ChatColors.thinking.copy(alpha = 0.1f),
-                                                    RoundedCornerShape(50),
-                                                )
-                                                .padding(horizontal = 5.dp, vertical = 1.dp),
                                         )
                                         Spacer(Modifier.width(8.dp))
                                     }
@@ -862,18 +880,9 @@ internal fun ModelPickerSheet(
                                                     }
                                                 }
                                                 if (isActive) {
-                                                    Text(
-                                                        stringResource(R.string.model_picker_active_badge),
-                                                        fontSize = 9.sp,
-                                                        lineHeight = 11.sp,
-                                                        fontWeight = FontWeight.Medium,
+                                                    PickerBadge(
+                                                        text = stringResource(R.string.model_picker_active_badge),
                                                         color = UbColors.success,
-                                                        modifier = Modifier
-                                                            .background(
-                                                                UbColors.success.copy(alpha = 0.1f),
-                                                                RoundedCornerShape(50),
-                                                            )
-                                                            .padding(horizontal = 5.dp, vertical = 1.dp),
                                                     )
                                                 }
                                                 QuickTestButton(onClick = { quickTestEntry = entry })
@@ -1001,6 +1010,13 @@ internal fun ModelPickerSheet(
                                             // so tap target stays comfortable.
                                             modifier = Modifier
                                                 .fillMaxWidth()
+                                                // [ui-redesign-picker] Selected
+                                                // row tint — see the group row.
+                                                .background(
+                                                    if (selectedEntry != null) ChatColors.thinking.copy(alpha = 0.08f)
+                                                    else Color.Transparent,
+                                                    RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp),
+                                                )
                                                 .heightIn(min = 48.dp)
                                                 .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
                                                 .clickable { haptics.tap(); onSelectEntry(displayEntry.id) }
@@ -1128,6 +1144,13 @@ internal fun ModelPickerSheet(
                                             // for accessible tap target.
                                             modifier = Modifier
                                                 .fillMaxWidth()
+                                                // [ui-redesign-picker] Selected
+                                                // row tint — see the group row.
+                                                .background(
+                                                    if (isSelected) ChatColors.thinking.copy(alpha = 0.08f)
+                                                    else Color.Transparent,
+                                                    rowShape,
+                                                )
                                                 .heightIn(min = 48.dp)
                                                 .clip(rowShape)
                                                 .clickable { haptics.tap(); onSelectEntry(entry.id) }
@@ -1173,18 +1196,9 @@ internal fun ModelPickerSheet(
                                                 }
                                             }
                                             if (selectedGroupId != null && activeEntryId == entry.id) {
-                                                Text(
-                                                    stringResource(R.string.model_picker_active_badge),
-                                                    fontSize = 9.sp,
-                                                    lineHeight = 11.sp,
-                                                    fontWeight = FontWeight.Medium,
+                                                PickerBadge(
+                                                    text = stringResource(R.string.model_picker_active_badge),
                                                     color = UbColors.success,
-                                                    modifier = Modifier
-                                                        .background(
-                                                            UbColors.success.copy(alpha = 0.1f),
-                                                            RoundedCornerShape(50),
-                                                        )
-                                                        .padding(horizontal = 5.dp, vertical = 1.dp),
                                                 )
                                             }
                                             QuickTestButton(onClick = { quickTestEntry = entry })
@@ -1267,15 +1281,16 @@ internal fun ModelPickerSheet(
  * [T-android-model-picker-polish] Per-row Quick Test affordance, mirroring
  * iOS's `bolt.badge.checkmark` button (UnifiedModelPicker.swift:542).
  *
- * Sized to a 32dp target and given its own click surface so it never competes
+ * Sized to a 40dp target and given its own click surface so it never competes
  * with the row's select gesture: tapping the row picks the model, tapping the
- * bolt tests it without changing the selection.
+ * bolt tests it without changing the selection. The glyph stays 17dp — only
+ * the touch slop grew.
  */
 @Composable
 private fun QuickTestButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(32.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -1287,6 +1302,26 @@ private fun QuickTestButton(onClick: () -> Unit) {
             modifier = Modifier.size(17.dp),
         )
     }
+}
+
+/**
+ * [ui-redesign-picker] One compact meta-badge recipe for the sheet
+ * ("Default", "Active"). The 9sp capsule lived inline at three call sites —
+ * the skill's review checklist flags scattered `fontSize = ` literals, so it
+ * is centralized here instead.
+ */
+@Composable
+private fun PickerBadge(text: String, color: Color) {
+    Text(
+        text,
+        fontSize = 9.sp,
+        lineHeight = 11.sp,
+        fontWeight = FontWeight.Medium,
+        color = color,
+        modifier = Modifier
+            .background(color.copy(alpha = 0.1f), RoundedCornerShape(50))
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+    )
 }
 
 // iOS: provider color dot helper
