@@ -1,5 +1,6 @@
 package ai.unicto.unibot.swarm
 
+import ai.unicto.unibot.data.model.AgentToolDefinition
 import ai.unicto.unibot.data.model.LLMMessage
 import ai.unicto.unibot.data.model.LLMStreamChunk
 import ai.unicto.unibot.data.model.LLMError
@@ -154,6 +155,9 @@ class SwarmEngine(
                     // v1.5 bug 5 — token budget for this run; the engine
                     // field lives on SwarmUiState (engine worker's side).
                     tokenBudget = options.tokenBudget,
+                    // Per-role permissions for this run (OpenDots-style):
+                    // stored on the run so a resumed mission keeps them.
+                    rolePermissions = options.rolePermissions,
                 ),
             )
             if (!transitionTo(SwarmLifecycle.PLANNING)) return false
@@ -626,6 +630,7 @@ class SwarmEngine(
             user = workerPrompt(role, mission, subtask, prior, steering, docs),
             maxTokens = workerMaxOutputTokens,
             stepLabel = "worker:${role.id}",
+            roleId = role.id,
         )
         addTokens(index, output)
         logAgent(
@@ -682,6 +687,7 @@ class SwarmEngine(
                     user = revisionPrompt(role, mission, subtask, prior, output.text, verdict.reason, steering, docs),
                     maxTokens = workerMaxOutputTokens,
                     stepLabel = "worker:${role.id}:revision",
+                    roleId = role.id,
                 )
                 addTokens(index, revised)
                 logAgent(
@@ -712,11 +718,13 @@ class SwarmEngine(
         val useVerifierRole =
             workerRoleId != SwarmRoles.VERIFIER && crewRoles.contains(SwarmRoles.VERIFIER)
         val system = if (useVerifierRole) SwarmRoles.verifier.systemPrompt else MANAGER_VERIFY_SYSTEM
+        val verifyRoleId = if (useVerifierRole) SwarmRoles.VERIFIER else null
         val first = callLlm(
             system = system,
             user = verifyPrompt(mission, subtask, output),
             maxTokens = VERIFY_MAX_OUTPUT_TOKENS,
             stepLabel = "verify:$workerRoleId",
+            roleId = verifyRoleId,
         )
         val firstVerdict = parseVerify(first.text)
         if (!firstVerdict.unclear) return firstVerdict to first
@@ -731,6 +739,7 @@ class SwarmEngine(
             user = verifyPrompt(mission, subtask, output),
             maxTokens = VERIFY_MAX_OUTPUT_TOKENS,
             stepLabel = "verify:$workerRoleId:retry",
+            roleId = verifyRoleId,
         )
         val combined = LlmCallResult(
             text = second.text,
@@ -764,6 +773,8 @@ class SwarmEngine(
         user: String,
         maxTokens: Int,
         stepLabel: String,
+        /** Crew role making this call; null for manager calls (plan/stitch). */
+        roleId: String? = null,
     ): LlmCallResult = withContext(Dispatchers.IO) {
         // [T-android-v129-corrupt-limit] Route the cap through the provider's
         // corruption-proof effectiveMaxOutputTokens — a poisoned saved
@@ -788,7 +799,7 @@ class SwarmEngine(
         while (attempts < MAX_LLM_ATTEMPTS) {
             attempts++
             try {
-                return@withContext streamSingleCall(system, user, cap, stepLabel, attempts)
+                return@withContext streamSingleCall(system, user, cap, stepLabel, attempts, roleId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SwarmBudgetReachedException) {
@@ -822,17 +833,25 @@ class SwarmEngine(
         cap: Int,
         stepLabel: String,
         attempts: Int,
+        roleId: String? = null,
     ): LlmCallResult {
         val sb = StringBuilder()
         // v1.5 Bug 6 — MAX-per-field accumulation (see SwarmUsageAccumulator),
         // not a sum over chunks.
         val usage = SwarmUsageAccumulator()
+        // Per-role permission gate (OpenDots-style): a role with tools
+        // disabled always gets an empty tool list — its model can only
+        // reason, never act. The gate lives here, at the single provider
+        // choke point, so no call path can bypass it.
+        val permission = _uiState.value.rolePermissions.forRole(roleId ?: MANAGER_ROLE_ID)
+        val tools: List<AgentToolDefinition> =
+            if (permission.toolsEnabled) roleTools(roleId) else emptyList()
         try {
             provider.streamMessage(
                 messages = listOf(LLMMessage(LLMMessage.Role.USER, user)),
                 systemPrompt = system,
                 maxTokens = cap,
-                tools = emptyList(), // v1.3.0: workers are reasoning-only, no tools.
+                tools = tools,
             ).collect { chunk ->
                 when (chunk) {
                     is LLMStreamChunk.Text -> sb.append(chunk.text)
@@ -861,6 +880,26 @@ class SwarmEngine(
     }
 
     // ─── checkpointing ────────────────────────────────────────────────────
+
+    /**
+     * Tool set for a role whose "Use tools" permission is on. No tool sets
+     * ship in this version — workers are reasoning-only, and every role
+     * prompt says so explicitly — so this returns empty. The permission
+     * gate in [streamSingleCall] is enforced regardless, so flipping the
+     * toggle can never silently grant tools that don't exist; role tool
+     * sets plug in here when they ship.
+     */
+    private fun roleTools(roleId: String?): List<AgentToolDefinition> = emptyList()
+
+    /**
+     * OpenDots-style risky-call policy for [roleId] (null = manager).
+     * Returns true when a risky tool call should raise an approval prompt,
+     * false when it must be denied outright. Consulted by the tool-execution
+     * path; with no tool sets shipped yet every role is reasoning-only, so
+     * this is the documented choke point the future executor must call.
+     */
+    fun shouldPromptForRiskyCall(roleId: String?): Boolean =
+        _uiState.value.rolePermissions.forRole(roleId ?: MANAGER_ROLE_ID).askBeforeRisky
 
     private fun currentPlan(): List<String> = subtasks
 
@@ -965,6 +1004,12 @@ class SwarmEngine(
 
         /** v1.4.0 item 8 — cap on transcript log entries per agent. */
         private const val MAX_LOG_ENTRIES_PER_AGENT = 50
+
+        /**
+         * Role id used for manager calls (plan decomposition, stitching)
+         * which belong to no crew role. Permissions fall back to defaults.
+         */
+        private const val MANAGER_ROLE_ID = "manager"
 
         private val LOG_TIME_FORMAT = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
 

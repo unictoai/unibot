@@ -56,6 +56,7 @@ import ai.unicto.unibot.swarm.SwarmAttachment
 import ai.unicto.unibot.swarm.SwarmCrewPreset
 import ai.unicto.unibot.swarm.SwarmMissionRecord
 import ai.unicto.unibot.swarm.SwarmPrefs
+import ai.unicto.unibot.swarm.SwarmRolePermission
 import ai.unicto.unibot.swarm.SwarmRoles
 import ai.unicto.unibot.swarm.SwarmTemplate
 import ai.unicto.unibot.ui.components.EmptyState
@@ -506,6 +507,61 @@ private fun SettingsSwitchRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
         )
+    }
+}
+
+// ─── Role permissions (OpenDots-style) ────────────────────────────────────
+
+/**
+ * Per-role permission toggles for the mission composer. Two switches per
+ * crew role: "Use tools" and "Ask before risky actions". The map is owned
+ * by the composer (per-mission, not prefs) and flows into
+ * [SwarmLaunchOptions.rolePermissions] at launch.
+ */
+@Composable
+internal fun SwarmPermissionsSection(
+    roles: List<String>,
+    permissions: Map<String, SwarmRolePermission>,
+    onPermissionsChange: (Map<String, SwarmRolePermission>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        SwarmSectionHeader(title = "Role permissions")
+        Text(
+            text = "Applies to this mission only.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        roles.forEach { roleId ->
+            val role = SwarmRoles.byId(roleId) ?: SwarmRoles.fallback(roleId)
+            val perm = permissions[roleId] ?: SwarmRolePermission(roleId)
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                Text(
+                    text = role.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                SettingsSwitchRow(
+                    title = "Use tools",
+                    description = "Let the ${role.displayName} call tools instead of reasoning only.",
+                    checked = perm.toolsEnabled,
+                    onCheckedChange = {
+                        onPermissionsChange(permissions + (roleId to perm.copy(toolsEnabled = it)))
+                    },
+                )
+                SettingsSwitchRow(
+                    title = "Ask before risky actions",
+                    description = "Show an approval card for risky actions. " +
+                        "When off, risky actions are denied instead.",
+                    checked = perm.askBeforeRisky,
+                    onCheckedChange = {
+                        onPermissionsChange(permissions + (roleId to perm.copy(askBeforeRisky = it)))
+                    },
+                )
+            }
+        }
     }
 }
 

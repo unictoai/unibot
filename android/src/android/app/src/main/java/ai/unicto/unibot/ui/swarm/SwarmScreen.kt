@@ -87,6 +87,7 @@ import ai.unicto.unibot.swarm.SwarmLaunchOptions
 import ai.unicto.unibot.swarm.SwarmLifecycle
 import ai.unicto.unibot.swarm.SwarmPrefs
 import ai.unicto.unibot.swarm.SwarmRepository
+import ai.unicto.unibot.swarm.SwarmRolePermission
 import ai.unicto.unibot.swarm.SwarmUiState
 import ai.unicto.unibot.swarm.SwarmViewModel
 import ai.unicto.unibot.ui.plan.PlanChecklistCard
@@ -287,6 +288,9 @@ private fun SwarmIdleView(
     var mission by remember { mutableStateOf(initialMission ?: "") }
     var presetId by remember { mutableStateOf("research") }
     var attachments by remember { mutableStateOf(listOf<SwarmAttachment>()) }
+    // Per-role permissions for this mission (OpenDots-style). Keyed by
+    // role id; roles without an entry use safe defaults at launch.
+    var rolePermissions by remember { mutableStateOf(mapOf<String, SwarmRolePermission>()) }
     // v1.4.0 — run settings live in the repository; composer defaults
     // follow them.
     var prefs by remember(repository) {
@@ -366,6 +370,9 @@ private fun SwarmIdleView(
                             maxWorkers = prefs.maxWorkers,
                             tokenBudget = prefs.tokenBudget,
                             attachments = attachments,
+                            rolePermissions = preset.roles.map { roleId ->
+                                rolePermissions[roleId] ?: SwarmRolePermission(roleId)
+                            },
                         ),
                     )
                 },
@@ -406,6 +413,15 @@ private fun SwarmIdleView(
                     customCrews = repository?.listCustomCrews().orEmpty()
                     if (presetId == doomed.id) presetId = SWARM_PRESETS.first().id
                 },
+            )
+        }
+        // Per-role permissions (OpenDots-style): what each agent in the
+        // selected crew may do on this mission.
+        item {
+            SwarmPermissionsSection(
+                roles = preset.roles,
+                permissions = rolePermissions,
+                onPermissionsChange = { rolePermissions = it },
             )
         }
         // v1.4.0 items 2, 3, 11 — run settings.
@@ -542,6 +558,76 @@ private fun ErrorCard(
     }
 }
 
+/**
+ * Prominent interrupted state (OpenDots-style explicit "Interrupted" with
+ * retry): icon + headline, where the run stands, and a full-width
+ * "Retry from checkpoint" button that resumes the run. Shown in the
+ * active run view whenever the engine parked at PAUSED with a resumable
+ * checkpoint — the same condition that previously rendered plain text.
+ */
+@Composable
+private fun InterruptedCard(
+    state: SwarmUiState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val doneCount = state.agents.count { it.status == SwarmAgentStatus.DONE }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = "Interrupted",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = "Resume to continue from the last checkpoint.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (state.agents.isNotEmpty()) {
+                        Text(
+                            text = "$doneCount of ${state.agents.size} agents finished · " +
+                                "${formatTokens(state.totalTokens)} used",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+            Button(
+                onClick = onRetry,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.size(8.dp))
+                Text("Retry from checkpoint")
+            }
+        }
+    }
+}
+
 @Composable
 private fun MissionComposer(
     mission: String,
@@ -623,12 +709,11 @@ private fun SwarmActiveView(
                 )
             }
             // Restored from a checkpoint (the engine lands these at PAUSED):
-            // say plainly where the run stands.
+            // say plainly where the run stands, with a prominent retry.
             if (state.canResume && !state.awaitingApproval) {
-                Text(
-                    text = "Interrupted — resume to continue from the last checkpoint.",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                InterruptedCard(
+                    state = state,
+                    onRetry = onResume,
                 )
             }
             // v1.5 bug 5 — a run that paused at its token budget lands at

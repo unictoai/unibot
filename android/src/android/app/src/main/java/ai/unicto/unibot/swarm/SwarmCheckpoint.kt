@@ -72,6 +72,12 @@ data class SwarmCheckpointData(
      * already covers the reverse direction.
      */
     val tokenBudget: Int = DEFAULT_TOKEN_BUDGET,
+    /**
+     * Per-role permissions for the run. Defaulted so older checkpoint blobs
+     * still decode; a resumed run without stored permissions behaves as
+     * defaults (no tools, prompt on risky).
+     */
+    val rolePermissions: List<SwarmRolePermission> = emptyList(),
 ) {
     companion object {
         const val CURRENT_VERSION = 2
@@ -129,6 +135,7 @@ object SwarmCheckpoint {
                 SwarmAttachmentCheckpoint(id = it.id, name = it.name, text = it.text)
             },
             tokenBudget = state.tokenBudget,
+            rolePermissions = state.rolePermissions,
         )
     }
 
@@ -204,6 +211,7 @@ object SwarmCheckpoint {
                 SwarmAttachment(id = it.id, name = it.name, text = it.text)
             },
             tokenBudget = data.tokenBudget,
+            rolePermissions = data.rolePermissions,
         )
     }
 }

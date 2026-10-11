@@ -36,6 +36,12 @@ data class SwarmLaunchOptions(
     val tokenBudget: Int = 150_000,
     /** Documents the workers should read as mission context (v1.4.0 item 10). */
     val attachments: List<SwarmAttachment> = emptyList(),
+    /**
+     * Per-role permissions for this mission (OpenDots-style). Empty means
+     * defaults for every role: no tools, prompt before risky actions.
+     * Stored on the run so a resumed mission keeps its permissions.
+     */
+    val rolePermissions: List<SwarmRolePermission> = emptyList(),
 )
 
 /**

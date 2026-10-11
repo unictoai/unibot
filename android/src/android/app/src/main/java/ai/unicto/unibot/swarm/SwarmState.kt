@@ -95,4 +95,11 @@ data class SwarmUiState(
      * disables the guard.
      */
     val tokenBudget: Int = DEFAULT_TOKEN_BUDGET,
+    /**
+     * Per-role permissions for this run (OpenDots-style): which roles may
+     * use tools and whether risky calls prompt. Set at launch from
+     * [SwarmLaunchOptions.rolePermissions]; persisted through the
+     * checkpoint so a resumed run keeps its permissions.
+     */
+    val rolePermissions: List<SwarmRolePermission> = emptyList(),
 )

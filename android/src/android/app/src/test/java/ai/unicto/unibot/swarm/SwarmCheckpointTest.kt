@@ -125,4 +125,42 @@ class SwarmCheckpointTest {
         store.clear()
         assertNull(store.load())
     }
+
+    @Test
+    fun `role permissions survive the checkpoint round-trip`() {
+        val perms = listOf(
+            SwarmRolePermission("researcher", toolsEnabled = true, askBeforeRisky = false),
+            SwarmRolePermission("verifier"),
+        )
+        val data = SwarmCheckpoint.fromUiState(
+            runningState().copy(rolePermissions = perms),
+            listOf("s1", "s2"),
+        )!!
+        val decoded = SwarmCheckpoint.decode(SwarmCheckpoint.encode(data))!!
+        assertEquals(perms, decoded.rolePermissions)
+        val restored = SwarmCheckpoint.toUiState(decoded)!!
+        assertEquals(perms, restored.rolePermissions)
+    }
+
+    @Test
+    fun `forRole falls back to safe defaults for unconfigured roles`() {
+        val perms = listOf(SwarmRolePermission("researcher", toolsEnabled = true))
+        val fallback = perms.forRole("writer")
+        assertEquals("writer", fallback.roleId)
+        assertFalse(fallback.toolsEnabled)
+        assertTrue(fallback.askBeforeRisky)
+        assertTrue(perms.forRole("researcher").toolsEnabled)
+    }
+
+    @Test
+    fun `old checkpoint blobs without permissions still decode`() {
+        val data = SwarmCheckpoint.fromUiState(runningState(), listOf("s1", "s2"))!!
+        // Simulate a pre-permissions blob by dropping the field from the JSON.
+        val json = SwarmCheckpoint.encode(data).replace(
+            Regex(""""rolePermissions":\[[^]]*],?"""), ""
+        )
+        val decoded = SwarmCheckpoint.decode(json)
+        assertNotNull(decoded)
+        assertEquals(emptyList<SwarmRolePermission>(), decoded!!.rolePermissions)
+    }
 }
