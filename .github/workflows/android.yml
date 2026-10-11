@@ -9,6 +9,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    # Manual runs (Actions tab → Run workflow) always build the debug APK,
+    # bypassing the path filter below. After an infra-cancelled run, prefer
+    # "Re-run cancelled jobs" on that run — or this dispatch — over pushing
+    # a trigger commit.
 
 concurrency:
   group: android-${{ github.ref }}
