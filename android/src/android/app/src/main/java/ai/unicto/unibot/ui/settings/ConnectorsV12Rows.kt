@@ -61,7 +61,6 @@ import ai.unicto.unibot.connectors.nextcloud.NextcloudConnector
 import ai.unicto.unibot.connectors.podcasts.PodcastsConnector
 import ai.unicto.unibot.connectors.steam.SteamConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
-import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.theme.successPop
 import ai.unicto.unibot.ui.util.rememberHaptic
 import kotlinx.coroutines.launch
@@ -77,12 +76,9 @@ import kotlinx.coroutines.launch
  * access" disclosure. No dead buttons, no dev strings.
  */
 
-private var v12StaggerCursor = 0
-
 /** Section hosting all eight Batch C rows. Call from ConnectorsScreen. */
 @Composable
 fun ConnectorsV12BatchC() {
-    v12StaggerCursor = 0
     Column(modifier = Modifier.fillMaxWidth()) {
         ImapSmtpRow()
         NextcloudRow()
@@ -196,7 +192,6 @@ private fun V12RowShell(
     onDisconnected: () -> Unit,
     hideDisconnect: Boolean = false,
     showStoredNote: Boolean = true,
-    staggerIndex: Int = v12StaggerCursor++,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -209,7 +204,6 @@ private fun V12RowShell(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(

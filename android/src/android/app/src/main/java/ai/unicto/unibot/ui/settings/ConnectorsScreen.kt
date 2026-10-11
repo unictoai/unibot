@@ -88,7 +88,6 @@ import ai.unicto.unibot.connectors.discord.DiscordConnector
 import ai.unicto.unibot.connectors.slack.SlackConnector
 import ai.unicto.unibot.ui.components.UnibotTextButton
 import ai.unicto.unibot.ui.theme.Motion
-import ai.unicto.unibot.ui.theme.staggeredEntrance // [Wave 9b] entrance choreography
 import ai.unicto.unibot.ui.theme.successPop // [Wave 9b] connect celebration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -112,13 +111,7 @@ fun ConnectorsScreen(
         SettingsSection(
             header = stringResource(R.string.ub_connectors_section),
             footer = stringResource(R.string.ub_connectors_footer),
-            // [Wave 9b] Section (header + card) enters first; rows cascade
-            // after it via the stagger cursor reset below.
-            modifier = Modifier.staggeredEntrance(0),
         ) {
-            // [Wave 9b] Reset the entrance cascade — rows claim indices 1..N
-            // in composition order through their default staggerIndex.
-            connectorStaggerCursor = 1
             ConnectorRow(
                 logoRes = R.drawable.ic_connector_gmail,
                 name = stringResource(R.string.ub_connectors_gmail),
@@ -559,17 +552,6 @@ private fun DataAccessDisclosure(dataAccess: String) {
     }
 }
 
-/**
- * [Wave 9b] Stagger-index cursor for the connector rows below. Every row on
- * this screen is a direct child of the single SettingsSection, composed in
- * call order, so each row claims the next entrance index through its default
- * [staggerIndex] argument — no call-site changes needed. The cursor is reset
- * at the top of the section content on every composition, keeping indices
- * stable across recompositions (each row's entrance animation is remembered
- * per call site regardless).
- */
-private var connectorStaggerCursor = 0
-
 @Composable
 private fun ConnectorRow(
     logoRes: Int,
@@ -582,8 +564,6 @@ private fun ConnectorRow(
     onDisconnect: suspend (android.content.Context) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
     dataAccess: String,
-    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
-    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -616,9 +596,6 @@ private fun ConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
-            // [Wave 9b] Rows cascade in by index (claimed in composition
-            // order via the default staggerIndex argument).
-            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -747,8 +724,6 @@ private fun TokenConnectorRow(
     onDisconnect: suspend (android.content.Context) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
     dataAccess: String,
-    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
-    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -782,9 +757,6 @@ private fun TokenConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
-            // [Wave 9b] Rows cascade in by index (claimed in composition
-            // order via the default staggerIndex argument).
-            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -933,8 +905,6 @@ private fun ToggleConnectorRow(
     onToggle: (android.content.Context, Boolean) -> Unit,
     // [v1.0-wave5-privacy] Honest one-liner for the "What it can access" disclosure.
     dataAccess: String,
-    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
-    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     // [Wave 9b] Haptic audit: the switch gets a toggle tick.
@@ -956,9 +926,6 @@ private fun ToggleConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
-            // [Wave 9b] Rows cascade in by index (claimed in composition
-            // order via the default staggerIndex argument).
-            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -1010,8 +977,6 @@ private fun ToggleConnectorRow(
  */
 @Composable
 private fun WhatsAppConnectorRow(
-    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
-    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     // [Wave 9b] Haptic audit: the reader switch gets a toggle tick.
@@ -1041,9 +1006,6 @@ private fun WhatsAppConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
-            // [Wave 9b] Rows cascade in by index (claimed in composition
-            // order via the default staggerIndex argument).
-            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -1144,8 +1106,6 @@ private fun WhatsAppConnectorRow(
  */
 @Composable
 private fun RssConnectorRow(
-    // [Wave 9b] Entrance cascade index; defaults to the next cursor value.
-    staggerIndex: Int = connectorStaggerCursor++,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1176,9 +1136,6 @@ private fun RssConnectorRow(
                 scaleX = pulseScale.value
                 scaleY = pulseScale.value
             }
-            // [Wave 9b] Rows cascade in by index (claimed in composition
-            // order via the default staggerIndex argument).
-            .staggeredEntrance(staggerIndex)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(

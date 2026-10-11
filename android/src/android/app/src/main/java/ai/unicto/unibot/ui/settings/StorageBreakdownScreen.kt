@@ -49,7 +49,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.ui.theme.animationsEnabled
-import ai.unicto.unibot.ui.theme.staggeredEntrance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -136,7 +135,7 @@ fun StorageBreakdownScreen(
         }
 
         val total = categories.sumOf { it.bytes }.coerceAtLeast(1L)
-        SettingsSection(modifier = Modifier.staggeredEntrance(0)) {
+        SettingsSection(modifier = Modifier) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -152,7 +151,7 @@ fun StorageBreakdownScreen(
             }
         }
 
-        SettingsSection(modifier = Modifier.staggeredEntrance(1)) {
+        SettingsSection(modifier = Modifier) {
             categories.forEachIndexed { index, cat ->
                 BreakdownRow(
                     category = cat,

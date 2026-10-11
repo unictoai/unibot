@@ -50,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ai.unicto.unibot.i18n.uppercaseForDisplay
 
 /**
  * Shared primitives for settings pages. Grouped-card layout (iOS/ChatGPT style).

@@ -33,11 +33,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -82,7 +80,9 @@ fun MuseTopAppBar(
                 .padding(horizontal = 64.dp),
         ) {
             CompositionLocalProvider(
-                LocalTextStyle provides TextStyle(
+                // unibot: semantic role + minimal overrides — the exact 17sp
+                // semibold look, but font-size accessibility scaling flows.
+                LocalTextStyle provides MaterialTheme.typography.titleMedium.copy(
                     fontSize = 17.sp,
                     lineHeight = 22.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -120,10 +120,11 @@ fun MuseTopAppBar(
  */
 @Composable
 fun MuseDisc(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    // unibot: depth is tonal — the surface already reads against the canvas,
+    // so the drop shadow is gone (cheap, and flatter like the rest of the bar).
     Box(
         modifier = modifier
             .size(48.dp)
-            .shadow(2.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
             .clip(CircleShape)
             .background(MuseTones.surface),
         contentAlignment = Alignment.Center,
@@ -178,8 +179,7 @@ fun MuseRow(
         }
         Text(
             text = title,
-            fontSize = 16.sp,
-            lineHeight = 21.sp,
+            style = MaterialTheme.typography.bodyLarge,
             color = titleColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -188,8 +188,7 @@ fun MuseRow(
         if (value != null) {
             Text(
                 text = value,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -223,8 +222,7 @@ fun MuseRowDivider(inset: Dp = 56.dp) {
 fun MuseCaption(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(horizontal = 32.dp, vertical = 8.dp),
     )
@@ -235,10 +233,10 @@ fun MuseCaption(text: String, modifier: Modifier = Modifier) {
 fun MuseSectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(start = 32.dp, end = 32.dp, top = 18.dp, bottom = 8.dp),
+        // unibot: 24dp top — same section rhythm as SettingsSection headers.
+        modifier = modifier.padding(start = 32.dp, end = 32.dp, top = 24.dp, bottom = 8.dp),
     )
 }
 

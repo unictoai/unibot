@@ -4,7 +4,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,14 +39,13 @@ fun BatterySaverRow() {
     val enabled by BatterySaverStore.enabled.collectAsState()
     MuseRow(
         title = stringResource(R.string.v12g_battery_saver_title),
-        value = stringResource(
-            if (enabled) R.string.v12g_battery_saver_on_sub
-            else R.string.v12g_battery_saver_off_sub,
-        ),
+        // unibot: no "On — …" text next to the switch — the switch already
+        // shows state. Keep the description when off.
+        value = if (enabled) null else stringResource(R.string.v12g_battery_saver_off_sub),
         icon = Icons.Outlined.Eco,
         chevron = false,
         trailing = {
-            Switch(
+            SettingsSwitch(
                 checked = enabled,
                 onCheckedChange = { BatterySaverStore.setEnabled(context, it) },
             )

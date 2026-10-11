@@ -4,7 +4,6 @@ import ai.unicto.unibot.local.FactMemory
 import ai.unicto.unibot.local.FactMemoryStore
 import ai.unicto.unibot.ui.components.EmptyState
 import ai.unicto.unibot.ui.home.MuseTones
-import ai.unicto.unibot.ui.theme.staggeredEntrance
 import ai.unicto.unibot.ui.util.rememberHaptic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -113,7 +112,6 @@ fun FactMemoriesScreen(onBack: () -> Unit) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .staggeredEntrance(index)
                             .clip(RoundedCornerShape(14.dp))
                             .background(MaterialTheme.colorScheme.surfaceContainerLow)
                             .padding(12.dp),

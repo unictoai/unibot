@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import ai.unicto.unibot.R
 import ai.unicto.unibot.backup.ScheduledBackup
 import ai.unicto.unibot.ui.components.UnibotButton
-import ai.unicto.unibot.ui.theme.staggeredEntrance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -101,7 +100,6 @@ fun ScheduledBackupScreen(onBack: () -> Unit) {
 
     SettingsScaffold(title = stringResource(R.string.v12g_sched_backup_title), onBack = onBack) {
         SettingsSection(
-            modifier = Modifier.staggeredEntrance(0),
             footer = stringResource(R.string.v12g_sched_backup_enable_sub),
         ) {
             SettingsSwitchRow(
@@ -116,7 +114,6 @@ fun ScheduledBackupScreen(onBack: () -> Unit) {
         if (config.enabled) {
             SettingsSection(
                 header = stringResource(R.string.v12g_sched_backup_frequency),
-                modifier = Modifier.staggeredEntrance(1),
             ) {
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier
@@ -139,7 +136,6 @@ fun ScheduledBackupScreen(onBack: () -> Unit) {
 
             SettingsSection(
                 header = stringResource(R.string.v12g_sched_backup_time),
-                modifier = Modifier.staggeredEntrance(2),
             ) {
                 Row(
                     modifier = Modifier
@@ -153,7 +149,6 @@ fun ScheduledBackupScreen(onBack: () -> Unit) {
 
             SettingsSection(
                 header = stringResource(R.string.v12g_sched_backup_destination),
-                modifier = Modifier.staggeredEntrance(3),
             ) {
                 val destSubtitle = config.treeUri?.let { prettyTreeName(it) }
                     ?: stringResource(R.string.v12g_sched_backup_dest_private)
@@ -175,7 +170,6 @@ fun ScheduledBackupScreen(onBack: () -> Unit) {
 
             SettingsSection(
                 header = stringResource(R.string.v12g_sched_backup_last_run),
-                modifier = Modifier.staggeredEntrance(4),
             ) {
                 val lastText = if (config.lastRunMs == 0L) {
                     stringResource(R.string.v12g_sched_backup_never)
@@ -233,7 +227,6 @@ fun ScheduledBackupScreen(onBack: () -> Unit) {
 
         SettingsSection(
             footer = stringResource(R.string.v12g_sched_backup_footer),
-            modifier = Modifier.staggeredEntrance(5),
         ) {
             // Footer-only section: keeps the encryption callout visually grouped.
         }
