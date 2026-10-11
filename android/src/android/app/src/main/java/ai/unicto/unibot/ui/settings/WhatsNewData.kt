@@ -15,6 +15,15 @@ data class WhatsNewEntry(
 
 val WHATS_NEW: List<WhatsNewEntry> = listOf(
     WhatsNewEntry(
+        version = "v1.5.1",
+        date = "2026-10-11",
+        highlights = listOf(
+            "Cleaner chat bar: the Swarm button is gone from the top bar.",
+            "Payment errors (402) now offer \"Find a free model\" — the picker opens pre-filtered to free models.",
+            "Model picker search pre-fills from where you opened it, so free models surface immediately.",
+        ),
+    ),
+    WhatsNewEntry(
         version = "v1.5.0",
         date = "2026-10-10",
         highlights = listOf(
