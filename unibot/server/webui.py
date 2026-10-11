@@ -350,9 +350,7 @@ class WebUI:
         sid = self._stream_ids.pop(thread, None)
         self._stream_buf.pop(thread, None)
         if sid is not None:
-            self.bus.publish(
-                {"kind": "stream_end", "thread": thread, "id": sid, "discard": True}
-            )
+            self.bus.publish({"kind": "stream_end", "thread": thread, "id": sid, "discard": True})
 
     def on_assistant_message(self, content: str | None, reasoning: str | None) -> None:
         thread = self.thread()

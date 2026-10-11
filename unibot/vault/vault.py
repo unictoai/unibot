@@ -20,11 +20,10 @@ from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
-PLACEHOLDER_RE = re.compile(r"\{\{\s*vault:([A-Za-z0-9_.-]+)\s*\}\}")
-
-
 from unibot.fsutil import atomic_write_bytes as _atomic_write
 from unibot.logger import logger
+
+PLACEHOLDER_RE = re.compile(r"\{\{\s*vault:([A-Za-z0-9_.-]+)\s*\}\}")
 
 try:  # POSIX inter-process lock for the vault file
     import fcntl

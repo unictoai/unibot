@@ -324,11 +324,7 @@ class Sandbox:
             # roots bound before it (the default workspace lives under the data
             # dir) — bind them again underneath, like the read-only roots below
             for root in roots:
-                if (
-                    self.data_dir
-                    and root != self.data_dir
-                    and root.is_relative_to(self.data_dir)
-                ):
+                if self.data_dir and root != self.data_dir and root.is_relative_to(self.data_dir):
                     args += ["--bind-try", str(root), str(root)]
         for root in [*self.ro_roots, *self.shared_ro]:
             under_mask = bool(masked and self.data_dir and root.is_relative_to(self.data_dir))

@@ -141,9 +141,7 @@ class Sentinel:
                     # explicit ask-rule or a tainted egress must not run — deny
                     # rather than wave it through.
                     decision = Decision.DENY
-                    reasons.append(
-                        "auto mode: nobody can approve this call, so it is denied"
-                    )
+                    reasons.append("auto mode: nobody can approve this call, so it is denied")
                 else:
                     decision = Decision.ALLOW
                     reasons.append("auto mode: approval skipped")

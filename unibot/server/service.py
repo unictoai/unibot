@@ -1989,8 +1989,7 @@ class MuseService:
         return {
             "audit": self.app.audit.tail(n),
             "grants": [g.to_dict() for g in s.active_grants()],
-            "tainted": s.tainted
-            or any(t.agent.tainted for t in self.threads.values()),
+            "tainted": s.tainted or any(t.agent.tainted for t in self.threads.values()),
         }
 
     def settings_view(self) -> dict[str, Any]:

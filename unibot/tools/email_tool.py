@@ -58,7 +58,7 @@ def _imap_mailbox(name: str) -> str:
     encoding for non-ASCII mailbox names), quoted when it needs it."""
     _check_imap_text(name, "folder")
     if '"' in name:
-        raise ValueError('folder must not contain \'"\'')
+        raise ValueError("folder must not contain '\"'")
     out: list[str] = []
     for ch in name:
         o = ord(ch)
@@ -70,7 +70,7 @@ def _imap_mailbox(name: str) -> str:
             encoded = base64.b64encode(ch.encode("utf-16-be")).decode("ascii")
             out.append("&" + encoded.rstrip("=").replace("/", ",") + "-")
     text = "".join(out)
-    if any(c in text for c in " (){%*\"\\"):
+    if any(c in text for c in ' (){%*"\\'):
         text = f'"{text}"'
     return text
 

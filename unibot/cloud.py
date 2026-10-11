@@ -132,9 +132,7 @@ class CloudClient:
             data = response.json()
         except ValueError as exc:
             # a 2xx HTML body (captive portal, proxy) is not JSON at all
-            raise CloudError(
-                response.status_code, "bad_response", f"expected JSON: {exc}"
-            ) from exc
+            raise CloudError(response.status_code, "bad_response", f"expected JSON: {exc}") from exc
         return data if isinstance(data, dict) else {"data": data}
 
     # ------------------------------------------------------------------ account

@@ -446,7 +446,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             parts = urlsplit(origin)
             ohost = (parts.hostname or "").lower().rstrip(".")
         except ValueError:
-            raise HTTPException(400, "bad origin")
+            raise HTTPException(400, "bad origin") from None
         if parts.scheme not in ("http", "https", "ws", "wss") or not ohost:
             raise HTTPException(400, "bad origin")
         if ohost in ("localhost", "127.0.0.1", "::1"):

@@ -219,9 +219,7 @@ class MemoryStore:
         ).fetchall()
         items = [self._row(r) for r in rows]
         if items:
-            self._conn.execute(
-                "DELETE FROM memories WHERE content LIKE ? ESCAPE '\\'", (pattern,)
-            )
+            self._conn.execute("DELETE FROM memories WHERE content LIKE ? ESCAPE '\\'", (pattern,))
             self._log("forget_matching", items, None, reason)
             self._conn.commit()
         return len(items)
