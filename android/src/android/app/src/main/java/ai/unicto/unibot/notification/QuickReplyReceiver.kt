@@ -5,7 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.app.RemoteInput
-import ai.unicto.unibot.util.AppLogger
+import ai.unicto.unibot.logging.AppLogger
+import ai.unicto.unibot.ui.chat.ChatViewModelStore
 
 /**
  * Non-exported receiver for notification quick-replies.

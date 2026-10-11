@@ -38,8 +38,9 @@ object QuickReplyHandler {
     const val ACTION_QUICK_REPLY = "ai.unicto.unibot.notification.QUICK_REPLY"
     const val EXTRA_SESSION_ID = "quick_reply_session_id"
 
-    /** RemoteInput result key — the bundle key the typed text arrives under. */
-    private const val KEY_TEXT_REPLY = "key_text_reply"
+    /** RemoteInput result key — the bundle key the typed text arrives under.
+     *  Public: shared with QuickReplyReceiver which reads the reply. */
+    const val KEY_TEXT_REPLY = "key_text_reply"
 
     private const val TAG = "QuickReply"
 
