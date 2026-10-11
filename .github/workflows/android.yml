@@ -12,7 +12,9 @@ on:
     # Manual runs (Actions tab → Run workflow) always build the debug APK,
     # bypassing the path filter below. After an infra-cancelled run, prefer
     # "Re-run cancelled jobs" on that run — or this dispatch — over pushing
-    # a trigger commit.
+    # a trigger commit. If a trigger commit IS pushed, it must touch a
+    # path-filtered file (this file qualifies): an empty commit reports
+    # success without building anything.
 
 concurrency:
   group: android-${{ github.ref }}
