@@ -48,7 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.model.ModelGroup
 import ai.unicto.unibot.data.repository.ProviderRepository
 import ai.unicto.unibot.provider.ChatModelFilter
@@ -187,7 +186,7 @@ fun OnboardingModelSelectionScreen(
                                         .clip(CircleShape)
                                         .background(
                                             if (isSelected) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.surfaceVariant
+                                            else MaterialTheme.colorScheme.surfaceContainerHigh
                                         ),
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -195,7 +194,7 @@ fun OnboardingModelSelectionScreen(
                                         Text(
                                             "${selectionIndex + 1}",
                                             color = MaterialTheme.colorScheme.onPrimary,
-                                            fontSize = 12.sp,
+                                            style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.SemiBold,
                                         )
                                     }

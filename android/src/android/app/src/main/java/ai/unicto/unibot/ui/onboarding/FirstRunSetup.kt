@@ -88,12 +88,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import ai.unicto.unibot.R
 import ai.unicto.unibot.cloud.UnibotCloud
 import ai.unicto.unibot.hands.Hands
-import ai.unicto.unibot.ui.avatar.AgentAvatarDisc
-import ai.unicto.unibot.ui.avatar.AgentMood
 import ai.unicto.unibot.ui.home.MuseTones
 
 /**
- * unibot's first run: a few full pages in Muse's shape, one blue pill each.
+ * unibot's first run: a few full pages, one violet pill each.
  *
  * 1. **Welcome** — the face, what it is, and the notice that matters most: free, open-source,
  *    non-profit, and what signing in gives. *Sign in — free* (a phone number or an e-mail) is the door most people take
@@ -252,12 +250,12 @@ fun FirstRunSetupScreen(
 
 // ── the pages ──────────────────────────────────────────────────────────────
 
-/** The first page: the face, one line on what it is, the notice — bring your own key first, a relay sign-in only as the second door. */
+/** The first page: the mark, one line on what it is, the notice — bring your own key first, a relay sign-in only as the second door. */
 @Composable
 private fun WelcomePage(onAddKey: () -> Unit, onSignIn: () -> Unit) {
     val context = LocalContext.current
     Page(
-        hero = { AgentAvatarDisc(mood = AgentMood.IDLE, discSize = 104.dp) },
+        hero = { HeroGlyph(Icons.Outlined.ChatBubbleOutline) },
         title = stringResource(R.string.ub_setup_title),
         subtitle = stringResource(R.string.ub_welcome_tagline),
         primaryLabel = stringResource(R.string.ub_welcome_own_key),
@@ -314,9 +312,9 @@ private fun PasswordPage(onDone: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MuseTones.action,
-        cursorColor = MuseTones.action,
-        focusedLabelColor = MuseTones.action,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
     )
     val transformation = if (show) VisualTransformation.None else PasswordVisualTransformation()
     Page(
@@ -499,7 +497,7 @@ private fun HandsPage(onDone: () -> Unit) {
 @Composable
 private fun MeetPage(agentName: String, onStart: () -> Unit) {
     Page(
-        hero = { AgentAvatarDisc(mood = AgentMood.IDLE, discSize = 104.dp) },
+        hero = { HeroGlyph(Icons.Outlined.ChatBubbleOutline) },
         title = stringResource(R.string.ub_setup_step_start, agentName),
         subtitle = stringResource(R.string.ub_setup_step_start_sub),
         primaryLabel = stringResource(R.string.ub_setup_start),
@@ -569,13 +567,13 @@ private fun Page(
             Button(
                 onClick = onPrimary,
                 shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action, contentColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
             ) {
                 Text(primaryLabel, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
             if (secondaryLabel != null) {
-                TextButton(onClick = onSecondary) { Text(secondaryLabel, color = MuseTones.action, fontSize = 14.sp) }
+                TextButton(onClick = onSecondary) { Text(secondaryLabel, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp) }
             } else {
                 Spacer(Modifier.height(12.dp))
             }
@@ -595,7 +593,7 @@ private fun Page(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                     modifier = Modifier.height(28.dp),
                 ) {
-                    Text(stringResource(R.string.ub_setup_learn_more), color = MuseTones.action, fontSize = 12.sp)
+                    Text(stringResource(R.string.ub_setup_learn_more), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                 }
             }
         }
@@ -612,20 +610,20 @@ private fun Dots(current: Int, total: Int, modifier: Modifier = Modifier) {
                     .height(6.dp)
                     .width(if (i == current) 18.dp else 6.dp)
                     .clip(CircleShape)
-                    .background(if (i == current) MuseTones.action else MuseTones.hairline),
+                    .background(if (i == current) MaterialTheme.colorScheme.primary else MuseTones.hairline),
             )
         }
     }
 }
 
-/** A glyph on the pale disc, where the face would be. */
+/** A glyph on the pale disc. */
 @Composable
 private fun HeroGlyph(icon: ImageVector) {
     Box(
         modifier = Modifier.size(104.dp).clip(CircleShape).background(MuseTones.disc),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(44.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
     }
 }
 
@@ -679,7 +677,7 @@ private fun PermissionRow(icon: ImageVector, title: String, subtitle: String, ok
                     Text(okLabel, fontSize = 13.sp, color = muted)
                 }
             } else {
-                Text(stringResource(R.string.ub_hands_need_set_up), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MuseTones.action)
+                Text(stringResource(R.string.ub_hands_need_set_up), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
             }
         }
     }

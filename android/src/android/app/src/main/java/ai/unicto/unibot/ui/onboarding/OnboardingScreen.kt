@@ -41,7 +41,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ai.unicto.unibot.data.model.ModelEntry
 import ai.unicto.unibot.data.model.ModelGroup
 import ai.unicto.unibot.data.model.ProviderInstance
@@ -144,7 +143,7 @@ private fun ApiKeyStep(
                         Text(
                             type.displayName,
                             modifier = Modifier.padding(8.dp),
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface,
@@ -302,7 +301,7 @@ private fun ModelSelectionStep(
                                     Text(
                                         "${selectionIndex + 1}",
                                         color = MaterialTheme.colorScheme.onPrimary,
-                                        fontSize = 12.sp,
+                                        style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                     )
                                 }

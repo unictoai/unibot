@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -527,7 +528,7 @@ internal fun SwarmPermissionsSection(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SwarmSectionHeader(title = "Role permissions")
         Text(
@@ -535,33 +536,93 @@ internal fun SwarmPermissionsSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        roles.forEach { roleId ->
-            val role = SwarmRoles.byId(roleId) ?: SwarmRoles.fallback(roleId)
-            val perm = permissions[roleId] ?: SwarmRolePermission(roleId)
-            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                Text(
-                    text = role.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                SettingsSwitchRow(
-                    title = "Use tools",
-                    description = "Let the ${role.displayName} call tools instead of reasoning only.",
-                    checked = perm.toolsEnabled,
-                    onCheckedChange = {
-                        onPermissionsChange(permissions + (roleId to perm.copy(toolsEnabled = it)))
-                    },
-                )
-                SettingsSwitchRow(
-                    title = "Ask before risky actions",
-                    description = "Show an approval card for risky actions. " +
-                        "When off, risky actions are denied instead.",
-                    checked = perm.askBeforeRisky,
-                    onCheckedChange = {
-                        onPermissionsChange(permissions + (roleId to perm.copy(askBeforeRisky = it)))
-                    },
-                )
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                roles.forEachIndexed { index, roleId ->
+                    val role = SwarmRoles.byId(roleId) ?: SwarmRoles.fallback(roleId)
+                    val perm = permissions[roleId] ?: SwarmRolePermission(roleId)
+                    if (index > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = role.displayName,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        PermissionToggleRow(
+                            title = "Use tools",
+                            description = "Let the ${role.displayName} call tools " +
+                                "instead of reasoning only.",
+                            checked = perm.toolsEnabled,
+                            onCheckedChange = {
+                                onPermissionsChange(
+                                    permissions + (roleId to perm.copy(toolsEnabled = it)),
+                                )
+                            },
+                        )
+                        PermissionToggleRow(
+                            title = "Ask before risky actions",
+                            description = "Shows an approval card for risky actions; " +
+                                "when off, risky actions are denied.",
+                            checked = perm.askBeforeRisky,
+                            onCheckedChange = {
+                                onPermissionsChange(
+                                    permissions + (roleId to perm.copy(askBeforeRisky = it)),
+                                )
+                            },
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+/**
+ * Compact two-line toggle row for the grouped permissions card: denser
+ * than [SettingsSwitchRow] so the per-role stack stays scannable.
+ */
+@Composable
+private fun PermissionToggleRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 

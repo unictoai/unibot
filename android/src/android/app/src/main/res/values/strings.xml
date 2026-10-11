@@ -1051,6 +1051,7 @@
     <string name="provider_detail_label">Label</string>
     <string name="provider_detail_manual_bearer_token">Manual Bearer Token</string>
     <string name="provider_detail_use_a_static_bearer_token_instead_of_the">Use a static bearer token instead of the OAuth sign-in flow. </string>
+    <string name="provider_detail_proxy_endpoints_note">Useful with custom proxy endpoints.</string>
     <string name="provider_detail_custom_api_base">Custom API Base</string>
     <string name="provider_detail_auto_append_v1">Auto-append /v1</string>
     <string name="provider_detail_custom_user_agent">Custom User-Agent</string>
@@ -1066,6 +1067,7 @@
     <string name="provider_detail_status">Status</string>
     <string name="provider_detail_enabled">Enabled</string>
     <string name="provider_detail_refresh_models">Refresh Models</string>
+    <string name="provider_detail_refreshing">Refreshing…</string>
     <string name="provider_detail_add_custom_model">Add Custom Model</string>
     <string name="provider_detail_delete_provider">Delete Provider</string>
     <string name="provider_detail_delete_model">Delete Model</string>
@@ -2001,6 +2003,7 @@
     <string name="browser_downloads_failed">Failed</string>
     <string name="browser_downloads_open">Open</string>
     <string name="provider_no_key_required">No key required</string>
+    <string name="provider_list_no_api_key">No API key</string>
     <string name="split_no_conversation_title">No Conversation Selected</string>
     <string name="split_no_conversation_subtitle">Select a conversation or start a new one</string>
     <string name="external_link_blocked">Blocked link to external app (%1$s)</string>

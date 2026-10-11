@@ -469,16 +469,41 @@ private fun SwarmIdleView(
     }
 }
 
+/**
+ * One banner family for the swarm space — resume, warning and error all
+ * share the same layout (icon + title + body + actions) so the newest
+ * states (interrupted, per-mission) read intentional, not bolted-on.
+ * Severity only changes the semantic container color and icon.
+ */
+private enum class SwarmBannerSeverity {
+    Info, Warning, Error
+}
+
 @Composable
-private fun ResumeBanner(
-    onResume: () -> Unit,
-    onDiscard: () -> Unit,
+private fun SwarmBanner(
+    severity: SwarmBannerSeverity,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    body: String,
     modifier: Modifier = Modifier,
+    extra: @Composable (() -> Unit)? = null,
+    actions: @Composable (() -> Unit)? = null,
 ) {
+    val (container, content) = when (severity) {
+        SwarmBannerSeverity.Info ->
+            MaterialTheme.colorScheme.secondaryContainer to
+                MaterialTheme.colorScheme.onSecondaryContainer
+        SwarmBannerSeverity.Warning ->
+            MaterialTheme.colorScheme.tertiaryContainer to
+                MaterialTheme.colorScheme.onTertiaryContainer
+        SwarmBannerSeverity.Error ->
+            MaterialTheme.colorScheme.errorContainer to
+                MaterialTheme.colorScheme.onErrorContainer
+    }
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        color = container,
+        contentColor = content,
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
@@ -490,7 +515,7 @@ private fun ResumeBanner(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Refresh,
+                    imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
                 )
@@ -499,15 +524,38 @@ private fun ResumeBanner(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
-                        text = "A swarm was interrupted",
+                        text = title,
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
-                        text = "Pick up where it left off, or discard it.",
+                        text = body,
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    extra?.invoke()
                 }
             }
+            actions?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    it()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResumeBanner(
+    onResume: () -> Unit,
+    onDiscard: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SwarmBanner(
+        severity = SwarmBannerSeverity.Info,
+        icon = Icons.Filled.PlayArrow,
+        title = "A swarm was interrupted",
+        body = "Pick up where it left off, or discard it.",
+        modifier = modifier,
+        actions = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
@@ -519,8 +567,8 @@ private fun ResumeBanner(
                     Text("Resume")
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -528,34 +576,13 @@ private fun ErrorCard(
     message: String,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Error,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "Something went wrong",
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-    }
+    SwarmBanner(
+        severity = SwarmBannerSeverity.Error,
+        icon = Icons.Filled.Error,
+        title = "Something went wrong",
+        body = message,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -572,46 +599,22 @@ private fun InterruptedCard(
     modifier: Modifier = Modifier,
 ) {
     val doneCount = state.agents.count { it.status == SwarmAgentStatus.DONE }
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Warning,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+    SwarmBanner(
+        severity = SwarmBannerSeverity.Warning,
+        icon = Icons.Filled.Warning,
+        title = "Interrupted",
+        body = "Resume to continue from the last checkpoint.",
+        modifier = modifier,
+        extra = {
+            if (state.agents.isNotEmpty()) {
+                Text(
+                    text = "$doneCount of ${state.agents.size} agents finished · " +
+                        "${formatTokens(state.totalTokens)} used",
+                    style = MaterialTheme.typography.bodySmall,
                 )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = "Interrupted",
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(
-                        text = "Resume to continue from the last checkpoint.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    if (state.agents.isNotEmpty()) {
-                        Text(
-                            text = "$doneCount of ${state.agents.size} agents finished · " +
-                                "${formatTokens(state.totalTokens)} used",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
             }
+        },
+        actions = {
             Button(
                 onClick = onRetry,
                 modifier = Modifier.fillMaxWidth(),
@@ -624,8 +627,8 @@ private fun InterruptedCard(
                 Spacer(Modifier.size(8.dp))
                 Text("Retry from checkpoint")
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -996,14 +999,13 @@ private fun AgentCard(
                         )
                         RoleChip(role = agent.role)
                     }
-                    Text(
-                        text = "Task: ${agent.displayName.ifBlank { roleDisplayName(agent.role) }}",
-                        style = MaterialTheme.typography.bodyMedium,
+                    AgentDetailLine(
+                        label = "Task",
+                        value = agent.displayName.ifBlank { roleDisplayName(agent.role) },
                     )
-                    Text(
-                        text = "Output: ${expectedOutput(agent.role)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    AgentDetailLine(
+                        label = "Output",
+                        value = expectedOutput(agent.role),
                     )
                 }
                 IconButton(
@@ -1134,6 +1136,36 @@ private fun RoleChip(
             text = roleDisplayName(role),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/**
+ * Label/value pair for the agent ID card header: the label stays muted
+ * (secondary information), the value carries full contrast. Keeps the
+ * header readable without decoration.
+ */
+@Composable
+private fun AgentDetailLine(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
         )
     }
 }

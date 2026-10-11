@@ -517,11 +517,15 @@ internal fun InlineErrorBanner(
     var expanded by remember(error) { mutableStateOf(false) }
     var canExpand by remember(error) { mutableStateOf(false) }
     val collapsedLines = if (isRequestTooLarge) 5 else 3
+    // Hairline border gives the card structure on the tinted fill (tonal
+    // depth, not a shadow) — keeps it quiet next to full-contrast chat text.
+    val cardShape = RoundedCornerShape(12.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, UbColors.error.copy(alpha = 0.35f), cardShape)
+            .clip(cardShape)
             .background(UbColors.error.copy(alpha = 0.12f))
             .combinedClickable(
                 onClick = { if (canExpand) expanded = !expanded },
@@ -649,7 +653,7 @@ internal fun InlineErrorBanner(
     }
 }
 
-/** Small red pill button used inside [InlineErrorBanner]. */
+/** Small error-tinted action pill used inside [InlineErrorBanner]. */
 @Composable
 private fun ErrorPillButton(
     icon: ImageVector,
@@ -661,17 +665,21 @@ private fun ErrorPillButton(
             .clip(RoundedCornerShape(50))
             .background(UbColors.error.copy(alpha = 0.15f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 3.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = UbColors.error,
-            modifier = Modifier.size(10.dp),
+            modifier = Modifier.size(12.dp),
         )
         Spacer(modifier = Modifier.width(4.dp))
-        Text(text, color = UbColors.error, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            text,
+            color = UbColors.error,
+            style = MaterialTheme.typography.labelMedium,
+        )
     }
 }
 
