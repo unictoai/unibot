@@ -203,7 +203,9 @@ async def test_mail_watcher_reads_new_messages_by_uid(monkeypatch: pytest.Monkey
     }
     server = _TinyImap(messages)
     server.start()
-    monkeypatch.setattr(imaplib, "IMAP4_SSL", lambda host, port, timeout=None: imaplib.IMAP4(host, port))
+    monkeypatch.setattr(
+        imaplib, "IMAP4_SSL", lambda host, port, timeout=None: imaplib.IMAP4(host, port)
+    )
     settings = EmailSettings(
         enabled=True,
         imap_host="127.0.0.1",
