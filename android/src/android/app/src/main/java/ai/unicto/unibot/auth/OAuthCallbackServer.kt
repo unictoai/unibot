@@ -154,9 +154,17 @@ class OAuthCallbackServer(
                             }
                             if (error != null) {
                                 Log.w(TAG, "Authorization error: $error")
-                                onError?.invoke(error)
-                                stop()
-                                return@Thread
+                                // Security: gate the error path like the code
+                                // path — a forged ?error= must not kill the
+                                // legitimate login. Only stop when the state
+                                // validates (or no gate is set).
+                                val errorValid = isValidCallback?.invoke("", state) ?: true
+                                if (errorValid) {
+                                    onError?.invoke(error)
+                                    stop()
+                                    return@Thread
+                                }
+                                Log.w(TAG, "Ignoring error callback that failed validation; still listening")
                             }
                         }
                         socket.close()

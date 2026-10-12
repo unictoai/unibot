@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -425,9 +426,18 @@ class XAIOAuthManager(context: Context, instanceId: String) : OAuthManager(conte
             val authUrl = buildXAIAuthorizationUrl()
             val expectedState = loadOAuthString("state") ?: ""
 
-            val accessToken = withContext(Dispatchers.IO) {
+            // Security: bound the login so a forged ?error= (or a dropped
+            // callback) can't hang the flow indefinitely.
+            val accessToken = withTimeout(5 * 60 * 1000L) {
+                withContext(Dispatchers.IO) {
                 val (code, state) = suspendCancellableCoroutine<Pair<String, String?>> { cont ->
-                    val server = OAuthCallbackServer(callbackPort) { receivedCode, receivedState ->
+                    // Security: only the callback carrying our state is the
+                    // real one — a forged hit is ignored and the server keeps
+                    // listening, so a malicious app can't kill the login.
+                    val server = OAuthCallbackServer(
+                        callbackPort,
+                        isValidCallback = { _, receivedState -> receivedState == expectedState },
+                    ) { receivedCode, receivedState ->
                         if (cont.isActive) {
                             // Successful redirect — clear the
                             // external-cancel hook before the callback
@@ -499,6 +509,7 @@ class XAIOAuthManager(context: Context, instanceId: String) : OAuthManager(conte
                 }
 
                 exchangeCodeForToken(code)
+                }
             }
 
             Log.i(TAG, "=== xAI OAuth login complete (instance: $instanceId) ===")

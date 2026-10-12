@@ -7,6 +7,7 @@ import ai.unicto.unibot.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -62,10 +63,21 @@ class OpenAIOAuthManager(context: Context, instanceId: String) : OAuthManager(co
         AppLogger.info(TAG, "authorize URL: $redactedAuthUrl")
         AppLogger.info(TAG, "redirect_uri=$redirectUri callbackPort=$callbackPort")
 
-        val accessToken = withContext(Dispatchers.IO) {
+        // Security: bound the login so a forged ?error= (or a dropped
+        // callback) can't hang the flow indefinitely.
+        val accessToken = withTimeout(5 * 60 * 1000L) {
+            withContext(Dispatchers.IO) {
             // Step 1: Wait for callback code
             val (code, state) = suspendCancellableCoroutine<Pair<String, String?>> { cont ->
-                val server = OAuthCallbackServer(callbackPort) { receivedCode, receivedState ->
+                // Security: only the callback carrying our state is the real
+                // one — a forged hit is ignored and the server keeps
+                // listening, so a malicious app can't kill the login.
+                val server = OAuthCallbackServer(
+                    callbackPort,
+                    isValidCallback = { _, receivedState ->
+                        expectedState != null && receivedState == expectedState
+                    },
+                ) { receivedCode, receivedState ->
                     if (cont.isActive) {
                         cont.resume(receivedCode to receivedState)
                     }
@@ -97,11 +109,15 @@ class OpenAIOAuthManager(context: Context, instanceId: String) : OAuthManager(co
                 "callback received: codeLen=${code.length} state=$state expected=$expectedState match=$stateMatches",
             )
             if (!stateMatches) {
-                AppLogger.warning(TAG, "state mismatch — proceeding anyway to mirror prior behaviour")
+                // Security: the isValidCallback gate above should have
+                // filtered this, but hard-fail rather than proceeding — a
+                // mismatched state means the code is not ours.
+                throw Exception("OAuth state mismatch — possible CSRF attack")
             }
 
             // Step 2: Exchange code for tokens (JSON body, matching iOS CodexOAuthManager)
             exchangeCodeJson(code)
+            }
         }
 
         AppLogger.info(TAG, "=== OAuth login complete (instance=$instanceId tokenLen=${accessToken.length}) ===")
