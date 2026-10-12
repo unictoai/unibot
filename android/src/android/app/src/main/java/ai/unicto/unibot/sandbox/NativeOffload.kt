@@ -259,7 +259,13 @@ object NativeOffloadServer {
         val cwd = input.readLEString()
 
         val name = argv.firstOrNull().orEmpty().substringAfterLast('/')
-        Log.d(TAG, "recv pid=$pid name='$name' argc=$argc argv=$argv cwd=$cwd envc=$envc")
+        // Security: argv can carry secrets (e.g. clipboard text with a
+        // password). Never log argv values in release builds.
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "recv pid=$pid name='$name' argc=$argc argv=$argv cwd=$cwd envc=$envc")
+        } else {
+            Log.d(TAG, "recv pid=$pid name='$name' argc=$argc envc=$envc")
+        }
 
         val t0 = System.nanoTime()
         val handler = handlers[name]
