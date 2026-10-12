@@ -128,24 +128,31 @@ class CredentialVault:
         @contextlib.contextmanager
         def _lock():
             lock_path = path.with_suffix(".lock")
+            fh = None
             try:
                 lock_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(lock_path, "w") as fh:
-                    if fcntl is not None:
-                        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-                    elif msvcrt is not None:  # type: ignore[unreachable]  # pragma: no cover - Windows only
-                        msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)  # type: ignore[union-attr]
-                    try:
-                        yield
-                    finally:
-                        if fcntl is not None:
-                            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-                        elif msvcrt is not None:  # type: ignore[unreachable]  # pragma: no cover - Windows only
-                            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)  # type: ignore[union-attr]
+                fh = open(lock_path, "w")
+                if fcntl is not None:
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+                elif msvcrt is not None:  # type: ignore[unreachable]  # pragma: no cover - Windows only
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)  # type: ignore[union-attr]
             except OSError as exc:
                 # a lock that cannot be taken must never break the write itself
                 logger.debug("vault lock unavailable, proceeding unlocked: {}", exc)
+                if fh is not None:
+                    fh.close()
                 yield
+                return
+            try:
+                yield
+            finally:
+                try:
+                    if fcntl is not None:
+                        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+                    elif msvcrt is not None:  # type: ignore[unreachable]  # pragma: no cover - Windows only
+                        msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)  # type: ignore[union-attr]
+                finally:
+                    fh.close()
 
         return _lock()
 

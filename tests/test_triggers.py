@@ -103,7 +103,9 @@ def test_triggers_tool(tmp_path: Path):
 
     r = run(tool.execute(action="create", kind="hook", match="deploy", text="check the site"))
     hook = store.active("hook")[0]
-    assert f"http://phone.local:8787/api/hooks/{hook.id}?key={hook.secret}" in r.output
+    # the secret URL is not shown in chat output; the user copies it from the app
+    assert "copy the webhook URL from the app" in r.output
+    assert hook.secret not in r.output
 
     listed = run(tool.execute(action="list")).output
     assert items[0].id in listed and hook.id in listed
@@ -201,7 +203,7 @@ async def test_mail_watcher_reads_new_messages_by_uid(monkeypatch: pytest.Monkey
     }
     server = _TinyImap(messages)
     server.start()
-    monkeypatch.setattr(imaplib, "IMAP4_SSL", lambda host, port: imaplib.IMAP4(host, port))
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", lambda host, port, timeout=None: imaplib.IMAP4(host, port))
     settings = EmailSettings(
         enabled=True,
         imap_host="127.0.0.1",

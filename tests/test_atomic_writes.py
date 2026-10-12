@@ -78,7 +78,7 @@ def test_vault_failed_write_keeps_original(tmp_path: Path, monkeypatch: pytest.M
     def boom(*args, **kwargs):
         raise OSError("disk exploded")
 
-    monkeypatch.setattr("unibot.vault.vault.tempfile.mkstemp", boom)
+    monkeypatch.setattr("unibot.fsutil.tempfile.mkstemp", boom)
     with pytest.raises(OSError, match="disk exploded"):
         vault.set("B", "new-secret")
     assert (tmp_path / "vault.enc").read_bytes() == before
@@ -92,7 +92,7 @@ def test_vault_key_write_failure_leaves_no_key_file(
     def boom(*args, **kwargs):
         raise OSError("disk exploded")
 
-    monkeypatch.setattr("unibot.vault.vault.tempfile.mkstemp", boom)
+    monkeypatch.setattr("unibot.fsutil.tempfile.mkstemp", boom)
     vault = CredentialVault(tmp_path / "vault.enc", tmp_path / "vault.key")
     with pytest.raises(OSError, match="disk exploded"):
         vault.set("A", "secret-value-1")
@@ -127,7 +127,7 @@ def test_grant_store_failed_write_keeps_original(tmp_path: Path, monkeypatch: py
     def boom(*args, **kwargs):
         raise OSError("disk exploded")
 
-    monkeypatch.setattr("unibot.sentinel.grants.tempfile.mkstemp", boom)
+    monkeypatch.setattr("unibot.fsutil.tempfile.mkstemp", boom)
     with pytest.raises(OSError, match="disk exploded"):
         store.add("send_email", "alice@example.com", "always")
     assert (tmp_path / "grants.json").read_bytes() == before
