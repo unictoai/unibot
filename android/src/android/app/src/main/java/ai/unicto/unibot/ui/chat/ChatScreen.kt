@@ -2685,8 +2685,18 @@ fun ChatScreen(
             .pendingHtmlPreview.value ?: return@LaunchedEffect
         if (pending.sessionId != sessionId) return@LaunchedEffect
         ai.unicto.unibot.deeplink.DeepLinkCoordinator.consumePendingHtmlPreview()
-        val absPath = "/var/minis" + pending.resourcePath
-        val file = java.io.File(absPath)
+        val root = java.io.File("/var/minis")
+        val file = java.io.File(root, pending.resourcePath)
+        // Security: deep-link paths can contain ".." — canonicalize and
+        // require containment under /var/minis before rendering.
+        if (!ai.unicto.unibot.agent.SoulIcon.isContained(file, root)) {
+            ai.unicto.unibot.logging.AppLogger.warning(
+                "ChatScreen",
+                "pinned HTML preview path escapes /var/minis: ${pending.resourcePath}",
+            )
+            return@LaunchedEffect
+        }
+        val absPath = file.absolutePath
         if (!file.exists()) {
             ai.unicto.unibot.logging.AppLogger.warning(
                 "ChatScreen",
