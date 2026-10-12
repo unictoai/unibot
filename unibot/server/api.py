@@ -1529,11 +1529,13 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             raise HTTPException(413, "body too large (64 KB max)")
         if svc.bridge.tokens.get(_bridge_token(request)) is None:
             raise HTTPException(401, "the call token is missing, unknown or expired")
-        raw = b""
-        async for chunk in request.stream():
-            raw += chunk
-            if len(raw) > 64 * 1024:
-                raise HTTPException(413, "body too large (64 KB max)")
+        # Use await request.body() (not request.stream()): the streaming API
+        # can deadlock with uvicorn's ASGI implementation when the client
+        # pipelines the body. The Content-Length pre-check above handles the
+        # DoS case; this post-read check catches lying Content-Lengths.
+        raw = await request.body()
+        if len(raw) > 64 * 1024:
+            raise HTTPException(413, "body too large (64 KB max)")
         try:
             body = json.loads(raw.decode("utf-8"))
         except ValueError as exc:
