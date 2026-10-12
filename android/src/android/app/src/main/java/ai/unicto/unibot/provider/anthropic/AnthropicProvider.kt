@@ -276,7 +276,10 @@ class AnthropicProvider(
                             } catch (_: Exception) {
                                 JSONObject()
                             }
-                            android.util.Log.d("ToolChain[Provider]", "→ ToolCallComplete id=$currentToolId name=$currentToolName args=${args.toString().take(300)}")
+                            // [Security] Tool args may carry secrets — not in release logcat.
+                            if (ai.unicto.unibot.BuildConfig.DEBUG) {
+                                android.util.Log.d("ToolChain[Provider]", "→ ToolCallComplete id=$currentToolId name=$currentToolName args=${args.toString().take(300)}")
+                            }
                             send(LLMStreamChunk.ToolCallComplete(currentToolId!!, currentToolName!!, args))
                             currentToolId = null
                             currentToolName = null
