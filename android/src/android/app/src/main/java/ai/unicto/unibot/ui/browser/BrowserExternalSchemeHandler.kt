@@ -113,13 +113,20 @@ object BrowserExternalSchemeHandler {
      * [T-android-user-initiated-scheme-dispatch] Decide how [scheme] should be
      * routed given who asked for it.
      *
-     * The only asymmetry between the two origins is the final fallback: a
-     * scheme nobody recognizes dispatches for [Origin.USER_INITIATED] (they
-     * tapped it on purpose) and is blocked for [Origin.AGENT_BACKGROUND] (the
-     * page decided, and the user is not even looking at it).
+     * Security: for [Origin.AGENT_BACKGROUND] the page decided the
+     * navigation and the user is not even looking at it — a malicious page
+     * could otherwise fire arbitrary intent:// URLs or yank the user into
+     * other apps with no consent. External schemes therefore dispatch for
+     * [Origin.USER_INITIATED] only; the agent background gets BLOCK.
      */
     internal fun route(scheme: String?, origin: Origin): Route {
         val s = scheme?.lowercase() ?: return Route.LOAD_IN_WEBVIEW
+        // Agent-background pages must never launch external apps.
+        if (origin == Origin.AGENT_BACKGROUND &&
+            (s == INTENT_SCHEME || s == ANDROID_APP_SCHEME || s in EXTERNAL_VIEW_SCHEMES)
+        ) {
+            return Route.BLOCK
+        }
         return when {
             s in INTERNAL_SCHEMES -> Route.LOAD_IN_WEBVIEW
             s == INTENT_SCHEME || s == ANDROID_APP_SCHEME -> Route.PARSE_URI

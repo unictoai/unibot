@@ -7,7 +7,9 @@ import org.junit.Test
 
 /**
  * [T-android-user-initiated-scheme-dispatch] A user tap dispatches any scheme;
- * an agent-driven background navigation still only dispatches known ones.
+ * an agent-driven background navigation dispatches none — external schemes
+ * are blocked for the agent background so a page cannot hurl the user into
+ * another app mid-task.
  *
  * The bug this pins: T318 blocked every scheme outside an 11-entry allowlist
  * to stop the agent's headless browser from throwing the user into another app
@@ -96,11 +98,12 @@ class ExternalSchemeOriginTest {
     // ─── Shared behaviour: identical regardless of origin ────────────────
 
     @Test
-    fun `allowlisted schemes dispatch in both modes`() {
-        // tel/mailto/etc. were never the problem and must not regress.
+    fun `allowlisted schemes dispatch for user taps, block for agent background`() {
+        // tel/mailto/etc. are fine when the user tapped them deliberately.
+        // A page in the agent's background browser must not fire them.
         for (s in listOf("tel", "mailto", "sms", "geo", "market", "weixin")) {
             assertEquals("$s user", Route.VIEW_INTENT, user(s))
-            assertEquals("$s agent", Route.VIEW_INTENT, agent(s))
+            assertEquals("$s agent", Route.BLOCK, agent(s))
         }
     }
 
@@ -113,12 +116,13 @@ class ExternalSchemeOriginTest {
     }
 
     @Test
-    fun `intent and android-app always take the parseUri path`() {
+    fun `intent and android-app parse for user taps, block for agent background`() {
         // These carry an encoded fallback URL and must never be dispatched as
-        // a bare ACTION_VIEW, in either mode.
+        // a bare ACTION_VIEW for user taps. The agent background must not
+        // fire them at all — a page could hurl the user into another app.
         for (s in listOf("intent", "android-app")) {
             assertEquals("$s user", Route.PARSE_URI, user(s))
-            assertEquals("$s agent", Route.PARSE_URI, agent(s))
+            assertEquals("$s agent", Route.BLOCK, agent(s))
         }
     }
 
@@ -128,7 +132,9 @@ class ExternalSchemeOriginTest {
     fun `scheme matching is case-insensitive`() {
         assertEquals(Route.LOAD_IN_WEBVIEW, user("HTTPS"))
         assertEquals(Route.PARSE_URI, user("Intent"))
-        assertEquals(Route.VIEW_INTENT, agent("TEL"))
+        // Agent background blocks allowlisted schemes too (case must not be
+        // a way to smuggle one past the gate).
+        assertEquals(Route.BLOCK, agent("TEL"))
         // Case must not be a way to smuggle a blocked scheme past the agent gate.
         assertEquals(Route.BLOCK, agent("AndroidAmap"))
     }
