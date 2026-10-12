@@ -189,7 +189,7 @@ class ReadEmails(_EmailBase):
                     # (日本語, 中文) works, and quotes/CRLF in it cannot break out of
                     # the command
                     _check_imap_text(search, "search")
-                    imap.literal = search.encode("utf-8")
+                    imap.literal = search.encode("utf-8")  # type: ignore[assignment] # imaplib accepts bytes despite typeshed
                     status, data = imap.search("UTF-8", "TEXT")
                 else:
                     status, data = imap.search(None, *(criteria or ["ALL"]))

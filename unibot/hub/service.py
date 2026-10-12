@@ -669,19 +669,19 @@ class HubService:
                             break
                         if msg.get("kind") != "coding":
                             continue
-                        run = msg.get("run") or {}
+                        run_dict: dict[str, Any] = msg.get("run") or {}
                         ev = msg.get("event") or {}
-                        if run.get("id") != run_id and ev.get("run") != run_id:
+                        if run_dict.get("id") != run_id and ev.get("run") != run_id:
                             continue
                         if ev.get("kind") in ("text", "tool", "started"):
                             # the run id rides along so the caller can `coding.stop` it
                             await call.event({"kind": "coding", "run": run_id, **ev})
-                        if run.get("id") == run_id and run.get("status") in (
+                        if run_dict.get("id") == run_id and run_dict.get("status") in (
                             "done",
                             "failed",
                             "stopped",
                         ):
-                            final = run
+                            final = run_dict
                             break
                     await call.result(final)
                 finally:

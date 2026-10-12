@@ -414,7 +414,7 @@ class DocumentIndex:
         computed when an embedder is available.
         """
         has_embedder = self.embedder is not None and self.embedder.usable
-        model = self.embedder.model if has_embedder else "__keyword__"
+        model = self.embedder.model if self.embedder is not None and has_embedder else "__keyword__"
         async with self._lock:
             known = self.store.files()
             current: dict[str, tuple[int, int, int]] = {}

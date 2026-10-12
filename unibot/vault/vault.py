@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -30,13 +31,14 @@ try:  # POSIX inter-process lock for the vault file
 except ImportError:  # Windows
     fcntl = None  # type: ignore[assignment]
 
-if fcntl is None:
+msvcrt: Any = None
+if sys.platform == "win32":
     try:
-        import msvcrt
+        import msvcrt as _msvcrt  # type: ignore[import-not-found,no-redef]
+
+        msvcrt = _msvcrt
     except ImportError:  # pragma: no cover
-        msvcrt = None  # type: ignore[assignment]
-else:
-    msvcrt = None  # type: ignore[assignment]
+        pass
 
 
 class VaultError(RuntimeError):
@@ -131,15 +133,15 @@ class CredentialVault:
                 with open(lock_path, "w") as fh:
                     if fcntl is not None:
                         fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-                    elif msvcrt is not None:  # pragma: no cover - Windows only
-                        msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)
+                    elif msvcrt is not None:  # type: ignore[unreachable]  # pragma: no cover - Windows only
+                        msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)  # type: ignore[union-attr]
                     try:
                         yield
                     finally:
                         if fcntl is not None:
                             fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-                        elif msvcrt is not None:  # pragma: no cover - Windows only
-                            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+                        elif msvcrt is not None:  # type: ignore[unreachable]  # pragma: no cover - Windows only
+                            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)  # type: ignore[union-attr]
             except OSError as exc:
                 # a lock that cannot be taken must never break the write itself
                 logger.debug("vault lock unavailable, proceeding unlocked: {}", exc)

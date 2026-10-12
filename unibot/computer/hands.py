@@ -253,7 +253,10 @@ def open_application(name: str) -> str:
     if platform == "win32":
         # never through ``cmd /c start``: list2cmdline does not quote `calc&whoami`
         # (no spaces) and cmd would re-parse the & — a command injection
-        os.startfile(name)
+        # os.startfile only exists on Windows; mypy on other platforms needs help
+        startfile = getattr(os, "startfile", None)
+        if startfile is not None:
+            startfile(name)
         return name
     # Linux: a .desktop entry whose Name matches — no PATH lookup, so a malicious
     # name cannot resolve to an executable planted in the workspace
