@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import mimetypes
 import secrets
 import uuid
@@ -1519,8 +1520,22 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @app.post("/api/bridge/{kind}")
     async def bridge_call(kind: str, request: Request) -> dict[str, Any]:
+        # Security: this route has no app token (the bridge call token in the
+        # header is the credential), so reject oversized bodies before
+        # buffering them, and validate the token before the body is read at
+        # all — otherwise an unauthenticated client could exhaust memory.
+        length = (request.headers.get("content-length") or "").strip()
+        if length.isdigit() and int(length) > 64 * 1024:
+            raise HTTPException(413, "body too large (64 KB max)")
+        if svc.bridge.tokens.get(_bridge_token(request)) is None:
+            raise HTTPException(401, "the call token is missing, unknown or expired")
+        raw = b""
+        async for chunk in request.stream():
+            raw += chunk
+            if len(raw) > 64 * 1024:
+                raise HTTPException(413, "body too large (64 KB max)")
         try:
-            body = await request.json()
+            body = json.loads(raw.decode("utf-8"))
         except ValueError as exc:
             raise HTTPException(400, "the request body must be JSON") from exc
         if not isinstance(body, dict):
