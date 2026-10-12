@@ -71,7 +71,10 @@ class FakeSwarmProvider(
     ): Flow<LLMStreamChunk> = flow {
         val user = messages.lastOrNull { it.role == LLMMessage.Role.USER }?.content.orEmpty()
         synchronized(calls) { calls.add(systemPrompt to user) }
-        if (blockRole != null && user.startsWith("WORKER SUBTASK") && user.contains("($blockRole)")) {
+        // v1.5 pipelines: stage prompts start with "PIPELINE STAGE", not
+        // "WORKER SUBTASK" — the gate must catch both.
+        val isWorkerCall = user.startsWith("WORKER SUBTASK") || user.startsWith("PIPELINE STAGE")
+        if (blockRole != null && isWorkerCall && user.contains("($blockRole)")) {
             gate?.await()
         }
         val r = handler(systemPrompt, user)

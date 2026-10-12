@@ -73,6 +73,18 @@ class SwarmViewModel(
         engine.launch(mission, preset, options)
 
     /**
+     * v1.5: start a PIPELINE run — a fixed ordered stage chain with an
+     * explicit handoff between stages (Ruflo's pre-built collaboration
+     * templates shape). The manager-decomposition step and the
+     * plan-approval gate are skipped: the pipeline IS the plan.
+     */
+    fun launchPipeline(
+        mission: String,
+        pipeline: SwarmPipeline,
+        options: SwarmLaunchOptions,
+    ): Boolean = engine.launchPipeline(mission, pipeline, options)
+
+    /**
      * v1.4.0 item 2: approve the decomposed plan (optionally edited) and
      * start the workers. Only legal at the approval gate.
      */

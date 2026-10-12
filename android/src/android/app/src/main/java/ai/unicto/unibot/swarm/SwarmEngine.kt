@@ -125,20 +125,57 @@ class SwarmEngine(
      * Start a run with v1.4.0 launch options (plan-approval gate, worker
      * cap, attachments). Only legal from IDLE.
      */
-    fun launch(mission: String, preset: SwarmCrewPreset, options: SwarmLaunchOptions): Boolean {
+    fun launch(mission: String, preset: SwarmCrewPreset, options: SwarmLaunchOptions): Boolean =
+        launchInternal(mission, preset, options, pipeline = null)
+
+    /**
+     * v1.5 — start a PIPELINE run (one-tap swarm pipelines, Ruflo's
+     * pre-built collaboration templates shape: fixed ordered stages with an
+     * explicit handoff instead of manager-decomposed subtasks). Only legal
+     * from IDLE.
+     *
+     * The pipeline maps to a synthetic crew preset whose id carries
+     * [PIPELINE_CREW_ID_PREFIX], and the stage briefs become the run's
+     * subtasks up front — so runSwarm's manager-decomposition step is
+     * skipped (the pipeline IS the plan) and the plan-approval gate is
+     * forced off (the user deliberately picked the pipeline in the
+     * gallery). Verify-per-stage, one bounded revision, checkpointing,
+     * stitching, token budget and per-role permissions all behave exactly
+     * like a crew run.
+     */
+    fun launchPipeline(
+        mission: String,
+        pipeline: SwarmPipeline,
+        options: SwarmLaunchOptions,
+    ): Boolean = launchInternal(
+        mission = mission,
+        preset = pipeline.toCrewPreset(),
+        options = options.copy(requirePlanApproval = false),
+        pipeline = pipeline,
+    )
+
+    private fun launchInternal(
+        mission: String,
+        preset: SwarmCrewPreset,
+        options: SwarmLaunchOptions,
+        pipeline: SwarmPipeline?,
+    ): Boolean {
         synchronized(lock) {
             if (_uiState.value.lifecycle != SwarmLifecycle.IDLE) {
                 println("[swarm] launch rejected: lifecycle is ${_uiState.value.lifecycle}, must be IDLE")
                 return false
             }
+            val stageCount = pipeline?.stages?.size ?: 0
             val agents = preset.roles.mapIndexed { i, roleId ->
                 val role = SwarmRoles.byId(roleId) ?: SwarmRoles.fallback(roleId)
+                val stage = pipeline?.stages?.getOrNull(i)
                 SwarmAgentState(
                     id = "agent-$i-$roleId",
                     role = roleId,
                     displayName = role.displayName,
                     status = SwarmAgentStatus.QUEUED,
-                    currentStep = "Queued",
+                    currentStep = if (stage != null) "Stage ${i + 1}/$stageCount" else "Queued",
+                    detail = stage?.title.orEmpty(),
                 )
             }
             val safeAttachments = options.attachments
@@ -164,7 +201,10 @@ class SwarmEngine(
             pauseRequested = false
             userCancelRequested = false
             teardownInitiated = false
-            subtasks = emptyList()
+            // Pipeline runs carry their fixed stage briefs as the subtasks,
+            // so runSwarm skips the manager decomposition call. Crew runs
+            // start empty and get the manager's plan.
+            subtasks = pipeline?.stages?.map { it.brief }.orEmpty()
             checkpoint()
             runJob = scope.launch { runSwarm() }
             return true
@@ -620,14 +660,46 @@ class SwarmEngine(
         // step so a mid-run steer() reaches the very next step.
         val steering = steeringContext(_uiState.value.steeringNotes)
         val docs = attachmentsContext(_uiState.value.attachments)
+        // v1.5 pipelines: a fixed ordered chain with an explicit handoff —
+        // stage N+1 receives stage N's output as its primary input instead
+        // of a manager-decomposed subtask. Null when this is a normal crew
+        // run (or the pipeline no longer exists — then the run degrades
+        // gracefully to plain stage briefs via the standard prompt).
+        val pipeline = pipelineForCrewId(_uiState.value.crew?.id)
+        val stage = pipeline?.stages?.getOrNull(index)
         updateAgent(index) {
-            it.copy(status = SwarmAgentStatus.WORKING, currentStep = "Working", detail = "Running subtask")
+            it.copy(
+                status = SwarmAgentStatus.WORKING,
+                currentStep = if (stage != null && pipeline != null) {
+                    "Stage ${index + 1}/${pipeline.stages.size}"
+                } else {
+                    "Working"
+                },
+                detail = stage?.title ?: "Running subtask",
+            )
         }
         logAgent(index, "Worker call started")
         val prior = priorResults(index)
+        val previousOutput = _uiState.value.agents.getOrNull(index - 1)
+            ?.takeIf { it.status == SwarmAgentStatus.DONE }
+            ?.result.orEmpty()
         var output = callLlm(
             system = role.systemPrompt,
-            user = workerPrompt(role, mission, subtask, prior, steering, docs),
+            user = if (stage != null && pipeline != null) {
+                pipelineStagePrompt(
+                    stageIndex = index,
+                    stageCount = pipeline.stages.size,
+                    stageTitle = stage.title,
+                    role = role,
+                    mission = mission,
+                    brief = subtask,
+                    previousOutput = previousOutput,
+                    steering = steering,
+                    docs = docs,
+                )
+            } else {
+                workerPrompt(role, mission, subtask, prior, steering, docs)
+            },
             maxTokens = workerMaxOutputTokens,
             stepLabel = "worker:${role.id}",
             roleId = role.id,
@@ -992,6 +1064,12 @@ class SwarmEngine(
         private const val VERIFY_MAX_OUTPUT_TOKENS = 512
         private const val STITCH_MAX_OUTPUT_TOKENS = 8192
         private const val PRIOR_RESULT_CHAR_CAP = 1500
+        /**
+         * v1.5 pipelines — cap on the previous stage's output passed as the
+         * next stage's primary input (verifyPrompt's 6000-char precedent).
+         * Full enough to build on, small enough to stay phone-safe.
+         */
+        private const val PREVIOUS_STAGE_CHAR_CAP = 6000
 
         /** v1.5 Bug 2 — bounded retry: attempts per LLM call. */
         private const val MAX_LLM_ATTEMPTS = 3
@@ -1092,6 +1170,42 @@ class SwarmEngine(
             }
             appendLine()
             append("Complete ONLY your subtask. Reply with your result as concise structured text ")
+            append("(headings/bullets where useful).")
+        }
+
+        internal fun pipelineStagePrompt(
+            stageIndex: Int,
+            stageCount: Int,
+            stageTitle: String,
+            role: RoleDef,
+            mission: String,
+            brief: String,
+            previousOutput: String,
+            steering: String = "",
+            docs: String = "",
+        ): String = buildString {
+            appendLine("PIPELINE STAGE ${stageIndex + 1} of $stageCount — $stageTitle")
+            appendLine("Role: ${role.displayName} (${role.id})")
+            appendLine("Mission: $mission")
+            appendLine("Your stage brief: $brief")
+            if (docs.isNotBlank()) {
+                appendLine()
+                appendLine(docs)
+            }
+            if (previousOutput.isNotBlank()) {
+                appendLine()
+                appendLine(
+                    "OUTPUT OF THE PREVIOUS STAGE — your primary input. Build directly on it; " +
+                        "do not redo its work:",
+                )
+                appendLine(previousOutput.take(PREVIOUS_STAGE_CHAR_CAP))
+            }
+            if (steering.isNotBlank()) {
+                appendLine()
+                appendLine(steering)
+            }
+            appendLine()
+            append("Complete ONLY your stage. Reply with your result as concise structured text ")
             append("(headings/bullets where useful).")
         }
 

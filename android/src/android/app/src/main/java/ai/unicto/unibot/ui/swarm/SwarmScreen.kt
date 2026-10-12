@@ -86,6 +86,7 @@ import ai.unicto.unibot.swarm.SwarmCrewPreset
 import ai.unicto.unibot.swarm.SwarmLaunchOptions
 import ai.unicto.unibot.swarm.SwarmLifecycle
 import ai.unicto.unibot.swarm.SwarmPrefs
+import ai.unicto.unibot.swarm.SwarmPipeline
 import ai.unicto.unibot.swarm.SwarmRepository
 import ai.unicto.unibot.swarm.SwarmRolePermission
 import ai.unicto.unibot.swarm.SwarmUiState
@@ -217,6 +218,9 @@ fun SwarmScreen(
                     onLaunch = { mission, preset, options ->
                         viewModel.launch(mission, preset, options)
                     },
+                    onLaunchPipeline = { mission, pipeline, options ->
+                        viewModel.launchPipeline(mission, pipeline, options)
+                    },
                     onResume = viewModel::resume,
                     // Discard needs the PAUSED-legal path: dismissResult()
                     // rejects interrupted (PAUSED) runs, so it would no-op
@@ -273,6 +277,7 @@ private fun shareTranscript(
 private fun SwarmIdleView(
     state: SwarmUiState,
     onLaunch: (String, SwarmCrewPreset, SwarmLaunchOptions) -> Unit,
+    onLaunchPipeline: (String, SwarmPipeline, SwarmLaunchOptions) -> Unit,
     onResume: () -> Unit,
     onDiscard: () -> Unit,
     modifier: Modifier = Modifier,
@@ -287,6 +292,9 @@ private fun SwarmIdleView(
     val composerFocus = remember { FocusRequester() }
     var mission by remember { mutableStateOf(initialMission ?: "") }
     var presetId by remember { mutableStateOf("research") }
+    // v1.5 pipelines — a selected pipeline replaces the crew preset for
+    // the launch: it defines its own fixed stage chain.
+    var pipeline by remember { mutableStateOf<SwarmPipeline?>(null) }
     var attachments by remember { mutableStateOf(listOf<SwarmAttachment>()) }
     // Per-role permissions for this mission (OpenDots-style). Keyed by
     // role id; roles without an entry use safe defaults at launch.
@@ -354,6 +362,16 @@ private fun SwarmIdleView(
                 onUseTemplate = { template ->
                     mission = template.mission
                     presetId = template.presetId
+                    pipeline = null
+                },
+            )
+        }
+        // v1.5 — one-tap pipelines (fixed stage chains, no plan step).
+        item {
+            SwarmPipelineGallery(
+                onUsePipeline = { selected ->
+                    mission = selected.missionHint
+                    pipeline = selected
                 },
             )
         }
@@ -362,19 +380,39 @@ private fun SwarmIdleView(
                 mission = mission,
                 onMissionChange = { mission = it },
                 onLaunch = {
-                    onLaunch(
-                        mission.trim(),
-                        preset,
-                        SwarmLaunchOptions(
-                            requirePlanApproval = prefs.requirePlanApproval,
-                            maxWorkers = prefs.maxWorkers,
-                            tokenBudget = prefs.tokenBudget,
-                            attachments = attachments,
-                            rolePermissions = preset.roles.map { roleId ->
-                                rolePermissions[roleId] ?: SwarmRolePermission(roleId)
-                            },
-                        ),
-                    )
+                    // v1.5 pipelines — a selected pipeline launches its own
+                    // fixed stage chain; the crew preset is bypassed.
+                    val activePipeline = pipeline
+                    if (activePipeline != null) {
+                        onLaunchPipeline(
+                            mission.trim(),
+                            activePipeline,
+                            SwarmLaunchOptions(
+                                requirePlanApproval = false,
+                                maxWorkers = prefs.maxWorkers,
+                                tokenBudget = prefs.tokenBudget,
+                                attachments = attachments,
+                                rolePermissions = activePipeline.stages.map { stage ->
+                                    rolePermissions[stage.roleId]
+                                        ?: SwarmRolePermission(stage.roleId)
+                                },
+                            ),
+                        )
+                    } else {
+                        onLaunch(
+                            mission.trim(),
+                            preset,
+                            SwarmLaunchOptions(
+                                requirePlanApproval = prefs.requirePlanApproval,
+                                maxWorkers = prefs.maxWorkers,
+                                tokenBudget = prefs.tokenBudget,
+                                attachments = attachments,
+                                rolePermissions = preset.roles.map { roleId ->
+                                    rolePermissions[roleId] ?: SwarmRolePermission(roleId)
+                                },
+                            ),
+                        )
+                    }
                 },
                 launchEnabled = mission.isNotBlank(),
                 focusRequester = composerFocus,
@@ -387,13 +425,20 @@ private fun SwarmIdleView(
                 onAttachmentsChange = { attachments = it },
             )
         }
-        // v1.4.0 item 7 — crew picker with custom crews.
+        // v1.4.0 item 7 — crew picker with custom crews. A selected pipeline
+        // (v1.5) defines its own fixed stage chain, so the picker is
+        // replaced by the read-only stage list until the pipeline is cleared.
+        val activePipeline = pipeline
         item {
-            SwarmCrewSection(
-                builtins = SWARM_PRESETS,
-                customCrews = customCrews,
-                selectedId = effectivePresetId,
-                onSelect = { presetId = it.id },
+            if (activePipeline == null) {
+                SwarmCrewSection(
+                    builtins = SWARM_PRESETS,
+                    customCrews = customCrews,
+                    selectedId = effectivePresetId,
+                    onSelect = {
+                        presetId = it.id
+                        pipeline = null
+                    },
                 onSaveCustom = { name, roles ->
                     val id = "custom-" + name.lowercase(java.util.Locale.US)
                         .replace(Regex("[^a-z0-9]+"), "-").trim('-')
@@ -413,13 +458,20 @@ private fun SwarmIdleView(
                     customCrews = repository?.listCustomCrews().orEmpty()
                     if (presetId == doomed.id) presetId = SWARM_PRESETS.first().id
                 },
-            )
+                )
+            } else {
+                PipelineStagesCard(
+                    pipeline = activePipeline,
+                    onClear = { pipeline = null },
+                )
+            }
         }
         // Per-role permissions (OpenDots-style): what each agent in the
-        // selected crew may do on this mission.
+        // selected crew may do on this mission. A selected pipeline (v1.5)
+        // contributes its stage roles instead of the crew preset's.
         item {
             SwarmPermissionsSection(
-                roles = preset.roles,
+                roles = pipeline?.stages?.map { it.roleId } ?: preset.roles,
                 permissions = rolePermissions,
                 onPermissionsChange = { rolePermissions = it },
             )

@@ -52,10 +52,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ai.unicto.unibot.swarm.SWARM_PIPELINES
 import ai.unicto.unibot.swarm.SWARM_TEMPLATES
 import ai.unicto.unibot.swarm.SwarmAttachment
 import ai.unicto.unibot.swarm.SwarmCrewPreset
 import ai.unicto.unibot.swarm.SwarmMissionRecord
+import ai.unicto.unibot.swarm.SwarmPipeline
 import ai.unicto.unibot.swarm.SwarmPrefs
 import ai.unicto.unibot.swarm.SwarmRolePermission
 import ai.unicto.unibot.swarm.SwarmRoles
@@ -140,6 +142,151 @@ private fun TemplateCard(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+    }
+}
+
+// ─── Pipeline gallery (v1.5) ────────────────────────────────────────────────
+// One-tap swarm PIPELINES (Ruflo's pre-built collaboration templates shape):
+// fixed ordered stage chains where each stage's output feeds the next —
+// picked deliberately, so the run skips manager decomposition and the
+// plan-approval gate.
+
+@Composable
+internal fun SwarmPipelineGallery(
+    onUsePipeline: (SwarmPipeline) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SwarmSectionHeader(title = "Or run a pipeline")
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 2.dp),
+        ) {
+            items(SWARM_PIPELINES, key = { it.id }) { pipeline ->
+                PipelineCard(
+                    pipeline = pipeline,
+                    onUse = { onUsePipeline(pipeline) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PipelineCard(
+    pipeline: SwarmPipeline,
+    onUse: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onUse,
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.size(width = 220.dp, height = 152.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = pipeline.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = pipeline.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = pipeline.stages.joinToString(" → ") { stage ->
+                    SwarmRoles.byId(stage.roleId)?.displayName ?: stage.roleId
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Use pipeline",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+/**
+ * Read-only stage list shown in place of the crew picker while a pipeline
+ * is selected — the pipeline defines its own crew, so there is nothing to
+ * pick. The × clears the pipeline and restores the crew picker.
+ */
+@Composable
+internal fun PipelineStagesCard(
+    pipeline: SwarmPipeline,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SwarmSectionHeader(
+                title = "Pipeline: ${pipeline.name}",
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onClear) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Clear pipeline",
+                )
+            }
+        }
+        pipeline.stages.forEachIndexed { i, stage ->
+            val roleName = SwarmRoles.byId(stage.roleId)?.displayName ?: stage.roleId
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "${i + 1}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "$roleName · ${stage.title}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stage.brief,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (i < pipeline.stages.lastIndex) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
+        Text(
+            text = "Stages run in order; each stage builds on the previous stage's output. " +
+                "No plan step — the pipeline is the plan.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
